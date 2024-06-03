@@ -22,7 +22,7 @@ AVIN (лат. Ars Vincere  -  искусство побеждать)  —  эт�
 Больше информации о проекте смотрите на сайте:
 [arsvincere.com](http://arsvincere.com)
 
-![image](https://github.com/arsvincere/AVIN/blob/master/res/Screenshot_2024-02-28_13-11-10.png)
+![image](https://github.com/arsvincere/AVIN/blob/master/res/screenshot/Screenshot_2024-02-28_13-11-10.png)
 
 
 ## Installation
