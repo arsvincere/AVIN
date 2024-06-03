@@ -28,13 +28,15 @@ from avin.data import Source, DataType, Exchange, AssetType, Id, Data
 
 ### class Source <!--{{{-->
 Перечисление доступных источников данных.
-    UNDEFINE    = 0
-    MOEX        = 1
-    TINKOFF     = 2
+
+	UNDEFINE    = 0
+	MOEX        = 1
+	TINKOFF     = 2
 
 Примеры:
->>> Source.MOEX
->>> Source.TINKOFF
+
+    >>> Source.MOEX
+    >>> Source.TINKOFF
 
 <!--}}}-->
 ### class DataType <!--{{{-->
@@ -42,48 +44,54 @@ from avin.data import Source, DataType, Exchange, AssetType, Id, Data
 
 Мудреные value строки вместо int используются для облегчения построения путей
 к файлам данных.
-    BAR_1M      = "1M"
-    BAR_5M      = "5M"
-    BAR_10M     = "10M"
-    BAR_1H      = "1H"
-    BAR_D       = "D"
-    BAR_W       = "W"
-    BAR_M       = "M"
-    BOOK        = "book"        # стаканы   
-    TIC         = "tic"         # тики
-    ANALYSE     = "analyse"     # пользовательский анализ .json
+
+	BAR_1M      = "1M"
+	BAR_5M      = "5M"
+	BAR_10M     = "10M"
+	BAR_1H      = "1H"
+	BAR_D       = "D"
+	BAR_W       = "W"
+	BAR_M       = "M"
+	BOOK        = "book"        # стаканы   
+	TIC         = "tic"         # тики
+	ANALYSE     = "analyse"     # пользовательский анализ .json
 
 Примеры:
->>> DataType.BAR_1M
->>> DataType.BAR_D.name
->>> DataType.BAR_D.value
+
+    >>> DataType.BAR_1M
+    >>> DataType.BAR_D.name
+    >>> DataType.BAR_D.value
 
 <!--}}}-->
 ### class Exchange<!--{{{-->
 Перечисление доступных бирж.
-    UNDEFINE    = 0
-    MOEX        = 1
-    SPB         = 2
+
+	UNDEFINE    = 0
+	MOEX        = 1
+	SPB         = 2
 
 Примеры:
->>> Exchange.MOEX
->>> Exchange.MOEX.name
->>> Exchange.MOEX.value
+
+    >>> Exchange.MOEX
+    >>> Exchange.MOEX.name
+    >>> Exchange.MOEX.value
 
 <!--}}}-->
 ### class AssetType<!--{{{-->
 Перечисление типов активов 
-    UNDEFINE    = 0
-    Index       = 1
-    Share       = 2
-    Bond        = 3
-    Future      = 4
-    Currency    = 5
-    Etf         = 6
+
+	UNDEFINE    = 0
+	Index       = 1
+	Share       = 2
+	Bond        = 3
+	Future      = 4
+	Currency    = 5
+	Etf         = 6
 
 Примеры:
->>> AssetType.Share
->>> AssetType.Future
+
+    >>> AssetType.Share
+    >>> AssetType.Future
 
 <!--}}}-->
 ### class Id<!--{{{-->
@@ -96,6 +104,7 @@ from avin.data import Source, DataType, Exchange, AssetType, Id, Data
 для получения идентификатора через часть информации о нем, см. Data.find()
 
 Инициализация:
+
     exchange (enum Exchange): биржа
     asset_type (enum AssetType): тип актива
     name (str): полное имя инструмента
@@ -103,6 +112,7 @@ from avin.data import Source, DataType, Exchange, AssetType, Id, Data
     figi (str): глобальный финансовый идентификатор, типо "BBG004S683W7"
 
 Свойства:
+
     exchange (enum Exchange)
     type (enum AssetType)
     name (str)
@@ -111,10 +121,12 @@ from avin.data import Source, DataType, Exchange, AssetType, Id, Data
     dir_path (str): путь к папке с данными по активу
 
 Методы:
+
     save(id_obj: Id, file_path: str) -> None
     load(file_path: str) -> Id
     
 Примеры:
+
     >>> sber_id = Data.find(Exchange.MOEX, AssetType.Share, "SBER")
     >>> print(sber.name)
     >>> print(sber.figi)
