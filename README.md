@@ -25,12 +25,18 @@ AVIN (лат. Ars Vincere  -  искусство побеждать)  —  эт�
 ![image](https://github.com/arsvincere/AVIN/blob/master/res/screenshot/Screenshot_2024-02-28_13-11-10.png)
 
 
-## Installation
+## Getting start
 
-- Clone this repository
+1. Clone this repository
 
 ```
 git clone --depth=1 https://github.com/arsvincere/AVIN.git
+```
+
+2. Run
+```
+cd AVIN
+python3 main.py
 ```
 
 ## Requarements
