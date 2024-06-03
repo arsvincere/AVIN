@@ -60,11 +60,11 @@ python3 main.py
 
 ## Documentation
 
-[doc-ru](https://github.com/arsvincere/AVIN/tree/master/doc/ru)
-[doc-en](...) - comming soon
+- [doc-ru](https://github.com/arsvincere/AVIN/tree/master/doc/ru)
+- [doc-en](...) - comming soon
 
 
 ## Examples
 
-[examples](https://github.com/arsvincere/AVIN/tree/master/doc/examples/data)
+- [examples](https://github.com/arsvincere/AVIN/tree/master/doc/examples/data)
 
