@@ -39,6 +39,7 @@ cd AVIN
 python3 main.py
 ```
 
+
 ## Requarements
 
 [moexalgo](https://github.com/moexalgo/moexalgo) - оффициальная библиотека Московской биржи для получения данных:
@@ -60,7 +61,7 @@ python3 main.py
 
 ## Documentation
 
-- [doc-ru](https://github.com/arsvincere/AVIN/tree/master/doc/ru)
+- [doc-ru](https://github.com/arsvincere/AVIN/tree/master/doc/ru) - не читабельна на гитхабе. Читабельна в любом текстовом редакторе в моноширном шрифте. Или в obsidian, другие markdown редакторы не тестировались.
 - [doc-en](...) - comming soon
 
 
