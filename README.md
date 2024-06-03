@@ -33,7 +33,7 @@ AVIN (лат. Ars Vincere  -  искусство побеждать)  —  эт�
 git clone --depth=1 https://github.com/arsvincere/AVIN.git
 ```
 
-### Dependencies
+## Requarements
 
 [moexalgo](https://github.com/moexalgo/moexalgo) - оффициальная библиотека Московской биржи для получения данных:
 
@@ -52,13 +52,13 @@ git clone --depth=1 https://github.com/arsvincere/AVIN.git
     pip install pyqt6
 	
 
-### Documentation
+## Documentation
 
-[doc-ru](...)
-[doc-en](...)
+[doc-ru](https://github.com/arsvincere/AVIN/tree/master/doc/ru)
+[doc-en](...) - comming soon
 
 
-### Examples
+## Examples
 
-[examples](...)
+[examples](https://github.com/arsvincere/AVIN/tree/master/doc/examples/data)
 
