@@ -1,0 +1,4 @@
+moexalgo
+tinkoff-investments
+pandas
+pyqt6
