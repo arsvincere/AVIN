@@ -22,15 +22,22 @@ usr/*
 9.py
 
 doc/.obsidian
+avin/analytic/*
+avin/connect/*
+avin/core/*
 avin/gui/*
-avin/company.py
-avin/core.py
+avin/report/*
+avin/strategy/*
+avin/tester/*
+
 res/cache/*
 res/icon/*
 res/sound/*
 res/voice/*
+
 test/test_core.py
 test/gui.py
 test/utils.py
+
 install.sh
 run.sh

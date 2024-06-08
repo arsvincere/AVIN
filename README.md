@@ -61,8 +61,8 @@ python3 main.py
 
 ## Documentation
 
-- [doc-ru](https://github.com/arsvincere/AVIN/tree/master/doc/ru) - не читабельна на гитхабе. Читабельна в любом текстовом редакторе в моноширном шрифте. Или в obsidian, другие markdown редакторы не тестировались.
-- [doc-en](...) - comming soon
+- [doc-ru](https://github.com/arsvincere/AVIN/tree/master/doc/ru) - в процессе написания, но уже читабельно
+- [doc-en]() - comming soon
 
 
 ## Examples

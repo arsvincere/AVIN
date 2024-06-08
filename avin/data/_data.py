@@ -8,293 +8,21 @@
 
 from __future__ import annotations
 import os
-import sys
 import abc
-import enum
 import moexalgo
 import tinkoff.invest
 import pandas as pd
 from dataclasses import dataclass
-from datetime import datetime, time, date, timedelta
+from datetime import datetime, date, time, timedelta
 from avin.const import *
 from avin.logger import logger
 from avin.utils import Cmd, now
-sys.path.append("/home/alex/AVIN")
-sys.path.append("/home/alex/AVIN/env/lib/python3.12/site-packages")
+from avin.data.source import Source
+from avin.data.data_type import DataType
+from avin.data.exchange import Exchange
+from avin.data.asset_type import AssetType
+from avin.data.id import Id
 
-__all__ = ("Data", "Source", "DataType", "Exchange", "AssetType", "Id")
-
-#TODO:# {{{
-# import gettext
-# domain = "messages"
-# localedir = "/home/alex/ya/arsvincere/lang"
-# gettext.install(domain, localedir=localedir, names="gettext")
-
-
-#TODO fix - not exclude holidays files on update data from tinkoff
-# }}}
-
-
-class Source(enum.Enum):# {{{
-    UNDEFINE    = 0
-    MOEX        = 1
-    TINKOFF     = 2
-
-    @staticmethod  #save# {{{
-    def save(source: Source, file_path: str):
-        string = source.name
-        Cmd.write(string, file_path)
-    # }}}
-    @staticmethod  #load# {{{
-    def load(file_path):
-        string = Cmd.read(file_path).strip()
-        sources = {
-            "UNDEFINE": Source.UNDEFINE,
-            "MOEX":     Source.MOEX,
-            "TINKOFF":  Source.TINKOFF,
-            }
-        return sources[string]
-    # }}}
-# }}}
-class DataType(enum.Enum):# {{{
-    """ doc# {{{
-    This is extension of class <DataType> with some utils for work with data.
-
-    The <DataType> class is needed only to hide the methods below from the
-    user. Making these methods simply private methods of class DataType made
-    things more difficult since they are called by other classes. Making them
-    protected is not logical, because no one inherits the enumeration.
-    Therefore, a separate class DataType was made.
-
-    While the class <DataType> - public enum for user to selet what data
-    type want to download.
-    """
-    # }}}
-    BAR_1M      = "1M"
-    BAR_5M      = "5M"
-    BAR_10M     = "10M"
-    BAR_1H      = "1H"
-    BAR_D       = "D"
-    BAR_W       = "W"
-    BAR_M       = "M"
-    TIC         = "tic"
-    BOOK        = "book"
-    ANALYSE     = "analyse"
-
-    def __hash__(self):# {{{
-        return hash(self.name)
-    # }}}
-    def toTimedelta(self):# {{{
-        periods = {
-            "1M":  timedelta(minutes=1),
-            "5M":  timedelta(minutes=5),
-            "10M": timedelta(minutes=10),
-            "1H":  timedelta(hours=1),
-            "D":   timedelta(days=1),
-            "W":   timedelta(weeks=1),
-            "M":   timedelta(days=30),
-            }
-        return periods[self.value]
-    # }}}
-    @staticmethod  #save# {{{
-    def save(data_type, file_path):
-        string = data_type.value
-        Cmd.write(string, file_path)
-    # }}}
-    @staticmethod  #load# {{{
-    def load(file_path):
-        string = Cmd.read(file_path).strip()
-        data_type = DataType.fromStr(string)
-        return data_type
-    # }}}
-    @staticmethod  #fromStr#{{{
-    def fromStr(string_type: str):
-        types = {
-            "1M":       DataType.BAR_1M,
-            "5M":       DataType.BAR_5M,
-            "10M":      DataType.BAR_10M,
-            "1H":       DataType.BAR_1H,
-            "D":        DataType.BAR_D,
-            "W":        DataType.BAR_W,
-            "M":        DataType.BAR_M,
-            "book":     DataType.BOOK,
-            "tic":      DataType.TIC,
-            "analyse":  DataType.ANALYSE
-            }
-        return types[string_type]
-    # }}}
-# }}}
-class Exchange(enum.Enum):# {{{
-    UNDEFINE    = 0
-    MOEX        = 1
-    SPB         = 2
-
-    @staticmethod  #fromStr# {{{
-    def fromStr(string):
-        types = {
-            "UNDEFINE": Exchange.UNDEFINE,
-            "MOEX":     Exchange.MOEX,
-            "SPB":      Exchange.SPB,
-            }
-        return types[string]
-    # }}}
-# }}}
-class AssetType(enum.Enum):# {{{
-    UNDEFINE    = 0
-    Index       = 1
-    Share       = 2
-    Bond        = 3
-    Future      = 4
-    Currency    = 5
-    Etf         = 6
-
-    @staticmethod  #fromStr# {{{
-    def fromStr(string):
-        types = {
-            "UNDEFINE": AssetType.UNDEFINE,
-            "Index":    AssetType.Index,
-            "Share":    AssetType.Share,
-            "Bond":     AssetType.Bond,
-            "Future":   AssetType.Future,
-            "Currency": AssetType.Currency,
-            "Etf":      AssetType.Etf,
-            }
-        return types[string]
-    # }}}
-# }}}
-class Id():# {{{
-    """ doc # {{{
-    Unified identifier for all assets.
-
-    Constructor trying to find asset by 'querry', then create 'Id' object with
-    fully information of this instrument: exchange, type, name, ticker, figi,
-    uid are availible as property. Other information: min price step, lots,
-    last price, etc.. loading on call.
-
-    Args:
-        exchange (str): short name like "MOEX", "SPB", "NASDAQ"...
-        asset_type (str): availible: "Index", "Share", "Bond"...
-        querry (str): ticker | figi | uid
-
-    Attributes:
-        exchange: str
-        type: str
-        name: str
-        ticker: str
-        figi: str
-        uid: str
-
-    Examples:
-        >>> Id("MOEX", "Share", "SBER")
-        >>> Id("MOEX", "Share", "BBG004S683W7")
-        >>> Id("MOEX", "Share", "962e2a95-02a9-4171-abd7-aa198dbe643a"
-        >>> Id("MOEX", "Index", "IMOEX"
-
-    Availible exchange:
-        MOEX,
-
-    Availible asset type:
-        Index, Share, Bond, Future, Currency, Etf
-
-    Availible querry:
-        ticker: for example "GAZP", "ROSN", "YNDX"
-        figi: for example "BBG004S683W7", "BBG004730N88"
-        tinkoff uid: for example "10e17a87-3bce-4a1f-9dfc-720396f98a3c"
-    """
-# }}}
-    def __init__(# {{{
-        self,
-        exchange: Exchange,
-        asset_type: AssetType,
-        name: str,
-        ticker: str,
-        figi: str,
-        ):
-
-        self.__info = {
-            "exchange": exchange,
-            "type": asset_type,
-            "name": name,
-            "ticker": ticker,
-            "figi": figi,
-            }
-        # }}}
-    def __str__(self):# {{{
-        s = f"{self.exchange.name}-{self.type.name}-{self.ticker}-{self.figi}"
-        return s
-        # }}}
-    def __eq__(self, other):# {{{
-        return self.__info == other.__info
-    # }}}
-    @property  #exchange# {{{
-    def exchange(self):
-        return self.__info["exchange"]
-        # }}}
-    @property  #type# {{{
-    def type(self):
-        return self.__info["type"]
-        # }}}
-    @property  #name# {{{
-    def name(self):
-        return self.__info["name"]
-        # }}}
-    @property  #ticker# {{{
-    def ticker(self):
-        return self.__info["ticker"]
-        # }}}
-    @property  #figi# {{{
-    def figi(self):
-        return self.__info["figi"]
-        # }}}
-    @property  #dir_path# {{{
-    def dir_path(self):
-        path = Cmd.path(
-            Usr.DATA, self.exchange.name, self.type.name, self.ticker
-            )
-        return path
-        # }}}
-    @classmethod  #save# {{{
-    def save(cls, ID: Id, file_path: str):
-        Cmd.saveJson(ID, file_path, Id._encoderJson)
-        # }}}
-    @classmethod  #load# {{{
-    def load(cls, file_path):
-        obj = Cmd.loadJson(file_path, Id._decoderJson)
-        ID = Id(
-            obj["exchange"],
-            obj["type"],
-            obj["name"],
-            obj["ticker"],
-            obj["figi"],
-            )
-        return ID
-        # }}}
-    @staticmethod  #_encoderJson# {{{
-    def _encoderJson(obj):
-        if isinstance(obj, (Id)):
-            return obj.__info
-        if isinstance(obj, (Exchange, AssetType)):
-            return obj.name
-    # }}}
-    @staticmethod  #_decoderJson# {{{
-    def _decoderJson(obj):
-        # TODO: encoder and decoder - вынести в классы потомки,
-        # см формат файлов кэша, там слишком много деталей спецефичных
-        # сейчас даты в MOEX файлах после чтения остаются строками:
-        # "SETTLEDATE": "2024-05-31"
-        # "LASTTRADEDATE": "2025-03-20",
-        # "LASTDELDATE": "2025-03-20",
-        # "IMTIME": "2024-05-29T18:58:11",
-        # возможное решение - при сохранении все эти поля проверять и
-        # переводить в UTC datetime
-        for k, v in obj.items():
-            if k == "exchange":
-                obj[k] = Exchange.fromStr(v)
-            if k == "type":
-                obj[k] = AssetType.fromStr(v)
-        return obj
-    # }}}
-# }}}
 class Data():# {{{
     @classmethod  #assets # {{{
     def assets(cls, source: Source, asset_type: AssetType) -> list[Id]:
@@ -345,7 +73,10 @@ class Data():# {{{
             return td.info(ID)
     # }}}
     @classmethod  #firstDateTime# {{{
-    def firstDateTime(cls, source: Source, data_type: Type, ID: Id) -> datetime:
+    def firstDateTime(
+        cls, source: Source, data_type: DataType, ID: Id
+        ) -> datetime:
+
         check = cls.__checkArgs(
             source=     source,
             ID=         ID,
@@ -391,7 +122,7 @@ class Data():# {{{
         return False
     # }}}
     @classmethod  #convert# {{{
-    def convert(cls, ID: Id, in_type: Type, out_type: Type) -> bool:
+    def convert(cls, ID: Id, in_type: DataType, out_type: DataType) -> bool:
         check = cls.__checkArgs(
             ID=         ID,
             in_type=    in_type,
@@ -422,7 +153,7 @@ class Data():# {{{
         return False
     # }}}
     @classmethod  #delete# {{{
-    def delete(cls, ID: Id, data_type: Type) -> bool:
+    def delete(cls, ID: Id, data_type: DataType) -> bool:
         check = cls.__checkArgs(
             ID=         ID,
             data_type=  data_type,
@@ -438,7 +169,7 @@ class Data():# {{{
         return False
     # }}}
     @classmethod  #update# {{{
-    def update(cls, ID: Id, data_type: Type=None) -> bool:
+    def update(cls, ID: Id, data_type: DataType=None) -> bool:
         assert ID.exchange == Exchange.MOEX
         assert data_type != DataType.TIC
         assert data_type != DataType.BOOK
@@ -462,7 +193,7 @@ class Data():# {{{
         data_type: DataType,
         begin: int,
         end: int,
-        ) -> list[file_path]:
+        ) -> list[str]:
 
         check = cls.__checkArgs(
             ID=         ID,
@@ -2138,8 +1869,4 @@ class _Manager():# {{{
             return None  # возвращаем None, если не было баров с данными
     # }}}
 # }}}
-
-
-if __name__ == "__main__":
-    ...
 

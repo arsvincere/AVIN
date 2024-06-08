@@ -145,14 +145,14 @@ from avin.data import Source, DataType, Exchange, AssetType, Id, Data
 сайте: 
 https://developer.tinkoff.ru/docs/intro/manuals/self-service-auth
 
-Положить файл usr/connect/tinkoff/token.txt
+Токен положить в файл usr/connect/tinkoff/token.txt
 
 2. Аккаунт на Московской бирже.
 Без него доступны только свечи с задержкой в 15 минут общая информация. После
-регистрации доступны стаканы, и реал-тайм данные (задержка 1-2 минуты)
+регистрации доступны стаканы, и реал-тайм данные.
 https://passport.moex.com/registration
 
-Положить файл usr/connect/moex/account.txt
+Логин и пароль положить в файл usr/connect/moex/account.txt
 Первая строка логин
 Вторая строка пароль
 

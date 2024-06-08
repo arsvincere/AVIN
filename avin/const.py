@@ -29,7 +29,7 @@ __all__ = (# {{{
 class Dir(): # {{{
     """ Program directories """
     # Specify absolute path to program dir
-    ROOT = "/home/alex/ya/arsvincere/"
+    ROOT = "/home/alex/AVIN/"
 
     # All user files by default in the 'ROOT/usr', you can specify
     # an absolute path to another location. All user data be there.

@@ -10,11 +10,8 @@
 
 import sys
 from avin.const import *
-from avin.logger import logger
 from avin.data import *
-
-sys.path.append("/home/alex/AVIN")
-sys.path.append("/home/alex/AVIN/env/lib/python3.12/site-packages")
+from avin.logger import logger
 
 def main():
     print("Welcome to AVIN Trade System!")
