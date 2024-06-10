@@ -13,8 +13,8 @@ class Exchange(enum.Enum):# {{{
     MOEX        = 1
     SPB         = 2
 
-    @staticmethod  #fromStr# {{{
-    def fromStr(string):
+    @classmethod  #fromStr# {{{
+    def fromStr(cls, string):
         types = {
             "UNDEFINE": Exchange.UNDEFINE,
             "MOEX":     Exchange.MOEX,

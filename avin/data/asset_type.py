@@ -17,8 +17,8 @@ class AssetType(enum.Enum):# {{{
     Currency    = 5
     Etf         = 6
 
-    @staticmethod  #fromStr# {{{
-    def fromStr(string):
+    @classmethod  #fromStr# {{{
+    def fromStr(cls, string):
         types = {
             "UNDEFINE": AssetType.UNDEFINE,
             "Index":    AssetType.Index,

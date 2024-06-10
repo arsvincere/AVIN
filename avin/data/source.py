@@ -15,13 +15,13 @@ class Source(enum.Enum):# {{{
     MOEX        = 1
     TINKOFF     = 2
 
-    @staticmethod  #save# {{{
-    def save(source: Source, file_path: str):
+    @classmethod  #save# {{{
+    def save(cls, source: Source, file_path: str):
         string = source.name
         Cmd.write(string, file_path)
     # }}}
-    @staticmethod  #load# {{{
-    def load(file_path):
+    @classmethod  #load# {{{
+    def load(cls, file_path):
         string = Cmd.read(file_path).strip()
         sources = {
             "UNDEFINE": Source.UNDEFINE,

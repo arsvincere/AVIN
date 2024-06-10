@@ -41,19 +41,19 @@ class DataType(enum.Enum):# {{{
             }
         return periods[self.value]
     # }}}
-    @staticmethod  #save# {{{
-    def save(data_type, file_path):
+    @classmethod  #save# {{{
+    def save(cls, data_type, file_path):
         string = data_type.value
         Cmd.write(string, file_path)
     # }}}
-    @staticmethod  #load# {{{
-    def load(file_path):
+    @classmethod  #load# {{{
+    def load(cls, file_path):
         string = Cmd.read(file_path).strip()
         data_type = DataType.fromStr(string)
         return data_type
     # }}}
-    @staticmethod  #fromStr#{{{
-    def fromStr(string_type: str):
+    @classmethod  #fromStr#{{{
+    def fromStr(cls, string_type: str):
         types = {
             "1M":       DataType.BAR_1M,
             "5M":       DataType.BAR_5M,
