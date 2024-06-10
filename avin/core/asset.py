@@ -7,6 +7,7 @@
 # ============================================================================
 
 from __future__ import annotations
+from avin.const import Usr
 from avin.data import Id, Exchange, AssetType, Data
 from avin.core.chart import Chart
 from avin.core.timeframe import TimeFrame
@@ -103,6 +104,11 @@ class Asset(metaclass=abc.ABCMeta):# {{{
     def load(cls, file_path: str):
         ID = Id.load(file_path)
     # }}}
+    @classmethod  #byId #{{{
+    def byId(cls, ID: Id):
+        asset = cls.__getCertainTypeAsset(ID)
+        return asset
+    # }}}
     @classmethod  #byTicker# {{{
     def byTicker(cls, exchange: Exchange, asset_type: AssetType, ticker: str):
         ID = Data.find(exchange, asset_type, ticker)
@@ -197,7 +203,8 @@ class AssetList():# {{{
         self.__assets = list()
         self.__parent = parent
     # }}}
-    def __getitem__(self, index):# {{{
+    def __getitem__(self, index) -> Asset:# {{{
+        assert index < len(self.__assets)
         return self.__assets[index]
     # }}}
     def __iter__(self):# {{{
@@ -210,7 +217,7 @@ class AssetList():# {{{
         return False
     # }}}
     @property  #name{{{
-    def name(self):
+    def name(self) -> str:
         return self.__name
     @name.setter
     def name(self, name):
@@ -218,37 +225,37 @@ class AssetList():# {{{
         self.__name = name
     # }}}
     @property  #assets{{{
-    def assets(self):
+    def assets(self) -> list[Asset]:
         return self.__assets
     @assets.setter
     def assets(self, assets):
         assert isinstance(assets, list)
         for i in assets:
-            assert isinstance(i, (Share, Index))
+            assert isinstance(i, Asset)
         self.__assets = assets
     # }}}
     @property  #count{{{
-    def count(self):
+    def count(self) -> int:
         return len(self.__assets)
     # }}}
     @property  #path{{{
-    def path(self):
+    def path(self) -> str:
         path = Cmd.path(self.dir_path, f"{self.__name}.al")
         return path
     # }}}
     @property  #dir_path{{{
-    def dir_path(self):
+    def dir_path(self) -> str:
         if self.__parent:
             return self.__parent.dir_path
         else:
-            return ASSET_DIR
+            return Usr.ASSET
     # }}}
-    def add(self, asset):# {{{
+    def add(self, asset: Asset) -> None:# {{{
         assert isinstance(asset, Asset)
         self.__assets.append(asset)
         asset.setParent(self)
     # }}}
-    def remove(self, asset):# {{{
+    def remove(self, asset: Asset) -> None:# {{{
         logger.debug(f"AssetList.remove({asset.ticker})")
         try:
             self.__assets.remove(asset)
@@ -260,80 +267,72 @@ class AssetList():# {{{
                 )
             return False
     # }}}
-    def clear(self):# {{{
+    def clear(self) -> None:# {{{
         self.__assets.clear()
     # }}}
-    def find(self, figi=None, uid=None, ticker=None):# {{{
+    def find(self, ID: Id):# {{{
         for i in self.__assets:
-            if i.figi == figi:
+            if i.ID == ID:
                 return i
         return None
     # }}}
-    def receive(self, event_bar):# {{{
-        asset = self.find(figi=event_bar.figi)
-        timeframe = event_bar.timeframe
-        asset.chart(timeframe).update(new_bars=[event_bar.bar, ])
-        bar_time = (event_bar.bar.dt + MSK_TIME_DIF).time().strftime("%H:%M")
-        logger.info(
-            f"AssetList receive new bar "
-            f"{asset.ticker}-{timeframe} {bar_time}"
-            )
-    # }}}
-    @classmethod  #toJSON# {{{
-    def toJSON(asset_list):
-        obj = list()
-        for asset in asset_list:
-            ID = Asset.toJSON(asset)
-            obj.append(ID)
-        return obj
-    # }}}
     @classmethod  #save# {{{
-    def save(asset_list, path=None):
+    def save(cls, asset_list, path=None):
         if path is None:
             path = asset_list.path
-        obj = AssetList.toJSON(asset_list)
-        Cmd.saveJSON(obj, path)
+        obj = AssetList.toJson(asset_list)
+        Cmd.saveJson(obj, path)
     # }}}
     @classmethod  #load# {{{
-    def load(path=None, name=None, parent=None):
-        if path:
-            assert name is None
-            name = Cmd.name(path, extension=False)
-        elif name:
-            assert path is None
-            path = Cmd.path(ASSET_DIR, f"{name}.al")
+    def load(cls, file_path=None, parent=None):
+        name = Cmd.name(file_path)
         alist = AssetList(name, parent=parent)
-        obj = Cmd.loadJSON(path)
-        for ID in obj:
-            assert eval(ID["type"]) == AssetType.Share
-            share = Share(ID["ticker"])
-            alist.add(share)
+        list_obj = Cmd.loadJson(file_path)
+        for id_obj in list_obj:
+            ID = Id.fromJson(id_obj)
+            asset = Asset.byId(ID)
+            alist.add(asset)
         return alist
     # }}}
     @classmethod  #rename# {{{
-    def rename(asset_list, new_name):
+    def rename(cls, asset_list, new_name):
         if Cmd.isExist(asset_list.path):
             new_path = Cmd.path(asset_list.dir_path, f"{new_name}.al")
             Cmd.replace(asset_list.path, new_path)
         asset_list.__name = new_name
+        return True
     # }}}
     @classmethod  #copy# {{{
-    def copy(asset_list, new_name):
-        if Cmd.isExist(asset_list.path):
-            new_path = Cmd.path(asset_list.dir_path, f"{new_name}.al")
-            Cmd.copyFile(asset_list.path, new_path)
-            copy = AssetList.load(name=new_name)
-            return copy
+    def copy(cls, asset_list: AssetList, new_name: str):
+        new_list = AssetList(new_name)
+        new_list.assets = asset_list.assets
+        new_path = Cmd.path(asset_list.dir_path, f"{new_name}.al")
+        AssetList.save(new_list, new_path)
+        return True
     # }}}
     @classmethod  #delete# {{{
-    def delete(asset_list):
+    def delete(cls, asset_list):
         file_path = asset_list.path
         if not Cmd.isExist(file_path):
-            raise AssetError(
-                f"AssetList.delete: список '{asset_list.name}' не найден"
+            logger.error(
+                f"Fail delete asset list, file not exist '{file_path}'"
                 )
+            return False
         Cmd.delete(file_path)
         return True
+    # }}}
+    @classmethod  #request# {{{
+    def request(cls, name, parent=None) -> AssetList:
+        path = Cmd.path(Usr.ASSET, f"{name}.al")
+        return cls.load(path, parent)
+    # }}}
+    @classmethod  #toJson# {{{
+    def toJson(cls, asset_list):
+        obj = list()
+        for asset in asset_list:
+            json_id = Id.toJson(asset.ID)
+            obj.append(json_id)
+        return obj
     # }}}
 # }}}
 

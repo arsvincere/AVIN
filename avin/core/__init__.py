@@ -6,12 +6,11 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-from __future__ import annotations
 from avin.core.range import Range
 from avin.core.bar import Bar
 from avin.core.timeframe import TimeFrame
 from avin.core.chart import Chart
-from avin.core.asset import Asset, Index, Share
+from avin.core.asset import Asset, Index, Share, AssetList
 
 __all__ = (
     "Range",
@@ -21,5 +20,6 @@ __all__ = (
     "Asset",
     "Index",
     "Share",
+    "AssetList",
     )
 

@@ -69,44 +69,37 @@ class Id():# {{{
         return path
     # }}}
     @classmethod  #save# {{{
-    def save(cls, ID: Id, file_path: str):
-        Cmd.saveJson(ID, file_path, Id._encoderJson)
+    def save(cls, ID: Id, file_path: str) -> None:
+        obj = cls.toJson(ID)
+        Cmd.saveJson(obj, file_path)
     # }}}
     @classmethod  #load# {{{
-    def load(cls, file_path):
-        obj = Cmd.loadJson(file_path, Id._decoderJson)
+    def load(cls, file_path) -> Id:
+        obj = Cmd.loadJson(file_path)
+        ID = cls.fromJson(obj)
+        return ID
+    # }}}
+    @classmethod  #toJson# {{{
+    def toJson(cls, ID: Id) -> object:
+        obj = {
+            "exchange": ID.exchange.name,
+            "type": ID.type.name,
+            "name": ID.name,
+            "ticker": ID.ticker,
+            "figi": ID.figi
+        }
+        return obj
+    # }}}
+    @classmethod  #fromJson# {{{
+    def fromJson(cls, obj) -> Id:
         ID = Id(
-            obj["exchange"],
-            obj["type"],
-            obj["name"],
-            obj["ticker"],
-            obj["figi"],
+            exchange= Exchange.fromStr(obj["exchange"]),
+            asset_type= AssetType.fromStr(obj["type"]),
+            name= obj["name"],
+            ticker= obj["ticker"],
+            figi= obj["figi"]
             )
         return ID
     # }}}
-    @staticmethod  #_encoderJson# {{{
-    def _encoderJson(obj):
-        if isinstance(obj, (Id)):
-            return obj.__info
-        if isinstance(obj, (Exchange, AssetType)):
-            return obj.name
-    # }}}
-    @staticmethod  #_decoderJson# {{{
-    def _decoderJson(obj):
-        # TODO: encoder and decoder - вынести в классы потомки,
-        # см формат файлов кэша, там слишком много деталей спецефичных
-        # сейчас даты в MOEX файлах после чтения остаются строками:
-        # "SETTLEDATE": "2024-05-31"
-        # "LASTTRADEDATE": "2025-03-20",
-        # "LASTDELDATE": "2025-03-20",
-        # "IMTIME": "2024-05-29T18:58:11",
-        # возможное решение - при сохранении все эти поля проверять и
-        # переводить в UTC datetime
-        for k, v in obj.items():
-            if k == "exchange":
-                obj[k] = Exchange.fromStr(v)
-            if k == "type":
-                obj[k] = AssetType.fromStr(v)
-        return obj
-    # }}}
 # }}}
+

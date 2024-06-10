@@ -142,63 +142,40 @@ def test_Share():# {{{
     assert afks.chart("1M") is None  # loading not caching
     assert chart.timeframe == TimeFrame("1M")
 # }}}
+def test_AssetList():# {{{
+    tmp_file = Cmd.path(Usr.ASSET, "example.al")
+    if Cmd.isExist(tmp_file):
+        Cmd.delete(tmp_file)
 
-# def test_AssetList():
-#     alist = AssetList(name="example")
-#     assert alist.name == "example"
-#     assert alist.assets == []
-#     assert alist.count == 0
-#     afks = Share("AFKS")
-#     sber = Share("SBER")
-#     alist.add(afks)
-#     assert alist.count == 1
-#     alist.add(afks)
-#     alist.add(afks)
-#     alist.add(sber)
-#     alist.add(afks)
-#     assert alist.count == 5
-#     assert alist[3].ticker == "SBER"
-#     alist.remove(sber)
-#     assert alist.count == 4
-#     assert not Cmd.isExist(alist.path)
-#     AssetList.save(alist)
-#     assert Cmd.isExist(alist.path)
-#     loaded = AssetList.load(alist.path)
-#     assert alist.count == 4
-#     assert alist[0].ticker == "AFKS"
-#     AssetList.delete(alist)
-#     assert not Cmd.isExist(alist.path)
-#     alist.clear()
-#     assert alist.name == "example"
-#     assert alist.assets == []
-#     assert alist.count == 0
-#
-# def test_Signal():
-#     s = Strategy.load("Every", "day")
-#     afks = Share("AFKS")
-#     sig = Signal(
-#         dt=             now(),
-#         strategy=       s,
-#         signal_type=    Signal.Type.SHORT,
-#         asset=          afks,
-#         )
-#     assert sig.strategy == s
-#     assert sig.type == Signal.Type.SHORT
-#     assert sig.type.name == "SHORT"
-#     assert sig.asset == afks
-#     assert sig.position is None
-#     assert sig.isShort()
-#     assert not sig.isLong()
-#
-# def test_Strategy():
-#     s = Strategy.load("Every", "day")
-#     assert s.name == "Every"
-#     assert s.version == "day"
-#     assert s.long_list[0].ticker == "AFKS"
-#     assert s.short_list[0].ticker == "AFKS"
-#     assert s.long_list.name == "long"
-#     assert s.short_list.name == "short"
-#
+    alist = AssetList(name="example")
+    assert alist.name == "example"
+    assert alist.assets == []
+    assert alist.count == 0
+    afks = Share(Data.find(Exchange.MOEX, AssetType.Share, "AFKS"))
+    sber = Share(Data.find(Exchange.MOEX, AssetType.Share, "SBER"))
+    alist.add(afks)
+    assert alist.count == 1
+    alist.add(afks)
+    alist.add(afks)
+    alist.add(sber)
+    alist.add(afks)
+    assert alist.count == 5
+    assert alist[3].ticker == "SBER"
+    alist.remove(sber)
+    assert alist.count == 4
+    assert not Cmd.isExist(alist.path)
+    AssetList.save(alist)
+    assert Cmd.isExist(alist.path)
+    loaded = AssetList.load(alist.path)
+    assert alist.count == 4
+    assert alist[0].ticker == "AFKS"
+    AssetList.delete(alist)
+    assert not Cmd.isExist(alist.path)
+    alist.clear()
+    assert alist.name == "example"
+    assert alist.assets == []
+    assert alist.count == 0
+# }}}
 # def test_Order():
 #     strategy = Strategy.load("Every", "day")
 #     afks = Share("AFKS")

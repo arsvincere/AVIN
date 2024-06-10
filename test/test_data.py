@@ -123,77 +123,77 @@ def test_Data_firstDateTime():# {{{
     # assert dt_1m_tinkoff > dt_d_tinkoff
 # }}}
 def test_Data_download_add_clear_convert_delete():# {{{
-    # make backup user data sber
-    backup_sber = False
-    user_sber = Cmd.path(Usr.DATA, "MOEX", "Share", "SBER")
-    if Cmd.isExist(user_sber):
-        backup_sber_path = Cmd.path(Dir.TMP, "SBER")
-        Cmd.copyDir(user_sber, backup_sber_path)
-        Cmd.deleteDir(user_sber)
-        backup_sber = True
+    # make backup user data abio
+    backup_abio = False
+    user_abio = Cmd.path(Usr.DATA, "MOEX", "Share", "ABIO")
+    if Cmd.isExist(user_abio):
+        backup_abio_path = Cmd.path(Dir.TMP, "ABIO")
+        Cmd.copyDir(user_abio, backup_abio_path)
+        Cmd.deleteDir(user_abio)
+        backup_abio = True
 
-    # make backup user data yndx
-    backup_yndx = False
-    user_yndx = Cmd.path(Usr.DATA, "MOEX", "Share", "YNDX")
-    if Cmd.isExist(user_yndx):
-        backup_yndx_path = Cmd.path(Dir.TMP, "YNDX")
-        Cmd.copyDir(user_yndx, backup_yndx_path)
-        Cmd.deleteDir(user_yndx)
-        backup_yndx = True
+    # make backup user data abrd
+    backup_abrd = False
+    user_abrd = Cmd.path(Usr.DATA, "MOEX", "Share", "ABRD")
+    if Cmd.isExist(user_abrd):
+        backup_abrd_path = Cmd.path(Dir.TMP, "ABRD")
+        Cmd.copyDir(user_abrd, backup_abrd_path)
+        Cmd.deleteDir(user_abrd)
+        backup_abrd = True
 
     # Download one asset, one year, from MOEX
     source = Source.MOEX
     data_type = DataType.BAR_D
-    sber_id = Data.find(Exchange.MOEX, AssetType.Share, "SBER")
-    Data.download(source, data_type, sber_id, 2024)
-    path = Cmd.path(Usr.DOWNLOAD, "moex", "Share", "SBER")
+    abio_id = Data.find(Exchange.MOEX, AssetType.Share, "ABIO")
+    Data.download(source, data_type, abio_id, 2024)
+    path = Cmd.path(Usr.DOWNLOAD, "moex", "Share", "ABIO")
     assert Cmd.isExist(path)
 
     # Download one asset, one year, from Tinkoff
     source = Source.TINKOFF
     data_type = DataType.BAR_1M
-    yndx_id = Data.find(Exchange.MOEX, AssetType.Share, "YNDX")
-    Data.download(source, data_type, yndx_id, 2024)
-    path = Cmd.path(Usr.DOWNLOAD, "tinkoff", "Share", "YNDX")
+    abrd_id = Data.find(Exchange.MOEX, AssetType.Share, "ABRD")
+    Data.download(source, data_type, abrd_id, 2024)
+    path = Cmd.path(Usr.DOWNLOAD, "tinkoff", "Share", "ABRD")
     assert Cmd.isExist(path)
 
     # test importing moex data, then clear
     Data.add(Source.MOEX)
-    path = Cmd.path(Usr.DATA, "MOEX", "Share", "SBER")
+    path = Cmd.path(Usr.DATA, "MOEX", "Share", "ABIO")
     assert Cmd.isExist(path)
     Data.clear(Source.MOEX)
 
     # test importing tinkoff data, then clear
-    path = Cmd.path(Usr.DATA, "MOEX", "Share", "YNDX")
+    path = Cmd.path(Usr.DATA, "MOEX", "Share", "ABRD")
     Data.add(Source.TINKOFF)
     assert Cmd.isExist(path)
     Data.clear(Source.TINKOFF)
 
-    # convert sber D -> M, then delete
-    Data.convert(sber_id, DataType.BAR_D, DataType.BAR_M)
-    path_M = Cmd.path(user_sber, "M")
+    # convert ABIO D -> M, then delete
+    Data.convert(abio_id, DataType.BAR_D, DataType.BAR_M)
+    path_M = Cmd.path(user_abio, "M")
     assert Cmd.isExist(path)
-    Data.delete(sber_id, DataType.BAR_M)
+    Data.delete(abio_id, DataType.BAR_M)
     assert not Cmd.isExist(path_M)
 
-    # convert yndx 1M -> D
-    Data.convert(yndx_id, DataType.BAR_1M, DataType.BAR_D)
-    path_D = Cmd.path(user_yndx, "D")
+    # convert abrd 1M -> D
+    Data.convert(abrd_id, DataType.BAR_1M, DataType.BAR_D)
+    path_D = Cmd.path(user_abrd, "D")
     assert Cmd.isExist(path)
-    Data.delete(yndx_id, DataType.BAR_D)
+    Data.delete(abrd_id, DataType.BAR_D)
     assert not Cmd.isExist(path_D)
 
-    # delete all sber, yndx
-    Cmd.deleteDir(user_sber)
-    Cmd.deleteDir(user_yndx)
+    # delete all abio, abrd
+    Cmd.deleteDir(user_abio)
+    Cmd.deleteDir(user_abrd)
 
     # restore backup
-    if backup_sber:
-        Cmd.copyDir(backup_sber_path, user_sber)
-        Cmd.deleteDir(backup_sber_path)
-    if backup_yndx:
-        Cmd.copyDir(backup_yndx_path, user_yndx)
-        Cmd.deleteDir(backup_yndx_path)
+    if backup_abio:
+        Cmd.copyDir(backup_abio_path, user_abio)
+        Cmd.deleteDir(backup_abio_path)
+    if backup_abrd:
+        Cmd.copyDir(backup_abrd_path, user_abrd)
+        Cmd.deleteDir(backup_abrd_path)
 # }}}
 
 

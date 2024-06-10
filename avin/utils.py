@@ -271,6 +271,17 @@ class Cmd():# {{{
         logger.debug(f"Load json: {file_path}")
         return obj
     # }}}
+    @staticmethod  #toJson# {{{
+    def toJson(obj, encoder=None, indent=0) -> str:
+        logger.debug(f"Cmd.toJson: {obj}")
+        string = json.dumps(
+            obj=obj,
+            indent=indent,
+            default=encoder,
+            ensure_ascii=False,
+            )
+        return string
+    # }}}
     @staticmethod  #saveBin# {{{
     def saveBin(obj: object, path: str, compres=False, create_dirs=True):
         if create_dirs:
