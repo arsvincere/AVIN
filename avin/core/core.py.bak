@@ -1,0 +1,3871 @@
+#!/usr/bin/env  python3
+# ============================================================================
+# URL:          http://arsvincere.com
+# AUTHOR:       Alex Avin
+# E-MAIL:       mr.alexavin@gmail.com
+# LICENSE:      GNU GPLv3
+# ============================================================================
+""" Doc """
+
+from __future__ import annotations
+
+import sys
+sys.path.append("/home/alex/AVIN/")
+sys.path.append("/usr/lib/python3.12/site-packages")
+sys.path.append("/home/alex/.local/lib/python3.12/site-packages/tinkoff/")
+import os
+import copy
+import enum
+import uuid
+import logging
+import importlib
+import collections
+import pandas as pd
+from datetime import datetime, timedelta, date, time
+from dataclasses import dataclass
+from pprint import pprint, pformat
+from tinkoff.invest import Quotation
+from tinkoff.invest.utils import quotation_to_decimal
+from moexalgo import Market, Ticker, candles
+from moexalgo.models import Candle
+from avin.const import (# {{{
+    UTC,
+    DAY_BEGIN,
+    DAY_END,
+    SESSION_BEGIN,
+    SESSION_END,
+    ONE_MINUTE,
+    ONE_HOUR,
+    ONE_DAY,
+    HOLIDAYS,
+    MSK_TIME_DIF,
+    DATA_DIR,
+    DOWNLOAD_DIR,
+    SHARES_DIR,
+    RES_DIR,
+    FILTER_DIR,
+    ASSET_DIR,
+    TEST_DIR,
+    STRATEGY_DIR,
+    )
+# }}}
+from avin.utils import (# {{{
+    now,
+    Cmd,
+    binarySearch,
+    findLeft,
+    findRight,
+    encodeJSON,
+    decodeJSON,
+    )
+# }}}
+
+logger = logging.getLogger("LOGGER")
+
+class DataNotFound(Exception): pass
+class AssetError(Exception): pass
+class Message():# {{{
+    def __init__(self, *args):# {{{
+        self.args = args
+        self.__receivers = list()
+    # }}}
+    def __checkTypes(self, args: tuple):# {{{
+        for i, j in zip(args, self.args):
+            assert type(i) == j
+    # }}}
+    def emit(self, *args):# {{{
+        for i in self.__receivers:
+            self.__checkTypes(args)
+            i(*args)
+    # }}}
+    def connect(self, slot_func):# {{{
+        self.__receivers.append(slot_func)
+    # }}}
+# }}}
+class Price(float):# {{{
+    ...
+    # }}}
+class Range():# {{{
+    """ doc# {{{
+    Закрытый диапазон [min, max]
+    Представляет части бара - тело, тени или весь диапазон бара.
+    --
+    Example:
+    r = Range[10, 18]
+    print(11 in r)  # True
+    print(30 in r)  # False
+    print(r.mid())  # 14
+    print(r.abs())  # 8
+    --
+    bar = Bar(now(), 10, 11, 11.1, 9.9, 1000)
+    body = bar.body  # Range(10, 11)
+    print(10.9 in body)  # True
+    """
+    # }}}
+    class Type(enum.Enum):# {{{
+        UNDEFINE =          0
+        RANGE =             1
+        BODY =              2
+        USHADOW =           3
+        LSHADOW =           4
+    # }}}
+    class Size(enum.Enum):# {{{
+        UNDEFINE =          0
+        BLACKSWAN_SMALL =   1
+        ANOMAL_SMALL =      2
+        EXTRA_SMALL =       3
+        VERY_SMALL =        4
+        SMALLEST =          5
+        SMALLER =           6
+        SMALL =             7
+        NORMAL =            8
+        BIG =               9
+        BIGGER =            10
+        BIGGEST =           11
+        VERY_BIG =          12
+        EXTRA_BIG =         13
+        ANOMAL_BIG =        14
+        BLACKSWAN_BIG =     15
+    # }}}
+    def __init__(# {{{
+            self,
+            min_:    float,
+            max_:    float,
+            type_  = Type.UNDEFINE,
+            parent = None
+            ):
+        self.__min = min_
+        self.__max = max_
+        self.__type = type_
+        self.__parent = parent
+    # }}}
+    def __getitem__(self, slice_):# {{{
+        """ doc
+        Возвращает диапазон
+        [0, 10] - от 0 до 10% исходного диапазона
+        [40, 100] - от 40% до 100% исходного диапазона
+        --
+        Example:
+        bar.body[0, 5] - нижние 5% тела бара
+        bar.ushadow[90, 100] - верхние 10% верхней тени бара
+        """
+        assert isinstance(slice_, slice)
+        assert slice_.step is None
+        assert slice_.start >= 0
+        assert slice_.stop <= 100
+        assert slice_.start < slice_.stop
+        if slice_.start == 0:
+            start = self.__min
+        else:
+            tmp = (self.__max - self.__min) * slice_.start / 100
+            start = self.__min + tmp
+        if slice_.stop == 0:
+            stop = self.__max
+        else:
+            tmp = (self.__max - self.__min) * slice_.stop / 100
+            stop = self.__min + tmp
+        return Range(start, stop)
+    # }}}
+    def __contains__(self, price: float) -> bool:# {{{
+        return self.__min <= price <= self.__max
+    # }}}
+    def __repr__(self):# {{{
+        return f"Range({self.min}, {self.max})"
+    # }}}
+    @property  #min# {{{
+    def min(self):
+        return self.__min
+    # }}}
+    @property  #max# {{{
+    def max(self):
+        return self.__max
+    # }}}
+    @property  #type# {{{
+    def type(self):
+        return self.__type
+    # }}}
+    def parent(self):# {{{
+        """ doc
+        Return parent -> Bar
+        """
+        return self.__parent
+    # }}}
+    def percent(self) -> float:# {{{
+        """ doc
+        Return percent of range -> float
+        """
+        percent = (self.__max - self.__min) / self.__max * 100
+        return round(percent, 2)
+    # }}}
+    def abs(self):# {{{
+        """ doc
+        Return abs of range -> float
+        """
+        return self.__max - self.__min
+    # }}}
+    def mid(self) -> float:# {{{
+        """ doc
+        Return middle of range -> float
+        """
+        half = (self.__max - self.__min) / 2
+        return self.__min + half
+    # }}}
+    def half(self, n):# {{{
+        """ doc
+        Возвращает диапазон n-ой половины бара -> Range
+               #
+               ###
+               #        Это 2 половина <half2>
+               #
+        ----   #   ----
+               #
+               #        Это 1 половина <half1>
+             ###
+               #
+        """
+        assert n in (1, 2)
+        half = (self.__max - self.__min) / 2
+        if n == 1:
+            return Range(self.__min, self.__min + half)
+        elif n == 2:
+            return Range(self.__min + half, self.__max)
+    # }}}
+    def third(self, n):# {{{
+        """ doc
+        Возвращает диапазон n-ой трети бара -> Range
+               #
+               ###      Это 3 треть
+        ----   #   ----
+               #
+               #        Это 2 треть
+        ----   #   ----
+             ###
+               #        Это 1 треть
+        """
+        assert n in (1, 2, 3)
+        third = (self.__max - self.__min) / 3
+        if n == 1:
+            return Range(self.__min, self.__min + third)
+        elif n == 2:
+            return Range(self.__min + third, self.__min + 2 * third)
+        elif n == 3:
+            return Range(self.__min + 2 * third, self.__max)
+    # }}}
+    def quarter(self, n):# {{{
+        """ doc
+        Возвращает диапазон n-ой четверти бара -> Range
+               #
+               ###      Это 4 четверть
+        ----   #   ----
+               #        Это 3 четверть
+        ----   #   ----
+               #        Это 2 четверть
+        ----   #   ----
+             ###        Это 1 четверть
+               #
+        """
+        assert n in (1, 2, 3, 4)
+        quarter = (self.__max - self.__min) / 4
+        if n == 1:
+            return Range(self.__min, self.__min + quarter)
+        elif n == 2:
+            return Range(self.__min + quarter, self.__min + 2 * quarter)
+        elif n == 3:
+            return Range(self.__min + 2 * quarter, self.__min + 3 * quarter)
+        elif n == 4:
+            return Range(self.__min + 3 * quarter, self.__max)
+    # }}}
+# }}}
+
+class FakeBar():# {{{
+    """ doc# {{{
+    Служебный класс для преобразования данных
+    """
+    # }}}
+    def __init__(self, dt):# {{{
+        self.dt = dt
+    # }}}
+# }}}
+@dataclass  #_Bar# {{{
+class _Bar():
+    dt:     datetime | str
+    open:   float
+    high:   float
+    low:    float
+    close:  float
+    vol:    int
+
+    def __post_init__(self):# {{{
+        if isinstance(self.dt, str):
+            self.dt = datetime.fromisoformat(self.dt)
+    # }}}
+    @staticmethod  #toCSV# {{{
+    def toCSV(bar):
+        dt = bar.dt.isoformat()
+        s = f"'{dt}',{bar.open},{bar.high},{bar.low},{bar.close},{bar.vol}"
+        return s
+    # }}}
+    @staticmethod  #fromCSV# {{{
+    def fromCSV(bar_str):
+        code = f"_Bar({bar_str})"
+        bar = eval(code)
+        return bar
+    # }}}
+# }}}
+class Bar(_Bar):# {{{
+    """ doc# {{{
+    Реализация бара (свечи), используется в Chart
+    """
+    # }}}
+    class Type(enum.Flag):# {{{
+        UNDEFINE =  0
+        BEAR =      1
+        BULL =      2
+        INSIDE =    4
+        OVERFLOW =  8
+        OUTSIDE =   16
+        EXTREMUM =  32
+    # }}}
+    def __init__(self, dt, o, h, l, c, v, parent=None):# {{{
+        _Bar.__init__(self, dt, o, h, l, c, v)
+        self.__parent = parent
+        self.__flags = None
+        self.__analyse()
+    # }}}
+    def __analyse(self):# {{{
+        if self.close - self.open > 0.0:
+            self.__flags = Bar.Type.BULL
+        elif self.close - self.open < 0.0:
+            self.__flags = Bar.Type.BEAR
+        else:
+            self.__flags = Bar.Type.UNDEFINE
+    # }}}
+    def __contains__(self, price: float) -> bool:# {{{
+        return self.low <= price <= self.high
+    # }}}
+    @staticmethod  #fromCSV# {{{
+    def fromCSV(bar_str, parent):
+        code = f"Bar({bar_str}, parent)"
+        bar = eval(code)
+        return bar
+    # }}}
+    @property  # range{{{
+    def range(self):
+        return Range(self.low, self.high, Range.Type.RANGE, self)
+    # }}}
+    @property  # body{{{
+    def body(self):
+        if self.open < self.close:
+            return Range(self.open, self.close, Range.Type.BODY, self)
+        else:
+            return Range(self.close, self.open, Range.Type.BODY, self)
+    # }}}
+    @property  # lshadow{{{
+    def lshadow(self):
+        if self.isBull():
+            return Range(self.low, self.open, Range.Type.LSHADOW, self)
+        else:
+            return Range(self.low, self.close, Range.Type.LSHADOW, self)
+    # }}}
+    @property  # ushadow{{{
+    def ushadow(self):
+        if self.isBull():
+            return Range(self.close, self.high, Range.Type.USHADOW, self)
+        else:
+            return Range(self.open, self.high, Range.Type.USHADOW, self)
+    # }}}
+    def parent(self):# {{{
+        return self.__parent
+    # }}}
+    def setParent(self, chart) -> None:# {{{
+        assert isinstance(chart, Chart)
+        self.__parent = chart
+        self.__analyse()
+    # }}}
+    def addFlag(self, flag) -> None:# {{{
+        assert isinstance(flag, Bar.Type)
+        self.__flags |= flag
+    # }}}
+    def removeFlag(self, flag) -> None:# {{{
+        assert isinstance(flag, Bar.Type)
+        self.__flags &= ~flag
+    # }}}
+    def isBull(self) -> bool:# {{{
+        return self.close > self.open
+        # return self.__flags & Bar.Type.BULL == Bar.Type.BULL
+    # }}}
+    def isBear(self) -> bool:# {{{
+        return self.close < self.open
+        # return self.__flags & Bar.Type.BEAR == Bar.Type.BEAR
+    # }}}
+    def isInside(self) -> bool:# {{{
+        return self.__flags & Bar.Type.INSIDE == Bar.Type.INSIDE
+    # }}}
+    def isOverflow(self) -> bool:# {{{
+        return self.__flags & Bar.Type.OVERFLOW == Bar.Type.OVERFLOW
+    # }}}
+    def isOutside(self) -> bool:# {{{
+        return self.__flags & Bar.Type.OUTSIDE == Bar.Type.OUTSIDE
+    # }}}
+    def isExtremum(self) -> bool:# {{{
+        return self.__flags & Bar.Type.EXTREMUM == Bar.Type.EXTREMUM
+    # }}}
+# }}}
+class TimeFrame():# {{{
+    """ doc# {{{
+    Реализует таймфрейм.
+
+    Обертка datetime.timedelta
+    """
+    # }}}
+    """ -- Const """{{{
+    ALL = None
+    # }}}
+    def __init__(self, string):# {{{
+        period = {
+            "1M":   timedelta(minutes=1),
+            "5M":   timedelta(minutes=5),
+            "10M":  timedelta(minutes=10),
+            "1H":   timedelta(hours=1),
+            "D":    timedelta(days=1),
+            "W":    timedelta(weeks=1),
+            "M":    None,
+            }
+        self.__period = period[string]
+    # }}}
+    def __str__(self):# {{{
+        periods = {
+            timedelta(minutes=1):   "1M",
+            timedelta(minutes=5):   "5M",
+            timedelta(minutes=10):  "10M",
+            timedelta(hours=1):     "1H",
+            timedelta(days=1):      "D",
+            timedelta(weeks=1):     "W",
+            None:                   "M",
+            }
+        return periods[self.__period]
+    # }}}
+    def __repr__(self):# {{{
+        periods = {
+            timedelta(minutes=1):"1M",
+            timedelta(minutes=5):"5M",
+            timedelta(hours=1):"1H",
+            timedelta(days=1):"D",
+            }
+        s = periods[self.__period]
+        return f"TimeFrame('{s}')"
+    # }}}
+    def __hash__(self):# {{{
+        return hash(str(self))
+    # }}}
+    def __eq__(self, other):  # operator =={{{
+        if isinstance(other, TimeFrame):
+            return self.__period == other.__period
+        elif isinstance(other, timedelta):
+            return self.__period == other
+        elif isinstance(other, str):
+            other = TimeFrame(other)
+            return self.__period == other.__period
+        else:
+            raise TimeFrameError("Недопустимое сравнение <TimeFrame> и {0}"\
+                    .format(type(other)))
+    # }}}
+    def __lt__(self, other):  # operator <{{{
+        if isinstance(other, TimeFrame):
+            return self.__period < other.__period
+        elif isinstance(other, timedelta):
+            return self.__period < other
+        elif isinstance(other, str):
+            other = TimeFrame(other)
+            return self.__period < other.__period
+        else:
+            raise TimeFrameError("Недопустимое сравнение <TimeFrame> и {0}"\
+                    .format(type(other)))
+    # }}}
+    def __le__(self, other):  # operator <={{{
+        if isinstance(other, TimeFrame):
+            return self.__period <= other.__period
+        elif isinstance(other, timedelta):
+            return self.__period <= other
+        elif isinstance(other, str):
+            other = TimeFrame(other)
+            return self.__period <= other.__period
+        else:
+            raise TimeFrameError("Недопустимое сравнение <TimeFrame> и {0}"\
+                    .format(type(other)))
+    # }}}
+    def __gt__(self, other):  # operator >{{{
+        if isinstance(other, TimeFrame):
+            return self.__period > other.__period
+        elif isinstance(other, timedelta):
+            return self.__period > other
+        elif isinstance(other, str):
+            other = TimeFrame(other)
+            return self.__period > other.__period
+        else:
+            raise TimeFrameError("Недопустимое сравнение <TimeFrame> и {0}"\
+                    .format(type(other)))
+    # }}}
+    def __ge__(self, other):  # operator >={{{
+        if isinstance(other, TimeFrame):
+            return self.__period >= other.__period
+        elif isinstance(other, timedelta):
+            return self.__period >= other
+        elif isinstance(other, str):
+            other = TimeFrame(other)
+            return self.__period >= other.__period
+        else:
+            raise TimeFrameError("Недопустимое сравнение <TimeFrame> и {0}"\
+                    .format(type(other)))
+    # }}}
+    def __add__(self, other):  # operator +{{{
+        if isinstance(other, timedelta):
+            return other + self.__period
+        if isinstance(other, datetime):
+            return other + self.__period
+        else:
+            raise TimeFrameError("Недопустимое сложение <TimeFrame> и {0}"\
+                    .format(type(other)))
+    # }}}
+    def __radd__(self, other):  # operator +{{{
+        if isinstance(other, timedelta):
+            return other + self.__period
+        if isinstance(other, datetime):
+            return other + self.__period
+        else:
+            raise TimeFrameError("Недопустимое сложение <TimeFrame> и {0}"\
+                    .format(type(other)))
+    # }}}
+    def __mul__(self, other):  # operator *{{{
+        if isinstance(other, int):
+            return self.__period * other
+        else:
+            raise TimeFrameError("Недопустимое умножение <TimeFrame> и {0}"\
+                    .format(type(other)))
+    # }}}
+    def __rmul__(self, other):  # operator *{{{
+        if isinstance(other, int):
+            return self.__period * other
+        else:
+            raise TimeFrameError("Недопустимое умножение <TimeFrame> и {0}"\
+                    .format(type(other)))
+    # }}}
+    @staticmethod  #save# {{{
+    def save(timeframe, path):
+        text = str(timeframe)
+        Cmd.save(text, path)
+    # }}}
+    @staticmethod  #load# {{{
+    def load(path):
+        text = Cmd.load(path)
+        tf = TimeFrame(text[0])
+        return tf
+    # }}}
+    def minutes(self):# {{{
+        return int(self.__period.total_seconds() / 60)
+    # }}}
+TimeFrame.ALL = (# {{{
+    TimeFrame("1M"),
+    TimeFrame("5M"),
+    TimeFrame("1H"),
+    TimeFrame("D"),
+    )
+    # }}}
+# }}}
+class Exchange(enum.Enum):# {{{
+    MOEX = 1
+    SPB =  2
+    # }}}
+class Type(enum.Enum):# {{{
+    UNDEFINE =  0
+    CURRENCY =  1
+    SHARE =     2
+    INDEX =     3
+    FUTURE =    4
+    BOUND =     5
+    # }}}
+class Asset():# {{{
+    def __init__(# {{{
+        self,
+        exchange: Exchange,
+        asset_type: Type,
+        ticker: str=None,
+        figi: str=None,
+        uid: str=None
+        ):
+        assert exchange == Exchange.MOEX
+        assert asset_type == Type.SHARE
+        self.__broker_info = TinkoffId.getBrokerInfo(
+            exchange,
+            asset_type,
+            ticker,
+            figi,
+            uid,
+            )
+        self.__exchange = exchange
+        self.__type = asset_type
+        self.__charts = dict()
+    # }}}
+    @staticmethod  #toJSON# {{{
+    def toJSON(asset):
+        obj = {
+            "exchange": str(asset.exchange),
+            "type": str(asset.type),
+            "ticker": asset.ticker,
+            "name": asset.name,
+            "figi": asset.figi,
+            }
+        return obj
+    # }}}
+    @staticmethod  #fromJSON# {{{
+    def fromJSON(obj):
+        exchange=   eval(obj["exchange"])
+        asset_type= eval(obj["type"])
+        ticker=     obj["ticker"]
+        assert exchange == Exchange.MOEX
+        assert asset_type == Type.SHARE
+        share = Share(ticker, exchange)
+        return share
+    # }}}
+    @staticmethod  #save# {{{
+    def save(asset, file_path=None):
+        if file_path is None:
+            file_path = asset.path
+        obj = Asset.toJSON(asset)
+        Cmd.saveJSON(obj, file_path)
+    # }}}
+    @staticmethod  #load# {{{
+    def load(path):
+        obj = Cmd.loadJSON(path)
+        asset = Asset.fromJSON(obj)
+        return asset
+    # }}}
+    @staticmethod  #assetByFigi# {{{
+    def assetByFigi(figi):
+        broker_info = TinkoffId.getBrokerInfo(
+            exchange=Exchange.MOEX,
+            asset_type=Type.SHARE,
+            figi=figi
+            )
+        asset = TinkoffId.toAsset(broker_info)
+        return asset
+    # }}}
+    @staticmethod  #assetByUid# {{{
+    def assetByUid(uid):
+        broker_info = TinkoffId.getBrokerInfo(
+            exchange=Exchange.MOEX,
+            asset_type=Type.SHARE,
+            uid=uid
+            )
+        asset = TinkoffId.toAsset(broker_info)
+        return asset
+    # }}}
+    @property  #exchange# {{{
+    def exchange(self):
+        return self.__exchange
+    # }}}
+    @property  #type# {{{
+    def type(self):
+        return self.__type
+    # }}}
+    @property  #ticker# {{{
+    def ticker(self):
+        return self.__broker_info["ticker"]
+    # }}}
+    @property  #name# {{{
+    def name(self):
+        return self.__broker_info["name"]
+    # }}}
+    @property  #figi# {{{
+    def figi(self):
+        return self.__broker_info["figi"]
+    # }}}
+    @property  #dir_path# {{{
+    def dir_path(self):
+        path = Cmd.join(
+            DATA_DIR,
+            self.exchange.name,
+            self.type.name,
+            self.ticker,
+            )
+        Cmd.createDirs(path)
+        return path
+    # }}}
+    @property  #analytic_dir# {{{
+    def analytic_dir(self):
+        path = Cmd.join(self.dir_path, "analytic")
+        Cmd.createDirs(path)
+        return path
+    # }}}
+    @property  #path# {{{
+    def path(self):
+        path = Cmd.join(self.dir_path, "asset")
+        return path
+    # }}}
+    def brockerInfo(self):# {{{
+        if self.__broker_info:
+            return self.__broker_info
+        else:
+            assert "придумай что делать"
+    # }}}
+    def loadChart(self, timeframe, begin=None, end=None, constructor=None):# {{{
+        logger.debug(f"Share.loadChart {self.ticker}-{timeframe}")
+        if isinstance(timeframe, str):
+            timeframe = TimeFrame(timeframe)
+        if isinstance(begin, str):
+            begin = datetime.combine(
+                date.fromisoformat(begin),
+                SESSION_BEGIN,
+                tzinfo=UTC
+                )
+        if isinstance(end, str):
+            end = datetime.combine(
+                date.fromisoformat(end),
+                DAY_BEGIN,
+                tzinfo=UTC
+                )
+        if begin is None and end is None:
+            period = timeframe * Chart.DEFAULT_BARS_COUNT
+            begin = now() - period
+            end = now()
+        chart = Chart(self, timeframe, begin, end)
+        self.__charts[timeframe] = chart
+        return chart
+    # }}}
+    def loadAllChart(self):# {{{
+        for timeframe in TimeFrame.ALL:
+            self.loadChart(timeframe)
+    # }}}
+    def chart(self, timeframe):# {{{
+        if isinstance(timeframe, str):
+            timeframe = TimeFrame(timeframe)
+        return self.__charts.get(timeframe, None)
+    # }}}
+    def closeAllChart(self):# {{{
+        self.__charts.clear()
+    # }}}
+# }}}
+class Data():# {{{
+    EXCLUDE_HOLIDAYS = True# {{{
+    # }}}
+    def __init__(self, asset: Asset, timeframe: TimeFrame, bars: list[Bar]):# {{{
+        assert bars[0].dt.year == bars[-1].dt.year
+        self.__asset = asset
+        self.__timeframe = timeframe
+        self.__bars = bars
+    # }}}
+    @staticmethod # __findLastFile{{{
+    def __findLastFile(asset, timeframe):
+        data_dir = Cmd.join(asset.dir_path, str(timeframe))
+        files = sorted(Cmd.getFiles(data_dir, full_path=True))
+        files = Cmd.select(files, ".csv")
+        assert len(files) > 0
+        return files[-1]
+    # }}}
+    @staticmethod # __findFiles{{{
+    def __findFiles(asset, timeframe, begin, end):
+        data_dir = Cmd.join(asset.dir_path, str(timeframe))
+        if not Cmd.isExist(data_dir):
+            return list()
+        files = sorted(Cmd.getFiles(data_dir, full_path=True))
+        files = Cmd.select(files, ".csv")
+        return files
+    # }}}
+    @staticmethod # __selectYear{{{
+    def __selectYear(files, begin, end):
+        out_files = list()
+        for file in files:
+            # Имена файлов выглядят так: 2022.csv, 2023.csv ...
+            file_year = int(Cmd.name(file, extension=False))
+            if begin.year <= file_year <= end.year:
+                out_files.append(file)
+        return out_files
+    # }}}
+    @staticmethod  #__createBars# {{{
+    def __createBars(file_path, begin, end, barConstructor, parent):
+        bars = list()
+        with open(file_path, "r", encoding="utf-8") as file:
+            for csv_line in file:
+                bar = barConstructor(csv_line, parent)
+                dt = bar.dt
+                if dt < begin:
+                    continue
+                elif begin <= dt < end:
+                    bars.append(bar)
+                elif dt >= end:
+                    break
+        return bars
+    # }}}
+    @staticmethod # __popYear{{{
+    def __popYear(bars, year):
+        assert isinstance(bars, list)
+        assert isinstance(year, int)
+        extract = list()
+        while len(bars) > 0 and bars[0].dt.year == year:
+            bar = bars.pop(0)
+            extract.append(bar)
+        return extract
+    # }}}
+    @staticmethod # __excludeHolidays{{{
+    def __excludeHolidays(bars: list[Bar]) -> list[Bar]:
+        i = 0
+        while i < len(bars):
+            if bars[i].dt.weekday() in HOLIDAYS:
+                bars.pop(i)
+            else:
+                i += 1
+        return bars
+    # }}}
+    @staticmethod # __saveAsset{{{
+    def __saveAsset(data):
+        # сохраняем файл в папку актива + в подпапку с таймфреймом копию
+        asset = data.asset
+        Asset.save(asset)
+        copy_path = Cmd.join(data.dir_path, "asset")
+        Asset.save(asset, file_path=copy_path)
+    # }}}
+    @staticmethod # __saveTimeFrame{{{
+    def __saveTimeFrame(data):
+        timeframe = data.timeframe
+        path = Cmd.join(data.dir_path, "timeframe")
+        TimeFrame.save(timeframe, path)
+    # }}}
+    @staticmethod # __saveBars{{{
+    def __saveBars(data):
+        text = list()
+        for bar in data.__bars:
+            line = Bar.toCSV(bar) + "\n"
+            text.append(line)
+        year = data.bars[0].dt.year
+        file_path = Cmd.join(data.dir_path, f"{year}.csv")
+        Cmd.save(text, file_path)
+    # }}}
+    @staticmethod # _loadAsset{{{
+    def loadAsset(path, parent=None):
+        asset = Asset.load(path)
+        return asset
+    # }}}
+    @staticmethod # _loadTimeFrame{{{
+    def loadTimeFrame(path, parent=None):
+        timeframe = TimeFrame.load(path)
+        return timeframe
+    # }}}
+    @staticmethod # load{{{
+    def load(
+            asset: Asset,
+            timeframe: TimeFrame,
+            begin: datetime,
+            end: datetime,
+            constructor,
+            parent
+            ):
+        files = Data.__findFiles(asset, timeframe, begin, end)
+        files = Data.__selectYear(files, begin, end)
+        all_bars = list()
+        for file in files:
+            bars = Data.__createBars(file, begin, end, constructor, parent)
+            all_bars += bars
+        if len(all_bars) == 0:
+            raise DataNotFound(
+                f"Data.load: no data '{asset.ticker}-{timeframe}' "
+                f"in period '{begin}' - '{end}'")
+        return all_bars
+    # }}}
+    @staticmethod  #loadLastData# {{{
+    def loadLastData(asset, timeframe):
+        file_path = Data.__findLastFile(asset, timeframe)
+        text = Cmd.load(file_path)
+        bars = list()
+        for line in text:
+            bar = _Bar.fromCSV(line)
+            bars.append(bar)
+        data = Data(asset, timeframe, bars)
+        return data
+    # }}}
+    @staticmethod # save{{{
+    def save(data):
+        logger.debug(f"Data.save({data.asset.ticker})")
+        Data.__saveAsset(data)
+        Data.__saveTimeFrame(data)
+        Data.__saveBars(data)
+    # }}}
+    @staticmethod # getAllDataDirs{{{
+    def getAllDataDirs():
+        logger.debug(f"Data.getAllDataDirs()")
+        all_dirs = list()
+        for root, dirs, files in os.walk(DATA_DIR):
+            data_dir_names = ("1M", "5M", "1H", "D")
+            if root.endswith(data_dir_names):
+                all_dirs.append(root)
+        return all_dirs
+    # }}}
+    @property  #asset# {{{
+    def asset(self):
+        return self.__asset
+    # }}}
+    @property  #timeframe# {{{
+    def timeframe(self):
+        return self.__timeframe
+    # }}}
+    @property  #bars# {{{
+    def bars(self):
+        return self.__bars
+    # }}}
+    @property  #year# {{{
+    def year(self):
+        year = self.bars[-1].dt.year
+        return year
+    # }}}
+    @property  #last_dt# {{{
+    def last_dt(self):
+        dt = self.bars[-1].dt
+        return dt
+    # }}}
+    @property  #dir_path# {{{
+    def dir_path(self):
+        dir_path = Cmd.join(self.asset.dir_path, str(self.timeframe))
+        Cmd.createDirs(dir_path)
+        return dir_path
+    # }}}
+    def add(self, new_bars: list[Bar]):# {{{
+        if self.EXCLUDE_HOLIDAYS:
+            new_bars = Data.__excludeHolidays(new_bars)
+        year = self.year
+        self.__bars += Data.__popYear(new_bars, year)
+        Data.save(self)
+        # Смотрим остались ли еще новые бары (если на новый год попали)
+        while len(new_bars) > 0:
+            year += 1
+            bars = Data.__popYear(new_bars, year)
+            asset = self.asset
+            timeframe = self.timeframe
+            data = Data(asset, timeframe, bars)
+            Data.save(data)
+        return True
+    # }}}
+# }}}
+class Converter():# {{{
+    def __init__(self):# {{{
+        ...
+    # }}}
+    @staticmethod  #__fillVoid# {{{
+    def __fillVoid(bars):
+        time = datetime.combine(bars[0].dt.date(), DAY_BEGIN)
+        end = datetime.combine(bars[-1].dt.date(), DAY_END)
+        filled = list()
+        i = 0
+        while time <= end:
+            if i < len(bars) and time == bars[i].dt:
+                filled.append(bars[i])
+                i += 1
+            else:
+                filled.append(FakeBar(time))
+            time += ONE_MINUTE
+        return filled
+    # }}}
+    @staticmethod  #__removeFakeBars# {{{
+    def __removeFakeBars(bars: list) -> list:
+        i = 0
+        while i < len(bars):
+            if isinstance(bars[i], FakeBar):
+                bars.pop(i)
+            else:
+                i += 1
+        return bars
+    # }}}
+    @staticmethod  #timeDif# {{{
+    def timeDif(bar1, bar2):
+        return abs(bar2.dt - bar1.dt)
+    # }}}
+    @staticmethod  #totalVol# {{{
+    def totalVol(bars):
+        assert len(bars) > 0
+        total = 0
+        for bar in bars:
+            total += bar.vol
+        return total
+    # }}}
+    @staticmethod  #highestHigh# {{{
+    def highestHigh(bars):
+        assert len(bars) > 0
+        temp = list()
+        for bar in bars:
+            temp.append(bar.high)
+        return max(temp)
+    # }}}
+    @staticmethod  #lowestLow# {{{
+    def lowestLow(bars):
+        assert len(bars) > 0
+        temp = list()
+        for bar in bars:
+            temp.append(bar.low)
+        return min(temp)
+    # }}}
+    @staticmethod  #join# {{{
+    def join(bars):
+        """
+        Возвращает объединенный bar из bars, игнорируюя FakeBars
+        Если все бары FakeBar, возвращает None
+        """
+        assert len(bars) > 0
+        dt = bars[0].dt  # join_bar.dt будет как dt у первого bar-а
+        bars = Converter.__removeFakeBars(bars)  # удалим FakeBars
+        # Собираем один общий бар
+        if len(bars) > 0:
+            opn = bars[0].open
+            hgh = Converter.highestHigh(bars)
+            low = Converter.lowestLow(bars)
+            cls = bars[-1].close
+            vol = Converter.totalVol(bars)
+            join_bar = _Bar(dt, opn, hgh, low, cls, vol)
+            return join_bar
+        else:
+            return None  # возвращаем None, если не было баров с данными
+    # }}}
+    def convert(self, bars, timeframe):# {{{
+        bars = Converter.__fillVoid(bars)
+        i = 0
+        converted = list()
+        while i < len(bars):
+            first = i
+            last = i
+            while last < len(bars):
+                time_dif = Converter.timeDif(bars[first], bars[last])
+                if time_dif < timeframe:
+                    last += 1
+                else:
+                     break
+            new_bar = Converter.join(bars[first:last])
+            if new_bar is not None:
+                converted.append(new_bar)
+            i = last
+        return converted
+    # }}}
+    # @staticmethod  #deleteUserData{{{
+    # def deleteUserData():
+    #     for root, dirs, files in os.walk(SHARES_DIR):
+    #         for dir_name in dirs:
+    #             if dir_name in ("1M", "5M", "1H", "D"):
+    #                 dir_path = os.path.join(root, dir_name)
+    #                 logger.info(f"  delete user data '{dir_path}'")
+    #                 Cmd.deleteDir(dir_path)
+    #     return True
+    # }}}
+# }}}
+class TinkoffId():# {{{
+    # SHARES_MOEX = Cmd.loadJSON(f"{RES_DIR}/tinkoff/Shares-RU-MOEX.json")
+
+    @staticmethod  #toAsset# {{{
+    def toAsset(id_obj: dict) -> Asset:
+        if "MOEX" in id_obj["exchange"]:
+            exchange = Exchange.MOEX
+        if "SHARE" in id_obj["shareType"]:
+            asset_type = Type.SHARE
+        assert exchange == Exchange.MOEX
+        assert asset_type == Type.SHARE
+        ticker = id_obj["ticker"]
+        asset = Share(ticker)
+        return asset
+    # }}}
+    @staticmethod  #getBrokerInfo# {{{
+    def getBrokerInfo(
+        exchange: Exchange,
+        asset_type: Type,
+        ticker: str=None,
+        figi: str=None,
+        uid: str=None
+        ):
+        assert exchange == Exchange.MOEX
+        assert asset_type == Type.SHARE
+        if ticker:
+            parameter = "ticker"
+            value = ticker
+        elif figi:
+            parameter = "figi"
+            value = figi
+        elif uid:
+            parameter = "uid"
+            value = uid
+        for instrument_info in TinkoffId.SHARES_MOEX:
+            if instrument_info[parameter] == value:
+                return instrument_info
+        raise AssetError(
+            f"ERROR: Актив не найден: биржа {exchange} "
+            f"тип инструмента {asset_type}, "
+            f"параметр {parameter}, значение {value}"
+            )
+    # }}}
+# }}}
+class TinkoffData(Converter):# {{{
+    """ const """# {{{
+    DIR_NAME = "tinkoff"
+    DOWNLOAD_SCRIPT = Cmd.join(RES_DIR, DIR_NAME, "download.sh")
+
+    def __init__(self):
+        Converter.__init__(self)
+
+    def __loadDataDir(self, dir_path):
+        files = sorted(Cmd.getFiles(dir_path, full_path=True))
+        files = self.__excludeHolidays(files)
+        assert len(files) > 0
+        asset = self.__getAsset(files[0])
+        all_bars = list()
+        for file in files:
+            tinkoff_bars = self.__readTinkoffFile(file)
+            all_bars += tinkoff_bars
+        return asset, all_bars
+    # }}}
+    def __excludeHolidays(self, files):# {{{
+        # file name as: '53b67587-96eb-4b41-8e0c-d2e3c0bdd234_20190103.csv'
+        i = 0
+        while i < len(files):
+            file = files[i]
+            name = Cmd.name(file, extension=False)
+            file_date = date.fromisoformat(name.split("_")[1])
+            if file_date.weekday() in HOLIDAYS:
+                files.pop(i)
+            else:
+                i += 1
+        return files
+    # }}}
+    def __getAsset(self, file_path):# {{{
+        # имя файла uid_date.csv
+        file_name = Cmd.name(file_path, extension=False)
+        uid = file_name.split("_")[0]  # достаем uid
+        asset = Asset(Exchange.MOEX, Type.SHARE, uid=uid)
+        return asset
+    # }}}
+    def __readTinkoffFile(self, file_path):# {{{
+        tinkoff_bars = list()
+        text = Cmd.load(file_path)
+        for line in text:
+            bar = self.__parseLineTinkoff(line)
+            tinkoff_bars.append(bar)
+        return tinkoff_bars
+    # }}}
+    def __parseLineTinkoff(self, line):# {{{
+        fields = line.split(";")
+        UID, DATETIME, OPEN, CLOSE, HIGH, LOW, VOLUME = range(7)
+        opn = float(fields[OPEN])
+        cls = float(fields[CLOSE])
+        hgh = float(fields[HIGH])
+        low = float(fields[LOW])
+        vol = int(fields[VOLUME])
+        dt =  fields[DATETIME]
+        bar = _Bar(dt, opn, hgh, low, cls, vol)
+        return bar
+    # }}}
+    def download(self, asset, from_year):# {{{
+        dir_path = Cmd.join(DOWNLOAD_DIR, "tinkoff")
+        if not Cmd.isExist(dir_path):
+            Cmd.createDirs(dir_path)
+        os.chdir(dir_path)
+        script = Cmd.load(self.DOWNLOAD_SCRIPT)
+        script[0] = f"figi={asset.figi}\n"
+        script[1] = f"minimum_year={from_year}\n"
+        Cmd.save(script, "download.sh")
+        logger.info(f"  download {asset.ticker} from '{from_year}'")
+        os.system("chmod +x download.sh")
+        os.system(f"bash download.sh")
+    # }}}
+    def extractArchive(self, file):# {{{
+        year = file[-8:-4]  # имя архива figi_year.zip
+        figi = Cmd.name(file, extension=False).split("_")[0]
+        asset = Asset(Exchange.MOEX, Type.SHARE, figi=figi)
+        dest_dir = Cmd.join(
+            DOWNLOAD_DIR,
+            TinkoffData.DIR_NAME,
+            asset.ticker,
+            year
+            )
+        Cmd.createDirs(dest_dir)
+        logger.info(f"  extract '{Cmd.name(file)}' -> '{dest_dir}'")
+        Cmd.extractArchive(file, dest_dir)
+        return True
+    # }}}
+    def exportData(self, dir_path, timeframe):# {{{
+        year_dirs = sorted(Cmd.getDirs(dir_path, full_path=True))
+        for dir_path in year_dirs:
+            logger.info(f"  - convert '{dir_path}' -> {timeframe}")
+            asset, bars = self.__loadDataDir(dir_path)
+            converted = self.convert(bars, timeframe)
+            data = Data(asset, timeframe, converted)
+            Data.save(data)
+    # }}}
+    def deleteArchives(self):# {{{
+        path = Cmd.join(DOWNLOAD_DIR, TinkoffData.DIR_NAME)
+        files = Cmd.getFiles(path, full_path=True)
+        files = Cmd.select(files, ".zip")
+        for file in files:
+            logger.info(f"  - delete archive '{file}'")
+            Cmd.delete(file)
+        return True
+    # }}}
+    def deleteTinkoffData(self):# {{{
+        path = Cmd.join(DOWNLOAD_DIR, TinkoffData.DIR_NAME)
+        dirs = Cmd.getDirs(path, full_path=True)
+        for i in dirs:
+            logger.info(f"  - delete tinkoff data '{i}'")
+            Cmd.deleteDir(i)
+        return True
+    # }}}
+# }}}
+class MoexData(Converter):# {{{
+    """ Const """# {{{
+    DIR_NAME = "moex"
+    # }}}
+    def __init__(self):# {{{
+        Converter.__init__(self)
+    # }}}
+    def __convert(self, obj: object):# {{{
+        if isinstance(obj, TimeFrame):
+            period = self.__convertTimeFrame(obj)
+            return period
+        else:
+            assert False, f"unknown object type '{type(obj)}'"
+    # }}}
+    def __convertTimeFrame(self, timeframe: TimeFrame):# {{{
+        moex_period = {
+            TimeFrame("1M"): "1m",
+            TimeFrame("10M"): "10m",
+            TimeFrame("1H"): "1h",
+            TimeFrame("D"): "D",
+            TimeFrame("W"): "W",
+            TimeFrame("M"): "M",
+            }
+        return moex_period[timeframe]
+    # }}}
+    def __createDirPath(self, ticker, timeframe):# {{{
+        dir_path = Cmd.join(
+            DOWNLOAD_DIR,
+            MoexData.DIR_NAME,
+            ticker,
+            # str(timeframe),
+            )
+        Cmd.createDirs(dir_path)
+        return dir_path
+    # }}}
+    def __createFilePath(self, ticker, timeframe, year):# {{{
+        dir_path = self.__createDirPath(ticker, timeframe)
+        file_name = f"{ticker}-{timeframe}-{year}.csv"
+        full_path = Cmd.join(dir_path, file_name)
+        return full_path
+    # }}}
+    def __format(self, candle: Candle):# {{{
+        line = (
+            f"{candle.begin.isoformat()};"
+            f"{candle.end.isoformat()};"
+            f"{candle.open};"
+            f"{candle.high};"
+            f"{candle.low};"
+            f"{candle.close};"
+            f"{candle.value};"
+            f"{int(candle.volume)};"
+            )
+        return line
+    # }}}
+    def __header(self):# {{{
+        """ Возвращает строку заголовок для .csv файлов с данными
+        --
+        При работе с .csv некоторым бывает удобно сразу в файл записать
+        зоголовки для столбцов. Эта функция создает строку, которую
+        будет использовать функция MoexData.__toCSV() для
+        --
+        Отредактируйте строку 'header' в удобный для вас формат
+        при этом не забудьте изменить функцию MoexData.__format()
+        чтобы порядок записи данных соответствовал заголовку
+        """
+        header = "<begin>;<end>;<open>;<high>;<low>;<close>;<value>;<volume>"
+        return header
+    # }}}
+    def __toCSV(self, candles):# {{{
+        text = list()
+        for i in candles:
+            line = self.__format(i) + "\n"
+            text.append(line)
+        return text
+    # }}}
+    def __save(self, candles, path):# {{{
+        text = list()
+        header = self.__header()
+        text.append(header + "\n")
+        text += self.__toCSV(candles)
+        Cmd.save(text, path)
+    # }}}
+    def __readFile(self, file_path):# {{{
+        asset = self.__getAsset(file_path)
+        text = Cmd.load(file_path)
+        text.pop(0)  # skip header row
+        bars = list()
+        for line in text:
+            bar = self.__parseLineMoex(line)
+            bars.append(bar)
+        return asset, bars
+    # }}}
+    def __parseLineMoex(self, line):# {{{
+        fields = line.split(";")
+        BEGIN, END, OPEN, HIGH, LOW, CLOSE, VALUE, VOLUME = range(8)
+        opn = float(fields[OPEN])
+        cls = float(fields[CLOSE])
+        hgh = float(fields[HIGH])
+        low = float(fields[LOW])
+        vol = int(fields[VOLUME])
+        dt =  datetime.fromisoformat(fields[BEGIN])
+        dt =  (dt - MSK_TIME_DIF).replace(tzinfo=UTC)
+        bar = _Bar(dt, opn, hgh, low, cls, vol)
+        return bar
+    # }}}
+    def __getAsset(self, file_path):# {{{
+        # file path like '/.../SBER-1M-2023.csv'
+        name = Cmd.name(file_path, extension=False)  # 'SBER-1M-2023'
+        ticker, timeframe, year = name.split("-")
+        asset = Asset(Exchange.MOEX, Type.SHARE, ticker=ticker)
+        return asset
+    # }}}
+    def __findLastFile(self, ticker, timeframe):# {{{
+        dir_path = Cmd.join(
+            DOWNLOAD_DIR,
+            MoexData.DIR_NAME,
+            ticker,
+            str(timeframe)
+            )
+        if not Cmd.isExist(dir_path):
+            return None
+        files = sorted(Cmd.getFiles(dir_path, full_path=True))
+        if len(files) == 0:
+            return None
+        last_file = files[-1]
+        return last_file
+    # }}}
+    def __popYear(self, candles, year):# {{{
+        extract = list()
+        while len(candles) > 0 and candles[0].begin.year == year:
+            candle = candles.pop(0)
+            extract.append(candle)
+        return extract
+    # }}}
+    def __addNewCandles(self, ticker, timeframe, new_candles):# {{{
+        year = self.getLastDatetime(ticker, timeframe).year
+        current_year_part = self.__popYear(new_candles, year)
+        new_csv_rows = self.__toCSV(current_year_part)
+        last_file_path = self.__findLastFile(ticker, timeframe)
+        Cmd.append(new_csv_rows, last_file_path)
+        # Смотрим остались ли еще новые свечи (если на новый год попали)
+        while len(new_candles) > 0:
+            current_year_part = self.__popYear(new_candles, year)
+            path = self.__createFilePath(ticker, timeframe, year)
+            self.__save(current_year_part, path)
+            year += 1
+    # }}}
+    @staticmethod  #saveSharesList# {{{
+    def saveSharesList(shares, name):
+        path = Cmd.join(RES_DIR, "share", "moex", f"{name}.json")
+        Cmd.saveJSON(shares, path)
+    # }}}
+    @staticmethod  #loadSharesList# {{{
+    def loadSharesList(path):
+        obj = Cmd.loadJSON(path)
+        return obj
+    # }}}
+    def getAllShares(self) -> list:# {{{
+        shares = Market("stocks").tickers()
+        return shares
+    # }}}
+    def getFirstDatetime(self, ticker: str, timeframe=TimeFrame("1M")):# {{{
+        """ Receive first 1M candle from MOEX, and return his datetime """
+        date_start = datetime(1900, 1, 1)
+        try:
+            share = Ticker(ticker)
+            candles = share.candles(
+                date=       date_start,
+                till_date=  "today",
+                period=     self.__convert(timeframe),
+                limit=      1,  #  candles count
+                )
+        except KeyError as err:
+            logger.warning(f"MoexData: no market data for {ticker}")
+            return None
+        candle = candles.send(None)
+        dt = candle.begin
+        return dt
+    # }}}
+    def getLastDatetime(self, ticker: str, timeframe=TimeFrame("1M")):# {{{
+        """ Return last downloaded datetime for ticker/timeframe
+        --
+        Search in downloaded data file '{ticker}-{timeframe}-{last_year}.csv
+        return datetime of latest candle.
+        --
+        If file not exist return None
+        """
+        last_file = self.__findLastFile(ticker, timeframe)
+        if last_file is None:
+            return None
+        text = Cmd.load(last_file)
+        last_row = text[-1]
+        dt = last_row.split(";")[0]
+        dt = datetime.fromisoformat(dt)
+        return dt
+    # }}}
+    def getCandles(self, ticker, timeframe, begin, end):# {{{
+        all_candles = list()
+        dt = begin
+        while dt < end:
+            logger.info(f"  - request {ticker}-{timeframe} {dt.date()}")
+            # download in parts by day
+            share = Ticker(ticker)
+            candles = share.candles(
+                date=       dt,
+                till_date=  datetime.combine(dt.date(), time(23,59)),
+                period=     self.__convert(timeframe),
+            )
+            for i in candles:
+                all_candles.append(i)
+            dt += ONE_DAY
+        return all_candles
+    # }}}
+    def download(self, ticker, timeframe, year):# {{{
+        logger.info(f":: Download {ticker}-{timeframe} from {year}")
+        begin = datetime(year, 1, 1)
+        end = datetime(year + 1, 1, 1)
+        if end >= datetime.now():
+            end = datetime.combine(date.today(), time(0, 0))
+        candles = self.getCandles(ticker, timeframe, begin, end)
+        if len(candles) == 0:
+            logger.warning(f"No data for {ticker}-{timeframe}-{year}!")
+            return
+        path = self.__createFilePath(ticker, timeframe, year)
+        self.__save(candles, path)
+        logger.info(f"Saved {ticker}-{timeframe}-{year} in {path}")
+    # }}}
+    def update(self, ticker, timeframe):# {{{
+        last_dt = self.getLastDatetime(ticker, timeframe)
+        if last_dt is None:
+            logger.warning(
+                f"{ticker}-{timeframe} not exist data. "
+                f"Need download data before update. "
+                f"\nUpdate canceled"
+                )
+            return
+        logger.info(f":: Update data for {ticker}-{timeframe}")
+        new_candles = self.getCandles(
+            ticker=     ticker,
+            timeframe=  timeframe,
+            begin=      last_dt + timeframe,
+            end=        datetime.combine(date.today(), time(0, 0))
+            )
+        count = len(new_candles)
+        logger.info(f"{ticker}-{timeframe} received {count} canlde")
+        self.__addNewCandles(ticker, timeframe, new_candles)
+        logger.info(f"{ticker}-{timeframe} new candles saved")
+    # }}}
+    def export(self, dir_path, timeframe):# {{{
+        files = sorted(Cmd.getFiles(dir_path, full_path=True))
+        for file in files:
+            logger.info(f"  - convert '{file}' -> {timeframe}")
+            asset, bars = self.__readFile(file)
+            converted = self.convert(bars, timeframe)
+            data = Data(asset, timeframe, converted)
+            Data.save(data)
+    # }}}
+    def deleteMoexData(self):# {{{
+        path = Cmd.join(DOWNLOAD_DIR, MoexData.DIR_NAME)
+        if not Cmd.isExist(path):
+            logger.info(f"  - no data in '{path}'")
+            return
+        dirs = Cmd.getDirs(path, full_path=True)
+        for i in dirs:
+            logger.info(f"  - delete moex data '{i}'")
+            Cmd.deleteDir(i)
+    # }}}
+# }}}
+class FinamData():# {{{
+    def __init__(self):# {{{
+        ...
+    # }}}
+# }}}
+class Chart():# {{{
+    """ Const """# {{{
+    DEFAULT_BARS_COUNT = 5000
+    # }}}
+    def __init__(self, asset, timeframe, begin, end, constructor=Bar.fromCSV):# {{{
+        assert isinstance(asset, Asset)
+        assert isinstance(timeframe, TimeFrame)
+        assert isinstance(begin, datetime)
+        assert isinstance(end, datetime)
+        self._asset = asset
+        self._timeframe = timeframe
+        self._bars = Data.load(
+            asset,
+            timeframe, # asset+timeframe = dir_path вот ее и передавай
+            begin,
+            end,
+            constructor,
+            parent=self  # rename - requester
+            )
+        self.__head = len(self._bars)  # индекс HEAD бара
+        self.__now = None  # хранит реал-тайм бар
+    # }}}
+    def __getitem__(self, index):# {{{
+        """ Доступ к барам графика по индексу
+        ----------------------------------------------------------------------
+        [0, 1, 2, 3] (real_time_bar)  - так данные лежат физически
+         4  3  2  1        0          - так через getitem [i]
+        По умолчанию head == len(bars) == 4, тогда:
+        chart[0]   - перехватываем и возвращаем реал тайм бар,
+        chart[1] == bars[4 - 1] == bars[3] указывает на вчерашний бар
+        chart[2] == bars[4 - 2] == bars[2] указывает на позавчера
+        chart[3] == bars[4 - 3] == bars[1] ...
+        chart[4] == bars[4 - 4] == bars[0] самый старый исторический
+        сhart[5] == 4 - 5 < 0 перехватываем и возвращаем None
+        ----------------------------------------------------------------------
+        Если head установить == 0, тогда:
+        chart[0]     перехватываем и возвращаем реал тайм бар,
+        chart[1] == 0 - 1 < 0 перехватываем и возвращаем None
+        """
+        if index == 0:
+            return self.__now  # возвращаем реал тайм бар
+        index = self.__head - index
+        if index < 0:
+            return None
+        if index >= len(self._bars):
+            return None
+        return self._bars[index]
+    # }}}
+    def __iter__(self):# {{{
+        return iter(self._bars)
+    # }}}
+    def _setHeadIndex(self, index):# {{{
+        assert isinstance(index, int)
+        if index < 0:
+            return False
+        if index > len(self._bars):
+            return False
+        self.__head = index
+        self.__now = self._bars[self.__head]
+        return True
+    # }}}
+    def _getHeadIndex(self):# {{{
+        return self.__head
+    # }}}
+    def _setHeadDatetime(self, dt: datetime):# {{{
+        assert isinstance(dt, datetime)
+        index = findLeft(self._bars, dt, lambda x: x.dt)
+        if index is not None:
+            self.__head = index
+            self.__now = self._bars[index]
+            return True
+        else:
+            # logger.warning(
+            #     f"Chart.setNowDate(dt): "
+            #     f"dt = {dt}, "
+            #     f"begin = {self._bars[0].dt}, "
+            #     f"end = {self._bars[-1].dt}, \n"
+            #     f"return False"
+            #     )
+            return False
+    # }}}
+    def _resetHead(self):# {{{
+        self.__head = len(self._bars)
+        self.__now = None
+    # }}}
+    def _nextHead(self):# {{{
+        if self.__head < len(self._bars) - 1:
+            self.__head += 1
+            self.__now = self._bars[self.__head]
+            return self.__now
+        else:
+            return None
+    # }}}
+    @property  #asset# {{{
+    def asset(self):
+        return self._asset
+    # }}}
+    @property  #ticker# {{{
+    def ticker(self):
+        return self._asset.ticker
+    # }}}
+    @property  #timeframe# {{{
+    def timeframe(self):
+        return self._timeframe
+    # }}}
+    @property  #first# {{{
+    def first(self):
+        """ Возвращает самый старый исторический бар в графике """
+        return self._bars[0]
+    # }}}
+    @property  #last# {{{
+    def last(self):
+        """
+        Возвращает самый новый исторический бар (относительно head!!!)
+        """
+        index = self.__head - 1
+        if 0 < index < len(self._bars):
+            return self._bars[index]
+        else:
+            return None
+    # }}}
+    @property  #now# {{{
+    def now(self):
+        """
+        Возвращает реал тайм бар, тоже что chart[0]
+        """
+        return self.__now
+    # }}}
+    def parent(self):# {{{
+        logger.warning(f"Chart.parent() depricate, use property 'asset'")
+        return self._asset
+    # }}}
+    def update(self, new_bars):# {{{
+        for bar in new_bars:
+            bar.setParent(self)
+            self._bars.append(bar)
+        self.__head = len(self._bars)  # индекс HEAD бара перемещаем
+        self.__now = None
+    # }}}
+    def getBars(self) -> list[Bar]:# {{{
+        return self._bars[0:self.__head]
+    # }}}
+    def highestHigh(self):# {{{
+        bar = max(self._bars, key=lambda x: x.high)
+        return bar.high
+    # }}}
+    def lowestLow(self):# {{{
+        bar = min(self._bars, key=lambda x: x.low)
+        return bar.low
+    # }}}
+    def getTodayBars(self):# {{{
+        if self.__now is None:
+            return list()
+        today = self.__now.dt.date()
+        i = self.__head
+        while i - 1 > 0 and self._bars[i - 1].dt.date() == today:
+            i -= 1
+        return self._bars[i: self.__head]
+    # }}}
+    def highestHighToday(self):# {{{
+        bars = self.getTodayBars()
+        bar = max(bars, key=lambda x: x.high)
+        return bar.high
+    # }}}
+    def lowestLowToday(self):# {{{
+        bars = self.getTodayBars()
+        bar = min(bars, key=lambda x: x.low)
+        return bar.low
+    # }}}
+    def nowDayWeek(self):# {{{
+        if self.__now is not None:
+            return self.__now.dt.weekday()
+    # }}}
+    def nowDayMonth(self):# {{{
+        if self.__now is not None:
+            return self.__now.dt.day
+    # }}}
+    def nowMonthYear(self):# {{{
+        if self.__now is not None:
+            return self.__now.dt.month
+    # }}}
+# }}}
+class Extremum():# {{{
+    class Type(enum.Flag):# {{{
+        UNDEFINE =  0b00000000_00000000
+        MIN =       0b00000000_00000010
+        MAX =       0b00000000_00000100
+        SHORTTERM = 0b00000000_00001000
+        MIDTERM =   0b00000000_00011000
+        LONGTERM =  0b00000000_00111000
+    # }}}
+    def __init__(self, TYPE, parent: Bar):# {{{
+        self.__parent = parent
+        self.__parent.addFlag(Bar.Type.EXTREMUM)
+        self.__flags = TYPE
+        if TYPE & Extremum.Type.MAX:
+            self.__price = parent.high
+        elif TYPE & Extremum.Type.MIN:
+            self.__price = parent.low
+    # }}}
+    def __str__(self):# {{{
+        s = f"{self.__parent.dt} {self.price}"
+        s += " MAX" if self.isMax() else " MIN"
+        s += " MIDTERM" if self.isMidterm() else ""
+        s += " LONGTERM" if self.isLongterm() else ""
+        return s
+    # }}}
+    def __lt__(self, other):  # operator <{{{
+        assert isinstance(other, Extremum)
+        return self.__price < other.__price
+    # }}}
+    def __le__(self, other):  # operator <={{{
+        assert isinstance(other, Extremum)
+        return self.__price <= other.__price
+    # }}}
+    def __gt__(self, other):  # operator >{{{
+        assert isinstance(other, Extremum)
+        return self.__price > other.__price
+    # }}}
+    def __ge__(self, other):  # operator >={{{
+        assert isinstance(other, Extremum)
+        return self.__price >= other.__price
+    # }}}
+    def __eq__(self, other):  # operator =={{{
+        assert isinstance(other, Extremum)
+        return self.__price == other.__price
+    # }}}
+    def __sub__(self, other):  # operator -{{{
+        assert isinstance(other, Extremum)
+        return self.__price - other.__price
+    # }}}
+    @property  #dt# {{{
+    def dt(self):
+        return self.__parent.dt
+    # }}}
+    @property  #price# {{{
+    def price(self):
+        return self.__price
+    # }}}
+    def parent(self) -> Bar:# {{{
+        return self.__parent
+    # }}}
+    def addFlag(self, flag):# {{{
+        assert isinstance(flag, Extremum.Type)
+        self.__flags |= flag
+    # }}}
+    def isMin(self) -> bool:# {{{
+        return self.__flags & Extremum.Type.MIN == Extremum.Type.MIN
+    # }}}
+    def isMax(self) -> bool:# {{{
+        return self.__flags & Extremum.Type.MAX == Extremum.Type.MAX
+    # }}}
+    def isShortterm(self) -> bool:# {{{
+        r = self.__flags & Extremum.Type.SHORTTERM == Extremum.Type.SHORTTERM
+        return r
+    # }}}
+    def isMidterm(self) -> bool:# {{{
+        return self.__flags & Extremum.Type.MIDTERM == Extremum.Type.MIDTERM
+    # }}}
+    def isLongterm(self) -> bool:# {{{
+        return self.__flags & Extremum.Type.LONGTERM == Extremum.Type.LONGTERM
+    # }}}
+# }}}
+class ExtremumList():# {{{
+    """ Const """# {{{
+    name = "Extremum"
+    # }}}
+    def __init__(self, chart: Chart):# {{{
+        self.__parent = chart
+        self.__shortterm = list()
+        self.__midterm = list()
+        self.__longterm = list()
+        self.update()
+    # }}}
+    def __isOverflowOf(self, this, of) -> bool:# {{{
+        if this.high > of or this.low < of.low:
+            return True
+        else:
+            return False
+    # }}}
+    def __isInsideOf(self, this, of) -> bool:# {{{
+        if this.high <= of.high and this.low >= of.low:
+            return True
+        else:
+            return False
+    # }}}
+    def __isOutsideOf(self, this, of) -> bool:# {{{
+        if this.high >= of.high and this.low <= of.low:
+            return True
+        else:
+            return False
+    # }}}
+    def __markInsideDays(self):# {{{
+        bars = self.__parent.getBars()
+        i = 0
+        previous = bars[i]
+        previous.removeFlag(Bar.Type.INSIDE)
+        i += 1
+        while i < len(bars):
+            current_bar = bars[i]
+            if self.__isInsideOf(current_bar, previous):
+                current_bar.addFlag(Bar.Type.INSIDE)
+            else:
+                current_bar.removeFlag(Bar.Type.INSIDE)
+                previous = current_bar
+            i += 1
+    # }}}
+    def __markOutsideDays(self):# {{{
+        bars = self.__parent.getBars()
+        i = 0
+        previous = bars[i]
+        previous.removeFlag(Bar.Type.OUTSIDE)
+        i += 1
+        while i < len(bars):
+            current_bar = bars[i]
+            if self.__isOutsideOf(current_bar, previous):
+                current_bar.addFlag(Bar.Type.OUTSIDE)
+            else:
+                current_bar.removeFlag(Bar.Type.OUTSIDE)
+                previous = current_bar
+            i += 1
+    # }}}
+    def __markOverflowDays(self):# {{{
+        bars = self.__parent.getBars()
+        for bar in bars:
+            if not bar.isInside() and not bar.isOutside():
+                bar.addFlag(Bar.Type.OVERFLOW)
+    # }}}
+    def __skipInsideOutside(self):# {{{
+        without_inside_outside = list()
+        bars = self.__parent.getBars()
+        for bar in bars:
+            if bar.isInside():
+                continue
+            elif bar.isOutside():
+                continue
+            else:
+                without_inside_outside.append(bar)
+        return without_inside_outside
+    # }}}
+    def __popRepeatedExtr(self, elist):# {{{
+        if len(elist) < 2:
+            return
+        i = 0
+        previous = elist[i]
+        i += 1
+        while i < len(elist):
+            current = elist[i]
+            if (current.isMax() and previous.isMax()):
+                if current > previous:
+                    elist.remove(previous)
+                    previous = current
+                    continue
+                else:
+                    elist.remove(current)
+                    continue
+            elif (current.isMin() and previous.isMin()):
+                if current < previous:
+                    elist.remove(previous)
+                    previous = current
+                    continue
+                else:
+                    elist.remove(current)
+                    continue
+            previous = current
+            i += 1
+    # }}}
+    def __updateShorttem(self):# {{{
+        self.__shortterm.clear()
+        bars = self.__skipInsideOutside()
+        if len(bars) < 3:
+            return
+        i = 1
+        count = len(bars) - 1
+        while i < count:
+            left = bars[i - 1]
+            bar = bars[i]
+            right = bars[i + 1]
+            if (left.high < bar.high > right.high):
+                e = Extremum(Extremum.Type.MAX | Extremum.Type.SHORTTERM, bar)
+                self.__shortterm.append(e)
+            if (left.low  > bar.low  < right.low):
+                e = Extremum(Extremum.Type.MIN | Extremum.Type.SHORTTERM, bar)
+                self.__shortterm.append(e)
+            i += 1
+        self.__popRepeatedExtr(self.__shortterm)
+    # }}}
+    def __updateMidterm(self):# {{{
+        self.__midterm.clear()
+        short_extr = self.__shortterm
+        if len(short_extr) < 5:
+            return
+        i = 2
+        count = len(short_extr) - 2
+        while i < count:
+            left =short_extr[i - 2]
+            e = short_extr[i]
+            right = short_extr[i + 2]
+            if (e.isMax() and left < e > right or
+                e.isMin() and left > e < right
+                ):
+                e.addFlag(Extremum.Type.MIDTERM)
+                self.__midterm.append(e)
+            i += 1
+        self.__popRepeatedExtr(self.__midterm)
+    # }}}
+    def __updateLongterm(self):# {{{
+        self.__longterm.clear()
+        mid_extr = self.__midterm
+        if len(mid_extr) < 5:
+            return
+        i = 2
+        count = len(mid_extr) - 2
+        while i < count:
+            left = mid_extr[i - 2]
+            e = mid_extr[i]
+            right = mid_extr[i + 2]
+            if (e.isMax() and (left < e > right) or
+                e.isMin() and (left > e < right)
+                ):
+                e.addFlag(Extremum.Type.LONGTERM)
+                self.__longterm.append(e)
+            i += 1
+        self.__popRepeatedExtr(self.__longterm)
+    # }}}
+    @property  # sterm{{{
+    def sterm(self):
+        return self.__shortterm
+    # }}}
+    @property  # mterm{{{
+    def mterm(self):
+        return self.__midterm
+    # }}}
+    @property  # lterm{{{
+    def lterm(self):
+        return self.__longterm
+    # }}}
+    def parent(self) -> Chart:# {{{
+        return self.__parent
+    # }}}
+    def update(self) -> None:# {{{
+        self.__markInsideDays()
+        self.__markOutsideDays()
+        self.__markOverflowDays()
+        self.__updateShorttem()
+        self.__updateMidterm()
+        self.__updateLongterm()
+    # }}}
+    # def midDelta(self) -> float:{{{
+    #     extr = self.__midterm
+    #     if len(extr) >= 3:
+    #         return extr[-1] - extr[-3]
+    #     else:
+    #         return None
+    #
+    # def midSpeed(self) -> bool:
+    #     delta = self.midDelta()
+    #     if delta is not None:
+    #         percent = delta / self.__midterm[-1]
+    #         tf = self.__parent.timeframe
+    #         prev = self.__midterm[-3].dt
+    #         cur = self.__midterm[-1].dt
+    #         # TODO: через выходные перенос тогда будет искажено значение
+    #         # надо наверное все таки пронумеровать бары
+    #         bars_count = (cur - prev) / tf
+    #         speed = percent / bars_count
+    #         return speed
+    #     else:
+    #         return None
+    #
+    # def isMidTrendBull(self) -> bool:
+    #     extr = self.__midterm
+    #     if (len(extr) >= 4
+    #         # Прошлый экстремум больше позапрошлого (бычий тренд)
+    #         and extr[-1] > extr[-3]
+    #         # Разница экстремумов больше __ %
+    #         and abs(extr[-1] - extr[-3]) / chart.last.close * 100 > 3
+    #         # Добавим что минимумы и максимумы идут по восходящей
+    #         and extr[-2] > extr[-4]
+    #         # Разница экстремумов больше __ %
+    #         and abs(extr[-2] - extr[-4]) / chart.last.close * 100 > 3
+    #         ):
+    #         return True
+    #     else:
+    #         return False
+    #
+    # def isMidTrendBear(self) -> bool:
+    #     extr = self.__midterm
+    #     if (len(extr) >= 4
+    #         # Прошлый экстремум меньше позапрошлого (медвежий тренд)
+    #         and extr[-1] < extr[-3]
+    #         # Разница экстремумов больше __ %
+    #         and abs(extr[-1] - extr[-3]) / chart.last.close * 100 > 3
+    #         # Добавим что и минимумы и максимумы идут по нисходящей
+    #         and extr[-2] < extr[-4]
+    #         # Разница экстремумов больше __ %
+    #         and abs(extr[-2] - extr[-4]) / chart.last.close * 100 > 3
+    #         ):
+    #         return True
+    #     else:
+    #         return False
+    #
+    # }}}
+# }}}
+class Indicator():# {{{
+    @staticmethod  #BEAR_LEN# {{{
+    def BEAR_LEN(chart):
+        assert chart.last is not None
+        i = -1
+        while chart[i] is not None and chart[i].isBear():
+            i -= 1
+        return abs(i + 1)
+    # }}}
+    @staticmethod  #BULL_LEN# {{{
+    def BULL_LEN(chart):
+        assert chart.last is not None
+        i = -1
+        while chart[i] is not None and chart[i].isBull():
+            i -= 1
+        return abs(i + 1)
+    # }}}
+    @staticmethod  #SPEED# {{{
+    def SPEED(chart, period):
+        assert chart.last is not None
+        if chart[-1] is None or chart[-period-1] is None:
+            return None
+        first = chart[-period-1].body.mid()
+        last = chart[-1].body.mid()
+        delta = last - first
+        percent = delta / first * 100
+        speed = percent / period
+        return speed
+    # }}}
+    @staticmethod  #MA# {{{
+    def MA(chart, period, parameter="close"):
+        assert chart.last is not None
+        total = 0
+        for i in range(-1, -period-1, -1):
+            if chart[i] == None:
+                return None
+            total += chart[i].close
+        return total / period
+    # }}}
+# }}}
+class Index(Asset):# {{{
+    def __init__(self, ticker, exchange=Exchange.MOEX, parent=None):# {{{
+        Asset.__init__(exchange, Type.INDEX, ticker=ticker)
+        self.__parent = parent
+    # }}}
+# }}}
+class Share(Asset):# {{{
+    def __init__(self, ticker, exchange=Exchange.MOEX, figi=None, parent=None):# {{{
+        if figi:
+            Asset.__init__(self, exchange, Type.SHARE, figi=figi)
+        elif ticker:
+            Asset.__init__(self, exchange, Type.SHARE, ticker=ticker)
+        self.__parent = parent
+        self.__glass = None
+        self.__deals = None
+    # }}}
+    @property  # uid{{{
+    def uid(self):
+        return self.brockerInfo()["uid"]
+    # }}}
+    @property  # lot{{{
+    def lot(self):
+        return self.brockerInfo()["lot"]
+    # }}}
+    @property  # min_price_step{{{
+    def min_price_step(self):
+        info = self.brockerInfo()
+        grpc_message = info["minPriceIncrement"]
+        units = int(grpc_message["units"])
+        nano = int(grpc_message["nano"])
+        step = Quotation(units, nano)
+        step = float(quotation_to_decimal(step))
+        return step
+    # }}}
+    def parent(self):# {{{
+        return self.__parent
+    # }}}
+    def setParent(self, parent):# {{{
+        self.__parent = parent
+    # }}}
+# }}}
+class AssetList():# {{{
+    def __init__(self, name="unnamed", parent=None):# {{{
+        logger.debug(f"AssetList.__init__({name})")
+        self.__name = name
+        self.__as sets = list()
+        self.__parent = parent
+    # }}}
+    def __getitem__(self, index):# {{{
+        return self.__assets[index]
+    # }}}
+    def __iter__(self):# {{{
+        return iter(self.__assets)
+    # }}}
+    def __contains__(self, asset: Asset) -> bool:# {{{
+        assert asset.type == Type.SHARE
+        for i in self.__assets:
+            if i.figi == asset.figi:
+                return True
+        return False
+    # }}}
+    @staticmethod  #toJSON# {{{
+    def toJSON(asset_list):
+        obj = list()
+        for asset in asset_list:
+            ID = Asset.toJSON(asset)
+            obj.append(ID)
+        return obj
+    # }}}
+    @staticmethod  #save# {{{
+    def save(asset_list, path=None):
+        if path is None:
+            path = asset_list.path
+        obj = AssetList.toJSON(asset_list)
+        Cmd.saveJSON(obj, path)
+    # }}}
+    @staticmethod  #load# {{{
+    def load(path=None, name=None, parent=None):
+        if path:
+            assert name is None
+            name = Cmd.name(path, extension=False)
+        elif name:
+            assert path is None
+            path = Cmd.join(ASSET_DIR, f"{name}.al")
+        alist = AssetList(name, parent=parent)
+        obj = Cmd.loadJSON(path)
+        for ID in obj:
+            assert eval(ID["type"]) == Type.SHARE
+            share = Share(ID["ticker"])
+            alist.add(share)
+        return alist
+    # }}}
+    @staticmethod  #rename# {{{
+    def rename(asset_list, new_name):
+        if Cmd.isExist(asset_list.path):
+            new_path = Cmd.join(asset_list.dir_path, f"{new_name}.al")
+            Cmd.replace(asset_list.path, new_path)
+        asset_list.__name = new_name
+    # }}}
+    @staticmethod  #copy# {{{
+    def copy(asset_list, new_name):
+        if Cmd.isExist(asset_list.path):
+            new_path = Cmd.join(asset_list.dir_path, f"{new_name}.al")
+            Cmd.copyFile(asset_list.path, new_path)
+            copy = AssetList.load(name=new_name)
+            return copy
+    # }}}
+    @staticmethod  #delete# {{{
+    def delete(asset_list):
+        file_path = asset_list.path
+        if not Cmd.isExist(file_path):
+            raise AssetError(
+                f"AssetList.delete: список '{asset_list.name}' не найден"
+                )
+        Cmd.delete(file_path)
+        return True
+    # }}}
+    @property  # name{{{
+    def name(self):
+        return self.__name
+    @name.setter
+    def name(self, name):
+        assert isinstance(name, str)
+        self.__name = name
+    # }}}
+    @property  # assets{{{
+    def assets(self):
+        return self.__assets
+    @assets.setter
+    def assets(self, assets):
+        assert isinstance(assets, list)
+        for i in assets:
+            assert isinstance(i, (Share, Index))
+        self.__assets = assets
+    # }}}
+    @property  # count{{{
+    def count(self):
+        return len(self.__assets)
+    # }}}
+    @property  # path{{{
+    def path(self):
+        path = Cmd.join(self.dir_path, f"{self.__name}.al")
+        return path
+    # }}}
+    @property  # dir_path{{{
+    def dir_path(self):
+        if self.__parent:
+            return self.__parent.dir_path
+        else:
+            return ASSET_DIR
+    # }}}
+    def add(self, asset):# {{{
+        assert isinstance(asset, Asset)
+        self.__assets.append(asset)
+        asset.setParent(self)
+    # }}}
+    def remove(self, asset):# {{{
+        logger.debug(f"AssetList.remove({asset.ticker})")
+        try:
+            self.__assets.remove(asset)
+            return True
+        except ValueError as err:
+            logger.exception(
+                f"AssetList.remove(asset): Fail: "
+                f"инструмент '{asset.ticker}' нет в списке '{self.name}'",
+                )
+            return False
+    # }}}
+    def clear(self):# {{{
+        self.__assets.clear()
+    # }}}
+    def find(self, figi=None, uid=None, ticker=None):# {{{
+        for i in self.__assets:
+            if i.figi == figi:
+                return i
+        return None
+    # }}}
+    def receive(self, event_bar):# {{{
+        asset = self.find(figi=event_bar.figi)
+        timeframe = event_bar.timeframe
+        asset.chart(timeframe).update(new_bars=[event_bar.bar, ])
+        bar_time = (event_bar.bar.dt + MSK_TIME_DIF).time().strftime("%H:%M")
+        logger.info(
+            f"AssetList receive new bar "
+            f"{asset.ticker}-{timeframe} {bar_time}"
+            )
+    # }}}
+# }}}
+@dataclass  #Order# {{{
+class Order():
+    class Type(enum.Enum):# {{{
+        UNDEFINE =    0
+        MARKET =      1
+        LIMIT =       2
+        STOP =        3
+        WAIT =        4
+        TRAILING =    5
+        STOP_LOSS =   6
+        TAKE_PROFIT = 7
+    # }}}
+    class Status(enum.Enum):# {{{
+        UNDEFINE =    0
+        NEW =         1
+        POST =        2
+        WAIT =        3
+        TIMEOUT =     4
+        PARTIAL =     5
+        FILL =        6
+        OFF =         7  # для убранных на вечерку и вых. стопов
+        CANCEL =      8
+        REJECT =      9
+    # }}}
+    class Direction(enum.Enum):# {{{
+        UNDEFINE =    0
+        BUY =         1
+        SELL =        2
+    # }}}
+    signal: object
+    type: Type
+    direction: Direction
+    asset: Asset
+    lots: int
+    price: float
+    exec_price: float=None
+    timeout: time=None
+    status: Status=Status.NEW
+    ID: str=None
+    commission: float=None  # нахуй это заботы тестера а не общего класса ордер
+
+    # def __post_init__(self):{{{
+        # if self.ID is None:
+        #     self.ID = uuid.uuid4().hex
+    # }}}
+    @staticmethod  # toJSON{{{
+    def toJSON(order) -> dict:
+        assert False, "не написана функция"
+        obj = {
+            "signal":   "ID сохранить?"
+            "type":     str(order.type),
+            "direction":str(order.direction),
+            "asset":    Asset.toJSON(order.asset),
+            "lots":     order.lots,
+            "price":    order.price,
+            "status":   str(order.status),
+            }
+        return obj
+    # }}}
+    @staticmethod  # fromJSON{{{
+    def fromJSON(obj):
+        assert False, "не написана функция"
+        asset = ...
+        ID = Asset.fromJSON(obj["asset"])
+        assert ID.type == Type.SHARE
+        share = Share(ID.ticker)
+        o = Order(
+            signal=     "???????????????????????",
+            type=       eval(obj["type"]),
+            direction=  eval(obj["direction"]),
+            asset=      share,
+            lots=       obj["lots"],
+            price=      obj["price"],
+            status=     eval(obj["status"]),
+            ID=         obj["ID"],
+            )
+        return o
+    # }}}
+    def parent(self):# {{{
+        return self.signal
+    # }}}
+# }}}
+@dataclass  #Operation# {{{
+class Operation():
+    class Direction(enum.Enum):# {{{
+        UNDEFINE =     0
+        BUY =          1
+        SELL =         2
+    # }}}
+    signal: object
+    dt: datetime
+    direction: Direction
+    asset: Asset
+    lots: int
+    price: float
+    quantity: int
+    amount: float
+    commission: float
+    broker_info: object=None
+
+    def __str__(self):# {{{
+        msk_dt = self.dt + MSK_TIME_DIF
+        str_dt = msk_dt.strftime("%Y-%m-%d %H:%M")
+        string = (
+            f"{str_dt} {self.direction.name} {self.asset.ticker} "
+            f"{self.quantity} * {self.price} = {self.amount} "
+            f"+ {self.commission}"
+            )
+        return string
+    # }}}
+    @staticmethod  # toJSON{{{
+    def toJSON(op) -> dict:
+        obj = {
+            "signal_id":  op.signal.ID,
+            "dt":         str(op.dt),
+            "direction":  str(op.direction),
+            "asset":      Asset.toJSON(op.asset),
+            "lots":       op.lots,
+            "quantity":   op.quantity,
+            "price":      op.price,
+            "amount":     op.amount,
+            "commission": op.commission,
+            }
+        return obj
+    # }}}
+    @staticmethod  # fromJSON{{{
+    def fromJSON(obj):
+        ID_dict = obj["asset"]
+        assert eval(ID_dict["type"]) == Type.SHARE
+        share = Share(ID_dict["ticker"])
+        o = Operation(
+            signal=     "????????????",
+            dt=         datetime.fromisoformat(obj["dt"]),
+            direction=  eval("Operation." + obj["direction"]),
+            asset=      share,
+            lots=       obj["lots"],
+            quantity=   obj["quantity"],
+            price=      obj["price"],
+            amount=     obj["amount"],
+            commission= obj["commission"],
+            )
+        return o
+    # }}}
+    def parent(self):# {{{
+        return self.signal
+    # }}}
+# }}}
+class Position():# {{{
+    class Status(enum.Enum):# {{{
+        UNDEFINE =     0
+        OPEN =         1
+        CLOSE =        2
+    # }}}
+    def __init__(self, signal, operation: Operation):# {{{
+        self.__signal = signal
+        self.__operations = [operation,]
+        self.__status = Position.Status.OPEN
+    # }}}
+    def __writePositionInfo(self):# {{{
+        if self.status != self.Status.CLOSE:
+            raise PositionError("Запись результатов для незакрытой позиции")
+        info = dict()
+        info["result"] = self.result()
+        info["percent"] = self.percent()
+        info["holding_days"] = self.holdingDays()
+        info["percent_per_day"] = self.percentPerDay()
+        info["buy_amount"] = self.buyAmount()
+        info["sell_amount"] = self.sellAmount()
+        info["commission"] = self.sellCommission() + self.buyCommission()
+        info["open_datetime"] = self.openDatetime()
+        info["open_price"] = self.openPrice()
+        info["close_datetime"] = self.closeDatetime()
+        info["close_price"] = self.closePrice()
+        self.__signal.info.setdefault("position", info)
+    # }}}
+    def __writeOperationsInfo(self):# {{{
+        self.__signal.info.setdefault("operation", list())
+        for op in self.operations:
+            self.__signal.info["operation"].append(op)
+    # }}}
+    @property  #signal# {{{
+    def signal(self):
+        return self.__signal
+    # }}}
+    @property  #asset# {{{
+    def asset(self):
+        return self.__signal.asset
+    # }}}
+    @property  #status# {{{
+    def status(self):
+        return self.__status
+    # }}}
+    @property  #operations# {{{
+    def operations(self):
+        return self.__operations
+    # }}}
+    def parent(self):# {{{
+        return self.__signal
+    # }}}
+    def add(self, operation):# {{{
+        assert self.__status == Position.Status.OPEN
+        self.__operations.append(operation)
+        # Проверим не закрылась ли позиция
+        if self.quantity() == 0:
+            self.__status = Position.Status.CLOSE
+            self.__writePositionInfo()
+            self.__writeOperationsInfo()
+    # }}}
+    def lots(self):# {{{
+        total = 0
+        for op in self.__operations:
+            if op.direction == Operation.Direction.BUY:
+                total += op.lots
+            elif op.direction == Operation.Direction.SELL:
+                total -= op.lots
+        return total
+    # }}}
+    def openPrice(self):# {{{
+        return self.__operations[0].price
+    # }}}
+    def closePrice(self):# {{{
+        assert self.__status == Position.Status.CLOSE
+        return self.__operations[-1].price
+    # }}}
+    def openDatetime(self):# {{{
+        return self.operations[0].dt
+    # }}}
+    def closeDatetime(self):# {{{
+        assert self.__status == Position.Status.CLOSE
+        return self.operations[-1].dt
+    # }}}
+    def quantity(self):# {{{
+        total = 0
+        for op in self.__operations:
+            if op.direction == Operation.Direction.BUY:
+                total += op.quantity
+            elif op.direction == Operation.Direction.SELL:
+                total -= op.quantity
+        return total
+    # }}}
+    def buyQuantity(self):# {{{
+        total = 0
+        for op in self.operations:
+            if op.direction == Operation.Direction.BUY:
+                total += op.quantity
+        return total
+    # }}}
+    def sellQuantity(self):# {{{
+        total = 0
+        for op in self.operations:
+            if op.direction == Operation.Direction.SELL:
+                total += op.quantity
+        return total
+    # }}}
+    def amount(self):# {{{
+        if self.__status == self.Status.CLOSE:
+            return 0.0
+        total = 0
+        for op in self.operations:
+            if op.direction == Operation.Direction.BUY:
+                total += op.amount
+            elif op.direction == Operation.Direction.SELL:
+                total -= op.amount
+        return total
+    # }}}
+    def buyAmount(self):# {{{
+        total = 0
+        for op in self.operations:
+            if op.direction == Operation.Direction.BUY:
+                total += op.amount
+        return total
+    # }}}
+    def sellAmount(self):# {{{
+        total = 0
+        for op in self.operations:
+            if op.direction == Operation.Direction.SELL:
+                total += op.amount
+        return total
+    # }}}
+    def buyCommission(self):# {{{
+        total = 0
+        for op in self.operations:
+            if op.direction == Operation.Direction.BUY:
+                total += op.commission
+        return total
+    # }}}
+    def sellCommission(self):# {{{
+        total = 0
+        for op in self.operations:
+            if op.direction == Operation.Direction.SELL:
+                total += op.commission
+        return total
+    # }}}
+    def average(self):# {{{
+        return self.amount() / self.quantity()
+    # }}}
+    def averageBuy(self):# {{{
+        if self.buyQuantity() == 0:
+            return 0.0
+        else:
+            return self.buyAmount() / self.buyQuantity()
+    # }}}
+    def averageSell(self):# {{{
+        if self.sellQuantity() == 0:
+            return 0.0
+        else:
+            return self.sellAmount() / self.sellQuantity()
+    # }}}
+    def result(self):# {{{
+        if self.__status != self.Status.CLOSE:
+            raise PositionError("Вызов результата для незакрытой позиции")
+        result = (self.sellAmount() - self.buyAmount() -
+                self.buyCommission() - self.sellCommission())
+        return round(result, 2)
+    # }}}
+    def holdingDays(self):# {{{
+        if self.__status != self.Status.CLOSE:
+            raise PositionError("Вызов времени удержания для незакрытой позиции")
+        opn_dt = self.operations[0].dt
+        cls_dt = self.operations[-1].dt
+        holding = cls_dt - opn_dt + ONE_DAY
+        return holding.days
+    # }}}
+    def percent(self):# {{{
+        if self.__status != self.Status.CLOSE:
+            raise PositionError("Вызов результата в процентах для незакрытой позиции")
+        persent = self.result() / self.buyAmount() * 100
+        return round(persent, 2)
+    # }}}
+    def percentPerDay(self):# {{{
+        if self.__status != self.Status.CLOSE:
+            raise PositionError("Вызов результата в процентах для незакрытой позиции")
+        persent = self.result() / self.buyAmount() * 100
+        holding = self.holdingDays()
+        persent_per_day = persent / holding
+        return round(persent_per_day, 2)
+    # }}}
+# }}}
+class Portfolio():# {{{
+    @dataclass  #Cash# {{{
+    class Cash():
+        currency: str
+        value: float
+        block: float
+    # }}}
+    @dataclass  #Share# {{{
+    class Share():
+        share: Share
+        balance: int
+        block: int
+        ID: str
+        full_responce: None
+    # }}}
+    @dataclass  #Bound# {{{
+    class Bound(): pass
+    # }}}
+    @dataclass  #Future# {{{
+    class Future: pass
+    # }}}
+    @dataclass  #Option# {{{
+    class Option: pass
+    # }}}
+    def __init__(self, cash, shares, bounds, futures, options):# {{{
+        self.cash = cash
+        self.shares = shares
+        self.bounds = bounds
+        self.futures = futures
+        self.options = options
+        # depricate
+        self.positions = list()
+        self.rub = 0.0
+        self.block = 0.0
+        self.free = 0.0
+    # }}}
+    def virtualSetMoney(self, money):# {{{
+        self.rub = money
+        self.free = money * 5
+        self.block = 0.0
+    # }}}
+    def add(self, position):# {{{
+        self.positions.append(position)
+    # }}}
+    def remove(self, position):# {{{
+        for pos in self.positions:
+            if id(pos) == id(position):
+                assert pos.status == "closed"
+                self.positions.remove(pos)
+                return True
+        raise PortfolioError("Такой позиции нет в портфеле: {0}".format(
+                             position))
+        return False
+    # }}}
+# }}}
+class Signal():# {{{
+    class Type(enum.Enum):# {{{
+        UNDEFINE = 0
+        LONG =     1
+        SHORT =    2
+        KILL =     3
+        MANUAL =   4
+    # }}}
+    class Status(enum.Enum):# {{{
+        UNDEFINE = 0
+        INITIAL =  1
+        NEW =      2
+        POST =     3
+        OPEN =     4
+        CLOSE =    5
+        ARCHIVE =  7
+        CANCELED = 8
+    # }}}
+    class Close(enum.Enum):# {{{
+        UNDEFINE =      0
+        STOP_TAKE =     1
+        SIGNAL_KILL =   2
+        DATETIME =      3
+        ON_CLOSE =      4
+    # }}}
+    def __init__(# {{{
+            self,
+            dt:                 datetime,
+            strategy:           object,
+            signal_type:        Type,
+            asset:              Asset,
+            open_price:         float=None,
+            stop_price:         float=None,
+            take_price:         float=None,
+            open_order_type:    Order.Type=Order.Type.MARKET,
+            close_condition:    Close=Close.SIGNAL_KILL,
+            status:             Status=Status.INITIAL,
+            ID:                str="",
+            ):
+        self.asset = asset
+        strategy_info = {
+            "signal_datetime":  dt,
+            "strategy":         strategy,
+            "type":             signal_type,
+            "asset":            asset,
+            "open_price":       open_price,
+            "stop_price":       stop_price,
+            "take_price":       take_price,
+            "open_order_type":  open_order_type,
+            "close_condition":  close_condition,
+            }
+        for k, v in strategy.config.items():
+            strategy_info.setdefault(k, v)
+        self.__info = {
+            "ID":       ID if ID else uuid.uuid4().hex,
+            "status":   status,
+            "strategy": strategy_info
+            }
+        self.__position = None
+    # }}}
+    def __str__(self):# {{{
+        dt = self.dt
+        dt = dt.strftime("%Y-%m-%d %H:%M")
+        string = (
+            f"==> SIGNAL {dt} {self.strategy}-{self.version} "
+            f"{self.asset.ticker} {self.type.name.lower()}"
+            )
+        return string
+    # }}}
+    def __encode_for_JSON(self, obj):# {{{
+        for k, v in obj.items():
+            if isinstance(v, (enum.Enum, datetime, TimeFrame)):
+                obj[k] = str(obj[k])
+            elif isinstance(v, Asset):
+                obj[k] = Asset.toJSON(obj[k])
+            elif isinstance(v, Strategy):
+                obj[k] = obj[k].name + "-" + obj[k].version
+            elif k == "timeframe_list":
+                tmp = list()
+                for t in obj["timeframe_list"]:
+                    string = str(t)
+                    tmp.append(string)
+                obj["timeframe_list"] = tmp
+                # after transformation it looks like ["1M", "D"]
+        return obj
+    # }}}
+    def __formatInfo(self):# {{{
+        i = self.__info
+        i["status"] =   str(i["status"])
+        i["strategy"] = self.__encode_for_JSON(i["strategy"])
+        i["analytic"] = self.__encode_for_JSON(i["analytic"])
+        i["market"] =   self.__encode_for_JSON(i["market"])
+        i["risk"] =     self.__encode_for_JSON(i["risk"])
+        i["ruler"] =    self.__encode_for_JSON(i["ruler"])
+        i["adviser"] =  self.__encode_for_JSON(i["adviser"])
+        i["position"] = self.__encode_for_JSON(i["position"])
+        for n, op in enumerate(i["operation"]):
+            i["operation"][n] = Operation.toJSON(op)
+        return i
+    # }}}
+    @staticmethod  # toBIN{{{
+    def toBIN(signal):
+        assert False, "не написана функция, или в bin?"
+    # }}}
+    @staticmethod  # fromBIN{{{
+    def fromBIN(obj):
+        assert False, "не написана функция, или в bin?"
+    # }}}
+    @staticmethod  # save{{{
+    def save(signal):
+        assert False, "не написана функция, или в bin?"
+    # }}}
+    @staticmethod  # load{{{
+    def load(path):
+        assert False, "не написана функция, или в bin?"
+    # }}}
+    @property  #ID# {{{
+    def ID(self):
+        return self.__info["ID"]
+    # }}}
+    @property  #status# {{{
+    def status(self):
+        return self.__info["status"]
+    @status.setter
+    def status(self, status):
+        self.__info["status"] = status
+    # }}}
+    @property  #position# {{{
+    def position(self):
+        return self.__position
+    @position.setter
+    def position(self, pos):
+        assert isinstance(pos, Position)
+        self.__position = pos
+    # }}}
+    @property  #info# {{{
+    def info(self):
+        return self.__info
+    # }}}
+    @property  #strategy# {{{
+    def strategy(self):
+        return self.__info["strategy"]["strategy"]
+    # }}}
+    @property  #version# {{{
+    def version(self):
+        return self.__info["strategy"]["strategy"].version
+    # }}}
+    @property  #type# {{{
+    def type(self):
+        return self.__info["strategy"]["type"]
+    # }}}
+    # @property  #asset{{{
+    # def asset(self):
+    #     return self.__info["strategy"]["asset"]
+    #
+    @property  #dt
+    def dt(self):
+        return self.__info["strategy"]["signal_datetime"]
+    # }}}
+    @property  #open_price# {{{
+    def open_price(self):
+        return self.__info["strategy"]["open_price"]
+    # }}}
+    @property  #stop_price# {{{
+    def stop_price(self):
+        return self.__info["strategy"]["stop_price"]
+    # }}}
+    @property  #take_price# {{{
+    def take_price(self):
+        return self.__info["strategy"]["take_price"]
+    # }}}
+    @property  #open_order_type# {{{
+    def open_order_type(self):
+        return self.__info["strategy"]["open_order_type"]
+    # }}}
+    @property  #close_condition# {{{
+    def close_condition(self):
+        return self.__info["strategy"]["close_condition"]
+    # }}}
+    def isShort(self):# {{{
+        return self.__info["strategy"]["type"] == Signal.Type.SHORT
+    # }}}
+    def isLong(self):# {{{
+        return self.__info["strategy"]["type"] == Signal.Type.LONG
+    # }}}
+    def toTrade(self):# {{{
+        assert self.__info["status"] == Signal.Status.CLOSE
+        dict_obj = self.__formatInfo()
+        trade = Trade(dict_obj)
+        return trade
+    # }}}
+# }}}
+class Strategy():# {{{
+    """ Message """# {{{
+    signal = Message(Signal)
+    # }}}
+    def __init__(self, name, version, general=None):# {{{
+        self.__name = name
+        self.__version = version
+        self.__general = general
+        self.__loadConfig()
+        self.__loadShortList()
+        self.__loadLongList()
+    # }}}
+    def __str__(self):# {{{
+        return self.name
+    # }}}
+    def __loadConfig(self):# {{{
+        path = Cmd.join(self.dir_path, "config.cfg")
+        self.__cfg = Cmd.loadJSON(path)
+    # }}}
+    def __loadLongList(self):# {{{
+        path = Cmd.join(self.dir_path, "long.al")
+        self.__long_list = AssetList.load(path, parent=self)
+    # }}}
+    def __loadShortList(self):# {{{
+        path = Cmd.join(self.dir_path, "short.al")
+        self.__short_list = AssetList.load(path, parent=self)
+    # }}}
+    @staticmethod  #load# {{{
+    def load(name: str, version: str, general=None):
+        module = name.lower()
+        path = f"user.strategy.{name}.{version}"
+        modul = importlib.import_module(path)
+        strategy_class = modul.__getattribute__(f"UStrategy")
+        s = strategy_class(general=general)
+        return s
+    # }}}
+    @staticmethod  #versions# {{{
+    def versions(strategy_name: str):
+        path = Cmd.join(STRATEGY_DIR, strategy_name)
+        files = Cmd.getFiles(path)
+        files = Cmd.select(files, extension=".py")
+        ver_list = list()
+        for file in files:
+            ver = file.replace(".py", "")
+            ver_list.append(ver)
+        return ver_list
+    # }}}
+    @property  #name# {{{
+    def name(self):
+        return self.__name
+    # }}}
+    @property  #version# {{{
+    def version(self):
+        return self.__version
+    # }}}
+    @property  #config# {{{
+    def config(self):
+        return self.__cfg
+    # }}}
+    @property  #timeframe_list# {{{
+    def timeframe_list(self):
+        return self.__cfg["timeframe_list"]
+    # }}}
+    @property  #long_list# {{{
+    def long_list(self):
+        return self.__long_list
+    @long_list.setter
+    def long_list(self, alist):
+        alist.name = "long"
+        self.__long_list = alist
+    # }}}
+    @property  #short_list# {{{
+    def short_list(self):
+        return self.__short_list
+    @short_list.setter
+    def short_list(self, alist):
+        alist.name = "short"
+        self.__short_list = alist
+    # }}}
+    @property  #path# {{{
+    def path(self):
+        path = Cmd.join(self.dir_path, f"{self.version}.py")
+        return path
+    # }}}
+    @property  #dir_path# {{{
+    def dir_path(self):
+        path = Cmd.join(STRATEGY_DIR, self.name)
+        Cmd.createDirs(path)
+        return path
+    # }}}
+    @property  #general# {{{
+    def general(self):
+        return self.__general
+    # }}}
+    def start(self):# {{{
+        self.last_tested_dt = datetime(1, 1, 1, 0, 0, tzinfo=UTC)
+    # }}}
+    def finish(self):# {{{
+        ...
+    # }}}
+    ALL = list()# {{{
+    __dirs = Cmd.getDirs(STRATEGY_DIR, full_path=False)
+    for __name in __dirs:
+        ALL.append(__name)
+    # }}}
+# }}}
+class Trade():# {{{
+    class Type(enum.Enum):# {{{
+        UNDEFINE =  0
+        LONG =      1
+        SHORT =     2
+        MANUAL =    4
+    # }}}
+    def __init__(self, info: dict, parent=None):# {{{
+        self._info = info
+        self._parent = parent
+        self.__blocked = False
+    # }}}
+    def __str__(self):# {{{
+        s = pformat(self._info)
+        return s
+    # }}}
+    @staticmethod  #toJSON# {{{
+    def toJSON(trade):
+        return trade._info
+    # }}}
+    @property  #asset# {{{
+    def asset(self):
+        return self._info["strategy"]["asset"]
+    # }}}
+    @property  #dt# {{{
+    def dt(self):
+        return self._info["strategy"]["signal_datetime"]
+    # }}}
+    @property  #open_dt# {{{
+    def open_dt(self):
+        return self._info["position"]["open_datetime"]
+    # }}}
+    @property  #close_dt# {{{
+    def close_dt(self):
+        return self._info["position"]["close_datetime"]
+    # }}}
+    @property  #result# {{{
+    def result(self):
+        result = self._info["position"]["result"]
+        return round(result, 2)
+    # }}}
+    @property  #holding# {{{
+    def holding(self):
+        return self._info["position"]["holding_days"]
+    # }}}
+    @property  #percent_per_day# {{{
+    def percent_per_day(self):
+        return self._info["position"]["percent_per_day"]
+    # }}}
+    @property  #strategy# {{{
+    def strategy(self):
+        return self._info["strategy"]
+    # }}}
+    @property  #analytic# {{{
+    def analytic(self):
+        return self._info["analytic"]
+    # }}}
+    @property  #market# {{{
+    def market(self):
+        return self._info["market"]
+    # }}}
+    @property  #risk# {{{
+    def risk(self):
+        return self._info["risk"]
+    # }}}
+    @property  #ruler# {{{
+    def ruler(self):
+        return self._info["ruler"]
+    # }}}
+    @property  #adviser# {{{
+    def adviser(self):
+        return self._info["adviser"]
+    # }}}
+    @property  #position# {{{
+    def position(self):
+        return self._info["position"]
+    # }}}
+    @property  #operation# {{{
+    def operation(self):
+        return self._info["operation"]
+    # }}}
+    def parent(self):# {{{
+        return self._parent
+    # }}}
+    def isLong(self):# {{{
+        return self._info["strategy"]["type"] == Signal.Type.LONG
+    # }}}
+    def isShort(self):# {{{
+        return self._info["strategy"]["type"] == Signal.Type.SHORT
+    # }}}
+    def isWin(self):# {{{
+        return self.result > 0
+    # }}}
+    def isLoss(self):# {{{
+        return self.result <= 0
+    # }}}
+    def isBlocked(self):# {{{
+        return self.__blocked
+    # }}}
+    def setBlocked(self, val: bool):# {{{
+        self.__blocked = val
+    # }}}
+    def chart(self, timeframe: TimeFrame) -> Chart:# {{{
+        assert self.asset.type == Type.SHARE
+        end = self.dt
+        begin = self.dt - Chart.DEFAULT_BARS_COUNT * timeframe
+        chart = Chart(self.asset, timeframe, begin, end)
+        return chart
+    # }}}
+# }}}
+class TradeList():# {{{
+    def __init__(self, name: str="unnamed", trades=None, parent=None):# {{{
+        self._name = name
+        self._trades = trades if trades is not None else list()
+        self._childs = list()
+        self._asset = None
+        self._parent = parent
+        if isinstance(parent, Test):
+            self._test = parent
+        elif isinstance(parent, TradeList):
+            self._asset = parent._asset
+            self._test = parent._test
+    # }}}
+    def __iter__(self):# {{{
+        return iter(self._trades)
+    # }}}
+    def _createChild(self, trades, suffix):# {{{
+        child_name = f"- {suffix}"
+        child = TradeList(
+            name=child_name,
+            trades=trades,
+            parent=self
+            )
+        child._asset = self.asset
+        self._childs.append(child)
+        return child
+    # }}}
+    def _selectStrategy(self, key, value):# {{{
+        selected = list()
+        for trade in self._trades:
+            x = trade["strategy"].get(key)
+            if x == value:
+                selected.append(trade)
+        tlist = TradeList(
+            name="- " + self.name + f" strategy-{key}-{value}",
+            trades=selected,
+            parent=self
+            )
+        tlist._asset = self.asset
+        self._childs.append(tlist)
+        return tlist
+    # }}}
+    def _selectAnalytic(self, key, value):# {{{
+        selected = list()
+        for trade in self._trades:
+            x = trade["analytic"].get(key)
+            if x == value:
+                selected.append(trade)
+        tlist = TradeList(
+            name="- " + self.name + f" analytic-{key}-{value}",
+            trades=selected,
+            parent=self
+            )
+        tlist._asset = self.asset
+        self._childs.append(tlist)
+        return tlist
+    # }}}
+    def _selectMarket(self, key, value):# {{{
+        selected = list()
+        for trade in self._trades:
+            x = trade["market analytic"].get(key)
+            if x == value:
+                selected.append(trade)
+        tlist = TradeList(
+            name="- " + self.name + f" market-{key}-{value}",
+            trades=selected,
+            parent=self
+            )
+        tlist._asset = self.asset
+        self._childs.append(tlist)
+        return tlist
+    # }}}
+    def _selectRisk(self, key, value):# {{{
+        selected = list()
+        for trade in self._trades:
+            x = trade["risk manager"].get(key)
+            if x == value:
+                selected.append(trade)
+        tlist = TradeList(
+            name="- " + self.name + f" risk-{key}-{value}",
+            trades=selected,
+            parent=self
+            )
+        tlist._asset = self.asset
+        self._childs.append(tlist)
+        return tlist
+    # }}}
+    def _selectRuler(self, key, value):# {{{
+        selected = list()
+        for trade in self._trades:
+            x = trade["ruler"].get(key)
+            if x == value:
+                selected.append(trade)
+        tlist = TradeList(
+            name="- " + self.name + f" risk-{key}-{value}",
+            trades=selected,
+            parent=self
+            )
+        tlist._asset = self.asset
+        self._childs.append(tlist)
+        return tlist
+    # }}}
+    def _selectAdviser(self, key, value):# {{{
+        selected = list()
+        for trade in self._trades:
+            x = trade["adviser"].get(key)
+            if x == value:
+                selected.append(trade)
+        tlist = TradeList(
+            name="- " + self.name + f" adviser-{key}-{value}",
+            trades=selected,
+            parent=self
+            )
+        tlist._asset = self.asset
+        self._childs.append(tlist)
+        return tlist
+    # }}}
+    def _selectPosition(self, key, value):# {{{
+        selected = list()
+        for trade in self._trades:
+            x = trade["position"].get(key)
+            if x == value:
+                selected.append(trade)
+        tlist = TradeList(
+            name="- " + self.name + f" position-{key}-{value}",
+            trades=selected,
+            parent=self
+            )
+        tlist._asset = self.asset
+        self._childs.append(tlist)
+        return tlist
+    # }}}
+    @staticmethod  #save# {{{
+    def save(trade_list, file_path=None):
+        if file_path is None:
+            file_path = trade_list.path  # default in parent dir
+        obj = list()
+        for trade in trade_list:
+            trade_info_dict = Trade.toJSON(trade)
+            obj.append(trade_info_dict)
+        Cmd.saveJSON(obj, file_path)
+        return True
+    # }}}
+    @staticmethod  #load# {{{
+    def load(file_path, parent=None):
+        name = Cmd.name(file_path, extension=False)
+        info_list = Cmd.loadJSON(file_path)
+        tlist = TradeList(name, parent=parent)
+        for info in info_list:
+            trade = Trade(info, parent=tlist)
+            tlist.add(trade)
+        return tlist
+    # }}}
+    @staticmethod  #delete# {{{
+    def delete(tlist):
+        path = tlist.path
+        if not Cmd.isExist(path):
+            # logger.warning(
+            #     f"Can't delete TradeList: '{path}', file not found"
+            #     )
+            return False
+        Cmd.delete(path)
+        return True
+    # }}}
+    @property  #name# {{{
+    def name(self):
+        return self._name
+    # }}}
+    @property  #trades# {{{
+    def trades(self):
+        return self._trades
+    # }}}
+    @property  #count# {{{
+    def count(self):
+        return len(self._trades)
+    # }}}
+    @property  #asset# {{{
+    def asset(self):
+        return self._asset
+    # }}}
+    @property  #test# {{{
+    def test(self):
+        return self._test
+    # }}}
+    @property  #dir_path# {{{
+    def dir_path(self):
+        if self._test is not None:
+            return self._test.dir_path
+        else:
+            assert False, "WTF???"
+    # }}}
+    @property  #path# {{{
+    def path(self):
+        path = Cmd.join(self.dir_path, "tlist.tl")
+        return path
+    # }}}
+    def parent(self):# {{{
+        return self._parent
+    # }}}
+    def add(self, trade: Trade) -> None:# {{{
+        self._trades.append(trade)
+        trade._parent = self
+    # }}}
+    def remove(self, trade: Trade) -> None:# {{{
+        self._trades.remove(trade)
+    # }}}
+    def clear(self) -> None:# {{{
+        self._trades.clear()
+    # }}}
+    def selectLong(self):# {{{
+        selected = list()
+        for trade in self._trades:
+            if trade.isLong():
+                selected.append(trade)
+        child = self._createChild(selected, "long")
+        return child
+    # }}}
+    def selectShort(self):# {{{
+        selected = list()
+        for trade in self._trades:
+            if trade.isShort():
+                selected.append(trade)
+        child = self._createChild(selected, "short")
+        return child
+    # }}}
+    def selectWin(self):# {{{
+        selected = list()
+        for trade in self._trades:
+            if trade.isWin():
+                selected.append(trade)
+        child = self._createChild(selected, "win")
+        return child
+    # }}}
+    def selectLoss(self):# {{{
+        selected = list()
+        for trade in self._trades:
+            if trade.isLoss():
+                selected.append(trade)
+        child = self._createChild(selected, "loss")
+        return child
+    # }}}
+    def selectBack(self):# {{{
+        selected = list()
+        for trade in self._trades:
+            if trade.isBack():
+                selected.append(trade)
+        child = self._createChild(selected, "back")
+        return child
+    # }}}
+    def selectForward(self):# {{{
+        selected = list()
+        for trade in self._trades:
+            if trade.isForward():
+                selected.append(trade)
+        child = self._createChild(selected, "forward")
+        return child
+    # }}}
+    def selectFilter(f):# {{{
+        assert False
+    # }}}
+# }}}
+class Test():# {{{
+    class Status(enum.Enum):# {{{
+        UNDEFINE =  0
+        NEW =       1
+        EDITED =    2
+        PROCESS =   3
+        COMPLETE =  4
+    # }}}
+    def __init__(self, name):# {{{
+        self._status = Test.Status.NEW
+        self._name = name
+        self._cfg = collections.defaultdict(str)
+        self._alist = AssetList(name="alist", parent=self)
+        self._tlist = TradeList(name="tlist", parent=self)
+        self._report = Report(test=self)
+    # }}}
+    def __saveConfig(self):# {{{
+        path = Cmd.join(self.dir_path, "config.cfg")
+        Cmd.saveJSON(self._cfg, path)
+        return True
+    # }}}
+    def __saveAssetList(self):# {{{
+        file_path = Cmd.join(self.dir_path, "alist.al")
+        AssetList.save(self._alist, file_path)
+        return True
+    # }}}
+    def __saveTrades(self):# {{{
+        file_path = Cmd.join(self.dir_path, "tlist.tl")
+        TradeList.save(self._tlist, file_path)
+        return True
+    # }}}
+    def __saveStatus(self):# {{{
+        file_path = Cmd.join(self.dir_path, "status")
+        text = str(self._status)
+        Cmd.save(text, file_path)
+        return True
+    # }}}
+    def __saveReport(self):# {{{
+        file_path = Cmd.join(self.dir_path, "report.csv")
+        Report.save(self._report, file_path)
+        return True
+    # }}}
+    def _loadConfig(self):# {{{
+        path = Cmd.join(self.dir_path, "config.cfg")
+        if Cmd.isExist(path):
+            self._cfg = Cmd.loadJSON(path)
+            return True
+        else:
+            logger.warning(f"Test._loadConfig: config not found '{path}'")
+            self._cfg = collections.defaultdict(str)
+            assert False
+    # }}}
+    def _loadAssetList(self):# {{{
+        file_path = Cmd.join(self.dir_path, "alist.al")
+        if Cmd.isExist(file_path):
+            self._alist = AssetList.load(file_path)
+            return True
+        else:
+            logger.warning(f"Asset list not found: test={self.name}")
+            assert False
+    # }}}
+    def _loadTrades(self):# {{{
+        file_path = Cmd.join(self.dir_path, "tlist.tl")
+        if Cmd.isExist(file_path):
+            self._tlist = TradeList.load(file_path, parent=self)
+            return True
+        else:
+            self._tlist = TradeList(name="tlist", parent=self)
+            return False
+    # }}}
+    def _loadStatus(self):# {{{
+        file_path = Cmd.join(self.dir_path, "status")
+        if Cmd.isExist(file_path):
+            text = Cmd.read(file_path)
+            status = "Test." + text
+            self._status = eval(status)
+            return True
+        else:
+            logger.warning(f"Test._loadStatus: not found '{file_path}'")
+            self._status = Test.Status.UNDEFINE
+    # }}}
+    def _loadReport(self):# {{{
+        file_path = Cmd.join(self.dir_path, "report.csv")
+        if Cmd.isExist(file_path):
+            self._report = Report.load(file_path, parent=self)
+            return True
+        else:
+            self._report = Report(test=self)
+            return False
+    # }}}
+    @staticmethod  #save# {{{
+    def save(test) -> bool:
+        test.__saveConfig()
+        test.__saveAssetList()
+        test.__saveTrades()
+        test.__saveStatus()
+        test.__saveReport()
+        return True
+    # }}}
+    @staticmethod  #load#{{{
+    def load(dir_path: str) -> Test:
+        if not Cmd.isExist(dir_path):
+            logger.error(f"Test.load: dir not found '{dir_path}'")
+            return None
+        name = Cmd.name(dir_path)
+        test = Test(name)
+        test._loadConfig()
+        test._loadAssetList()
+        test._loadTrades()
+        test._loadStatus()
+        test._loadReport()
+        return test
+    # }}}
+    @staticmethod  #rename# {{{
+    def rename(test, new_name: str):
+        old_path = test.dir_path
+        if Cmd.isExist(test.dir_path):
+            Cmd.deleteDir(test.dir_path)
+            test._name = new_name
+            Test.save(test)
+        else:
+            test._name = new_name
+    # }}}
+    @staticmethod  #delete# {{{
+    def delete(test) -> bool:
+        Cmd.deleteDir(test.dir_path)
+        return True
+    # }}}
+    @property  #status# {{{
+    def status(self):
+        return self._status
+    @status.setter
+    def status(self, new_status) -> bool:
+        self._status = new_status
+    # }}}
+    @property  #name# {{{
+    def name(self):
+        return self._name
+    @name.setter
+    def name(self, new_name) -> bool:
+        self._name = new_name
+    # }}}
+    @property  #description# {{{
+    def description(self):
+        return self._cfg["description"]
+    @description.setter
+    def description(self, description):
+        self._cfg["description"] = description
+    # }}}
+    @property  #strategy# {{{
+    def strategy(self):
+        return self._cfg["strategy"]
+    @strategy.setter
+    def strategy(self, strategy):
+        self._cfg["strategy"] = strategy
+    # }}}
+    @property  #version# {{{
+    def version(self):
+        return self._cfg["version"]
+    @version.setter
+    def version(self, version):
+        self._cfg["version"] = version
+    # }}}
+    @property  #timeframe# {{{
+    def timeframe(self):
+        return self._cfg["timeframe"]
+    @timeframe.setter
+    def timeframe(self, timeframe):
+        self._cfg["timeframe"] = timeframe
+    # }}}
+    @property  #deposit# {{{
+    def deposit(self):
+        return self._cfg["deposit"]
+    @deposit.setter
+    def deposit(self, deposit):
+        self._cfg["deposit"] = deposit
+    # }}}
+    @property  #commission# {{{
+    def commission(self):
+        return self._cfg["commission"]
+    @commission.setter
+    def commission(self, commission):
+        self._cfg["commission"] = commission
+    # }}}
+    @property  #begin# {{{
+    def begin(self):
+        dt = datetime.fromisoformat(self._cfg["begin"])
+        return dt.replace(tzinfo=UTC)
+    @begin.setter
+    def begin(self, begin):
+        self._cfg["begin"] = begin
+    # }}}
+    @property  #end# {{{
+    def end(self):
+        dt = datetime.fromisoformat(self._cfg["end"])
+        return dt.replace(tzinfo=UTC)
+    @end.setter
+    def end(self, end):
+        self._cfg["end"] = end
+    # }}}
+    @property  #alist# {{{
+    def alist(self):
+        return self._alist
+    @alist.setter
+    def alist(self, alist):
+        self._alist = alist
+    # }}}
+    @property  #tlist# {{{
+    def tlist(self):
+        return self._tlist
+    # }}}
+    @property  #peropt# {{{
+    def report(self):
+        return self._report
+    # }}}
+    @property  #dir_path# {{{
+    def dir_path(self):
+        assert self._name != ""
+        path = Cmd.join(TEST_DIR, self.name)
+        Cmd.createDirs(path)
+        return path
+    # }}}
+    def updateReport(self):# {{{
+        self._report = Report(test=self)
+    # }}}
+    def clear(self):# {{{
+        TradeList.delete(self._tlist)
+        Report.delete(self._report)
+        self._tlist.clear()
+        self._report.clear()
+        self._status = Test.Status.NEW
+    # }}}
+# }}}
+class Report():# {{{
+    """ Const """# {{{
+    # FUNCTIONS = None  # инициализируется внизу класса
+    # }}}
+    def __init__(self, test: Test):# {{{
+        self._test = test
+        self.__df = Report.calculate(test.tlist)
+    # }}}
+    def __str__(self):# {{{
+        return str(self.__df)
+    # }}}
+    @staticmethod  #_grossProfit# {{{
+    def _grossProfit(results: list) -> float:
+        """ Возвращает валовую прибыль всех <results> """
+        value = 0.0
+        for i in results:
+            if i > 0.0:
+                value += i
+        return value
+    # }}}
+    @staticmethod  #_grossLoss# {{{
+    def _grossLoss(results: list) -> float:
+        """ Возвращает валовый убыток всех <results> """
+        value = 0.0
+        for i in results:
+            if i < 0.0:
+                value += i
+        return value
+    # }}}
+    @staticmethod  #_totalNetProfit# {{{
+    def _totalNetProfit(results: list) -> float:
+        value = 0.0
+        for i in results:
+            value += i
+        return round(value, 2)
+    # }}}
+    @staticmethod  #_totalTrades# {{{
+    def _totalTrades(results: list) -> int:
+        return len(results)
+    # }}}
+    @staticmethod  #_winningTrades# {{{
+    def _winningTrades(results: list) -> int:
+        value = 0
+        for i in results:
+            if i > 0.0:
+                value += 1
+        return value
+    # }}}
+    @staticmethod  #_losingTrades# {{{
+    def _losingTrades(results: list) -> int:
+        value = 0
+        for i in results:
+            if i < 0.0:
+                value += 1
+        return value
+    # }}}
+    @staticmethod  #_percentProfitable# {{{
+    def _percentProfitable(results: list) -> float:
+        win = Report._winningTrades(results)
+        total = Report._totalTrades(results)
+        if total == 0:
+            return 0
+        else:
+            return win / total * 100
+    # }}}
+    @staticmethod  #_percentUnprofitable# {{{
+    def _percentUnprofitable(results: list) -> float:
+        loss = Report._losingTrades(results)
+        total = Report._totalTrades(results)
+        if total == 0:
+            return 0
+        else:
+            return loss / total * 100
+    # }}}
+    @staticmethod  #_largestWin# {{{
+    def _largestWin(results: list) -> float:
+        if len(results) == 0:
+            return 0.0
+        maximum = max(results)
+        return max(maximum, 0.0)
+    # }}}
+    @staticmethod  #_largestLoss# {{{
+    def _largestLoss(results: list) -> float:
+        if len(results) == 0:
+            return 0.0
+        minimum = min(results)
+        return min(minimum, 0.0)
+    # }}}
+    @staticmethod  #_averageWin# {{{
+    def _averageWin(results: list) -> float:
+        win_count = Report._winningTrades(results)
+        if win_count == 0:
+            return 0.0
+        else:
+            return Report._grossProfit(results) / win_count
+    # }}}
+    @staticmethod  #_averageLoss# {{{
+    def _averageLoss(results: list) -> float:
+        loss_count = Report._losingTrades(results)
+        if loss_count == 0:
+            return 0.0
+        else:
+            return Report._grossLoss(results) / loss_count
+    # }}}
+    @staticmethod  #_averageTrade# {{{
+    def _averageTrade(results: list) -> float:
+        count = Report._totalTrades(results)
+        if count == 0:
+            return 0
+        else:
+            return Report._totalNetProfit(results) / count
+    # }}}
+    @staticmethod  #_maxWinSeries# {{{
+    def _maxWinSeries(results: list) -> int:
+        value = 0
+        series = 0
+        for i in results:
+            if i >= 0.0:
+                series += 1
+            else:
+                series = 0
+            value = max(value, series)
+        return value
+    # }}}
+    @staticmethod  #_maxLossSeries# {{{
+    def _maxLossSeries(results: list) -> int:
+        value = 0
+        series = 0
+        for i in results:
+            if i < 0.0:
+                series += 1
+            else:
+                series = 0
+            value = max(value, series)
+        return value
+    # }}}
+    @staticmethod  #_ratio# {{{
+    def _ratio(results: list) -> float:
+        avg_loss = Report._averageLoss(results)
+        if avg_loss == 0:
+            return 0.0
+        else:
+            return abs(Report._averageWin(results) / avg_loss)
+    # }}}
+    @staticmethod  #_getResults# {{{
+    def _getResults(tlist: TradeList) -> list[float]:
+        results = list()
+        for trade in tlist.trades:
+            if not trade.isBlocked():
+                results.append(trade.result)
+        return results
+    # }}}
+    @staticmethod  #save# {{{
+    def save(report, path) -> bool:
+        report.__df.to_csv(path, sep=";")
+        return True
+    # }}}
+    @staticmethod  #load# {{{
+    def load(file_path: str, parent):
+        report = Report(parent)
+        report.__df = pd.read_csv(file_path, sep=";")
+        return report
+    # }}}
+    @staticmethod  #delete# {{{
+    def delete(report):
+        path = report.path
+        if not Cmd.isExist(path):
+            logger.warning(f"Can't delete Report: '{path}', file not found")
+            return False
+        Cmd.delete(path)
+        return True
+    # }}}
+    @staticmethod  #getHeader# {{{
+    def getHeader() -> list[str]:
+        header = list()
+        header.append("name")
+        for column_name in Report.FUNCTIONS:
+            header.append(column_name)
+        return header
+    # }}}
+    @staticmethod  #calculate# {{{
+    def calculate(tlist: TradeList) -> pd.DataFrame:
+        dct = dict()
+        dct["name"] = tlist.name
+        results = Report._getResults(tlist)
+        for column, function in Report.FUNCTIONS.items():
+            value = round(function(results), 2)
+            dct[column] = value
+        df = pd.DataFrame([dct])
+        for tl in tlist._childs:
+            df_child = Report.calculate(tl)
+            df = pd.concat([df, df_child], ignore_index=True)
+        return df
+    # }}}
+    @property  #path# {{{
+    def path(self):
+        path = Cmd.join(self._test.dir_path, "report.csv")
+        return path
+    # }}}
+    def parent(self):# {{{
+        return self._parent
+    # }}}
+    def update(self):# {{{
+        self.__df = Report.calculate(self._parent.tlist)
+    # }}}
+    def clear(self):# {{{
+        indexes = self.__df.index
+        self.__df.drop(indexes)
+    # }}}
+    FUNCTIONS = {# {{{
+        # Column            Function
+        "profit":           _totalNetProfit,
+        "%":                _percentProfitable,
+        "trades":           _totalTrades,
+        "win":              _winningTrades,
+        "loss":             _losingTrades,
+        "w-seq":            _maxWinSeries,
+        "l-seq":            _maxLossSeries,
+        "avg":              _averageTrade,
+        "avg win":          _averageWin,
+        "avg loss":         _averageLoss,
+        "max win":          _largestWin,
+        "max loss":         _largestLoss,
+        "gross profit":     _grossProfit,
+        "gross loss":       _grossLoss,
+        "ratio":            _ratio,
+        }
+    # }}}
+# Report.FUNCTIONS ={{{
+#     # Column            Function
+#     "profit":           Report._totalNetProfit,
+#     "%":                Report._percentProfitable,
+#     "trades":           Report._totalTrades,
+#     "win":              Report._winningTrades,
+#     "loss":             Report._losingTrades,
+#     "w-seq":            Report._maxWinSeries,
+#     "l-seq":            Report._maxLossSeries,
+#     "avg":              Report._averageTrade,
+#     "avg win":          Report._averageWin,
+#     "avg loss":         Report._averageLoss,
+#     "max win":          Report._largestWin,
+#     "max loss":         Report._largestLoss,
+#     "gross profit":     Report._grossProfit,
+#     "gross loss":       Report._grossLoss,
+#     "ratio":            Report._ratio,
+#     }
+    # }}}
+# }}}
+class Filter():# {{{
+    def __init__(self, name, code, parent=None):# {{{
+        super().__init__()
+        self.__name = name
+        self.__code = code
+        self.__parent = parent
+        self.__createFunc()
+    # }}}
+    def __createFunc(self):# {{{
+        context = globals().copy()
+        exec(self.__code, context)
+        self.__condition = context["condition"]
+    # }}}
+    @staticmethod  #save# {{{
+    def save(f):
+        Cmd.save(f.__code, f.path)
+        return True
+    # }}}
+    @staticmethod  #load# {{{
+    def load(file_path, parent=None):
+        name = Cmd.name(file_path, extension=False)
+        code = Cmd.read(file_path)
+        f = Filter(name, code, parent)
+        return f
+    # }}}
+    @staticmethod  #delete# {{{
+    def delete(f):
+        Cmd.delete(f.path)
+        return True
+    # }}}
+    @property  #name# {{{
+    def name(self):
+        return self.__name
+    @name.setter
+    def name(self, name):
+        if Cmd.isExist(self.path):
+            new_path = Cmd.join(FILTER_DIR, f"{name}.py")
+            Cmd.rename(self.path, new_path)
+        self.__name = name
+    # }}}
+    @property  #code# {{{
+    def code(self):
+        return self.__code
+    @code.setter
+    def code(self, code):
+        self.__code = code
+        self.__createFunc()
+        if Cmd.isExist(self.path):
+            Filter.save(self)
+    # }}}
+    @property  #path# {{{
+    def path(self):
+        return Cmd.join(FILTER_DIR, f"{self.name}.py")
+    # }}}
+    def parent(self):# {{{
+        return self.__parent
+    # }}}
+    def check(self, item: Asset | Trade) -> bool:# {{{
+        return self.__condition(item)
+    # }}}
+# }}}
+class Event():# {{{
+    class Type(enum.Enum):# {{{
+        UNDEFINE =      0
+        NEW_BAR =       1
+        ORDER =         2
+        OPERATION =     3
+        LAST_PRICE =    4
+        INFO =          5
+        PING =          6
+        UPDATED_ASSET = 7
+    # }}}
+    class NewBar():# {{{
+        def __init__(self, figi, timeframe, bar):
+            self.figi = figi
+            self.timeframe = timeframe
+            self.bar = bar
+            self.type = Event.Type.NEW_BAR
+    # }}}
+    # @dataclass  #NewBar{{{
+    # class NewBar():
+    #     figi:       str
+    #     timeframe:  TimeFrame
+    #     bar:        Bar
+    #     type:       EventType.NEW_BAR
+    # }}}
+    @dataclass  #Order# {{{
+    class Order():
+        ...
+    # }}}
+    @dataclass  #Operation# {{{
+    class Operation():
+        ...
+    # }}}
+    @dataclass  #LastPrice# {{{
+    class LastPrice():
+        ...
+    # }}}
+    @dataclass  #Info# {{{
+    class Info():
+        ...
+    # }}}
+    @dataclass  #Ping# {{{
+    class Ping():
+        ...
+    # }}}
+# }}}
+
+if __name__ == "__main__":
+    ...
+

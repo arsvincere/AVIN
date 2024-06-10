@@ -24,7 +24,6 @@ usr/*
 doc/.obsidian
 avin/analytic/*
 avin/connect/*
-avin/core/*
 avin/gui/*
 avin/report/*
 avin/strategy/*
@@ -34,10 +33,6 @@ res/cache/*
 res/icon/*
 res/sound/*
 res/voice/*
-
-test/test_core.py
-test/gui.py
-test/utils.py
 
 install.sh
 run.sh

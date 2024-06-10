@@ -228,7 +228,7 @@ class Cmd():# {{{
             text = list(deque(file, n))
         return text
     # }}}
-    @staticmethod  #save# {{{
+    @staticmethod  #saveText# {{{
     def saveText(text: list[str], file_path: str, create_dirs=True):
         if create_dirs:
             Cmd.__createDirsForFilePath(file_path)
@@ -237,7 +237,7 @@ class Cmd():# {{{
                 file.write(line)
         logger.debug(f"Save file: {file_path}")
     # }}}
-    @staticmethod  #load# {{{
+    @staticmethod  #loadText# {{{
     def loadText(file_path: str) -> list[str]:
         """Read file by row, return list[str]"""
         text = list()
