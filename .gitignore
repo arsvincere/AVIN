@@ -2,14 +2,14 @@ __pycache__/
 .pytest_cache/
 avin/__pycache__/
 avin/gui/__pycache__/
-dev/*
-env/*
-lang/*
-log/*
+dev/
+env/
+lang/
+log/
 test/__pycache__/
 test/.pytest_cache/
-tmp/*
-usr/*
+tmp/
+usr/
 0.py 
 1.py
 2.py
@@ -22,17 +22,18 @@ usr/*
 9.py
 
 doc/.obsidian
-avin/analytic/*
-avin/connect/*
-avin/gui/*
-avin/report/*
-avin/strategy/*
-avin/tester/*
+avin/analytic
+avin/connect
+avin/gui
+avin/report
+avin/strategy
+avin/tester
+avin/trader
 
-res/cache/*
-res/icon/*
-res/sound/*
-res/voice/*
+res/cache
+res/icon
+res/sound
+res/voice
 
 install.sh
 run.sh
