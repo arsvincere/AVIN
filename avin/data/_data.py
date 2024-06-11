@@ -1409,14 +1409,15 @@ class _TinkoffData(_AbstractSource):# {{{
     @classmethod  #__getId# {{{
     def __getId(cls, info: dict) -> Id:
         # In dictionaries received from the broker, the moex exchange is
-        # designated in several ways: MOEX, MOEX_PLUS MOEX_EVENING_WEEKEND...
-        if "MOEX" in info["exchange"]:
+        # designated in several ways:
+        # MOEX, MOEX_PLUS, MOEX_EVENING_WEEKEND, moex_extended...
+        if "MOEX" in info["exchange"].upper():
+            exchange = Exchange.MOEX
+        elif info["exchange"] == "FORTS_EVENING":  # MOEX Futures
             exchange = Exchange.MOEX
         # Similar to SPB exchange: spb_close, SPB_RU_MORNING..
         elif "SPB" in info["exchange"].upper():
             exchange = Exchange.SPB
-        elif info["exchange"] == "FORTS_EVENING":  # MOEX Futures
-            exchange = Exchange.MOEX
         else:
             logger.critical(
                 f"_TinkoffData.__getId: unknown exchange={info['exchange']}"
