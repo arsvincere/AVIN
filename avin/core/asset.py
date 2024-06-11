@@ -11,10 +11,11 @@ import abc
 from datetime import datetime
 from avin.const import Usr
 from avin.data import Id, Exchange, AssetType, Data
-from avin.asset.chart import Chart
-from avin.asset.timeframe import TimeFrame
+from avin.core.chart import Chart
+from avin.core.timeframe import TimeFrame
 from avin.utils import Cmd, now
 from avin.logger import logger
+
 
 class Asset(metaclass=abc.ABCMeta):# {{{
     @abc.abstractmethod  #__init__# {{{

@@ -36,25 +36,29 @@ class Range():# {{{
         LOWER =     4
     # }}}
     class Size(enum.Enum):# {{{
-        UNDEFINE =          0
-        BLACKSWAN_SMALL =   1
-        ANOMAL_SMALL =      2
-        EXTRA_SMALL =       3
-        VERY_SMALL =        4
-        SMALLEST =          5
-        SMALLER =           6
-        SMALL =             7
-        NORMAL =            8
-        BIG =               9
-        BIGGER =            10
-        BIGGEST =           11
-        VERY_BIG =          12
-        EXTRA_BIG =         13
-        ANOMAL_BIG =        14
-        BLACKSWAN_BIG =     15
+        UNDEFINE =          None
+        BLACKSWAN_SMALL =   -7
+        ANOMAL_SMALL =      -6
+        EXTRA_SMALL =       -5
+        VERY_SMALL =        -4
+        SMALLEST =          -3
+        SMALLER =           -2
+        SMALL =             -1
+        NORMAL =            0
+        BIG =               1
+        BIGGER =            2
+        BIGGEST =           3
+        VERY_BIG =          4
+        EXTRA_BIG =         5
+        ANOMAL_BIG =        6
+        BLACKSWAN_BIG =     7
     # }}}
     def __init__(# {{{
-            self, min_: float, max_: float, type_ = Type.UNDEFINE, bar = None
+            self,
+            min_: float,
+            max_: float,
+            type_ = Type.UNDEFINE,
+            bar = None
             ):
         self.__min = min_
         self.__max = max_

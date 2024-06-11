@@ -12,7 +12,7 @@ from __future__ import annotations
 import enum
 from datetime import datetime
 from avin.data._data import _Bar
-from avin.asset.range import Range
+from avin.core.range import Range
 
 class Bar(_Bar):# {{{
     """ doc# {{{

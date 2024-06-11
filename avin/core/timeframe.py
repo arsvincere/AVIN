@@ -6,8 +6,6 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-""" Doc """
-
 from __future__ import annotations
 from datetime import timedelta
 from avin.data import DataType
