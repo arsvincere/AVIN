@@ -12,9 +12,9 @@ from __future__ import annotations
 import csv
 from datetime import datetime
 from avin.data import Data, DataType
-from avin.core.bar import Bar
-from avin.logger import logger
+from avin.asset.bar import Bar
 from avin.utils import findLeft
+from avin.logger import logger
 
 class Chart():# {{{
     """ Const """# {{{

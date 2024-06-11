@@ -9,14 +9,10 @@
 """ Doc """
 
 from __future__ import annotations
-import sys
 import enum
 from datetime import datetime
 from avin.data._data import _Bar
-from avin.core.range import Range
-
-sys.path.append("/home/alex/AVIN")
-sys.path.append("/home/alex/AVIN/env/lib/python3.12/site-packages")
+from avin.asset.range import Range
 
 class Bar(_Bar):# {{{
     """ doc# {{{

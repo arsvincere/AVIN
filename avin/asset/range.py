@@ -9,11 +9,7 @@
 """ Doc """
 
 from __future__ import annotations
-import sys
 import enum
-
-sys.path.append("/home/alex/AVIN")
-sys.path.append("/home/alex/AVIN/env/lib/python3.12/site-packages")
 
 class Range():# {{{
     """ doc# {{{

@@ -9,13 +9,9 @@
 """ Doc """
 
 from __future__ import annotations
-import sys
 from datetime import timedelta
 from avin.data import DataType
 from avin.utils import Cmd
-
-sys.path.append("/home/alex/AVIN")
-sys.path.append("/home/alex/AVIN/env/lib/python3.12/site-packages")
 
 class TimeFrame():# {{{
     """ doc# {{{

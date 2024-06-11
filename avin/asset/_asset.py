@@ -7,13 +7,14 @@
 # ============================================================================
 
 from __future__ import annotations
+import abc
+from datetime import datetime
 from avin.const import Usr
 from avin.data import Id, Exchange, AssetType, Data
-from avin.core.chart import Chart
-from avin.core.timeframe import TimeFrame
-from avin.logger import logger
+from avin.asset.chart import Chart
+from avin.asset.timeframe import TimeFrame
 from avin.utils import Cmd, now
-import abc
+from avin.logger import logger
 
 class Asset(metaclass=abc.ABCMeta):# {{{
     @abc.abstractmethod  #__init__# {{{
@@ -61,7 +62,7 @@ class Asset(metaclass=abc.ABCMeta):# {{{
     def brocker_info(self):
         return Data.info(self._ID)
     # }}}
-    def chart(self, timeframe: TimeFrame | str,):# {{{
+    def chart(self, timeframe: TimeFrame | str):# {{{
         if isinstance(timeframe, str):
             timeframe = TimeFrame(timeframe)
         return self._charts.get(timeframe, None)
@@ -99,6 +100,16 @@ class Asset(metaclass=abc.ABCMeta):# {{{
     # }}}
     def setParent(self, parent):# {{{
         self.__parent = parent
+    # }}}
+    def data(# {{{
+        self,
+        timeframe: TimeFrame | str,
+        begin: datetime,
+        end: datetime
+        ) -> DataFrame:
+
+        """ Return DataFrame """
+        assert False
     # }}}
     @classmethod  #load# {{{
     def load(cls, file_path: str):
@@ -277,14 +288,14 @@ class AssetList():# {{{
         return None
     # }}}
     @classmethod  #save# {{{
-    def save(cls, asset_list, path=None):
+    def save(cls, asset_list, path=None) -> None:
         if path is None:
             path = asset_list.path
         obj = AssetList.toJson(asset_list)
         Cmd.saveJson(obj, path)
     # }}}
     @classmethod  #load# {{{
-    def load(cls, file_path=None, parent=None):
+    def load(cls, file_path, parent=None) -> AssetList:
         name = Cmd.name(file_path)
         alist = AssetList(name, parent=parent)
         list_obj = Cmd.loadJson(file_path)
@@ -295,36 +306,42 @@ class AssetList():# {{{
         return alist
     # }}}
     @classmethod  #rename# {{{
-    def rename(cls, asset_list, new_name):
+    def rename(cls, asset_list, new_name) -> None:
         if Cmd.isExist(asset_list.path):
             new_path = Cmd.path(asset_list.dir_path, f"{new_name}.al")
             Cmd.replace(asset_list.path, new_path)
         asset_list.__name = new_name
-        return True
     # }}}
     @classmethod  #copy# {{{
-    def copy(cls, asset_list: AssetList, new_name: str):
+    def copy(cls, asset_list: AssetList, new_name: str) -> None:
         new_list = AssetList(new_name)
         new_list.assets = asset_list.assets
         new_path = Cmd.path(asset_list.dir_path, f"{new_name}.al")
         AssetList.save(new_list, new_path)
-        return True
     # }}}
     @classmethod  #delete# {{{
-    def delete(cls, asset_list):
+    def delete(cls, asset_list) -> None:
         file_path = asset_list.path
         if not Cmd.isExist(file_path):
             logger.error(
                 f"Fail delete asset list, file not exist '{file_path}'"
                 )
-            return False
         Cmd.delete(file_path)
-        return True
     # }}}
     @classmethod  #request# {{{
-    def request(cls, name, parent=None) -> AssetList:
+    def request(cls, name) -> str:
+        """If AssetList with name='{name}' exist, return his file_path"""
         path = Cmd.path(Usr.ASSET, f"{name}.al")
-        return cls.load(path, parent)
+        if Cmd.isExist(path):
+            return path
+        else:
+            return None
+    # }}}
+    @classmethod  #requestAll# {{{
+    def requestAll(cls) -> list[str]:
+        """Return list[file_path] all exist AssetList"""
+        files = Cmd.getFiles(Usr.ASSET, full_path=True)
+        return files
     # }}}
     @classmethod  #toJson# {{{
     def toJson(cls, asset_list):
