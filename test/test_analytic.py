@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+# ============================================================================
+# URL:          http://arsvincere.com
+# AUTHOR:       Alex Avin
+# E-MAIL:       mr.alexavin@gmail.com
+# LICENSE:      GNU GPLv3
+# ============================================================================
+
 
 # def test_Extremum():
 #     b1 = Bar(10, 11, 12, 9, 1000, now(), parent=True)

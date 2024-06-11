@@ -16,8 +16,7 @@ import zipfile
 import subprocess
 from collections import deque
 from datetime import datetime
-
-import avin.const
+from avin.const import UTC
 from avin.logger import logger
 
 
@@ -372,7 +371,7 @@ class Cmd():# {{{
 # }}}
 
 def now():# {{{
-    return datetime.utcnow().replace(tzinfo=avin.const.UTC)
+    return datetime.utcnow().replace(tzinfo=UTC)
 # }}}
 def binarySearch(vector, x, key=None):# {{{
     left = 0
@@ -445,7 +444,7 @@ def codeCounter(dir_path):# {{{
         for file in files:
             if file.endswith(".py"):
                 file_path = os.path.join(root, file)
-                text = Cmd.load(file_path)
+                text = Cmd.loadText(file_path)
                 n = len(text)
                 count_str += n
                 count_file += 1

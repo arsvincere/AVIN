@@ -1,10 +1,10 @@
-#!/usr/bin/env  python3
-# LICENSE:      GNU GPL
+#!/usr/bin/env python3
+# ============================================================================
+# URL:          http://arsvincere.com
 # AUTHOR:       Alex Avin
 # E-MAIL:       mr.alexavin@gmail.com
-
-""" Doc
-"""
+# LICENSE:      GNU GPLv3
+# ============================================================================
 
 from avin.const import *
 from avin.data import *
