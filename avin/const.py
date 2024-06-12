@@ -63,8 +63,8 @@ class Usr():# {{{
     ASSET =         os.path.join(Dir.USR, "asset")
     CONDITION =     os.path.join(Dir.USR, "broker")
     CONNECT =       os.path.join(Dir.USR, "connect")
-    DATA =          os.path.join(Dir.USR, "data")
-    DOWNLOAD =      os.path.join(Dir.USR, "download")
+    DATA =          "/home/alex/.market_data/"
+    DOWNLOAD =      "/home/alex/Download/market_data_download/"
     FILTER =        os.path.join(Dir.USR, "filter")
     GENERAL =       os.path.join(Dir.USR, "general")
     MARKER =        os.path.join(Dir.USR, "marker")

@@ -20,7 +20,7 @@ _HISTORY = Usr.LOG_HISTORY
 
 logger = logging.getLogger(_NAME)
 
-def configure(logger):
+def configure(logger):# {{{
     if not _CONFIGURED:
         _configStreamLog(logger)
 
@@ -32,10 +32,7 @@ def configure(logger):
 
         _deleteOldLogfiles(_LOG_DIR, _HISTORY)
         __CONFIGURED = True
-
-def _createLogger(logger_name: str):# {{{
-    return logging.getLogger("avin-logger")
-    # }}}
+# }}}
 def _configStreamLog(logger):# {{{
     stream_formatter = logging.Formatter(
         "%(module)s: %(asctime)s [%(levelname)s] %(message)s",
@@ -79,3 +76,4 @@ def _deleteOldLogfiles(log_dir: str, max_files: int) -> None:# {{{
 
 if __name__ == "avin.logger":
     configure(logger)
+

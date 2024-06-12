@@ -1080,8 +1080,8 @@ class _MoexData(_AbstractSource):# {{{
         dir_path = Cmd.path(cls._DOWNLOAD, ID.type.name, ID.ticker)
         Cmd.makeDirs(dir_path)
         file_name = (
-            f"{ID.exchange.name}-{ID.type.name}-{ID.ticker}-{data_type.value}"
-            f"-{year}.csv"
+            f"{ID.exchange.name}-{ID.type.name}-{ID.ticker}-"
+            f"{data_type.value}-{year}.csv"
             )
         full_path = Cmd.path(dir_path, file_name)
         return full_path
@@ -1094,6 +1094,7 @@ class _MoexData(_AbstractSource):# {{{
         year: int,
         candles: list[moexalgo.models.Candle]
         ):
+
         path = cls.__createFilePath(ID, data_type, year)
         df = pd.DataFrame(candles)
         df.to_csv(path, sep=";")

@@ -35,7 +35,7 @@ class Id():# {{{
             }
     # }}}
     def __str__(self):# {{{
-        s = f"{self.exchange.name}-{self.type.name}-{self.ticker}-{self.figi}"
+        s = f"{self.exchange.name}-{self.type.name}-{self.ticker}"
         return s
     # }}}
     def __eq__(self, other):# {{{

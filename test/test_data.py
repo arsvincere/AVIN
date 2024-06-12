@@ -66,7 +66,7 @@ def test_Id():# {{{
     assert sber.name == "Сбер Банк"
     assert sber.ticker == "SBER"
     assert sber.figi == "BBG004730N88"
-    assert str(sber) == "MOEX-Share-SBER-BBG004730N88"
+    assert str(sber) == "MOEX-Share-SBER"
 
     file_path = Cmd.path(Dir.TMP, "id")
     Id.save(sber, file_path)

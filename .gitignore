@@ -33,6 +33,7 @@ avin/trader
 res/cache
 res/icon
 res/sound
+res/uid
 res/voice
 
 install.sh

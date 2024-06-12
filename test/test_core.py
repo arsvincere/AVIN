@@ -176,6 +176,8 @@ def test_AssetList():# {{{
     assert alist.assets == []
     assert alist.count == 0
 # }}}
+def test_Order():
+    ...
 
 # def test_Filter():
 #     code = '''
