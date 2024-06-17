@@ -136,6 +136,16 @@ class Asset(metaclass=abc.ABCMeta):# {{{
         ID = Data.find(exchange, asset_type, uid)
         return Asset.__getCertainTypeAsset(ID)
     # }}}
+    @classmethod  #toJson# {{{
+    def toJson(cls, asset):
+        return Id.toJson(asset.ID)
+    # }}}
+    @classmethod  #fromJson# {{{
+    def fromJson(cls, obj):
+        ID = Id.fromJson(obj)
+        asset = Asset.byId(ID)
+        return asset
+    # }}}
     @classmethod  #__checkArgs# {{{
     def __checkArgs(cls, timeframe, begin, end):
         # TODO сделать реальную проверку аргументов, а не только

@@ -9,6 +9,7 @@
 import os
 import enum
 from datetime import time, timedelta, timezone
+import pytz
 
 __all__ = (# {{{
     "Dir", "Res", "Usr", "WeekDays",
@@ -64,7 +65,7 @@ class Usr():# {{{
     CONDITION =     os.path.join(Dir.USR, "broker")
     CONNECT =       os.path.join(Dir.USR, "connect")
     DATA =          "/home/alex/.market_data/"
-    DOWNLOAD =      "/home/alex/Download/market_data_download/"
+    DOWNLOAD =      "/home/alex/Downloads/market_data_download/"
     FILTER =        os.path.join(Dir.USR, "filter")
     GENERAL =       os.path.join(Dir.USR, "general")
     MARKER =        os.path.join(Dir.USR, "marker")
@@ -120,7 +121,8 @@ class WeekDays(enum.Enum):# {{{
         return False
     # }}}
 # }}}
-UTC =               timezone.utc
+
+UTC =               pytz.timezone("UTC")
 ONE_SECOND =        timedelta(seconds=1)
 ONE_MINUTE =        timedelta(minutes=1)
 FIVE_MINUTE =       timedelta(minutes=5)

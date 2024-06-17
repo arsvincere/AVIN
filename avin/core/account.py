@@ -279,13 +279,16 @@ class Portfolio():# {{{
         full_responce: None
     # }}}
     @dataclass  #Bound# {{{
-    class Bound(): pass
+    class Bound():
+        pass
     # }}}
     @dataclass  #Future# {{{
-    class Future: pass
+    class Future:
+        pass
     # }}}
     @dataclass  #Option# {{{
-    class Option: pass
+    class Option:
+        pass
     # }}}
     def __init__(self, cash, shares, bounds, futures, options):# {{{
         self.cash = cash

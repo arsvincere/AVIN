@@ -15,10 +15,8 @@ import bisect
 import zipfile
 import subprocess
 from collections import deque
-from datetime import datetime
-from avin.const import UTC
+from datetime import datetime, timezone
 from avin.logger import logger
-
 
 class Cmd():# {{{
     @staticmethod  #path# {{{
@@ -101,8 +99,7 @@ class Cmd():# {{{
             )
         if include_sub_dir:
             return Cmd.__getFilesInDirIncludeSubDir(dir_path, full_path)
-        else:
-            return Cmd.__getFilesInDir(dir_path, full_path)
+        return Cmd.__getFilesInDir(dir_path, full_path)
     # }}}
     @staticmethod  #getDirs# {{{
     def getDirs(dir_path, full_path=False):
@@ -371,7 +368,7 @@ class Cmd():# {{{
 # }}}
 
 def now():# {{{
-    return datetime.utcnow().replace(tzinfo=UTC)
+    return datetime.now(timezone.utc)
 # }}}
 def binarySearch(vector, x, key=None):# {{{
     left = 0

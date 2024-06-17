@@ -1325,7 +1325,7 @@ class _TinkoffData(_AbstractSource):# {{{
         if not cls.__authorizate():
             return
 
-        types = ["shares", "bonds", "futures", "currencies", "etfs"]
+        types = ["shares", "bonds", "futures", "currencies"]
         for t in types:
             logger.info(f"  - caching {t}")
             assets = cls.__requestAvailibleAssets(t)

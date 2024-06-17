@@ -9,6 +9,7 @@
 import enum
 
 class AssetType(enum.Enum):# {{{
+    # TODO rename in upper case
     UNDEFINE    = 0
     Index       = 1
     Share       = 2

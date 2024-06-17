@@ -176,8 +176,97 @@ def test_AssetList():# {{{
     assert alist.assets == []
     assert alist.count == 0
 # }}}
-def test_Order():
-    ...
+def test_Order():# {{{
+    ID = Data.find(Exchange.MOEX, AssetType.Share, "SBER")
+    share = Share(ID)
+    o = Order.Market(Order.Direction.SELL, share, lots=15)
+    assert o.direction == Order.Direction.SELL
+    assert o.asset == share
+    assert o.lots == 15
+    assert o.parent() == None
+    assert o.uid == None
+    assert o.status == Order.Status.NEW
+# }}}
+def test_Operation():# {{{
+    ID = Data.find(Exchange.MOEX, AssetType.Share, "SBER")
+    share = Share(ID)
+    dt = now()
+    op = Operation(
+        dt=         dt,
+        direction=  Operation.Direction.SELL,
+        asset=      share,
+        price=      100,
+        lots=       1,
+        quantity=   50,
+        amount=     100*50,
+        commission= 10,
+        meta=       None
+        )
+
+    assert op.dt == dt
+    assert op.direction == Operation.Direction.SELL
+    assert op.asset == share
+    assert op.price == 100
+    assert op.lots == 1
+    assert op.quantity == 50
+    assert op.amount == 5000
+    assert op.commission == 10
+    assert op.meta == None
+
+    obj = Operation.toJson(op)
+    assert isinstance(obj, dict)
+    fromjson_op = Operation.fromJson(obj)
+    assert str(op) == str(fromjson_op)
+
+    assert op.dt == fromjson_op.dt
+    assert op.direction == fromjson_op.direction
+    assert op.asset == fromjson_op.asset
+    assert op.price == fromjson_op.price
+    assert op.lots == fromjson_op.lots
+    assert op.quantity == fromjson_op.quantity
+    assert op.amount == fromjson_op.amount
+    assert op.commission == fromjson_op.commission
+    assert op.meta == fromjson_op.meta
+
+# }}}
+def test_Position():# {{{
+    ID = Data.find(Exchange.MOEX, AssetType.Share, "SBER")
+    share = Share(ID)
+    dt = now()
+    op = Operation(
+        dt=         dt,
+        direction=  Operation.Direction.BUY,
+        asset=      share,
+        price=      100,
+        lots=       1,
+        quantity=   50,
+        amount=     100*50,
+        commission= 10,
+        meta=       None
+        )
+
+    pos = Position(signal=None, operation=op, meta=None)
+    assert pos.signal == None
+    assert pos.status == Position.Status.OPEN
+    assert pos.operations[0] == op
+    assert pos.openPrice() == 100
+    assert pos.lots() == 1
+    assert pos.openDatetime() == dt
+    assert pos.quantity() == 50
+    assert pos.buyQuantity() == 50
+    assert pos.sellQuantity() == 0
+    assert pos.amount() == 5000
+    assert pos.buyAmount() == 5000
+    assert pos.sellAmount() == 0
+    assert pos.commission() == 10
+    assert pos.buyCommission() == 10
+    assert pos.sellCommission() == 0
+    assert pos.average() == 100
+    assert pos.averageBuy() == 100
+    assert pos.averageSell() == 0
+
+    #TODO добавить сигнал и другие функции связанные с закрытием позиции
+# }}}
 
 # def test_Filter():
 #     code = '''
