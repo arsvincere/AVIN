@@ -183,7 +183,7 @@ def test_Order():# {{{
     assert o.direction == Order.Direction.SELL
     assert o.asset == share
     assert o.lots == 15
-    assert o.parent() == None
+    assert o.signal == None
     assert o.uid == None
     assert o.status == Order.Status.NEW
 # }}}

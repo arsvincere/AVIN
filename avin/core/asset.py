@@ -27,6 +27,9 @@ class Asset(metaclass=abc.ABCMeta):# {{{
     def __str__(self):# {{{
         return str(self._ID)
     # }}}
+    def __eq__(self, other):# {{{
+        return self._ID == other._ID
+    # }}}
     @property  #ID# {{{
     def ID(self):
         return self._ID
