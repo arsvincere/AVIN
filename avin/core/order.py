@@ -16,7 +16,7 @@ class Order(metaclass=abc.ABCMeta):# {{{
     """ doc# {{{
     This class is used only as a namespace
 
-    To get syntax Order.Market, Order.Limit, Order.StopLoss
+    To get syntax like Order.Market, Order.Limit, Order.StopLoss
     I think it looks better than MarketOrder, LimitOrder, StopLossOrder...
 
     In addition, this simplifies imports, it is enough to import one
@@ -56,18 +56,11 @@ class Order(metaclass=abc.ABCMeta):# {{{
 
     class __Order(metaclass=abc.ABCMeta):# {{{
         @abc.abstractmethod  #__init__# {{{
-        def __init__(self, parent, uid, status):
+        def __init__(self, uid, status):
             if uid is None:
                 self.uid = None  # TODO class Uid generate uid
             if status is None:
                 self.status = Order.Status.NEW
-            self.__parent = parent
-        # }}}
-        def parent(self):# {{{
-            return self.__parent
-        # }}}
-        def setParent(self, parent):# {{{
-            self.__parent = parent
         # }}}
         @classmethod  # toJson{{{
         def toJson(cls, order) -> dict:
@@ -84,7 +77,7 @@ class Order(metaclass=abc.ABCMeta):# {{{
             direction: Order.Direction,
             asset: Asset,
             lots: int,
-            parent: Signal | Position=None,
+            signal: Signal=None,
             uid: str=None,
             status: Order.Status=None,
             ):
@@ -92,8 +85,9 @@ class Order(metaclass=abc.ABCMeta):# {{{
             self.direction = direction
             self.asset = asset
             self.lots = lots
+            self.signal = signal
             self.type = Order.Type.MARKET
-            super().__init__(parent, uid, status)
+            super().__init__(uid, status)
     # }}}
     class Limit(__Order):# {{{
         def __init__(
@@ -102,7 +96,7 @@ class Order(metaclass=abc.ABCMeta):# {{{
             asset: Asset,
             lots: int,
             price: float,
-            parent: Signal | Position=None,
+            signal: Signal=None,
             uid: str=None,
             status: Order.Status=None,
             ):
@@ -111,8 +105,9 @@ class Order(metaclass=abc.ABCMeta):# {{{
             self.asset = asset
             self.lots = lots
             self.price = price
+            self.signal = signal
             self.type = Order.Type.LIMIT
-            super().__init__(parent, uid, status)
+            super().__init__(uid, status)
     # }}}
     class Stop(__Order):# {{{
         def __init__(
@@ -122,7 +117,7 @@ class Order(metaclass=abc.ABCMeta):# {{{
             lots: int,
             stop_price: float,
             exec_price: float,
-            parent: Signal | Position=None,
+            signal: Signal=None,
             uid: str=None,
             status: Order.Status=None,
             ):
@@ -132,8 +127,9 @@ class Order(metaclass=abc.ABCMeta):# {{{
             self.lots = lots
             self.stop_price = stop_price
             self.exec_price = exec_price
+            self.signal = signal
             self.type = Order.Type.STOP
-            super().__init__(parent, uid, status)
+            super().__init__(uid, status)
     # }}}
     class StopLoss(__Order):# {{{
         def __init__(
@@ -148,8 +144,9 @@ class Order(metaclass=abc.ABCMeta):# {{{
             self.position = position
             self.stop_price = stop_price
             self.exec_price = exec_price
+            self.position = position
             self.type = Order.Type.STOP_LOSS
-            super().__init__(position, uid, status)
+            super().__init__(uid, status)
     # }}}
     class TakeProfit(__Order):# {{{
         def __init__(
@@ -164,8 +161,9 @@ class Order(metaclass=abc.ABCMeta):# {{{
             self.position = position
             self.stop_price = stop_price
             self.exec_price = exec_price
+            self.position = position
             self.type = Order.Type.TAKE_PROFIT
-            super().__init__(position, uid, status)
+            super().__init__(uid, status)
     # }}}
     class Wait(__Order):# {{{
         ...
