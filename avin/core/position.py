@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 import enum
+from avin.const import ONE_DAY
 from avin.core.operation import Operation
 
 class Position():# {{{
@@ -22,13 +23,20 @@ class Position():# {{{
         self.__status = Position.Status.OPEN
         self.__meta = meta
     # }}}
+    def __str__(self):# {{{
+        s = (
+            f"Position[{self.status}] {self.asset.ticker} "
+            f"{self.quantity()}x{self.average()} = {self.amount()}"
+            )
+        return s
+    # }}}
     @property  #signal# {{{
     def signal(self):
         return self.__signal
     # }}}
     @property  #asset# {{{
     def asset(self):
-        return self.__signal.asset
+        return self.__operations[0].asset
     # }}}
     @property  #status# {{{
     def status(self):
@@ -47,15 +55,6 @@ class Position():# {{{
             self.__writePositionInfo()
             self.__writeOperationsInfo()
     # }}}
-    def lots(self):# {{{
-        total = 0
-        for op in self.__operations:
-            if op.direction == Operation.Direction.BUY:
-                total += op.lots
-            elif op.direction == Operation.Direction.SELL:
-                total -= op.lots
-        return total
-    # }}}
     def openPrice(self):# {{{
         return self.__operations[0].price
     # }}}
@@ -69,6 +68,15 @@ class Position():# {{{
     def closeDatetime(self):# {{{
         assert self.__status == Position.Status.CLOSE
         return self.operations[-1].dt
+    # }}}
+    def lots(self):# {{{
+        total = 0
+        for op in self.__operations:
+            if op.direction == Operation.Direction.BUY:
+                total += op.lots
+            elif op.direction == Operation.Direction.SELL:
+                total -= op.lots
+        return total
     # }}}
     def quantity(self):# {{{
         total = 0
