@@ -15,8 +15,9 @@ class AssetType(enum.Enum):# {{{
     Share       = 2
     Bond        = 3
     Future      = 4
-    Currency    = 5
-    Etf         = 6
+    Option      = 5
+    Currency    = 6
+    Etf         = 7
 
     @classmethod  #fromStr# {{{
     def fromStr(cls, string):
