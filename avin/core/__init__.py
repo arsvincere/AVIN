@@ -14,6 +14,8 @@ from avin.core.asset import Asset, Index, Share, AssetList
 from avin.core.order import Order
 from avin.core.operation import Operation
 from avin.core.position import Position
+from avin.core.cash import Cash
+from avin.core.portfolio import Portfolio
 
 __all__ = (
     "Range",
@@ -27,7 +29,8 @@ __all__ = (
     "Order",
     "Operation",
     "Position",
-    # "Portfolio",
+    "Cash",
+    "Portfolio",
     # "Account",
     )
 

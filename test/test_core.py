@@ -267,6 +267,67 @@ def test_Position():# {{{
 
     #TODO добавить сигнал и другие функции связанные с закрытием позиции
 # }}}
+def test_Cash():# {{{
+    rub = Cash(Cash.Type.RUB, 1_000_000)
+    assert rub.type == Cash.Type.RUB
+    assert rub.value == 1_000_000
+# }}}
+def test_Portfolio():
+    portfolio = Portfolio()
+
+    # input cash
+    rub = Cash(Cash.Type.RUB, 1_000_000)
+    portfolio.inputCash(rub)
+    cash_in_p = portfolio.cash(Cash.Type.RUB)
+    assert cash_in_p.value == rub.value
+    assert cash_in_p.type == rub.type
+
+    # output cash
+    rub = Cash(Cash.Type.RUB, 100_000)
+    portfolio.outputCash(rub)
+    cash_in_p = portfolio.cash(Cash.Type.RUB)
+    assert cash_in_p.value == 900_000
+
+    # add/get position
+    ID = Data.find(Exchange.MOEX, AssetType.Share, "SBER")
+    share = Share(ID)
+    dt = now()
+    op = Operation(
+        dt=         dt,
+        direction=  Operation.Direction.BUY,
+        asset=      share,
+        price=      100,
+        lots=       1,
+        quantity=   50,
+        amount=     100*50,
+        commission= 10,
+        meta=       None
+        )
+    pos = Position(signal=None, operation=op, meta=None)
+
+    portfolio = Portfolio([rub,], [pos,])
+    shares_pos = portfolio.get(AssetType.Share)
+    assert shares_pos[0] == pos
+
+    # TODO: после рефакторинга сигнала это проедалать
+    # remove position (availible only if position closed)
+    # op = Operation(
+    #     dt=         dt,
+    #     direction=  Operation.Direction.SELL,
+    #     asset=      share,
+    #     price=      100,
+    #     lots=       1,
+    #     quantity=   50,
+    #     amount=     100*50,
+    #     commission= 10,
+    #     meta=       None
+    #     )
+    # pos.add(op)
+    # assert pos.status == Position.Status.CLOSE
+    # portfolio.remove(pos)
+    # shares_pos = portfolio.get(AssetType.Share)
+    # assert len(shares_pos) == 0
+    #
 
 # def test_Filter():
 #     code = '''
