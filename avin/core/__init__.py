@@ -16,6 +16,7 @@ from avin.core.operation import Operation
 from avin.core.position import Position
 from avin.core.cash import Cash
 from avin.core.portfolio import Portfolio
+from avin.core.filter import Filter
 
 __all__ = (
     "Range",
@@ -32,5 +33,6 @@ __all__ = (
     "Cash",
     "Portfolio",
     # "Account",
+    "Filter",
     )
 

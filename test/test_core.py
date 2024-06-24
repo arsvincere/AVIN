@@ -272,7 +272,7 @@ def test_Cash():# {{{
     assert rub.type == Cash.Type.RUB
     assert rub.value == 1_000_000
 # }}}
-def test_Portfolio():
+def test_Portfolio():# {{{
     portfolio = Portfolio()
 
     # input cash
@@ -328,30 +328,28 @@ def test_Portfolio():
     # shares_pos = portfolio.get(AssetType.Share)
     # assert len(shares_pos) == 0
     #
+# }}}
+def test_Filter():# {{{
+    code = '''
+def condition(x):
+    return x * 5
+    '''
+    f = Filter("example", code)
+    assert f.check(4) == 20
+    assert f.name == "example"
+    assert f.code == code
+    Filter.save(f)
 
-# def test_Filter():
-#     code = '''
-# def condition(x):
-#     y = 1 + 1
-#     return x * 5 + y
-#     '''
-#     f = Filter("example", code)
-#     assert f.check(4) == 22
-#     assert f.name == "example"
-#     Filter.save(f)
-#     loaded = Filter.load(f.path)
-#     assert loaded.check(4) == 22
-#     assert loaded.name == "example"
-#     loaded.code = """
-# def condition(x):
-#     return x + 100
-# """
-#     assert loaded.check(1) == 101
-#     assert loaded.name == "example"
-#     assert Cmd.isExist(loaded.path)
-#     Filter.delete(loaded)
-#
-#
-#
-#
-#
+    loaded = Filter.load(f.path)
+    assert Cmd.isExist(loaded.path)
+    assert loaded.check(4) == 20
+    assert loaded.name == "example"
+
+    Filter.rename(loaded, "blablabla")
+    assert Cmd.isExist(loaded.path)
+    Filter.delete(loaded)
+#}}}
+
+
+
+
