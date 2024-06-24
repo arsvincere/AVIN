@@ -66,7 +66,7 @@ class Asset(metaclass=abc.ABCMeta):# {{{
     def brocker_info(self):
         return Data.info(self._ID)
     # }}}
-    def chart(self, timeframe: TimeFrame | str):# {{{
+    def chart(self, timeframe: TimeFrame | str) -> Chart:# {{{
         if isinstance(timeframe, str):
             timeframe = TimeFrame(timeframe)
         return self._charts.get(timeframe, None)
