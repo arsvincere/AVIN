@@ -23,6 +23,10 @@ from avin.data.exchange import Exchange
 from avin.data.asset_type import AssetType
 from avin.data.id import Id
 
+# TODO: Usr.auto_update_historical_data = True
+# и тогда при импорте модуля, проверяем файли last_update в корне
+# папки с датой, и обновляем все что можно.
+
 class Data():# {{{
     @classmethod  #assets # {{{
     def assets(cls, source: Source, asset_type: AssetType) -> list[Id]:
