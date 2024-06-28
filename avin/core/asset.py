@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 import abc
-from datetime import datetime
+from datetime import datetime, date
 from avin.const import Usr
 from avin.data import Id, Exchange, AssetType, Data
 from avin.core.chart import Chart
