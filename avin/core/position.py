@@ -207,6 +207,8 @@ class Position():# {{{
         self.__signal.info.setdefault("position", info)
     # }}}
     def __writeOperationsInfo(self):# {{{
+        assert False
+        # сделать добавление через интерфейс трейда
         self.__signal.info.setdefault("operation", list())
         for op in self.operations:
             self.__signal.info["operation"].append(op)
