@@ -114,6 +114,7 @@ class Chart():# {{{
         return self._bars[i: self.__head]
     # }}}
     def _setHeadIndex(self, index):# {{{
+        assert False
         assert isinstance(index, int)
         if index < 0:
             return False
@@ -124,9 +125,11 @@ class Chart():# {{{
         return True
     # }}}
     def _getHeadIndex(self):# {{{
+        assert False
         return self.__head
     # }}}
     def _setHeadDatetime(self, dt: datetime):# {{{
+        assert False
         assert isinstance(dt, datetime)
         index = findLeft(self._bars, dt, lambda x: x.dt)
         if index is not None:
@@ -137,10 +140,12 @@ class Chart():# {{{
             assert False
     # }}}
     def _resetHead(self):# {{{
+        assert False
         self.__head = len(self._bars)
         self.__now = None
     # }}}
     def _nextHead(self):# {{{
+        assert False
         if self.__head < len(self._bars) - 1:
             self.__head += 1
             self.__now = self._bars[self.__head]
