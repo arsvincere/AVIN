@@ -17,9 +17,9 @@ class Position():# {{{
         OPEN =         1
         CLOSE =        2
     # }}}
-    def __init__(self, signal, operation: Operation, meta: object):# {{{
+    def __init__(self, signal, operations: list[Operation], meta: object):# {{{
         self.__signal = signal
-        self.__operations = [operation,]
+        self.__operations = operations
         self.__status = Position.Status.OPEN
         self.__meta = meta
     # }}}
