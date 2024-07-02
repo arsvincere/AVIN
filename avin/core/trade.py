@@ -7,6 +7,10 @@
 # ============================================================================
 
 from __future__ import annotations
+from avin.utils import Signal
+from avin.core.order import Order
+from avin.core.operation import Operation
+from avin.core.position import Position
 
 class Trade():# {{{
     class Type(enum.Enum):# {{{
@@ -46,8 +50,7 @@ class Trade():# {{{
             "status":           status,
             "strategy":         strategy_info,
             "orders":           list(),
-            "operations":       list(),
-            "position":         None,
+            "positions":        list(),
             }
         self.__blocked = False
     # }}}
@@ -87,17 +90,13 @@ class Trade():# {{{
     def asset(self):
         return self._info["strategy"]["asset"]
     # }}}
-    @property  #order# {{{
-    def order(self):
-        return self._info["order"]
+    @property  #orders# {{{
+    def orders(self):
+        return self._info["orders"]
     # }}}
-    @property  #operation# {{{
-    def operation(self):
-        return self._info["operation"]
-    # }}}
-    @property  #position# {{{
-    def position(self):
-        return self._info["position"]
+    @property  #positions# {{{
+    def positions(self):
+        return self._info["positions"]
     # }}}
     @property  #open_price# {{{
     def open_price(self):

@@ -86,7 +86,6 @@ class Order(metaclass=abc.ABCMeta):# {{{
             direction: Order.Direction,
             asset: Asset,
             lots: int,
-            signal: Signal=None,
             uid: str=None,
             status: Order.Status=None,
             ):
@@ -94,7 +93,6 @@ class Order(metaclass=abc.ABCMeta):# {{{
             self.direction = direction
             self.asset = asset
             self.lots = lots
-            self.signal = signal
             self.type = Order.Type.MARKET
             super().__init__(uid, status)
     # }}}
@@ -105,7 +103,6 @@ class Order(metaclass=abc.ABCMeta):# {{{
             asset: Asset,
             lots: int,
             price: float,
-            signal: Signal=None,
             uid: str=None,
             status: Order.Status=None,
             ):
@@ -114,7 +111,6 @@ class Order(metaclass=abc.ABCMeta):# {{{
             self.asset = asset
             self.lots = lots
             self.price = price
-            self.signal = signal
             self.type = Order.Type.LIMIT
             super().__init__(uid, status)
     # }}}
@@ -126,7 +122,6 @@ class Order(metaclass=abc.ABCMeta):# {{{
             lots: int,
             stop_price: float,
             exec_price: float,
-            signal: Signal=None,
             uid: str=None,
             status: Order.Status=None,
             ):
@@ -136,7 +131,6 @@ class Order(metaclass=abc.ABCMeta):# {{{
             self.lots = lots
             self.stop_price = stop_price
             self.exec_price = exec_price
-            self.signal = signal
             self.type = Order.Type.STOP
             super().__init__(uid, status)
     # }}}

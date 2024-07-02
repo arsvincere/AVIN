@@ -17,8 +17,7 @@ class Position():# {{{
         OPEN =         1
         CLOSE =        2
     # }}}
-    def __init__(self, signal, operations: list[Operation], meta: object):# {{{
-        self.__signal = signal
+    def __init__(self, operations: list[Operation], meta: object):# {{{
         self.__operations = operations
         self.__status = Position.Status.OPEN
         self.__meta = meta
@@ -29,10 +28,6 @@ class Position():# {{{
             f"{self.quantity()}x{self.average()} = {self.amount()}"
             )
         return s
-    # }}}
-    @property  #signal# {{{
-    def signal(self):
-        return self.__signal
     # }}}
     @property  #asset# {{{
     def asset(self):

@@ -183,7 +183,6 @@ def test_Order():# {{{
     assert o.direction == Order.Direction.SELL
     assert o.asset == share
     assert o.lots == 15
-    assert o.signal == None
     assert o.uid == None
     assert o.status == Order.Status.NEW
 # }}}
@@ -245,7 +244,7 @@ def test_Position():# {{{
         meta=       None
         )
 
-    pos = Position(signal=None, operations=[op], meta=None)
+    pos = Position(operations=[op], meta=None)
     assert pos.status == Position.Status.OPEN
     assert pos.operations[0] == op
     assert pos.openPrice() == 100
@@ -302,7 +301,7 @@ def test_Portfolio():# {{{
         commission= 10,
         meta=       None
         )
-    pos = Position(signal=None, operations=[op], meta=None)
+    pos = Position(operations=[op], meta=None)
 
     portfolio = Portfolio([rub,], [pos,])
     shares_pos = portfolio.get(AssetType.Share)
