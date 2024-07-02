@@ -97,6 +97,11 @@ class Usr():# {{{
 
     # MOEX account file name, by default in dir 'ROOT/usr/connect/moex/'
     MOEX_ACCOUNT =  "account.txt"
+
+    # Auto update market data
+    AUTO_UPDATE_MARKET_DATA = True
+
+
 # }}}
 
 class WeekDays(enum.Enum):# {{{

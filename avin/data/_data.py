@@ -585,7 +585,8 @@ class _AbstractSource(metaclass=abc.ABCMeta):# {{{
     @abc.abstractmethod  #getHistoricalBars# {{{
     def getHistoricalBars(
         self, ID: Id, data_type: DataType, begin: datetime, end: datetime
-        ) -> list[_Bar]: ...
+        ) -> list[_Bar]:
+        ...
     # }}}
     @classmethod  #_checkCachingDate# {{{
     def _checkCachingDate(cls):
@@ -1044,7 +1045,7 @@ class _MoexData(_AbstractSource):# {{{
                 )
             for i in candles:
                 all_candles.append(i)
-            current += ONE_DAY
+            current = datetime.combine(current.date() + ONE_DAY, time(00,00))
         return all_candles
     # }}}
     @classmethod  #__getHistoricalCandles# {{{
@@ -1285,7 +1286,6 @@ class _TinkoffData(_AbstractSource):# {{{
                 return list()
             return new_bars
     # }}}
-
     @classmethod  #__authorizate# {{{
     def __authorizate(cls) -> bool:
         if cls._TOKEN is not None:
@@ -1575,6 +1575,11 @@ class _TinkoffData(_AbstractSource):# {{{
 # }}}
 
 class _Manager():# {{{
+    _DATA_DIR =            Usr.DATA
+    _AUTO_UPDATE =         Usr.AUTO_UPDATE_MARKET_DATA
+    _LAST_UPDATE_FILE =    Cmd.path(_DATA_DIR, "last_update")
+    _DATA_IS_UP_TO_DATE =  None
+
     class VoidBar():# {{{
         """ doc# {{{
         Utility class for data conversion
@@ -1584,6 +1589,10 @@ class _Manager():# {{{
             self.dt = dt
         # }}}
 # }}}
+    def __init__(self):
+        if _Manager._AUTO_UPDATE:
+            self.__checkUpdate()
+
     @classmethod # allDataList{{{
     def allDataList(cls) -> list[tuple(Id, DataType, Source)]:
         logger.debug(f"Data.getAllDataDirs()")
@@ -1667,6 +1676,9 @@ class _Manager():# {{{
         cls, ID: Id, data_type: DataType, begin: int, end: int
         ) -> list[file_path]:
 
+        if cls._AUTO_UPDATE and not cls._DATA_IS_UP_TO_DATE:
+            cls.__checkUpdate()
+
         files = cls.__findFiles(ID, data_type)
         files = cls.__selectYear(files, begin, end)
         return files
@@ -1678,6 +1690,26 @@ class _Manager():# {{{
         Cmd.deleteDir(dir_path)
         logger.info(f"  - complete")
         # }}}
+    @classmethod  #_checkUpdate# {{{
+    def __checkUpdate(cls):
+        # Check the file with the date of the last update of the market data
+        if Cmd.isExist(cls._LAST_UPDATE_FILE):
+            string = Cmd.read(cls._LAST_UPDATE_FILE)
+            last_update = datetime.fromisoformat(string)
+            if now().date() == last_update.date():
+                cls._DATA_IS_UP_TO_DATE = True
+                return
+
+        # update all availible market data
+        logger.info(":: Auto update market data")
+        cls.updateAll()
+        cls._DATA_IS_UP_TO_DATE = True
+
+        # save last update datetime
+        dt = now().isoformat()
+        Cmd.write(dt, cls._LAST_UPDATE_FILE)
+        logger.info("Update complete")
+    # }}}
     @classmethod  #__findFiles# {{{
     def __findFiles(cls, ID: Id, data_type: DataType) -> list[str]:
         data_dir = Cmd.path(ID.dir_path, data_type.value)
@@ -1715,7 +1747,9 @@ class _Manager():# {{{
     def __update(cls, data: _BarsDataFile, source: _AbstractSource):
         begin = data.last_dt + data.data_type.toTimedelta()
         end = now().replace(microsecond=0)
-        src = source()
+        src = source()  # FIXME: это пиздец как не очевидно, что тут
+                        # создается объект _MoexData или _TinkoffData
+                        # надо как то переделать
         new_bars = src.getHistoricalBars(data.ID, data.data_type, begin, end)
         count = len(new_bars)
         if count == 0:
