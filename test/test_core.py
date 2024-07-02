@@ -264,7 +264,7 @@ def test_Position():# {{{
     assert pos.averageBuy() == 100
     assert pos.averageSell() == 0
 
-    #TODO добавить сигнал и другие функции связанные с закрытием позиции
+    #TODO добавить другие функции связанные с закрытием позиции
 # }}}
 def test_Cash():# {{{
     rub = Cash(Cash.Type.RUB, 1_000_000)

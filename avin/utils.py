@@ -373,15 +373,15 @@ class Signal():# {{{
     # }}}
     def __checkTypes(self, args: tuple):# {{{
         for i, j in zip(args, self.args):
-            assert type(i) == j
+            assert isinstance(i, j)
     # }}}
     def emit(self, *args):# {{{
         for receiver in self.__slots:
             self.__checkTypes(args)
             receiver(*args)
     # }}}
-    def connect(self, slot_func):# {{{
-        self.__slots.append(slot_func)
+    def connect(self, slot):# {{{
+        self.__slots.append(slot)
     # }}}
 # }}}
 

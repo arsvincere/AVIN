@@ -11,6 +11,8 @@ import abc
 import enum
 from dataclasses import dataclass
 from avin.core.asset import Asset
+from avin.core.operation import Operation
+from avin.utils import Signal
 
 class Order(metaclass=abc.ABCMeta):# {{{
     """ doc# {{{
@@ -61,6 +63,13 @@ class Order(metaclass=abc.ABCMeta):# {{{
                 self.uid = None  # TODO class Uid generate uid
             if status is None:
                 self.status = Order.Status.NEW
+
+            # Signals
+            self.posted = Signal(object)
+            self.changed = Signal(object)
+            self.partial = Signal(object, list[Operation])
+            self.fulfilled = Signal(object, list[Operation])
+            self.canceled = Signal(object)
         # }}}
         @classmethod  # toJson{{{
         def toJson(cls, order) -> dict:
