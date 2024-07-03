@@ -17,6 +17,8 @@ from avin.core.position import Position
 from avin.core.cash import Cash
 from avin.core.portfolio import Portfolio
 from avin.core.filter import Filter
+from avin.core.strategy import Strategy
+from avin.core.trade import Trade, TradeList
 
 __all__ = (
     "Range",
@@ -34,5 +36,8 @@ __all__ = (
     "Portfolio",
     # "Account",
     "Filter",
+    "Strategy",
+    "Trade",
+    "TradeList",
     )
 
