@@ -13,12 +13,15 @@ import csv
 from datetime import datetime
 from avin.data import Data, DataType
 from avin.core.bar import Bar
-from avin.utils import findLeft
+from avin.utils import findLeft, Signal
 from avin.logger import logger
 
 class Chart():# {{{
     """ Const """# {{{
     DEFAULT_BARS_COUNT = 5000
+    # }}}
+    """ Signal """# {{{
+    updated = Signal(Chart)
     # }}}
     def __init__(# {{{
         self,
@@ -100,6 +103,7 @@ class Chart():# {{{
             self._bars.append(bar)
         self.__head = len(self._bars)  # индекс HEAD бара перемещаем
         self.__now = None
+        self.updated.emit(self)
     # }}}
     def getBars(self) -> list[Bar]:# {{{
         return self._bars[0:self.__head]
