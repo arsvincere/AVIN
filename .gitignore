@@ -30,6 +30,7 @@ avin/report
 avin/strategy
 avin/tester
 avin/trader
+avin/company.py.bak
 
 res/cache
 res/icon
@@ -39,3 +40,4 @@ res/voice
 
 install.sh
 run.sh
+
