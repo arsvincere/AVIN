@@ -78,12 +78,12 @@ class Bar(_Bar):# {{{
         self.__flags &= ~flag
     # }}}
     def isBull(self) -> bool:# {{{
-        return self.close > self.open
-        # return self.__flags & Bar.Type.BULL == Bar.Type.BULL
+        # return self.close > self.open
+        return self.__flags & Bar.Type.BULL == Bar.Type.BULL
     # }}}
     def isBear(self) -> bool:# {{{
-        return self.close < self.open
-        # return self.__flags & Bar.Type.BEAR == Bar.Type.BEAR
+        # return self.close < self.open
+        return self.__flags & Bar.Type.BEAR == Bar.Type.BEAR
     # }}}
     def isInside(self) -> bool:# {{{
         return self.__flags & Bar.Type.INSIDE == Bar.Type.INSIDE
