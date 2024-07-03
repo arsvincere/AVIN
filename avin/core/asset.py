@@ -277,8 +277,11 @@ class AssetList():# {{{
     # }}}
     def add(self, asset: Asset) -> None:# {{{
         assert isinstance(asset, Asset)
-        self.__assets.append(asset)
-        asset.setParent(self)
+        if asset not in self:
+            self.__assets.append(asset)
+            asset.setParent(self)
+
+        logger.warning(f"{asset} already in list '{self.name}'")
     # }}}
     def remove(self, asset: Asset) -> None:# {{{
         logger.debug(f"AssetList.remove({asset.ticker})")
