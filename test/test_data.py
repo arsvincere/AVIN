@@ -90,9 +90,9 @@ def test_Data_assets():# {{{
     assert isinstance(assets[0], Id)
 # }}}
 def test_Data_find():# {{{
-    aapl = Data.find(Exchange.SPB, AssetType.Share, "AAPL")
-    assert aapl.name == "Apple"
-    assert aapl.figi == "BBG000B9XRY4"
+    sber = Data.find(Exchange.MOEX, AssetType.Share, "SBER")
+    assert sber.name == "Сбер Банк"
+    assert sber.figi == "BBG004730N88"
 
     imoex = Data.find(Exchange.MOEX, AssetType.Index, "IMOEX")
     assert imoex.name == "Индекс МосБиржи"

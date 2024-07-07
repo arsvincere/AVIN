@@ -157,17 +157,17 @@ def test_AssetList():# {{{
     assert alist.count == 1
     alist.add(afks)
     alist.add(afks)
+    assert alist.count == 1
     alist.add(sber)
-    alist.add(afks)
-    assert alist.count == 5
-    assert alist[3].ticker == "SBER"
+    assert alist.count == 2
+    assert alist[1].ticker == "SBER"
     alist.remove(sber)
-    assert alist.count == 4
+    assert alist.count == 1
     assert not Cmd.isExist(alist.path)
     AssetList.save(alist)
     assert Cmd.isExist(alist.path)
     loaded = AssetList.load(alist.path)
-    assert alist.count == 4
+    assert alist.count == 1
     assert alist[0].ticker == "AFKS"
     AssetList.delete(alist)
     assert not Cmd.isExist(alist.path)
@@ -183,7 +183,7 @@ def test_Order():# {{{
     assert o.direction == Order.Direction.SELL
     assert o.asset == share
     assert o.lots == 15
-    assert o.uid == None
+    assert o.trade_ID == None
     assert o.status == Order.Status.NEW
 # }}}
 def test_Operation():# {{{
@@ -347,6 +347,52 @@ def condition(x):
     assert Cmd.isExist(loaded.path)
     Filter.delete(loaded)
 #}}}
+def test_Trade():# {{{
+    dt = now()
+    strategy = Strategy("Foobar", "v1")
+    trade_type = Trade.Type.LONG
+    asset = Asset.byTicker(Exchange.MOEX, AssetType.Share, "SBER")
+    trade = Trade(dt, strategy, trade_type, asset)
+
+    print(trade)
+    print(trade.ID)
+    print(trade.status.name)
+
+    o = Order.Limit(Order.Direction.BUY, asset, lots=1, price=100)
+    o.fulfilled.connect(trade.orderExecuted)
+    trade.addOrder(o)
+
+    op = Operation(
+        dt=         dt,
+        direction=  Operation.Direction.BUY,
+        asset=      asset,
+        price=      100,
+        lots=       1,
+        quantity=   10,
+        amount=     100*10,
+        commission= 5,
+        meta=       None
+        )
+    #
+    # pos = Position(operations=[op], meta=None)
+    # assert pos.status == Position.Status.OPEN
+    # assert pos.operations[0] == op
+    # assert pos.openPrice() == 100
+    # assert pos.lots() == 1
+    # assert pos.openDatetime() == dt
+    # assert pos.quantity() == 50
+    # assert pos.buyQuantity() == 50
+    # assert pos.sellQuantity() == 0
+    # assert pos.amount() == 5000
+    # assert pos.buyAmount() == 5000
+    # assert pos.sellAmount() == 0
+    # assert pos.commission() == 10
+    # assert pos.buyCommission() == 10
+    # assert pos.sellCommission() == 0
+    # assert pos.average() == 100
+    # assert pos.averageBuy() == 100
+    # assert pos.averageSell() == 0
+# }}}
 
 
 
