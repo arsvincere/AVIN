@@ -8,8 +8,8 @@
 
 from __future__ import annotations
 import abc
-from datetime import datetime, date
-from avin.const import Usr
+from datetime import datetime, date, UTC
+from avin.const import Usr, DAY_BEGIN
 from avin.data import Id, Exchange, AssetType, Data
 from avin.core.chart import Chart
 from avin.core.timeframe import TimeFrame
@@ -153,7 +153,9 @@ class Asset(metaclass=abc.ABCMeta):# {{{
     def __checkArgs(cls, timeframe, begin, end):
         # TODO сделать реальную проверку аргументов, а не только
         # форматирование
-        if isinstance(timeframe, str):
+        if isinstance(timeframe, TimeFrame):
+            pass
+        elif isinstance(timeframe, str):
             timeframe = TimeFrame(timeframe)
         else:
             logger.critical(
@@ -164,7 +166,7 @@ class Asset(metaclass=abc.ABCMeta):# {{{
         if isinstance(begin, str):
             begin = datetime.combine(
                 date.fromisoformat(begin),
-                MOEX.SESSION_BEGIN,
+                Exchange.MOEX.SESSION_BEGIN,
                 tzinfo=UTC
                 )
         if isinstance(end, str):
@@ -280,6 +282,7 @@ class AssetList():# {{{
         if asset not in self:
             self.__assets.append(asset)
             asset.setParent(self)
+            return
 
         logger.warning(f"{asset} already in list '{self.name}'")
     # }}}
