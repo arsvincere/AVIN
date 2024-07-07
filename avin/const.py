@@ -8,7 +8,7 @@
 
 import os
 import enum
-from datetime import time, timedelta, timezone
+from datetime import time, timedelta
 import pytz
 
 __all__ = (# {{{
@@ -93,9 +93,13 @@ class Usr():# {{{
     LOG_HISTORY =   5
 
     # Token file name, by default in dir 'ROOT/usr/connect/tinkoff/'
+    # TODO: здесь пусть будет full_path до файла, и система не делает
+    # никаких предположений где он лежит
     TINKOFF_TOKEN = "token.txt"
 
     # MOEX account file name, by default in dir 'ROOT/usr/connect/moex/'
+    # TODO: здесь пусть будет full_path до файла, и система не делает
+    # никаких предположений где он лежит
     MOEX_ACCOUNT =  "account.txt"
 
     # Auto update market data
@@ -127,7 +131,7 @@ class WeekDays(enum.Enum):# {{{
     # }}}
 # }}}
 
-UTC =               pytz.timezone("UTC")
+UTC =               pytz.timezone("UTC") # LOL эта константа и так есть в модуле datetime
 ONE_SECOND =        timedelta(seconds=1)
 ONE_MINUTE =        timedelta(minutes=1)
 FIVE_MINUTE =       timedelta(minutes=5)
