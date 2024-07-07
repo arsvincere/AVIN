@@ -10,16 +10,19 @@
 
 from __future__ import annotations
 import abc
+from avin.core.asset import AssetList
 from avin.core.trade import Trade
+from avin.const import Usr
+from avin.utils import Cmd, Signal
 
 class Strategy(metaclass=abc.ABCMeta):# {{{
     """ Signal """# {{{
     newTrade = Signal(Trade)
     tradeClosed = Signal(Trade)
     # }}}
-    def __init__(self, file_path):# {{{
-        self.__name = Cmd.dirName(file_path)
-        self.__version = Cmd.name(file_path)
+    def __init__(self, name, version):# {{{
+        self.__name = name
+        self.__version = version
         self.__loadConfig()
         self.__loadShortList()
         self.__loadLongList()
@@ -61,12 +64,12 @@ class Strategy(metaclass=abc.ABCMeta):# {{{
     # }}}
     @property  #path# {{{
     def path(self):
-        path = Cmd.join(self.dir_path, f"{self.version}.py")
+        path = Cmd.path(self.dir_path, f"{self.version}.py")
         return path
     # }}}
     @property  #dir_path# {{{
     def dir_path(self):
-        path = Cmd.join(STRATEGY_DIR, self.name)
+        path = Cmd.path(Usr.STRATEGY, self.name)
         return path
     # }}}
     @property  #general# {{{
@@ -90,7 +93,7 @@ class Strategy(metaclass=abc.ABCMeta):# {{{
     # }}}
     @classmethod  #versions# {{{
     def versions(cls, strategy_name: str):
-        path = Cmd.join(STRATEGY_DIR, strategy_name)
+        path = Cmd.path(STRATEGY_DIR, strategy_name)
         files = Cmd.getFiles(path)
         files = Cmd.select(files, extension=".py")
         ver_list = list()
@@ -100,16 +103,28 @@ class Strategy(metaclass=abc.ABCMeta):# {{{
         return ver_list
     # }}}
     def __loadConfig(self):# {{{
-        path = Cmd.join(self.dir_path, "config.cfg")
-        self.__cfg = Cmd.loadJSON(path)
+        path = Cmd.path(self.dir_path, "config.cfg")
+        if Cmd.isExist(path):
+            self.__cfg = Cmd.loadJson(path)
+            return
+
+        self.__cfg = None
     # }}}
     def __loadLongList(self):# {{{
-        path = Cmd.join(self.dir_path, "long.al")
-        self.__long_list = AssetList.load(path, parent=self)
+        path = Cmd.path(self.dir_path, "long.al")
+        if Cmd.isExist(path):
+            self.__long_list = AssetList.load(path, parent=self)
+            return
+
+        self.__long_list = None
     # }}}
     def __loadShortList(self):# {{{
-        path = Cmd.join(self.dir_path, "short.al")
-        self.__short_list = AssetList.load(path, parent=self)
+        path = Cmd.path(self.dir_path, "short.al")
+        if Cmd.isExist(path):
+            self.__short_list = AssetList.load(path, parent=self)
+            return
+
+        self.__short_list = None
     # }}}
 # }}}
 
