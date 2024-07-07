@@ -105,7 +105,7 @@ class Bar(_Bar):# {{{
         hgh = float(hgh)
         low = float(low)
         cls = float(cls)
-        vol = float(vol)
+        vol = int(vol)
         bar = Bar(dt, opn, hgh, low, cls, vol, chart)
         return bar
     # }}}
