@@ -1,3 +1,16 @@
+#!/usr/bin/env  python3
+# ============================================================================
+# URL:          http://arsvincere.com
+# AUTHOR:       Alex Avin
+# E-MAIL:       mr.alexavin@gmail.com
+# LICENSE:      GNU GPLv3
+# ============================================================================
+
+""" doc
+"""
+
+from __future__ import annotations
+import enum
 
 class Event():# {{{
     class Type(enum.Enum):# {{{
@@ -16,32 +29,24 @@ class Event():# {{{
             self.timeframe = timeframe
             self.bar = bar
             self.type = Event.Type.NEW_BAR
+
+        def __str__(self):
+            s = f"{self.type.name} {self.figi}, {self.timeframe}, {self.bar}"
+            return s
     # }}}
-    # @dataclass  #NewBar{{{
-    # class NewBar():
-    #     figi:       str
-    #     timeframe:  TimeFrame
-    #     bar:        Bar
-    #     type:       EventType.NEW_BAR
-    # }}}
-    @dataclass  #Order# {{{
-    class Order():
+    class Order():# {{{
         ...
     # }}}
-    @dataclass  #Operation# {{{
-    class Operation():
+    class Operation():# {{{
         ...
     # }}}
-    @dataclass  #LastPrice# {{{
-    class LastPrice():
+    class LastPrice():# {{{
         ...
     # }}}
-    @dataclass  #Info# {{{
-    class Info():
+    class Info():# {{{
         ...
     # }}}
-    @dataclass  #Ping# {{{
-    class Ping():
+    class Ping():# {{{
         ...
     # }}}
 # }}}
