@@ -21,7 +21,7 @@ class Chart():# {{{
     DEFAULT_BARS_COUNT = 5000
     # }}}
     """ Signal """# {{{
-    updated = Signal(Chart)
+    updated = Signal(object)
     # }}}
     def __init__(# {{{
         self,
@@ -180,8 +180,6 @@ class Chart():# {{{
     # }}}
 
 # }}}
-
-
 
 if __name__ == "__main__":
     ...
