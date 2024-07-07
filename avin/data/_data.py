@@ -266,11 +266,12 @@ class Data():# {{{
     # }}}
     @classmethod  #__checkExchange# {{{
     def __checkExchange(cls, exchange):
-        if not isinstance(exchange, Exchange):
-            raise TypeError(
-                "You stupid monkey, select the 'exchange' from the enum "
-                "Exchange."
-                )
+        # if not isinstance(exchange, Exchange):
+        #     raise TypeError(
+        #         "You stupid monkey, select the 'exchange' from the enum "
+        #         "Exchange."
+        #         )
+        ...
     # }}}
     @classmethod  #__checkAssetType# {{{
     def __checkAssetType(cls, asset_type):
@@ -697,10 +698,6 @@ class _AbstractSource(metaclass=abc.ABCMeta):# {{{
 # }}}
 class _MoexData(_AbstractSource):# {{{
     """ const """# {{{
-    SESSION_BEGIN =         time(7, 0, tzinfo=UTC)
-    SESSION_END =           time(15, 39, tzinfo=UTC)
-    EVENING_BEGIN =         time(16, 5, tzinfo=UTC)
-    EVENING_END =           time(20, 49, tzinfo=UTC)
     MSK_TIME_DIF =          timedelta(hours=3)
     AVAILIBLE_DATA =        [DataType.BAR_1M,
                              DataType.BAR_10M,
@@ -1334,7 +1331,7 @@ class _TinkoffData(_AbstractSource):# {{{
             logger.info(f"  - caching {t}")
             assets = cls.__requestAvailibleAssets(t)
             f = lambda x: x["exchange"] not in [
-                "otc_ncc", "LSE_MORNING", "moex_close", "Issuance"
+                "otc_ncc", "LSE_MORNING", "moex_close", "Issuance", "unknown"
                 ]
             assets = [i for i in filter(f, assets)]
             asset_type = cls._getStandartAssetTypeName(t)
@@ -1664,11 +1661,12 @@ class _Manager():# {{{
         # }}}
     @classmethod  #updateAll# {{{
     def updateAll(cls):
+        logger.info(f":: Update all market data")
         data_list = cls.allDataList()
         count = len(data_list)
         for n, i in enumerate(data_list, 1):
-            logger.info(f":: Updating {n}/{count}")
             ID, data_type, source = i
+            logger.info(f":: updating {n}/{count}")
             cls.update(ID, data_type)
         # }}}
     @classmethod  #request# {{{
@@ -1753,11 +1751,13 @@ class _Manager():# {{{
         new_bars = src.getHistoricalBars(data.ID, data.data_type, begin, end)
         count = len(new_bars)
         if count == 0:
-            logger.info(f"  - {data.ID.ticker}-{data.data_type.value} no new bars")
+            logger.info(
+                f"  - no new bars"
+                )
             return
+
         logger.info(
-                f"  - {data.ID.ticker}-{data.data_type.value} "
-                f"received {count} bars -> {new_bars[-1].dt}"
+                f"  - received {count} bars -> {new_bars[-1].dt}"
                 )
         cls.__saveNewBars(data, new_bars)
         # }}}
