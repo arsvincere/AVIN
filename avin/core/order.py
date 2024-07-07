@@ -44,7 +44,7 @@ class Order(metaclass=abc.ABCMeta):# {{{
         NEW =         1
         POST =        2
         PARTIAL =     5  # частично исполнен
-        FILL =        6  # исполнен
+        EXECUTED =    6  # исполнен
         OFF =         7  # для убранных на вечерку или выходные стопы
         CANCEL =      8  # отменен
         REJECT =      9  # отклонен брокером
@@ -56,14 +56,9 @@ class Order(metaclass=abc.ABCMeta):# {{{
         SELL =        2
     # }}}
 
-    class __Order(metaclass=abc.ABCMeta):# {{{
+    class _BaseOrder(metaclass=abc.ABCMeta):# {{{
         @abc.abstractmethod  #__init__# {{{
-        def __init__(self, uid, status):
-            if uid is None:
-                self.uid = None  # TODO class Uid generate uid
-            if status is None:
-                self.status = Order.Status.NEW
-
+        def __init__(self):
             # Signals
             self.posted = Signal(object)
             self.changed = Signal(object)
@@ -80,41 +75,54 @@ class Order(metaclass=abc.ABCMeta):# {{{
             assert False
         # }}}
     # }}}
-    class Market(__Order):# {{{
+    class Market(_BaseOrder):# {{{
         def __init__(
             self,
-            direction: Order.Direction,
-            asset: Asset,
-            lots: int,
-            uid: str=None,
-            status: Order.Status=None,
+            direction:  Order.Direction,
+            asset:      Asset,
+            lots:       int,
+            trade_ID:   GId=None,
+            status:     Order.Status=None,
             ):
 
+            super().__init__()
             self.direction = direction
             self.asset = asset
             self.lots = lots
+            self.trade_ID = trade_ID
             self.type = Order.Type.MARKET
-            super().__init__(uid, status)
+            self.status = status if status is not None else Order.Status.NEW
+
+        def __str__(self):
+            string = (
+                f"{self.type.name} "
+                f"{self.direction.name} "
+                f"{self.asset.ticker} "
+                f"{self.lots} x 'market_price'"
+                )
+            return string
     # }}}
-    class Limit(__Order):# {{{
+    class Limit(_BaseOrder):# {{{
         def __init__(
             self,
             direction: Order.Direction,
             asset: Asset,
             lots: int,
             price: float,
-            uid: str=None,
+            trade_ID: GId=None,
             status: Order.Status=None,
             ):
 
+            super().__init__()
             self.direction = direction
             self.asset = asset
             self.lots = lots
             self.price = price
+            self.trade_ID = trade_ID
+            self.status = status if status is not None else Order.Status.NEW
             self.type = Order.Type.LIMIT
-            super().__init__(uid, status)
     # }}}
-    class Stop(__Order):# {{{
+    class Stop(_BaseOrder):# {{{
         def __init__(
             self,
             direction: Order.Direction,
@@ -122,56 +130,62 @@ class Order(metaclass=abc.ABCMeta):# {{{
             lots: int,
             stop_price: float,
             exec_price: float,
-            uid: str=None,
+            trade_ID: GId=None,
             status: Order.Status=None,
             ):
 
+            super().__init__()
             self.direction = direction
             self.asset = asset
             self.lots = lots
             self.stop_price = stop_price
             self.exec_price = exec_price
+            self.trade_ID = trade_ID
+            self.status = status if status is not None else Order.Status.NEW
             self.type = Order.Type.STOP
-            super().__init__(uid, status)
     # }}}
-    class StopLoss(__Order):# {{{
+    class StopLoss(_BaseOrder):# {{{
         def __init__(
             self,
             position: Position,
             stop_price: float,
             exec_price: float,
-            uid: str=None,
+            trade_ID: GId=None,
             status: Order.Status=None,
             ):
 
+            super().__init__()
             self.position = position
             self.stop_price = stop_price
             self.exec_price = exec_price
             self.position = position
+            self.trade_ID = trade_ID
+            self.status = status if status is not None else Order.Status.NEW
             self.type = Order.Type.STOP_LOSS
-            super().__init__(uid, status)
     # }}}
-    class TakeProfit(__Order):# {{{
+    class TakeProfit(_BaseOrder):# {{{
         def __init__(
             self,
             position: Position,
             stop_price: float,
             exec_price: float,
-            uid: str=None,
+            trade_ID: GId=None,
             status: Order.Status=None,
             ):
 
+            super().__init__()
             self.position = position
             self.stop_price = stop_price
             self.exec_price = exec_price
             self.position = position
+            self.trade_ID = trade_ID
+            self.status = status if status is not None else Order.Status.NEW
             self.type = Order.Type.TAKE_PROFIT
-            super().__init__(uid, status)
     # }}}
-    class Wait(__Order):# {{{
+    class Wait(_BaseOrder):# {{{
         ...
     # }}}
-    class Trailing(__Order):# {{{
+    class Trailing(_BaseOrder):# {{{
         ...
     # }}}
 # }}}
