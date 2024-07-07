@@ -6,6 +6,7 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
+from avin.core.gid import GId
 from avin.core.range import Range
 from avin.core.bar import Bar
 from avin.core.timeframe import TimeFrame
@@ -19,8 +20,10 @@ from avin.core.portfolio import Portfolio
 from avin.core.filter import Filter
 from avin.core.strategy import Strategy
 from avin.core.trade import Trade, TradeList
+from avin.core.event import Event
 
 __all__ = (
+    "GId",
     "Range",
     "Bar",
     "TimeFrame",
@@ -39,5 +42,6 @@ __all__ = (
     "Strategy",
     "Trade",
     "TradeList",
+    "Event",
     )
 
