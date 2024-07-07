@@ -163,6 +163,8 @@ class Position():# {{{
         return round(result, 2)
     # }}}
     def holdingDays(self):# {{{
+        # TODO можно возвращать холдинг дейс и для открытой позиции
+        # главное чтобы там хоть одна операция была
         if self.__status != self.Status.CLOSE:
             assert False, "Вызов времени удержания для незакрытой позиции"
         opn_dt = self.operations[0].dt
@@ -209,3 +211,4 @@ class Position():# {{{
             self.__signal.info["operation"].append(op)
     # }}}
 # }}}
+
