@@ -7,16 +7,26 @@
 # ============================================================================
 
 import enum
+from datetime import time, UTC
 
-class Exchange(enum.Enum):# {{{
-    UNDEFINE    = 0
-    MOEX        = 1
-    SPB         = 2
+class Exchange():# {{{
+    # UNDEFINE    = 0
+    # MOEX        = 1
+    # SPB         = 2
+
+    class MOEX():
+        name =              "MOEX"
+        SESSION_BEGIN =     time(7, 0, tzinfo=UTC)
+        SESSION_END =       time(15, 39, tzinfo=UTC)
+        EVENING_BEGIN =     time(16, 5, tzinfo=UTC)
+        EVENING_END =       time(20, 49, tzinfo=UTC)
+
+    class SPB():
+        name =              "SPB"
 
     @classmethod  #fromStr# {{{
     def fromStr(cls, string):
         types = {
-            "UNDEFINE": Exchange.UNDEFINE,
             "MOEX":     Exchange.MOEX,
             "SPB":      Exchange.SPB,
             }
