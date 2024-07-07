@@ -7,11 +7,47 @@
 # ============================================================================
 
 from __future__ import annotations
-from avin.utils import Signal
+import enum
+from avin.core.gid import GId
 from avin.core.order import Order
 from avin.core.operation import Operation
 from avin.core.position import Position
+from avin.const import Usr
+from avin.utils import Signal
 
+class Position():# {{{
+    def __str__(self):# {{{
+        s = (
+            f"Position[{self.status}] {self.asset.ticker} "
+            f"{self.quantity()}x{self.average()} = {self.amount()}"
+            )
+        return s
+    # }}}
+    def __writePositionInfo(self):# {{{
+        if self.status != self.Status.CLOSE:
+            assert False, "Запись результатов для незакрытой позиции"
+        info = dict()
+        info["result"] = self.result()
+        info["percent"] = self.percent()
+        info["holding_days"] = self.holdingDays()
+        info["percent_per_day"] = self.percentPerDay()
+        info["buy_amount"] = self.buyAmount()
+        info["sell_amount"] = self.sellAmount()
+        info["commission"] = self.commission()
+        info["open_datetime"] = self.openDatetime()
+        info["open_price"] = self.openPrice()
+        info["close_datetime"] = self.closeDatetime()
+        info["close_price"] = self.closePrice()
+        self.__signal.info.setdefault("position", info)
+    # }}}
+    def __writeOperationsInfo(self):# {{{
+        assert False
+        # сделать добавление через интерфейс трейда
+        self.__signal.info.setdefault("operation", list())
+        for op in self.operations:
+            self.__signal.info["operation"].append(op)
+    # }}}
+# }}}
 class Trade():# {{{
     class Type(enum.Enum):# {{{
         UNDEFINE =  0
@@ -30,42 +66,60 @@ class Trade():# {{{
     # }}}
     def __init__(# {{{
         self,
-        dt: datetime,
-        strategy: Strategy,
-        trade_type: Trade.Type,
-        asset: Asset,
-        status: Trade.Status=Trade.Status.INITIAL,
-        uid="",
+        dt:         datetime,
+        strategy:   Strategy,
+        trade_type: Type,
+        asset:      Asset,
+        status:     Trade.Status=None,
+        ID:         GId=None,
         ):
 
-        strategy_info = {
+        if status is None:
+            status = Trade.Status.INITIAL
+        if ID is None:
+            ID = GId.newGId(self)
+
+        self.__info = {
+            "ID":               ID,
+            "status":           status,
             "datetime":         dt,
             "strategy":         strategy.name,
             "version":          strategy.version,
             "type":             trade_type,
             "asset":            asset,
-            }
-        self.__info = {
-            "uid":              uid,
-            "status":           status,
-            "strategy":         strategy_info,
             "orders":           list(),
-            "positions":        list(),
+            "operations":       list(),
+
+            "result":           None,
+            "percent":          None,
+            "holding_days":     None,
+            "percentPerDay":    None,
+            "buy_amount":       None,
+            "sell_amount":      None,
+            "commission":       None,
+            "open_datetime":    None,
+            "open_price":       None,
+            "close_datetime":   None,
+            "close_price":      None,
+            "stop_price":       None,
+            "take_price":       None,
+
+
             }
         self.__blocked = False
     # }}}
     def __str__(self):# {{{
-        dt = self.dt
+        dt = self.dt + Usr.TIME_DIF
         dt = dt.strftime("%Y-%m-%d %H:%M")
         string = (
-            f"==> Trade {dt} {self.strategy}-{self.version} "
+            f"=> Trade {dt} {self.strategy}-{self.version} "
             f"{self.asset.ticker} {self.type.name.lower()}"
             )
         return string
     # }}}
-    @property  #uid# {{{
-    def uid(self):
-        return self.__info["uid"]
+    @property  #ID# {{{
+    def ID(self):
+        return self.__info["ID"]
     # }}}
     @property  #status# {{{
     def status(self):
@@ -76,69 +130,45 @@ class Trade():# {{{
     # }}}
     @property  #dt# {{{
     def dt(self):
-        return self._info["strategy"]["signal_datetime"]
+        return self.__info["datetime"]
     # }}}
     @property  #strategy# {{{
     def strategy(self):
-        return self._info["strategy"]
+        return self.__info["strategy"]
+    # }}}
+    @property  #version# {{{
+    def version(self):
+        return self.__info["version"]
     # }}}
     @property  #type# {{{
     def type(self):
-        return self.__info["strategy"]["type"]
+        return self.__info["type"]
     # }}}
     @property  #asset# {{{
     def asset(self):
-        return self._info["strategy"]["asset"]
+        return self.__info["asset"]
     # }}}
     @property  #orders# {{{
     def orders(self):
-        return self._info["orders"]
+        return self.__info["orders"]
     # }}}
-    @property  #positions# {{{
-    def positions(self):
-        return self._info["positions"]
+    @property  #operations# {{{
+    def operations(self):
+        return self.__info["operations"]
     # }}}
-    @property  #open_price# {{{
-    def open_price(self):
-        return self.__info["strategy"]["open_price"]
-    # }}}
-    @property  #stop_price# {{{
-    def stop_price(self):
-        return self.__info["strategy"]["stop_price"]
-    # }}}
-    @property  #take_price# {{{
-    def take_price(self):
-        return self.__info["strategy"]["take_price"]
-    # }}}
-    @property  #open_dt# {{{
-    def open_dt(self):
-        return self._info["position"]["open_datetime"]
-    # }}}
-    @property  #close_dt# {{{
-    def close_dt(self):
-        return self._info["position"]["close_datetime"]
-    # }}}
-    @property  #result# {{{
-    def result(self):
-        result = self._info["position"]["result"]
-        return round(result, 2)
-    # }}}
-    @property  #holding# {{{
-    def holding(self):
-        return self._info["position"]["holding_days"]
-    # }}}
-    @property  #percent_per_day# {{{
-    def percent_per_day(self):
-        return self._info["position"]["percent_per_day"]
+    #@slot  #... # {{{
+    def orderExecuted(self, order, operations):
+        assert order.trade_ID == self.ID
+        for op in operations:
+            self.addOperation(op)
     # }}}
     def addOrder(self, order: Order):# {{{
+        order.trade_ID = self.ID
+        order.fulfilled.connect(self.orderExecuted)
         self.__info["orders"].append(order)
     # }}}
     def addOperation(self, operation: Operation):# {{{
-        self.__info["operations"].append(operation)
-    # }}}
-    def addPosition(self, Position):# {{{
-        self.__info["positions"].append(position)
+        assert False, "TODO"
     # }}}
     def chart(self, timeframe: TimeFrame) -> Chart:# {{{
         assert self.asset.type == Type.SHARE
@@ -165,6 +195,159 @@ class Trade():# {{{
     def setBlocked(self, val: bool):# {{{
         self.__blocked = val
     # }}}
+    def lots(self):# {{{
+        total = 0
+        for op in self.__operations:
+            if op.direction == Operation.Direction.BUY:
+                total += op.lots
+            elif op.direction == Operation.Direction.SELL:
+                total -= op.lots
+        return total
+    # }}}
+    def quantity(self):# {{{
+        total = 0
+        for op in self.__operations:
+            if op.direction == Operation.Direction.BUY:
+                total += op.quantity
+            elif op.direction == Operation.Direction.SELL:
+                total -= op.quantity
+        return total
+    # }}}
+    def buyQuantity(self):# {{{
+        total = 0
+        for op in self.operations:
+            if op.direction == Operation.Direction.BUY:
+                total += op.quantity
+        return total
+    # }}}
+    def sellQuantity(self):# {{{
+        total = 0
+        for op in self.operations:
+            if op.direction == Operation.Direction.SELL:
+                total += op.quantity
+        return total
+    # }}}
+    def amount(self):# {{{
+        if self.__status == self.Status.CLOSE:
+            return 0.0
+        total = 0
+        for op in self.operations:
+            if op.direction == Operation.Direction.BUY:
+                total += op.amount
+            elif op.direction == Operation.Direction.SELL:
+                total -= op.amount
+        return total
+    # }}}
+    def buyAmount(self):# {{{
+        total = 0
+        for op in self.operations:
+            if op.direction == Operation.Direction.BUY:
+                total += op.amount
+        return total
+    # }}}
+    def sellAmount(self):# {{{
+        total = 0
+        for op in self.operations:
+            if op.direction == Operation.Direction.SELL:
+                total += op.amount
+        return total
+    # }}}
+    def commission(self):# {{{
+        return self.buyCommission() + self.sellCommission()
+    # }}}
+    def buyCommission(self):# {{{
+        total = 0
+        for op in self.operations:
+            if op.direction == Operation.Direction.BUY:
+                total += op.commission
+        return total
+    # }}}
+    def sellCommission(self):# {{{
+        total = 0
+        for op in self.operations:
+            if op.direction == Operation.Direction.SELL:
+                total += op.commission
+        return total
+    # }}}
+    def average(self):# {{{
+        return self.amount() / self.quantity()
+    # }}}
+    def averageBuy(self):# {{{
+        if self.buyQuantity() == 0:
+            return 0.0
+        else:
+            return self.buyAmount() / self.buyQuantity()
+    # }}}
+    def averageSell(self):# {{{
+        if self.sellQuantity() == 0:
+            return 0.0
+        else:
+            return self.sellAmount() / self.sellQuantity()
+    # }}}
+    def open_dt(self):# {{{
+        return self._info["open_datetime"]
+    # }}}
+    def open_price(self):# {{{
+        # TODO: возвращать avg позиции
+        return self.__info["open_price"]
+    # }}}
+    def close_dt(self):# {{{
+        return self._info["close_datetime"]
+    # }}}
+    def close_price(self):# {{{
+        # TODO: возвращать avg позиции
+        return self.__info["close_price"]
+    # }}}
+    def stop_price(self):# {{{
+        return self.__info["stop_price"]
+    # }}}
+    def take_price(self):# {{{
+        return self.__info["take_price"]
+    # }}}
+    def result(self):# {{{
+        if self.__status != self.Status.CLOSE:
+            assert False, "Вызов результата для незакрытой позиции"
+        result = (
+            self.sellAmount() -
+            self.buyAmount() - self.buyCommission() - self.sellCommission()
+            )
+        return round(result, 2)
+    # }}}
+    def result(self):# {{{
+        result = self._info["result"]
+        return round(result, 2)
+    # }}}
+    def holding(self):# {{{
+        return self._info["holding_days"]
+    # }}}
+    def holdingDays(self):# {{{
+        # TODO можно возвращать холдинг дейс и для открытой позиции
+        # главное чтобы там хоть одна операция была
+        if self.__status != self.Status.CLOSE:
+            assert False, "Вызов времени удержания для незакрытой позиции"
+        opn_dt = self.operations[0].dt
+        cls_dt = self.operations[-1].dt
+        holding = cls_dt - opn_dt + ONE_DAY
+        return holding.days
+    # }}}
+    def percent(self):# {{{
+        if self.__status != self.Status.CLOSE:
+            assert False, "Вызов результата в процентах для незакрытой позиции"
+        persent = self.result() / self.buyAmount() * 100
+        return round(persent, 2)
+    # }}}
+    def percentPerDay(self):# {{{
+        if self.__status != self.Status.CLOSE:
+            assert False, "Вызов результата в процентах для незакрытой позиции"
+        persent = self.result() / self.buyAmount() * 100
+        holding = self.holdingDays()
+        persent_per_day = persent / holding
+        return round(persent_per_day, 2)
+    # }}}
+    def percent_per_day(self):# {{{
+        assert False
+        return self._info["percent_per_day"]
+    # }}}
     @classmethod  #toJSON# {{{
     def toJSON(cls, trade):
         return trade._info
@@ -172,45 +355,6 @@ class Trade():# {{{
     @classmethod  #fromJSON# {{{
     def fromJSON(cls, obj):
         assert False
-    # }}}
-    @classmethod  # save{{{
-    def save(cls, signal: Signal):
-        assert False, "не написана функция, или в bin?"
-    # }}}
-    @classmethod  # load{{{
-    def load(cls, path: str):
-        assert False, "не написана функция, или в bin?"
-    # }}}
-    def __encode_for_JSON(self, obj):# {{{
-        for k, v in obj.items():
-            if isinstance(v, (enum.Enum, datetime, TimeFrame)):
-                obj[k] = str(obj[k])
-            elif isinstance(v, Asset):
-                obj[k] = Asset.toJSON(obj[k])
-            elif isinstance(v, Strategy):
-                obj[k] = obj[k].name + "-" + obj[k].version
-            elif k == "timeframe_list":
-                tmp = list()
-                for t in obj["timeframe_list"]:
-                    string = str(t)
-                    tmp.append(string)
-                obj["timeframe_list"] = tmp
-                # after transformation it looks like ["1M", "D"]
-        return obj
-    # }}}
-    def __formatInfo(self):# {{{
-        i = self.__info
-        i["status"] =   str(i["status"])
-        i["strategy"] = self.__encode_for_JSON(i["strategy"])
-        i["analytic"] = self.__encode_for_JSON(i["analytic"])
-        i["market"] =   self.__encode_for_JSON(i["market"])
-        i["risk"] =     self.__encode_for_JSON(i["risk"])
-        i["ruler"] =    self.__encode_for_JSON(i["ruler"])
-        i["adviser"] =  self.__encode_for_JSON(i["adviser"])
-        i["position"] = self.__encode_for_JSON(i["position"])
-        for n, op in enumerate(i["operation"]):
-            i["operation"][n] = Operation.toJSON(op)
-        return i
     # }}}
 # }}}
 class TradeList():# {{{
@@ -474,3 +618,5 @@ class TradeList():# {{{
         assert False
     # }}}
 # }}}
+
+
