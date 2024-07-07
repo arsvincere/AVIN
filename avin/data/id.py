@@ -49,10 +49,6 @@ class Id():# {{{
     def type(self):
         return self.__info["type"]
     # }}}
-    @property  #name# {{{
-    def name(self):
-        return self.__info["name"]
-    # }}}
     @property  #ticker# {{{
     def ticker(self):
         return self.__info["ticker"]
@@ -60,6 +56,10 @@ class Id():# {{{
     @property  #figi# {{{
     def figi(self):
         return self.__info["figi"]
+    # }}}
+    @property  #name# {{{
+    def name(self):
+        return self.__info["name"]
     # }}}
     @property  #dir_path# {{{
     def dir_path(self):
@@ -84,9 +84,9 @@ class Id():# {{{
         obj = {
             "exchange": ID.exchange.name,
             "type": ID.type.name,
-            "name": ID.name,
             "ticker": ID.ticker,
-            "figi": ID.figi
+            "name": ID.name,
+            "figi": ID.figi,
         }
         return obj
     # }}}
