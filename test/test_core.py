@@ -353,14 +353,10 @@ def test_Trade():# {{{
     trade_type = Trade.Type.LONG
     asset = Asset.byTicker(Exchange.MOEX, AssetType.Share, "SBER")
     trade = Trade(dt, strategy, trade_type, asset)
+    assert trade.status == Trade.Status.INITIAL
 
-    print(trade)
-    print(trade.ID)
-    print(trade.status.name)
-
-    o = Order.Limit(Order.Direction.BUY, asset, lots=1, price=100)
-    o.fulfilled.connect(trade.orderExecuted)
-    trade.addOrder(o)
+    order = Order.Limit(Order.Direction.BUY, asset, lots=1, price=100)
+    trade.addOrder(order)  # signals of order connect automaticaly
 
     op = Operation(
         dt=         dt,
@@ -373,27 +369,100 @@ def test_Trade():# {{{
         commission= 5,
         meta=       None
         )
-    #
-    # pos = Position(operations=[op], meta=None)
-    # assert pos.status == Position.Status.OPEN
-    # assert pos.operations[0] == op
-    # assert pos.openPrice() == 100
-    # assert pos.lots() == 1
-    # assert pos.openDatetime() == dt
-    # assert pos.quantity() == 50
-    # assert pos.buyQuantity() == 50
-    # assert pos.sellQuantity() == 0
-    # assert pos.amount() == 5000
-    # assert pos.buyAmount() == 5000
-    # assert pos.sellAmount() == 0
-    # assert pos.commission() == 10
-    # assert pos.buyCommission() == 10
-    # assert pos.sellCommission() == 0
-    # assert pos.average() == 100
-    # assert pos.averageBuy() == 100
-    # assert pos.averageSell() == 0
+
+    order.posted.emit(order)
+    assert trade.status == Trade.Status.POST
+
+    order.fulfilled.emit(order, [op, ])
+    assert trade.status == Trade.Status.OPEN
+    assert trade.isLong()
+    assert not trade.isShort()
+    assert trade.lots() == 1
+    assert trade.quantity() == 10
+    assert trade.buyQuantity() == 10
+    assert trade.sellQuantity() == 0
+    assert trade.amount() == 1000
+    assert trade.buyAmount() == 1000
+    assert trade.sellAmount() == 0
+    assert trade.commission() == 5
+    assert trade.buyCommission() == 5
+    assert trade.sellCommission() == 0
+    assert trade.average() == 100
+    assert trade.buyAverage() == 100
+    assert trade.sellAverage() == 0
+    assert trade.openPrice() == 100
+    assert trade.openDatetime() == dt
+
+    dt2 = dt + ONE_DAY
+    op2 = Operation(
+        dt=         dt2,
+        direction=  Operation.Direction.BUY,
+        asset=      asset,
+        price=      100,
+        lots=       1,
+        quantity=   10,
+        amount=     100*10,
+        commission= 5,
+        meta=       None
+        )
+    trade.addOperation(op2)
+    assert trade.status == Trade.Status.OPEN
+    assert trade.isLong()
+    assert not trade.isShort()
+    assert trade.lots() == 2
+    assert trade.quantity() == 20
+    assert trade.buyQuantity() == 20
+    assert trade.sellQuantity() == 0
+    assert trade.amount() == 2000
+    assert trade.buyAmount() == 2000
+    assert trade.sellAmount() == 0
+    assert trade.commission() == 10
+    assert trade.buyCommission() == 10
+    assert trade.sellCommission() == 0
+    assert trade.average() == 100
+    assert trade.buyAverage() == 100
+    assert trade.sellAverage() == 0
+    assert trade.openPrice() == 100
+    assert trade.openDatetime() == dt
+
+    dt3 = dt2 + ONE_DAY
+    op3 = Operation(
+        dt=         dt3,
+        direction=  Operation.Direction.SELL,
+        asset=      asset,
+        price=      110,
+        lots=       2,
+        quantity=   20,
+        amount=     110*20,
+        commission= 10,
+        meta=       None
+        )
+    trade.addOperation(op3)
+    assert trade.status == Trade.Status.CLOSE
+    assert trade.isLong()
+    assert not trade.isShort()
+    assert trade.lots() == 0
+    assert trade.quantity() == 0
+    assert trade.buyQuantity() == 20
+    assert trade.sellQuantity() == 20
+    assert trade.amount() == 0
+    assert trade.buyAmount() == 2000
+    assert trade.sellAmount() == 2200
+    assert trade.commission() == 20
+    assert trade.buyCommission() == 10
+    assert trade.sellCommission() == 10
+    assert trade.average() == 0
+    assert trade.buyAverage() == 100
+    assert trade.sellAverage() == 110
+    assert trade.openDatetime() == dt
+    assert trade.openPrice() == 100
+    assert trade.closeDatetime() == dt3
+    assert trade.closePrice() == 110
+
+    # members availible for closed trade
+    assert trade.result() == 200 - 20  # sell - commission
+    assert trade.holdingDays() == 3
+    assert trade.percent() == 9.0
+    assert trade.percentPerDay() == 3.0
 # }}}
-
-
-
 
