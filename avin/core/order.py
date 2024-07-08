@@ -67,11 +67,11 @@ class Order(metaclass=abc.ABCMeta):# {{{
             self.status = status if status is not None else Order.Status.NEW
 
             # Signals
-            self.posted = Signal(object)
-            self.changed = Signal(object)
-            self.partial = Signal(object, list[Operation])
-            self.fulfilled = Signal(object, list[Operation])
-            self.canceled = Signal(object)
+            self.posted = Signal(Order._BaseOrder)
+            self.changed = Signal(Order._BaseOrder)
+            self.partial = Signal(Order._BaseOrder, list)
+            self.fulfilled = Signal(Order._BaseOrder, list)
+            self.canceled = Signal(Order._BaseOrder)
         # }}}
         @classmethod  # toJson{{{
         def toJson(cls, order) -> dict:
