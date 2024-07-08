@@ -11,7 +11,7 @@ import logging
 from datetime import date
 from avin.const import Dir, Usr
 
-__all__ = ("logger")
+__all__ = ("logger", )
 
 _CONFIGURED = False
 _NAME = "avin-logger"
