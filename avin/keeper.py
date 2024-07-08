@@ -80,7 +80,8 @@ class Keeper():
 
         res = await self.transaction(request)
         return res
-# }}}
+
+    # }}}
     async def loadBars(self, asset, timeframe, begin, end):# {{{
         request = f"""
         SELECT dt, open, high, low, close, volume
@@ -92,6 +93,7 @@ class Keeper():
 
         res = await self.transaction(request)
         return res
+
 # }}}
     def __formatBarData(self, bar: Bar):# {{{
         dt = f"'{bar.dt.isoformat()}'"
