@@ -11,6 +11,7 @@ import enum
 from datetime import datetime
 from avin.const import Usr
 from avin.core.asset import Asset
+from avin.core.gid import GId
 
 class Operation():# {{{
     class Direction(enum.Enum):# {{{
@@ -39,6 +40,7 @@ class Operation():# {{{
         quantity:   int,
         amount:     float,
         commission: float,
+        trade_ID:   GId=None,
         meta:       object=None,
         ):
 
@@ -50,6 +52,7 @@ class Operation():# {{{
         self.quantity = quantity
         self.amount = amount
         self.commission = commission
+        self.trade_ID = trade_ID
         self.meta = meta
     # }}}
     def __str__(self):# {{{
