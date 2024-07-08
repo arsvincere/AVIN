@@ -8,8 +8,7 @@
 
 import os
 import enum
-from datetime import time, timedelta
-import pytz
+from datetime import time, timedelta, UTC
 
 __all__ = (# {{{
     "Dir", "Res", "Usr", "WeekDays",
@@ -131,7 +130,6 @@ class WeekDays(enum.Enum):# {{{
     # }}}
 # }}}
 
-UTC =               pytz.timezone("UTC") # LOL эта константа и так есть в модуле datetime
 ONE_SECOND =        timedelta(seconds=1)
 ONE_MINUTE =        timedelta(minutes=1)
 FIVE_MINUTE =       timedelta(minutes=5)
