@@ -9,14 +9,15 @@
 import enum
 
 class AssetType(enum.Enum):# {{{
-    CASH        = 0
-    INDEX       = 1
-    SHARE       = 2
-    BOND        = 3
-    FUTURE      = 4
-    OPTION      = 5
-    CURRENCY    = 6
-    ETF         = 7
+    UNDEFINE    = 0
+    CASH        = 1
+    INDEX       = 2
+    SHARE       = 3
+    BOND        = 4
+    FUTURE      = 5
+    OPTION      = 6
+    CURRENCY    = 7
+    ETF         = 8
 
 
     @classmethod  #fromStr# {{{

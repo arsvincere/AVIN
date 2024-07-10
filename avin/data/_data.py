@@ -1002,8 +1002,7 @@ class _MoexData(_AbstractSource):# {{{
 
         while current < end:
             logger.info(
-                f"  - request {ID.ticker}-{data_type.value} "
-                f"from {current.date()}"
+                f"  - request {ID.ticker}-{data_type.value} {current.date()}"
                 )
             candles = asset.candles(
                 start= current,
