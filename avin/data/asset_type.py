@@ -23,7 +23,7 @@ class AssetType(enum.Enum):# {{{
     @classmethod  #fromStr# {{{
     def fromStr(cls, string):
         types = {
-            "UNDEFINE": AssetType.UNDEFINE,
+            "Cash":     AssetType.Cash,
             "Index":    AssetType.Index,
             "Share":    AssetType.Share,
             "Bond":     AssetType.Bond,

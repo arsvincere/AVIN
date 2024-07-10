@@ -359,14 +359,13 @@ class Data():# {{{
 
 @dataclass  #_Bar# {{{
 class _Bar():
-    """ init """# {{{
     dt:     datetime | str
     open:   float
     high:   float
     low:    float
     close:  float
     vol:    int
-    # }}}
+
     def __post_init__(self):# {{{
         if isinstance(self.dt, str):
             self.dt = datetime.fromisoformat(self.dt)
