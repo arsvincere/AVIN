@@ -10,7 +10,7 @@ import enum
 
 class AssetType(enum.Enum):# {{{
     # TODO rename in upper case
-    UNDEFINE    = 0
+    Cash        = 0
     Index       = 1
     Share       = 2
     Bond        = 3
@@ -18,6 +18,7 @@ class AssetType(enum.Enum):# {{{
     Option      = 5
     Currency    = 6
     Etf         = 7
+
 
     @classmethod  #fromStr# {{{
     def fromStr(cls, string):
