@@ -54,7 +54,7 @@ class Data():# {{{
         if not check:
             return None
 
-        if exchange == Exchange.MOEX and asset_type == AssetType.Index:
+        if exchange == Exchange.MOEX and asset_type == AssetType.INDEX:
             md = _MoexData()
             return md.find(exchange, asset_type, querry)
         else:
@@ -69,7 +69,7 @@ class Data():# {{{
         if not check:
             return None
 
-        if ID.exchange == Exchange.MOEX and ID.type == AssetType.Index:
+        if ID.exchange == Exchange.MOEX and ID.type == AssetType.INDEX:
             md = _MoexData()
             return md.info(ID)
         else:
@@ -600,13 +600,13 @@ class _AbstractSource(metaclass=abc.ABCMeta):# {{{
     @classmethod  #_getStandartAssetTypeName# {{{
     def _getStandartAssetTypeName(cls, name):
         names = {
-            "index": "Index",
-            "shares": "Share",
-            "bonds": "Bond",
-            "futures": "Future",
-            "currency": "Currency",
-            "currencies": "Currency",
-            "etfs": "Etf",
+            "index": "INDEX",
+            "shares": "SHARE",
+            "bonds": "BOND",
+            "futures": "FUTURE",
+            "currency": "CURRENCY",
+            "currencies": "CURRENCY",
+            "etfs": "ETF",
             }
         standart_name = names[name]
         return standart_name
@@ -627,17 +627,17 @@ class _AbstractSource(metaclass=abc.ABCMeta):# {{{
         if not cls._CACHE_IS_UP_TO_DATE:
             logger.error(f"{cls.__name__} assets cache unavailible")
             return None
-        elif asset_type == AssetType.Index:
+        elif asset_type == AssetType.INDEX:
             cache = cls._INDEX_CACHE
-        elif asset_type == AssetType.Share:
+        elif asset_type == AssetType.SHARE:
             cache = cls._SHARE_CACHE
-        elif asset_type == AssetType.Bond:
+        elif asset_type == AssetType.BOND:
             cache = cls._BONDS_CACHE
-        elif asset_type == AssetType.Future:
+        elif asset_type == AssetType.FUTURE:
             cache = cls._FUTURE_CACHE
-        elif asset_type == AssetType.Currency:
+        elif asset_type == AssetType.CURRENCY:
             cache = cls._CURRENCY_CACHE
-        elif asset_type == AssetType.Etf:
+        elif asset_type == AssetType.ETF:
             cache = cls._ETF_CACHE
 
         if cache is None:
@@ -730,9 +730,9 @@ class _MoexData(_AbstractSource):# {{{
         if not cache:
             return list()
 
-        if asset_type == AssetType.Index:
+        if asset_type == AssetType.INDEX:
             return self.__getAllIndex(cache)
-        elif asset_type == AssetType.Share:
+        elif asset_type == AssetType.SHARE:
             return self.__getAllShares(cache)
         elif asset_type in []:
             logger.error(
@@ -899,7 +899,7 @@ class _MoexData(_AbstractSource):# {{{
         for asset in cache:
             ID = Id(
                 exchange=   Exchange.MOEX,
-                asset_type= AssetType.Index,
+                asset_type= AssetType.INDEX,
                 name=       asset["NAME"],
                 ticker=     asset["SECID"],
                 figi=       None,  # Indexes not have figi
@@ -916,7 +916,7 @@ class _MoexData(_AbstractSource):# {{{
             # but assets only from MOEX TQBR, and only availible
             # for trading at Tinkoff broker
             td = _TinkoffData()
-            ID = td.find(Exchange.MOEX, AssetType.Share, asset["SECID"])
+            ID = td.find(Exchange.MOEX, AssetType.SHARE, asset["SECID"])
             if ID is not None:
                 all_id.append(ID)
         return all_id

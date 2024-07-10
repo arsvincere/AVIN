@@ -20,12 +20,12 @@ class Portfolio():# {{{
 
         self.__cash = cash
         self.__positions = {
-                AssetType.Share: list(),
-                AssetType.Bond: list(),
-                AssetType.Future: list(),
-                AssetType.Currency: list(),
-                AssetType.Option: list(),
-                AssetType.Etf: list(),
+                AssetType.SHARE: list(),
+                AssetType.BOND: list(),
+                AssetType.FUTURE: list(),
+                AssetType.CURRENCY: list(),
+                AssetType.OPTION: list(),
+                AssetType.ETF: list(),
             }
         for pos in positions:
             asset_type = pos.asset.type
