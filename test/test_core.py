@@ -179,27 +179,32 @@ def test_AssetList():# {{{
 def test_Order():# {{{
     ID = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
     share = Share(ID)
-    o = Order.Market(Order.Direction.SELL, share, lots=15)
+    o = Order.Market(Order.Direction.SELL, share, lots=15, quantity=150)
     assert o.direction == Order.Direction.SELL
     assert o.asset == share
     assert o.lots == 15
+    assert o.quantity == 150
+    assert o.ID is not None
     assert o.trade_ID == None
     assert o.status == Order.Status.NEW
+    assert o.account is None  # задается при размещении ордера
 # }}}
 def test_Operation():# {{{
     ID = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
     share = Share(ID)
     dt = now()
     op = Operation(
-        dt=         dt,
-        direction=  Operation.Direction.SELL,
-        asset=      share,
-        price=      100,
-        lots=       1,
-        quantity=   50,
-        amount=     100*50,
-        commission= 10,
-        meta=       None
+        account_name=   None,
+        dt=             dt,
+        direction=      Operation.Direction.SELL,
+        asset=          share,
+        lots=           1,
+        quantity=       50,
+        price=          100,
+        amount=         100*50,
+        commission=     10,
+        trade_ID=       None,
+        meta=           None,
         )
 
     assert op.dt == dt

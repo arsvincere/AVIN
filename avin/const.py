@@ -105,8 +105,10 @@ class Usr():# {{{
     AUTO_UPDATE_MARKET_DATA = True
 
     # Postresql
+    # PG_USER =       "alex"
+    # PG_PASSWORD =   ""
     PG_USER =       "alex"
-    PG_PASSWORD =   ""
+    PG_PASSWORD =   "6546"
     PG_DATABASE =   "appdb"
     PG_HOST=        "127.0.0.1"
 
