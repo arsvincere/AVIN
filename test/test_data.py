@@ -52,21 +52,21 @@ def test_Exchange():# {{{
     assert moex != spb
 # }}}
 def test_AssetType():# {{{
-    share = AssetType.Share
-    index = AssetType.Index
-    assert share.name == "Share"
-    assert index.name == "Index"
+    share = AssetType.SHARE
+    index = AssetType.INDEX
+    assert share.name == "SHARE"
+    assert index.name == "INDEX"
     assert share != index
     assert share == share
 # }}}
 def test_Id():# {{{
-    sber = Data.find(Exchange.MOEX, AssetType.Share, "SBER")
+    sber = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
     assert sber.exchange == Exchange.MOEX
-    assert sber.type == AssetType.Share
+    assert sber.type == AssetType.SHARE
     assert sber.name == "Сбер Банк"
     assert sber.ticker == "SBER"
     assert sber.figi == "BBG004730N88"
-    assert str(sber) == "MOEX-Share-SBER"
+    assert str(sber) == "MOEX-SHARE-SBER"
 
     file_path = Cmd.path(Dir.TMP, "id")
     Id.save(sber, file_path)
@@ -78,28 +78,28 @@ def test_Id():# {{{
 # }}}
 def test_Data_assets():# {{{
     source = Source.MOEX
-    asset_type = AssetType.Index
+    asset_type = AssetType.INDEX
     assets = Data.assets(source, asset_type)
     assert len(assets) > 0
     assert isinstance(assets[0], Id)
 
     source = Source.TINKOFF
-    asset_type = AssetType.Share
+    asset_type = AssetType.SHARE
     assets = Data.assets(source, asset_type)
     assert len(assets) > 0
     assert isinstance(assets[0], Id)
 # }}}
 def test_Data_find():# {{{
-    sber = Data.find(Exchange.MOEX, AssetType.Share, "SBER")
+    sber = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
     assert sber.name == "Сбер Банк"
     assert sber.figi == "BBG004730N88"
 
-    imoex = Data.find(Exchange.MOEX, AssetType.Index, "IMOEX")
+    imoex = Data.find(Exchange.MOEX, AssetType.INDEX, "IMOEX")
     assert imoex.name == "Индекс МосБиржи"
     assert imoex.figi == None
 # }}}
 def test_Data_info():# {{{
-    gazp_id = Data.find(Exchange.MOEX, AssetType.Share, "GAZP")
+    gazp_id = Data.find(Exchange.MOEX, AssetType.SHARE, "GAZP")
     full_info = Data.info(gazp_id)
     assert full_info["uid"] == "962e2a95-02a9-4171-abd7-aa198dbe643a"
     assert full_info["short_enabled_flag"] == True
@@ -107,14 +107,14 @@ def test_Data_info():# {{{
     assert full_info["first_1min_candle_date"] == dt
     # and more other keys...
 
-    imoex = Data.find(Exchange.MOEX, AssetType.Index, "IMOEX")
+    imoex = Data.find(Exchange.MOEX, AssetType.INDEX, "IMOEX")
     full_info = Data.info(imoex)
     assert full_info["CURRENCYID"] == "RUB"
     assert full_info["BOARDID"] == "SNDX"
     # ...
 # }}}
 def test_Data_firstDateTime():# {{{
-    sber = Data.find(Exchange.MOEX, AssetType.Share, "SBER")
+    sber = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
     # dt_d_moex = Data.firstDateTime(Source.MOEX, DataType.BAR_D, sber)
     # dt_1m_moex = Data.firstDateTime(Source.MOEX, DataType.BAR_1M, sber)
     # assert dt_1m_moex > dt_d_moex
@@ -126,7 +126,7 @@ def test_Data_firstDateTime():# {{{
 def test_Data_download_add_clear_convert_delete():# {{{
     # make backup user data abio
     backup_abio = False
-    user_abio = Cmd.path(Usr.DATA, "MOEX", "Share", "ABIO")
+    user_abio = Cmd.path(Usr.DATA, "MOEX", "SHARE", "ABIO")
     if Cmd.isExist(user_abio):
         backup_abio_path = Cmd.path(Dir.TMP, "ABIO")
         Cmd.copyDir(user_abio, backup_abio_path)
@@ -135,7 +135,7 @@ def test_Data_download_add_clear_convert_delete():# {{{
 
     # make backup user data abrd
     backup_abrd = False
-    user_abrd = Cmd.path(Usr.DATA, "MOEX", "Share", "ABRD")
+    user_abrd = Cmd.path(Usr.DATA, "MOEX", "SHARE", "ABRD")
     if Cmd.isExist(user_abrd):
         backup_abrd_path = Cmd.path(Dir.TMP, "ABRD")
         Cmd.copyDir(user_abrd, backup_abrd_path)
@@ -145,27 +145,27 @@ def test_Data_download_add_clear_convert_delete():# {{{
     # Download one asset, one year, from MOEX
     source = Source.MOEX
     data_type = DataType.BAR_D
-    abio_id = Data.find(Exchange.MOEX, AssetType.Share, "ABIO")
+    abio_id = Data.find(Exchange.MOEX, AssetType.SHARE, "ABIO")
     Data.download(source, data_type, abio_id, 2024)
-    path = Cmd.path(Usr.DOWNLOAD, "moex", "Share", "ABIO")
+    path = Cmd.path(Usr.DOWNLOAD, "moex", "SHARE", "ABIO")
     assert Cmd.isExist(path)
 
     # Download one asset, one year, from Tinkoff
     source = Source.TINKOFF
     data_type = DataType.BAR_1M
-    abrd_id = Data.find(Exchange.MOEX, AssetType.Share, "ABRD")
+    abrd_id = Data.find(Exchange.MOEX, AssetType.SHARE, "ABRD")
     Data.download(source, data_type, abrd_id, 2024)
-    path = Cmd.path(Usr.DOWNLOAD, "tinkoff", "Share", "ABRD")
+    path = Cmd.path(Usr.DOWNLOAD, "tinkoff", "SHARE", "ABRD")
     assert Cmd.isExist(path)
 
     # test importing moex data, then clear
     Data.add(Source.MOEX)
-    path = Cmd.path(Usr.DATA, "MOEX", "Share", "ABIO")
+    path = Cmd.path(Usr.DATA, "MOEX", "SHARE", "ABIO")
     assert Cmd.isExist(path)
     Data.clear(Source.MOEX)
 
     # test importing tinkoff data, then clear
-    path = Cmd.path(Usr.DATA, "MOEX", "Share", "ABRD")
+    path = Cmd.path(Usr.DATA, "MOEX", "SHARE", "ABRD")
     Data.add(Source.TINKOFF)
     assert Cmd.isExist(path)
     Data.clear(Source.TINKOFF)

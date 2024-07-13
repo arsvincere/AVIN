@@ -104,6 +104,12 @@ class Usr():# {{{
     # Auto update market data
     AUTO_UPDATE_MARKET_DATA = True
 
+    # Postresql
+    PG_USER =       "alex"
+    PG_PASSWORD =   ""
+    PG_DATABASE =   "appdb"
+    PG_HOST=        "127.0.0.1"
+
 
 # }}}
 

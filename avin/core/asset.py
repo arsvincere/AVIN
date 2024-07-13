@@ -185,15 +185,15 @@ class Asset(metaclass=abc.ABCMeta):# {{{
     # }}}
     @classmethod  #__getCertainTypeAsset# {{{
     def __getCertainTypeAsset(cls, ID: Id):
-        if ID.type == AssetType.Index:
+        if ID.type == AssetType.INDEX:
             return Index(ID)
-        elif ID.type == AssetType.Share:
+        elif ID.type == AssetType.SHARE:
             return Share(ID)
     # }}}
 # }}}
 class Index(Asset):# {{{
     def __init__(self, ID: Id, parent=None):# {{{
-        assert ID.type == AssetType.Index
+        assert ID.type == AssetType.INDEX
         super().__init__(ID, parent)
         self.__parent = parent
     # }}}
@@ -204,7 +204,7 @@ class Share(Asset):# {{{
     """
     # }}}
     def __init__(self, ID: Id, parent=None):# {{{
-        assert ID.type == AssetType.Share
+        assert ID.type == AssetType.SHARE
         super().__init__(ID, parent)
         self.__book = None
         self.__tic = None

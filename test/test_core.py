@@ -73,7 +73,7 @@ def test_TimeFrame():# {{{
     assert str(H) == "1H"
     # }}}
 def test_Chart():# {{{
-    afks_id = Data.find(Exchange.MOEX, AssetType.Share, "AFKS")
+    afks_id = Data.find(Exchange.MOEX, AssetType.SHARE, "AFKS")
     share = Share(afks_id)
     tf = TimeFrame("1M")
     begin = datetime(2023, 8, 1, 0, 0, tzinfo=UTC)
@@ -104,7 +104,7 @@ def test_Chart():# {{{
 # }}}
 def test_Share():# {{{
     exchange = Exchange.MOEX
-    asset_type = AssetType.Share
+    asset_type = AssetType.SHARE
     ID = Data.find(exchange, asset_type, "AFKS")
     afks = Share(ID)
     assert afks.exchange == exchange
@@ -151,8 +151,8 @@ def test_AssetList():# {{{
     assert alist.name == "example"
     assert alist.assets == []
     assert alist.count == 0
-    afks = Share(Data.find(Exchange.MOEX, AssetType.Share, "AFKS"))
-    sber = Share(Data.find(Exchange.MOEX, AssetType.Share, "SBER"))
+    afks = Share(Data.find(Exchange.MOEX, AssetType.SHARE, "AFKS"))
+    sber = Share(Data.find(Exchange.MOEX, AssetType.SHARE, "SBER"))
     alist.add(afks)
     assert alist.count == 1
     alist.add(afks)
@@ -177,7 +177,7 @@ def test_AssetList():# {{{
     assert alist.count == 0
 # }}}
 def test_Order():# {{{
-    ID = Data.find(Exchange.MOEX, AssetType.Share, "SBER")
+    ID = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
     share = Share(ID)
     o = Order.Market(Order.Direction.SELL, share, lots=15)
     assert o.direction == Order.Direction.SELL
@@ -187,7 +187,7 @@ def test_Order():# {{{
     assert o.status == Order.Status.NEW
 # }}}
 def test_Operation():# {{{
-    ID = Data.find(Exchange.MOEX, AssetType.Share, "SBER")
+    ID = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
     share = Share(ID)
     dt = now()
     op = Operation(
@@ -229,7 +229,7 @@ def test_Operation():# {{{
 
 # }}}
 def test_Position():# {{{
-    ID = Data.find(Exchange.MOEX, AssetType.Share, "SBER")
+    ID = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
     share = Share(ID)
     dt = now()
     op = Operation(
@@ -287,7 +287,7 @@ def test_Portfolio():# {{{
     assert cash_in_p.value == 900_000
 
     # add/get position
-    ID = Data.find(Exchange.MOEX, AssetType.Share, "SBER")
+    ID = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
     share = Share(ID)
     dt = now()
     op = Operation(
@@ -304,7 +304,7 @@ def test_Portfolio():# {{{
     pos = Position(operations=[op], meta=None)
 
     portfolio = Portfolio([rub,], [pos,])
-    shares_pos = portfolio.get(AssetType.Share)
+    shares_pos = portfolio.get(AssetType.SHARE)
     assert shares_pos[0] == pos
 
     # TODO: после рефакторинга сигнала это проедалать
@@ -323,7 +323,7 @@ def test_Portfolio():# {{{
     # pos.add(op)
     # assert pos.status == Position.Status.CLOSE
     # portfolio.remove(pos)
-    # shares_pos = portfolio.get(AssetType.Share)
+    # shares_pos = portfolio.get(AssetType.SHARE)
     # assert len(shares_pos) == 0
     #
 # }}}
@@ -351,7 +351,7 @@ def test_Trade():# {{{
     dt = now()
     strategy = Strategy("Foobar", "v1")
     trade_type = Trade.Type.LONG
-    asset = Asset.byTicker(Exchange.MOEX, AssetType.Share, "SBER")
+    asset = Asset.byTicker(Exchange.MOEX, AssetType.SHARE, "SBER")
     trade = Trade(dt, strategy, trade_type, asset)
     assert trade.status == Trade.Status.INITIAL
 

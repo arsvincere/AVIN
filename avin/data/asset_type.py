@@ -9,26 +9,27 @@
 import enum
 
 class AssetType(enum.Enum):# {{{
-    # TODO rename in upper case
     UNDEFINE    = 0
-    Index       = 1
-    Share       = 2
-    Bond        = 3
-    Future      = 4
-    Option      = 5
-    Currency    = 6
-    Etf         = 7
+    CASH        = 1
+    INDEX       = 2
+    SHARE       = 3
+    BOND        = 4
+    FUTURE      = 5
+    OPTION      = 6
+    CURRENCY    = 7
+    ETF         = 8
+
 
     @classmethod  #fromStr# {{{
     def fromStr(cls, string):
         types = {
-            "UNDEFINE": AssetType.UNDEFINE,
-            "Index":    AssetType.Index,
-            "Share":    AssetType.Share,
-            "Bond":     AssetType.Bond,
-            "Future":   AssetType.Future,
-            "Currency": AssetType.Currency,
-            "Etf":      AssetType.Etf,
+            "CASH":     AssetType.CASH,
+            "INDEX":    AssetType.INDEX,
+            "SHARE":    AssetType.SHARE,
+            "BOND":     AssetType.BOND,
+            "FUTURE":   AssetType.FUTURE,
+            "CURRENCY": AssetType.CURRENCY,
+            "ETF":      AssetType.ETF,
             }
         return types[string]
     # }}}

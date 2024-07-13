@@ -6,19 +6,19 @@
 - получение подробной информации об активе (ласт прайс, минимальный шаг цены,
     маржинальные коэффициенты и тп.)
 - загрузка свечей от 1М до М
-- импортирование данных в стандартный внутренний формат 
+- импортирование данных в стандартный внутренний формат
 - преобразование таймфреймов
 - обновление скачанных данных
 - выдача списка файлов с данными по активу
 
 Загрузка тиков и стаканов пока недоступна. В коде стоят ассерты.
-Тестировалось только загрузка свеч по акциям и индексам Мос.Биржы. 
+Тестировалось только загрузка свеч по акциям и индексам Мос.Биржы.
 
 Если что, пишите: mr.alexavin@gmail.com
 
 
 ## Импорт
-```python 
+```python
 from avin.data import Source, DataType, Exchange, AssetType, Id, Data
 ```
 
@@ -52,7 +52,7 @@ from avin.data import Source, DataType, Exchange, AssetType, Id, Data
 	BAR_D       = "D"
 	BAR_W       = "W"
 	BAR_M       = "M"
-	BOOK        = "book"        # стаканы   
+	BOOK        = "book"        # стаканы
 	TIC         = "tic"         # тики
 	ANALYSE     = "analyse"     # пользовательский анализ .json
 
@@ -78,7 +78,7 @@ from avin.data import Source, DataType, Exchange, AssetType, Id, Data
 
 <!--}}}-->
 ### class AssetType<!--{{{-->
-Перечисление типов активов 
+Перечисление типов активов
 
 	UNDEFINE    = 0
 	Index       = 1
@@ -90,14 +90,14 @@ from avin.data import Source, DataType, Exchange, AssetType, Id, Data
 
 Примеры:
 
-    >>> AssetType.Share
-    >>> AssetType.Future
+    >>> AssetType.SHARE
+    >>> AssetType.FUTURE
 
 <!--}}}-->
 ### class Id<!--{{{-->
 Единый идентификатор для всех активов.
 
-Содержит минимально достаточную информацию для однозначной идентификации 
+Содержит минимально достаточную информацию для однозначной идентификации
 инструмента. Именно этот тип используется во всех функциях работы с данными.
 
 Ручное создание объектов класса утомительно. Модуль предоставляет функцию
@@ -124,10 +124,10 @@ from avin.data import Source, DataType, Exchange, AssetType, Id, Data
 
     save(id_obj: Id, file_path: str) -> None
     load(file_path: str) -> Id
-    
+
 Примеры:
 
-    >>> sber_id = Data.find(Exchange.MOEX, AssetType.Share, "SBER")
+    >>> sber_id = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
     >>> print(sber.name)
     >>> print(sber.figi)
 
@@ -135,14 +135,14 @@ from avin.data import Source, DataType, Exchange, AssetType, Id, Data
 ### class Data<!--{{{-->
 Интерфейс для работы с данными.
 
-Модуль кэширует информацию об инструментах один раз в сутки при первом 
+Модуль кэширует информацию об инструментах один раз в сутки при первом
 запуске. Кэш находится в res/cache/<source>
 
 Для полной функциональности модуля требуется:
 1. Тинькофф токен.
 Достаточно токена только для чтения. Без него не доступны никакие операции
-с брокером. Где и как взять токен смотрите на официальном 
-сайте: 
+с брокером. Где и как взять токен смотрите на официальном
+сайте:
 https://developer.tinkoff.ru/docs/intro/manuals/self-service-auth
 
 Токен положить в файл usr/connect/tinkoff/token.txt
@@ -157,25 +157,25 @@ https://passport.moex.com/registration
 Вторая строка пароль
 
 Методы:
-```python 
+```python
 
 @classmethod
-def assets(cls, source: Source, asset_type: AssetType) -> list[Id]: ... 
+def assets(cls, source: Source, asset_type: AssetType) -> list[Id]: ...
     Получение полного списка активов от источника
 
 @classmethod
 def find(cls, exchange: Exchange, asset_type: AssetType, querry: str) -> Id: ...
-    Возвращает стандартный идентификатор. Аргумент querry - строка с 
+    Возвращает стандартный идентификатор. Аргумент querry - строка с
     тикером, figi, или tinkoff uid
 
 @classmethod
 def info(cls, ID: Id) -> dict: ...
-    Полная информация об инструменте: размер лота, дата экспирации (если 
+    Полная информация об инструменте: размер лота, дата экспирации (если
     это фьючерс) и тп.
 
 @classmethod
 def download(cls, source: Source, data_type: DataType, ID: Id, year: int) -> bool: ...
-    Загружает данные 'как есть' у источника, по умолчанию в папку 
+    Загружает данные 'как есть' у источника, по умолчанию в папку
     'usr/download'.
     Если нужно вынести данные в другую директорию отредактируйте
     файл 'avin/const.py', переменная Usr.DOWNLOAD.
@@ -220,8 +220,8 @@ updateAll(cls):
 @classmethod
 request(cls, ID: Id, data_type: DataType, begin: int, end: int) -> list[file_path]:
     Находит данные за период [begin_year, end_year], возвращает список путей
-    к файлам .csv 
-    Это сделано для большей гибкости. Таким образом вызывающая сторона 
+    к файлам .csv
+    Это сделано для большей гибкости. Таким образом вызывающая сторона
     сама решает как читать файлы, загрузить целиком как строки, читать
     построчно через итератор, или загрузить в DataFrame.
 
