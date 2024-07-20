@@ -7,40 +7,35 @@
 # ============================================================================
 
 """ doc
-ord_id
-opr_id
-pos_id
-trd_id
 """
 
 import asyncio
+from datetime import UTC, datetime
+
 import asyncpg
-from datetime import datetime, UTC
-from avin.core import Bar, Asset, TimeFrame, AssetList
-from avin.data import Exchange, AssetType, DataType, Data
 from avin.const import Usr
+from avin.core import Asset, AssetList, Bar, TimeFrame
+from avin.data import AssetType, Data, DataType, Exchange
 
 
-class Keeper():
+class Keeper:
     def __init__(self):  # {{{
         self.user = Usr.PG_USER
         self.database = Usr.PG_DATABASE
         self.host = Usr.PG_HOST
-    # }}}
 
+    # }}}
     async def transaction(self, request: str):  # {{{
         conn = await asyncpg.connect(
-            user=self.user,
-            database=self.database,
-            host=self.host
+            user=self.user, database=self.database, host=self.host
         )
 
         values = await conn.fetch(request)
         await conn.close()
 
         return values
-# }}}
 
+    # }}}
     async def createDataBase(self):  # {{{
         # await self.__createEnums()
         await self.__createExchangeTable()
@@ -51,8 +46,8 @@ class Keeper():
         await self.__createOrderTable()
         await self.__createOperationTable()
         ...
-    # }}}
 
+    # }}}
     async def addExchange(self, exchange: Exchange):  # {{{
         request = f"""
         INSERT INTO "Exchange"(name)
@@ -60,8 +55,8 @@ class Keeper():
         """
         res = await self.transaction(request)
         return res
-# }}}
 
+    # }}}
     async def addAsset(self, asset: Asset):  # {{{
         request = f"""
         INSERT INTO "Asset" (
@@ -81,18 +76,17 @@ class Keeper():
         """
         res = await self.transaction(request)
         return res
-# }}}
 
+    # }}}
     async def addNewData(self, asset, data_type, data):  # {{{
         def formatBarData(bar: Bar):  # {{{
             dt = f"'{bar.dt.isoformat()}'"
             string = (
-                "("
-                f"{dt},{bar.open},{bar.high},{bar.low},{bar.close},{bar.vol}"
-                "),\n"
+                "(" f"{dt},{bar.open},{bar.high},{bar.low},{bar.close},{bar.vol}" "),\n"
             )
             return string
-# }}}
+
+        # }}}
         values = str()
         for bar in data:
             value = formatBarData(bar)
@@ -110,8 +104,8 @@ class Keeper():
 
         res = await self.transaction(request)
         return res
-# }}}
 
+    # }}}
     async def addAccount(self, broker: str, broker_id: str, name: str):  # {{{
         request = f"""
         INSERT INTO "Account" (
@@ -127,8 +121,8 @@ class Keeper():
         """
         res = await self.transaction(request)
         return res
-    # }}}
 
+    # }}}
     async def addStrategy(self, name: str, version: str):  # {{{
         request = f"""
         INSERT INTO "Strategy" (
@@ -142,8 +136,8 @@ class Keeper():
         """
         res = await self.transaction(request)
         return res
-    # }}}
 
+    # }}}
     async def loadBars(self, asset, data_type, begin, end):  # {{{
         table_name = f"{asset.figi}_{data_type.name}"
         request = f"""
@@ -167,8 +161,8 @@ class Keeper():
             )
             bars.append(bar)
         return bars
-# }}}
 
+    # }}}
     async def __createEnums(self):  # {{{
         requests = [  # {{{
             """DROP TYPE IF EXISTS public."DataSource";""",
@@ -258,8 +252,8 @@ class Keeper():
         ]  # }}}
         for i in requests:
             await self.transaction(i)
-    # }}}
 
+    # }}}
     async def __createExchangeTable(self):  # {{{
         keeper = Keeper()
         request = """
@@ -269,8 +263,8 @@ class Keeper():
         """
         res = await self.transaction(request)
         return res
-# }}}
 
+    # }}}
     async def __createAssetTable(self):  # {{{
         keeper = Keeper()
         request = """
@@ -284,8 +278,8 @@ class Keeper():
         """
         res = await self.transaction(request)
         return res
-# }}}
 
+    # }}}
     async def __createBarsDataTable(self, asset: Asset, data_type: DataType):  # {{{
         assert data_type != DataType.TIC
         assert data_type != DataType.BOOK
@@ -302,8 +296,8 @@ class Keeper():
             """
         res = await self.transaction(request)
         return res
-# }}}
 
+    # }}}
     async def __createAccountTable(self):  # {{{
         request = """
         CREATE TABLE IF NOT EXISTS "Account" (
@@ -314,8 +308,8 @@ class Keeper():
         """
         res = await self.transaction(request)
         return res
-# }}}
 
+    # }}}
     async def __createStrategyTable(self):  # {{{
         request = """
         CREATE TABLE IF NOT EXISTS "Strategy" (
@@ -326,8 +320,8 @@ class Keeper():
         """
         res = await self.transaction(request)
         return res
-# }}}
 
+    # }}}
     async def __createTradeTable(self):  # {{{
         request = """
         CREATE TABLE IF NOT EXISTS "Trade" (
@@ -345,8 +339,8 @@ class Keeper():
             """
         res = await self.transaction(request)
         return res
-# }}}
 
+    # }}}
     async def __createOrderTable(self):  # {{{
         request = """
         CREATE TABLE IF NOT EXISTS "Order" (
@@ -368,8 +362,8 @@ class Keeper():
             """
         res = await self.transaction(request)
         return res
-# }}}
 
+    # }}}
     async def __createOperationTable(self):  # {{{
         request = """
         CREATE TABLE IF NOT EXISTS "Operation" (
@@ -389,6 +383,8 @@ class Keeper():
             """
         res = await self.transaction(request)
         return res
+
+
 # }}}
 
 
@@ -396,6 +392,7 @@ async def main():
     k = Keeper()
     await k.createDataBase()
     ...
+
 
 if __name__ == "__main__":
     asyncio.run(main())
