@@ -8,14 +8,17 @@
 
 """ doc
 """
+from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
 
 import asyncpg
+
 from avin.const import Usr
-from avin.core import Asset, AssetList, Bar, TimeFrame
+from avin.core import Asset, AssetList, Bar, Order, TimeFrame
 from avin.data import AssetType, Data, DataType, Exchange
+from avin.logger import logger
 
 
 class Keeper:
@@ -138,15 +141,153 @@ class Keeper:
         return res
 
     # }}}
+    async def addTrade(self, trade: Trade):  # {{{
+        request = f"""
+            INSERT INTO "Trade" (
+                trade_id, dt, status, strategy, version, type, figi
+                )
+            VALUES (
+                {trade.ID},
+                '{trade.dt}',
+                '{trade.status.name}',
+                '{trade.strategy}',
+                '{trade.version}',
+                '{trade.type.name}',
+                '{trade.asset.figi}'
+                );
+            """
+        res = await self.transaction(request)
+        return res
+
+    async def deleteTrade(self, trade: Trade): ...
+
+    # }}}
+    async def addOrder(self, order: Order):  # {{{
+        assert order.trade_ID is not None
+        assert order.account_name is not None
+
+        if order.type == Order.Type.MARKET:
+            price = "NULL"
+            stop_price = "NULL"
+            exec_price = "NULL"
+        elif order.type == Order.Type.LIMIT:
+            price = order.price
+            stop_price = "NULL"
+            exec_price = "NULL"
+        elif order.type == Order.Type.STOP:
+            price = "NULL"
+            stop_price = order.stop_price
+            exec_price = order.exec_price
+        else:
+            assert False, f"Что за новый тип ордера='{order.type}'"
+
+        if order.meta is None:
+            meta = "NULL"
+        else:
+            logger.warning("Напиши как правильно meta сохранять")
+            logger.info(order.meta)
+            assert False
+
+        request = f"""
+            INSERT INTO "Order" (
+                order_id,
+                account,
+                type,
+                status,
+                direction,
+                figi,
+                lots,
+                quantity,
+                price,
+                stop_price,
+                exec_price,
+                trade_id,
+                meta
+                )
+            VALUES (
+                {order.ID},
+                '{order.account_name}',
+                '{order.type.name}',
+                '{order.status.name}',
+                '{order.direction.name}',
+                '{order.asset.figi}',
+                {order.lots},
+                {order.quantity},
+                {price},
+                {stop_price},
+                {exec_price},
+                {order.trade_ID},
+                {meta}
+                );
+            """
+        res = await self.transaction(request)
+        return res
+
+    async def deleteTrade(self, trade: Trade): ...
+
+    # }}}
+    async def addOperation(self, operation: Operation):  # {{{
+        assert operation.trade_ID is not None
+        assert operation.order_ID is not None
+
+        if operation.meta is None:
+            meta = "NULL"
+        else:
+            logger.warning("Напиши как правильно meta сохранять")
+            logger.info(operation.meta)
+            assert False
+            # что то типо такого
+            meta = f"'{meta}'"
+
+        request = f"""
+            INSERT INTO "Operation" (
+                account,
+                dt,
+                direction,
+                figi,
+                lots,
+                quantity,
+                price,
+                amount,
+                commission,
+                trade_id,
+                order_id,
+                meta
+            )
+            VALUES (
+                '{operation.account_name}',
+                '{operation.dt}',
+                '{operation.direction.name}',
+                '{operation.asset.figi}',
+                {operation.lots},
+                {operation.quantity},
+                {operation.price},
+                {operation.amount},
+                {operation.commission},
+                {operation.trade_ID},
+                {operation.order_ID},
+                {meta}
+            );
+        """
+
+        res = await self.transaction(request)
+        return res
+
+    async def deleteTrade(self, trade: Trade): ...
+
+    # }}}
     async def loadBars(self, asset, data_type, begin, end):  # {{{
+        # TODO: data_type или все таки таймфрейм тут ????
+        # А!!! стопе. Это вообще должно происходить через интерфейс
+        # модуля дата. И тогда дата тайп.
         table_name = f"{asset.figi}_{data_type.name}"
         request = f"""
-        SELECT dt, open, high, low, close, volume
-        FROM "{table_name}"
-        WHERE dt >= '{begin}' AND dt < '{end}'
-        ORDER BY dt
-        ;
-        """
+            SELECT dt, open, high, low, close, volume
+            FROM "{table_name}"
+            WHERE dt >= '{begin}' AND dt < '{end}'
+            ORDER BY dt
+            ;
+            """
 
         res = await self.transaction(request)
         bars = list()
@@ -326,11 +467,11 @@ class Keeper:
         request = """
         CREATE TABLE IF NOT EXISTS "Trade" (
             trade_id    float PRIMARY KEY,
-            type        "TradeType",
-            status      "TradeStatus",
             dt          TIMESTAMP WITH TIME ZONE,
+            status      "TradeStatus",
             strategy    text,
             version     text,
+            type        "TradeType",
             figi        text REFERENCES "Asset"(figi),
 
 			FOREIGN KEY (strategy, version)
@@ -342,13 +483,14 @@ class Keeper:
 
     # }}}
     async def __createOrderTable(self):  # {{{
+        # TODO добавить частично исполненный - сколько там уже исполнено
         request = """
         CREATE TABLE IF NOT EXISTS "Order" (
             order_id        float PRIMARY KEY,
             account         text REFERENCES "Account"(name),
             type            "OrderType",
-            direction       "OrderDirection",
             status          "OrderStatus",
+            direction       "OrderDirection",
             figi            text REFERENCES "Asset"(figi),
             lots            integer,
             quantity        integer,
@@ -376,8 +518,8 @@ class Keeper:
             price           float,
             amount          float,
             commission      float,
-
             trade_id        float REFERENCES "Trade"(trade_id),
+            order_id        float REFERENCES "Order"(order_id),
 			meta            text
 			);
             """

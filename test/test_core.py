@@ -7,11 +7,12 @@
 # ============================================================================
 
 from avin.const import *
-from avin.data import *
 from avin.core import *
+from avin.data import *
 from avin.utils import *
 
-def test_Range():# {{{
+
+def test_Range():  # {{{
     r = Range(5, 10)
     assert 6 in r
     assert 11 not in r
@@ -34,7 +35,9 @@ def test_Range():# {{{
     assert 11.0 in bar.body
     assert 11.1 not in bar.body
     # }}}
-def test_Bar():# {{{
+
+
+def test_Bar():  # {{{
     bar = Bar("2023-01-01", 10, 12, 9, 11, 1000, chart=None)
     assert bar.dt == datetime.fromisoformat("2023-01-01")
     assert bar.open == 10
@@ -59,7 +62,9 @@ def test_Bar():# {{{
     decode_bar = Bar.fromCSV(fields, chart=None)
     assert bar == decode_bar
     # }}}
-def test_TimeFrame():# {{{
+
+
+def test_TimeFrame():  # {{{
     D = TimeFrame("D")
     H = TimeFrame("1H")
     m5 = TimeFrame("5M")
@@ -72,7 +77,9 @@ def test_TimeFrame():# {{{
     assert repr(H) == "TimeFrame('1H')"
     assert str(H) == "1H"
     # }}}
-def test_Chart():# {{{
+
+
+def test_Chart():  # {{{
     afks_id = Data.find(Exchange.MOEX, AssetType.SHARE, "AFKS")
     share = Share(afks_id)
     tf = TimeFrame("1M")
@@ -87,7 +94,7 @@ def test_Chart():# {{{
     assert chart.now is None
     assert chart[0] is None
     assert chart.asset == share
-    bar = Bar(1,1,5000,1,1,now())
+    bar = Bar(1, 1, 5000, 1, 1, now())
     chart.update([bar, bar])
     bars = chart.getBars()
     assert bars[-1] == bar
@@ -101,8 +108,10 @@ def test_Chart():# {{{
     # assert bars[0].dt == datetime(2023, 8, 3, 6, 59, tzinfo=UTC)
     # assert bars[-1].dt == datetime(2023, 8, 3, 9, 59, tzinfo=UTC)
     # assert len(bars) == 181
+
+
 # }}}
-def test_Share():# {{{
+def test_Share():  # {{{
     exchange = Exchange.MOEX
     asset_type = AssetType.SHARE
     ID = Data.find(exchange, asset_type, "AFKS")
@@ -115,19 +124,10 @@ def test_Share():# {{{
     assert afks.uid == "53b67587-96eb-4b41-8e0c-d2e3c0bdd234"
     assert afks.min_price_step == 0.001
     assert afks.lot == 100
-    assert afks.dir_path == Cmd.path(
-        Usr.DATA,
-        exchange.name,
-        asset_type.name,
-        "AFKS"
-        )
+    assert afks.dir_path == Cmd.path(Usr.DATA, exchange.name, asset_type.name, "AFKS")
     assert afks.analytic_dir == Cmd.path(
-        Usr.DATA,
-        exchange.name,
-        asset_type.name,
-        "AFKS",
-        "analytic"
-        )
+        Usr.DATA, exchange.name, asset_type.name, "AFKS", "analytic"
+    )
 
     afks.cacheChart("D")
     assert afks.chart("D").timeframe == TimeFrame("D")
@@ -141,8 +141,10 @@ def test_Share():# {{{
     chart = afks.loadChart("1M")
     assert afks.chart("1M") is None  # loading not caching
     assert chart.timeframe == TimeFrame("1M")
+
+
 # }}}
-def test_AssetList():# {{{
+def test_AssetList():  # {{{
     tmp_file = Cmd.path(Usr.ASSET, "example.al")
     if Cmd.isExist(tmp_file):
         Cmd.delete(tmp_file)
@@ -175,8 +177,10 @@ def test_AssetList():# {{{
     assert alist.name == "example"
     assert alist.assets == []
     assert alist.count == 0
+
+
 # }}}
-def test_Order():# {{{
+def test_Order():  # {{{
     ID = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
     share = Share(ID)
     o = Order.Market(Order.Direction.SELL, share, lots=15, quantity=150)
@@ -188,24 +192,26 @@ def test_Order():# {{{
     assert o.trade_ID == None
     assert o.status == Order.Status.NEW
     assert o.account is None  # задается при размещении ордера
+
+
 # }}}
-def test_Operation():# {{{
+def test_Operation():  # {{{
     ID = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
     share = Share(ID)
     dt = now()
     op = Operation(
-        account_name=   None,
-        dt=             dt,
-        direction=      Operation.Direction.SELL,
-        asset=          share,
-        lots=           1,
-        quantity=       50,
-        price=          100,
-        amount=         100*50,
-        commission=     10,
-        trade_ID=       None,
-        meta=           None,
-        )
+        account_name="unit_test",
+        dt=dt,
+        direction=Operation.Direction.SELL,
+        asset=share,
+        lots=1,
+        quantity=50,
+        price=100,
+        amount=100 * 50,
+        commission=10,
+        trade_ID=None,
+        meta=None,
+    )
 
     assert op.dt == dt
     assert op.direction == Operation.Direction.SELL
@@ -232,22 +238,23 @@ def test_Operation():# {{{
     assert op.commission == fromjson_op.commission
     assert op.meta == fromjson_op.meta
 
+
 # }}}
-def test_Position():# {{{
+def test_Position():  # {{{
     ID = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
     share = Share(ID)
     dt = now()
     op = Operation(
-        dt=         dt,
-        direction=  Operation.Direction.BUY,
-        asset=      share,
-        price=      100,
-        lots=       1,
-        quantity=   50,
-        amount=     100*50,
-        commission= 10,
-        meta=       None
-        )
+        dt=dt,
+        direction=Operation.Direction.BUY,
+        asset=share,
+        price=100,
+        lots=1,
+        quantity=50,
+        amount=100 * 50,
+        commission=10,
+        meta=None,
+    )
 
     pos = Position(operations=[op], meta=None)
     assert pos.status == Position.Status.OPEN
@@ -268,14 +275,18 @@ def test_Position():# {{{
     assert pos.averageBuy() == 100
     assert pos.averageSell() == 0
 
-    #TODO добавить другие функции связанные с закрытием позиции
+    # TODO добавить другие функции связанные с закрытием позиции
+
+
 # }}}
-def test_Cash():# {{{
+def test_Cash():  # {{{
     rub = Cash(Cash.Type.RUB, 1_000_000)
     assert rub.type == Cash.Type.RUB
     assert rub.value == 1_000_000
+
+
 # }}}
-def test_Portfolio():# {{{
+def test_Portfolio():  # {{{
     portfolio = Portfolio()
 
     # input cash
@@ -296,19 +307,26 @@ def test_Portfolio():# {{{
     share = Share(ID)
     dt = now()
     op = Operation(
-        dt=         dt,
-        direction=  Operation.Direction.BUY,
-        asset=      share,
-        price=      100,
-        lots=       1,
-        quantity=   50,
-        amount=     100*50,
-        commission= 10,
-        meta=       None
-        )
+        dt=dt,
+        direction=Operation.Direction.BUY,
+        asset=share,
+        price=100,
+        lots=1,
+        quantity=50,
+        amount=100 * 50,
+        commission=10,
+        meta=None,
+    )
     pos = Position(operations=[op], meta=None)
 
-    portfolio = Portfolio([rub,], [pos,])
+    portfolio = Portfolio(
+        [
+            rub,
+        ],
+        [
+            pos,
+        ],
+    )
     shares_pos = portfolio.get(AssetType.SHARE)
     assert shares_pos[0] == pos
 
@@ -331,12 +349,14 @@ def test_Portfolio():# {{{
     # shares_pos = portfolio.get(AssetType.SHARE)
     # assert len(shares_pos) == 0
     #
+
+
 # }}}
-def test_Filter():# {{{
-    code = '''
+def test_Filter():  # {{{
+    code = """
 def condition(x):
     return x * 5
-    '''
+    """
     f = Filter("example", code)
     assert f.check(4) == 20
     assert f.name == "example"
@@ -351,8 +371,10 @@ def condition(x):
     Filter.rename(loaded, "blablabla")
     assert Cmd.isExist(loaded.path)
     Filter.delete(loaded)
-#}}}
-def test_Trade():# {{{
+
+
+# }}}
+def test_Trade():  # {{{
     dt = now()
     strategy = Strategy("Foobar", "v1")
     trade_type = Trade.Type.LONG
@@ -364,21 +386,26 @@ def test_Trade():# {{{
     trade.addOrder(order)  # signals of order connect automaticaly
 
     op = Operation(
-        dt=         dt,
-        direction=  Operation.Direction.BUY,
-        asset=      asset,
-        price=      100,
-        lots=       1,
-        quantity=   10,
-        amount=     100*10,
-        commission= 5,
-        meta=       None
-        )
+        dt=dt,
+        direction=Operation.Direction.BUY,
+        asset=asset,
+        price=100,
+        lots=1,
+        quantity=10,
+        amount=100 * 10,
+        commission=5,
+        meta=None,
+    )
 
     order.posted.emit(order)
     assert trade.status == Trade.Status.POST
 
-    order.fulfilled.emit(order, [op, ])
+    order.fulfilled.emit(
+        order,
+        [
+            op,
+        ],
+    )
     assert trade.status == Trade.Status.OPEN
     assert trade.isLong()
     assert not trade.isShort()
@@ -400,16 +427,16 @@ def test_Trade():# {{{
 
     dt2 = dt + ONE_DAY
     op2 = Operation(
-        dt=         dt2,
-        direction=  Operation.Direction.BUY,
-        asset=      asset,
-        price=      100,
-        lots=       1,
-        quantity=   10,
-        amount=     100*10,
-        commission= 5,
-        meta=       None
-        )
+        dt=dt2,
+        direction=Operation.Direction.BUY,
+        asset=asset,
+        price=100,
+        lots=1,
+        quantity=10,
+        amount=100 * 10,
+        commission=5,
+        meta=None,
+    )
     trade.addOperation(op2)
     assert trade.status == Trade.Status.OPEN
     assert trade.isLong()
@@ -432,16 +459,16 @@ def test_Trade():# {{{
 
     dt3 = dt2 + ONE_DAY
     op3 = Operation(
-        dt=         dt3,
-        direction=  Operation.Direction.SELL,
-        asset=      asset,
-        price=      110,
-        lots=       2,
-        quantity=   20,
-        amount=     110*20,
-        commission= 10,
-        meta=       None
-        )
+        dt=dt3,
+        direction=Operation.Direction.SELL,
+        asset=asset,
+        price=110,
+        lots=2,
+        quantity=20,
+        amount=110 * 20,
+        commission=10,
+        meta=None,
+    )
     trade.addOperation(op3)
     assert trade.status == Trade.Status.CLOSE
     assert trade.isLong()
@@ -469,5 +496,6 @@ def test_Trade():# {{{
     assert trade.holdingDays() == 3
     assert trade.percent() == 9.0
     assert trade.percentPerDay() == 3.0
-# }}}
 
+
+# }}}
