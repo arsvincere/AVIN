@@ -32,12 +32,13 @@ class Operation():# {{{
 
     def __init__(# {{{
         self,
+        account:    account,
         dt:         datetime,
         direction:  Direction,
         asset:      Asset,
-        price:      float,
         lots:       int,
         quantity:   int,
+        price:      float,
         amount:     float,
         commission: float,
         trade_ID:   GId=None,

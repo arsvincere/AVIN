@@ -11,6 +11,7 @@ import abc
 import enum
 from dataclasses import dataclass
 from avin.core.asset import Asset
+from avin.core.gid import GId
 from avin.core.operation import Operation
 from avin.utils import Signal
 
@@ -58,13 +59,27 @@ class Order(metaclass=abc.ABCMeta):# {{{
 
     class _BaseOrder(metaclass=abc.ABCMeta):# {{{
         @abc.abstractmethod  #__init__# {{{
-        def __init__(self, direction, asset, lots, trade_ID, status):
+        def __init__(
+            self,
+            direction,
+            asset,
+            lots,
+            quantity,
+            order_ID,
+            trade_ID,
+            status,
+            account,
+            ):
 
             self.direction = direction
             self.asset = asset
             self.lots = lots
+            self.quantity = quantity
+
+            self.ID = order_ID if order_ID else GId.newGId(self)
             self.trade_ID = trade_ID
-            self.status = status if status is not None else Order.Status.NEW
+            self.status = status if status else Order.Status.NEW
+            self.account = account
 
             # Signals
             self.posted = Signal(Order._BaseOrder)
@@ -72,6 +87,7 @@ class Order(metaclass=abc.ABCMeta):# {{{
             self.partial = Signal(Order._BaseOrder, list)
             self.fulfilled = Signal(Order._BaseOrder, list)
             self.canceled = Signal(Order._BaseOrder)
+            self.reqected = Signal(Order._BaseOrder)
         # }}}
         @classmethod  # toJson{{{
         def toJson(cls, order) -> dict:
@@ -88,44 +104,79 @@ class Order(metaclass=abc.ABCMeta):# {{{
             direction:  Order.Direction,
             asset:      Asset,
             lots:       int,
+            quantity:   int,
+            order_ID:   GId=None,
             trade_ID:   GId=None,
             status:     Order.Status=None,
+            account:    Account=None,
             ):
 
-            super().__init__(direction, asset, lots, trade_ID, status)
+            super().__init__(
+                direction,
+                asset,
+                lots,
+                quantity,
+                order_ID,
+                trade_ID,
+                status,
+                account,
+                )
             self.type = Order.Type.MARKET
     # }}}
     class Limit(_BaseOrder):# {{{
         def __init__(
-            self,
-            direction: Order.Direction,
-            asset: Asset,
-            lots: int,
-            price: float,
-            trade_ID: GId=None,
-            status: Order.Status=None,
+            direction:  Order.Direction,
+            asset:      Asset,
+            lots:       int,
+            quantity:   int,
+            price:      float,
+            order_ID:   GId=None,
+            trade_ID:   GId=None,
+            status:     Order.Status=None,
+            account:    Account=None,
             ):
 
-            super().__init__(direction, asset, lots, trade_ID, status)
-            self.price = price
+            super().__init__(
+                direction,
+                asset,
+                lots,
+                quantity,
+                order_ID,
+                trade_ID,
+                status,
+                account,
+                )
             self.type = Order.Type.LIMIT
+            self.price = price
     # }}}
     class Stop(_BaseOrder):# {{{
         def __init__(
             self,
-            direction: Order.Direction,
-            asset: Asset,
-            lots: int,
+            direction:  Order.Direction,
+            asset:      Asset,
+            lots:       int,
+            quantity:   int,
             stop_price: float,
             exec_price: float,
-            trade_ID: GId=None,
-            status: Order.Status=None,
+            order_ID:   GId=None,
+            trade_ID:   GId=None,
+            status:     Order.Status=None,
+            account:    Account=None,
             ):
 
-            super().__init__(direction, asset, lots, trade_ID, status)
+            super().__init__(
+                direction,
+                asset,
+                lots,
+                quantity,
+                order_ID,
+                trade_ID,
+                status,
+                account,
+                )
+            self.type = Order.Type.STOP
             self.stop_price = stop_price
             self.exec_price = exec_price
-            self.type = Order.Type.STOP
     # }}}
     class StopLoss(_BaseOrder):# {{{
         def __init__(

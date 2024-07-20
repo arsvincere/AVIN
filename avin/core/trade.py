@@ -25,11 +25,9 @@ class Trade():# {{{
         UNDEFINE = 0
         INITIAL =  1
         NEW =      2
-        POST =     3
-        OPEN =     4
-        CLOSE =    5
-        ARCHIVE =  7
-        CANCELED = -1
+        OPEN =     3
+        CLOSE =    4
+        CANCELED = 5
     # }}}
     def __init__(# {{{
         self,

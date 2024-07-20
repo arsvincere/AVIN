@@ -6,34 +6,38 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-import os
-import json
+import bisect
 import gzip
+import json
+import os
 import pickle
 import shutil
-import bisect
-import zipfile
 import subprocess
+import zipfile
 from collections import deque
 from datetime import datetime, timezone
+
 from avin.logger import logger
 
-class Cmd():# {{{
-    @staticmethod  #path# {{{
+
+class Cmd:  # {{{
+    @staticmethod  # path# {{{
     def path(*path_parts):
         logger.debug(f"Cmd.path({path_parts})")
         path = os.path.join(*path_parts)
         return path
+
     # }}}
-    @staticmethod  #makeDirs# {{{
+    @staticmethod  # makeDirs# {{{
     def makeDirs(path):
-        """ Создает все необходимые папки для этого пути """
+        """Создает все необходимые папки для этого пути"""
         if not os.path.exists(path):
             os.makedirs(path)
+
     # }}}
-    @staticmethod  #name# {{{
+    @staticmethod  # name# {{{
     def name(file_path, extension=False):
-        """ -- Doc
+        """-- Doc
         Отделяет имя файла из пути к файлу
         /home/file_name.txt -> file_name.txt  # extension=True
         /home/file_name.txt -> file_name  # extension=False
@@ -45,38 +49,44 @@ class Cmd():# {{{
         else:
             name = os.path.splitext(file_name)[0]  # == somename
             return name
+
     # }}}
-    @staticmethod  #dirName# {{{
+    @staticmethod  # dirName# {{{
     def dirName(file_path):
         logger.debug(f"Cmd.dirName({file_path}")
         assert Cmd.isFile(file_path)
         dir_path = os.path.dirname(file_path)
         dir_name = os.path.basename(dir_path)
         return dir_name
+
     # }}}
-    @staticmethod  #dirPath# {{{
+    @staticmethod  # dirPath# {{{
     def dirPath(file_path):
         logger.debug(f"Cmd.dirPath({file_path}")
         assert Cmd.isFile(file_path)
         dir_path = os.path.dirname(file_path)
         return dir_path
+
     # }}}
-    @staticmethod  #isExist# {{{
+    @staticmethod  # isExist# {{{
     def isExist(path):
         logger.debug(f"Cmd.isExist({path})")
         return os.path.exists(path)
+
     # }}}
-    @staticmethod  #isFile# {{{
+    @staticmethod  # isFile# {{{
     def isFile(path):
         logger.debug(f"Cmd.isFile({path})")
         return os.path.isfile(path)
+
     # }}}
-    @staticmethod  #isDir# {{{
+    @staticmethod  # isDir# {{{
     def isDir(path):
         logger.debug(f"Cmd.isFile({path})")
         return os.path.isdir(path)
+
     # }}}
-    @staticmethod  #content# {{{
+    @staticmethod  # content# {{{
     def content(dir_path, full_path=False) -> list[str]:
         logger.debug(f"Cmd.getFiles({dir_path}, full_path={full_path})")
         contents = list()
@@ -89,21 +99,23 @@ class Cmd():# {{{
             else:
                 contents.append(name)
         return contents
+
     # }}}
-    @staticmethod  #getFiles# {{{
+    @staticmethod  # getFiles# {{{
     def getFiles(dir_path, full_path=False, include_sub_dir=False):
         logger.debug(
             f"Cmd.getFiles({dir_path}, "
             f"full_path={full_path}, "
             f"include_sub_dir={include_sub_dir})"
-            )
+        )
         if include_sub_dir:
             return Cmd.__getFilesInDirIncludeSubDir(dir_path, full_path)
         return Cmd.__getFilesInDir(dir_path, full_path)
+
     # }}}
-    @staticmethod  #getDirs# {{{
+    @staticmethod  # getDirs# {{{
     def getDirs(dir_path, full_path=False):
-        """ -- Doc
+        """-- Doc
         Возвращает список папок в каталоге 'dir_path' без обхода подпапок
         """
         logger.debug(f"Cmd.getDirs({dir_path}, full_path={full_path})")
@@ -117,29 +129,34 @@ class Cmd():# {{{
                 else:
                     list_dirs.append(name)
         return list_dirs
+
     # }}}
-    @staticmethod  #findFile# {{{
+    @staticmethod  # findFile# {{{
     def findFile(file_name, dir_path):
         logger.debug(f"Cmd.findFile({file_name}, {dir_path})")
         for root, dirs, files in os.walk(dir_path):
             if file_name in files:
                 return os.path.join(root, file_name)
             else:
-                raise FileNotFoundError(f"Файл '{file_name}' не найден "
-                                         "в директории '{dir_path}'")
+                raise FileNotFoundError(
+                    f"Файл '{file_name}' не найден " "в директории '{dir_path}'"
+                )
+
     # }}}
-    @staticmethod  #findDir# {{{
+    @staticmethod  # findDir# {{{
     def findDir(dir_name, root_dir):
         logger.debug(f"Cmd.findDir({dir_name}, {root_dir})")
         for root, dirs, files in os.walk(root_dir):
             if dir_name in dirs:
                 return os.path.join(root, dir_name)
-        raise FileNotFoundError(f"Папка '{dir_name}' не найдена "
-                                 "в директории '{root_dir}'")
+        raise FileNotFoundError(
+            f"Папка '{dir_name}' не найдена " "в директории '{root_dir}'"
+        )
+
     # }}}
-    @staticmethod  #select# {{{
+    @staticmethod  # select# {{{
     def select(files, name=None, extension=None):
-        """ Возвращает список файлов c расширением 'extension' """
+        """Возвращает список файлов c расширением 'extension'"""
         selected = list()
         for file in files:
             if name and name == Cmd.name(file):
@@ -147,75 +164,86 @@ class Cmd():# {{{
             if extension and file.endswith(extension):
                 selected.append(file)
         return selected
+
     # }}}
-    @staticmethod  #rename# {{{
+    @staticmethod  # rename# {{{
     def rename(old_path, new_path):
-        """ Переименовывает old_path в new_path"""
+        """Переименовывает old_path в new_path"""
         os.rename(old_path, new_path)
+
     # }}}
-    @staticmethod  #replace# {{{
+    @staticmethod  # replace# {{{
     def replace(src, dest, createDirs=True):
-        """ Перемещает src в dest """
+        """Перемещает src в dest"""
         if createDirs:
             Cmd.__createDirsForFilePath(dest)
         os.replace(src, dest)
+
     # }}}
-    @staticmethod  #copy# {{{
+    @staticmethod  # copy# {{{
     def copy(src_file, dest_file):
-        """ Копирует src в dest """
+        """Копирует src в dest"""
         shutil.copy(src_file, dest_file)
+
     # }}}
-    @staticmethod  #copyDir# {{{
+    @staticmethod  # copyDir# {{{
     def copyDir(src, dest):
-        """ Копирует src в dest """
+        """Копирует src в dest"""
         shutil.copytree(src, dest)
+
     # }}}
-    @staticmethod  #delete# {{{
+    @staticmethod  # delete# {{{
     def delete(file_path):
-        """ Удаляет файла по указанному пути """
+        """Удаляет файла по указанному пути"""
         os.remove(file_path)
         logger.debug(f"Delete: {file_path}")
+
     # }}}
-    @staticmethod  #deleteDir# {{{
+    @staticmethod  # deleteDir# {{{
     def deleteDir(path):
         shutil.rmtree(path)
         logger.debug(f"Delete dir: {path}")
+
     # }}}
-    @staticmethod  #extract# {{{
+    @staticmethod  # extract# {{{
     def extract(archive_path, dest_dir):
         with zipfile.ZipFile(archive_path, "r") as file:
             file.extractall(dest_dir)
         logger.debug(f"Extracted archive: '{archive_path}'")
+
     # }}}
-    @staticmethod  #read# {{{
+    @staticmethod  # read# {{{
     def read(file_path: str) -> str:
         """Read file as one string"""
         with open(file_path, "r", encoding="utf-8") as file:
             string = file.read()
         logger.debug(f"Cmd.read: {file_path}")
         return string
+
     # }}}
-    @staticmethod  #write# {{{
+    @staticmethod  # write# {{{
     def write(string: str, file_path: str, create_dirs=True) -> str:
-        """ Write string in file (overwrite) """
+        """Write string in file (overwrite)"""
         if create_dirs:
             Cmd.__createDirsForFilePath(file_path)
         with open(file_path, "w", encoding="utf-8") as file:
             file.write(string)
         logger.debug(f"Cmd.write: {file_path}")
+
     # }}}
-    @staticmethod  #append# {{{
+    @staticmethod  # append# {{{
     def append(text: list[str], file_path: str):
-        """ Append text in file """
+        """Append text in file"""
         with open(file_path, "a", encoding="utf-8") as file:
             for line in text:
                 file.write(line)
         logger.debug(f"Cmd.append(text): {file_path}")
         return True
+
     # }}}
-    @staticmethod  #getTail# {{{
+    @staticmethod  # getTail# {{{
     def getTail(file_path, n):
-        """ идиотский способ на самом деле.
+        """идиотский способ на самом деле.
         по сути он же читает весь файл построчно и добавляет его в
         очередь, у которой максимальная длина n... таким образом
         дойдя до конца файла в очереди останется n последних строк
@@ -223,8 +251,9 @@ class Cmd():# {{{
         with open(file_path, "r", encoding="utf-8") as file:
             text = list(deque(file, n))
         return text
+
     # }}}
-    @staticmethod  #saveText# {{{
+    @staticmethod  # saveText# {{{
     def saveText(text: list[str], file_path: str, create_dirs=True):
         if create_dirs:
             Cmd.__createDirsForFilePath(file_path)
@@ -232,8 +261,9 @@ class Cmd():# {{{
             for line in text:
                 file.write(line)
         logger.debug(f"Save file: {file_path}")
+
     # }}}
-    @staticmethod  #loadText# {{{
+    @staticmethod  # loadText# {{{
     def loadText(file_path: str) -> list[str]:
         """Read file by row, return list[str]"""
         text = list()
@@ -242,8 +272,9 @@ class Cmd():# {{{
                 text.append(line)
         logger.debug(f"Cmd.load: {file_path}")
         return text
+
     # }}}
-    @staticmethod  #saveJson# {{{
+    @staticmethod  # saveJson# {{{
     def saveJson(obj, file_path, encoder=None, indent=4, create_dirs=True):
         if create_dirs:
             Cmd.__createDirsForFilePath(file_path)
@@ -254,20 +285,22 @@ class Cmd():# {{{
                 indent=indent,
                 default=encoder,
                 ensure_ascii=False,
-                )
+            )
         logger.debug(f"Save json: {file_path}")
+
     # }}}
-    @staticmethod  #loadJson# {{{
+    @staticmethod  # loadJson# {{{
     def loadJson(file_path, decoder=None) -> object:
         with open(file_path, "r", encoding="utf-8") as file:
             obj = json.load(
                 fp=file,
                 object_hook=decoder,
-                )
+            )
         logger.debug(f"Load json: {file_path}")
         return obj
+
     # }}}
-    @staticmethod  #toJson# {{{
+    @staticmethod  # toJson# {{{
     def toJson(obj, encoder=None, indent=0) -> str:
         logger.debug(f"Cmd.toJson: {obj}")
         string = json.dumps(
@@ -275,10 +308,11 @@ class Cmd():# {{{
             indent=indent,
             default=encoder,
             ensure_ascii=False,
-            )
+        )
         return string
+
     # }}}
-    @staticmethod  #saveBin# {{{
+    @staticmethod  # saveBin# {{{
     def saveBin(obj: object, path: str, compres=False, create_dirs=True):
         if create_dirs:
             Cmd.__createDirsForFilePath(path)
@@ -295,8 +329,9 @@ class Cmd():# {{{
         finally:
             if fh is not None:
                 fh.close()
+
     # }}}
-    @staticmethod  #loadBin# {{{
+    @staticmethod  # loadBin# {{{
     def loadBin(file_path) -> object:
         GZIP_MAGIC = b"\x1F\x8B"  # метка .gzip файлов
         fh = None
@@ -316,8 +351,9 @@ class Cmd():# {{{
         finally:
             if fh is not None:
                 fh.close()
+
     # }}}
-    @staticmethod  #subprocess# {{{
+    @staticmethod  # subprocess# {{{
     def subprocess(command: list[str]):
         logger.debug(f"Cmd.subprocess({command})")
         """
@@ -335,8 +371,9 @@ class Cmd():# {{{
         # new_window_command = "xterm -e".split()
         # new_window_command = ("xfce4-terminal", "-x")
         subprocess.call(command)
+
     # }}}
-    @staticmethod  #__getFilesInDir# {{{
+    @staticmethod  # __getFilesInDir# {{{
     def __getFilesInDir(dir_path, full_path):
         all_files = list()
         names = os.listdir(dir_path)
@@ -348,8 +385,9 @@ class Cmd():# {{{
                 else:
                     all_files.append(name)
         return all_files
+
     # }}}
-    @staticmethod  #__getFilesInDirIncludeSubDir# {{{
+    @staticmethod  # __getFilesInDirIncludeSubDir# {{{
     def __getFilesInDirIncludeSubDir(dir_path, full_path):
         all_files = list()
         for root, dirs, files in os.walk(dir_path):
@@ -358,37 +396,49 @@ class Cmd():# {{{
             else:
                 all_files += files
         return all_files
+
     # }}}
-    @staticmethod  #__createDirsForFilePath# {{{
+    @staticmethod  # __createDirsForFilePath# {{{
     def __createDirsForFilePath(file_path) -> object:
         dir_path = os.path.dirname(file_path)
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
+
+
 # }}}
 # }}}
-class Signal():# {{{
-    def __init__(self, *args):# {{{
+class Signal:  # {{{
+    def __init__(self, *args):  # {{{
         self.args = args
         self.__slots = list()
+
     # }}}
-    def __checkTypes(self, args: tuple):# {{{
+    def __checkTypes(self, args: tuple):  # {{{
         for i, j in zip(args, self.args):
             assert isinstance(i, j)
+
     # }}}
-    def emit(self, *args):# {{{
+    def emit(self, *args):  # {{{
         for receiver in self.__slots:
             self.__checkTypes(args)
             receiver(*args)
+
     # }}}
-    def connect(self, slot):# {{{
+    def connect(self, slot):  # {{{
         self.__slots.append(slot)
+
     # }}}
+
+
 # }}}
 
-def now():# {{{
+
+def now():  # {{{
     return datetime.now(timezone.utc)
+
+
 # }}}
-def binarySearch(vector, x, key=None):# {{{
+def binarySearch(vector, x, key=None):  # {{{
     left = 0
     right = len(vector) - 1
     while left <= right:
@@ -401,26 +451,32 @@ def binarySearch(vector, x, key=None):# {{{
         else:
             left = mid + 1
     return None
+
+
 # }}}
-def findLeft(vector, x, key=None):# {{{
-    """ Возвращает индекс элемента меньше или равного 'x'
+def findLeft(vector, x, key=None):  # {{{
+    """Возвращает индекс элемента меньше или равного 'x'
     Если 'x', меньше самого левого элемента в векторе, возвращает None
     """
     i = bisect.bisect_right(vector, x, key=key)
     if i:
-        return i-1
+        return i - 1
     return None
+
+
 # }}}
-def findRight(vector, x, key=None):# {{{
-    """ Возвращает индекс элемента больше или равного 'x'
+def findRight(vector, x, key=None):  # {{{
+    """Возвращает индекс элемента больше или равного 'x'
     Если 'x', больше самого правого элемента в векторе, возвращает None
     """
     i = bisect.bisect_left(vector, x, key=key)
     if i != len(vector):
         return i
     return None
+
+
 # }}}
-def encodeJSON(obj):# {{{
+def encodeJSON(obj):  # {{{
     assert False
     if isinstance(obj, (datetime, date)):
         return obj.isoformat()
@@ -430,8 +486,10 @@ def encodeJSON(obj):# {{{
         return str(obj)
     if isinstance(obj, (avin.core.Asset)):
         return avin.core.Asset.toJSON(obj)
+
+
 # }}}
-def decodeJSON(obj):# {{{
+def decodeJSON(obj):  # {{{
     assert False
     for k, v in obj.items():
         if isinstance(v, str) and "+00:00" in v:
@@ -451,8 +509,10 @@ def decodeJSON(obj):# {{{
         if isinstance(v, str) and "Type.LONG" in v:
             obj[k] = avin.core.Signal.Type.LONG
     return obj
+
+
 # }}}
-def codeCounter(dir_path):# {{{
+def codeCounter(dir_path):  # {{{
     count_file = 0
     count_str = 0
     for root, dirs, files in os.walk(dir_path):
@@ -464,8 +524,9 @@ def codeCounter(dir_path):# {{{
                 count_str += n
                 count_file += 1
     return count_file, count_str
+
+
 # }}}
 
 if __name__ == "__main__":
     ...
-
