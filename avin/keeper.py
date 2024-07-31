@@ -20,6 +20,8 @@ from avin.core import Asset, AssetList, Bar, Order, TimeFrame
 from avin.data import AssetType, Data, DataType, Exchange
 from avin.logger import logger
 
+__all__ = ("Keeper",)
+
 
 class Keeper:
     def __init__(self):  # {{{
@@ -109,7 +111,7 @@ class Keeper:
         return res
 
     # }}}
-    async def addAccount(self, broker: str, broker_id: str, name: str):  # {{{
+    async def addAccount(self, name: str, broker: str, broker_id: str):  # {{{
         request = f"""
         INSERT INTO "Account" (
             name,
@@ -126,15 +128,15 @@ class Keeper:
         return res
 
     # }}}
-    async def addStrategy(self, name: str, version: str):  # {{{
+    async def addStrategy(self, strategy: Strategy):  # {{{
         request = f"""
         INSERT INTO "Strategy" (
             name,
             version
             )
         VALUES (
-            '{name}',
-            '{version}'
+            '{strategy.name}',
+            '{strategy.version}'
             );
         """
         res = await self.transaction(request)
@@ -274,6 +276,40 @@ class Keeper:
         return res
 
     async def deleteTrade(self, trade: Trade): ...
+
+    # }}}
+    async def deleteExchange(self, exchange: Exchange):  # {{{
+        request = f"""
+        DELETE FROM "Exchange" WHERE name = '{exchange.name}';
+        """
+        print(request)
+        res = await self.transaction(request)
+        return res
+
+    # }}}
+    async def deleteAsset(self, asset: Asset):  # {{{
+        request = f"""
+        DELETE FROM "Asset" WHERE figi = '{asset.figi}';
+        """
+        res = await self.transaction(request)
+        return res
+
+    # }}}
+    async def deleteAccount(self, account: Account):  # {{{
+        request = f"""
+        DELETE FROM "Account" WHERE name = '{account.name}';
+        """
+        res = await self.transaction(request)
+        return res
+
+    # }}}
+    async def deleteStrategy(self, strategy: Strategy):  # {{{
+        request = f"""
+        DELETE FROM "Strategy"
+        WHERE name = '{strategy.name}' AND version = '{strategy.version}';
+        """
+        res = await self.transaction(request)
+        return res
 
     # }}}
     async def loadBars(self, asset, data_type, begin, end):  # {{{

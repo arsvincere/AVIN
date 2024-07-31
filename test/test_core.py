@@ -34,6 +34,7 @@ def test_Range():  # {{{
     assert body.type == Range.Type.BODY
     assert 11.0 in bar.body
     assert 11.1 not in bar.body
+
     # }}}
 
 
@@ -61,6 +62,7 @@ def test_Bar():  # {{{
     fields = line.split(";")
     decode_bar = Bar.fromCSV(fields, chart=None)
     assert bar == decode_bar
+
     # }}}
 
 
@@ -191,7 +193,7 @@ def test_Order():  # {{{
     assert o.ID is not None
     assert o.trade_ID == None
     assert o.status == Order.Status.NEW
-    assert o.account is None  # задается при размещении ордера
+    assert o.account_name is None  # задается при размещении ордера
 
 
 # }}}
@@ -200,7 +202,7 @@ def test_Operation():  # {{{
     share = Share(ID)
     dt = now()
     op = Operation(
-        account_name="unit_test",
+        account_name="_unittest",
         dt=dt,
         direction=Operation.Direction.SELL,
         asset=share,
@@ -240,42 +242,42 @@ def test_Operation():  # {{{
 
 
 # }}}
-def test_Position():  # {{{
-    ID = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
-    share = Share(ID)
-    dt = now()
-    op = Operation(
-        dt=dt,
-        direction=Operation.Direction.BUY,
-        asset=share,
-        price=100,
-        lots=1,
-        quantity=50,
-        amount=100 * 50,
-        commission=10,
-        meta=None,
-    )
-
-    pos = Position(operations=[op], meta=None)
-    assert pos.status == Position.Status.OPEN
-    assert pos.operations[0] == op
-    assert pos.openPrice() == 100
-    assert pos.lots() == 1
-    assert pos.openDatetime() == dt
-    assert pos.quantity() == 50
-    assert pos.buyQuantity() == 50
-    assert pos.sellQuantity() == 0
-    assert pos.amount() == 5000
-    assert pos.buyAmount() == 5000
-    assert pos.sellAmount() == 0
-    assert pos.commission() == 10
-    assert pos.buyCommission() == 10
-    assert pos.sellCommission() == 0
-    assert pos.average() == 100
-    assert pos.averageBuy() == 100
-    assert pos.averageSell() == 0
-
-    # TODO добавить другие функции связанные с закрытием позиции
+# def test_Position():  # {{{
+# TODO
+# позиция это чисто позиция в портфолио, как от брокера приходит
+#     ID = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
+#     share = Share(ID)
+#     dt = now()
+#     op = Operation(
+#         dt=dt,
+#         direction=Operation.Direction.BUY,
+#         asset=share,
+#         price=100,
+#         lots=1,
+#         quantity=50,
+#         amount=100 * 50,
+#         commission=10,
+#         meta=None,
+#     )
+#
+#     pos = Position(operations=[op], meta=None)
+#     assert pos.status == Position.Status.OPEN
+#     assert pos.operations[0] == op
+#     assert pos.openPrice() == 100
+#     assert pos.lots() == 1
+#     assert pos.openDatetime() == dt
+#     assert pos.quantity() == 50
+#     assert pos.buyQuantity() == 50
+#     assert pos.sellQuantity() == 0
+#     assert pos.amount() == 5000
+#     assert pos.buyAmount() == 5000
+#     assert pos.sellAmount() == 0
+#     assert pos.commission() == 10
+#     assert pos.buyCommission() == 10
+#     assert pos.sellCommission() == 0
+#     assert pos.average() == 100
+#     assert pos.averageBuy() == 100
+#     assert pos.averageSell() == 0
 
 
 # }}}
@@ -307,6 +309,7 @@ def test_Portfolio():  # {{{
     share = Share(ID)
     dt = now()
     op = Operation(
+        account_name="_unittest",
         dt=dt,
         direction=Operation.Direction.BUY,
         asset=share,
@@ -382,10 +385,11 @@ def test_Trade():  # {{{
     trade = Trade(dt, strategy, trade_type, asset)
     assert trade.status == Trade.Status.INITIAL
 
-    order = Order.Limit(Order.Direction.BUY, asset, lots=1, price=100)
+    order = Order.Limit(Order.Direction.BUY, asset, lots=1, quantity=10, price=100)
     trade.addOrder(order)  # signals of order connect automaticaly
 
     op = Operation(
+        account_name="_unittest",
         dt=dt,
         direction=Operation.Direction.BUY,
         asset=asset,
@@ -398,7 +402,7 @@ def test_Trade():  # {{{
     )
 
     order.posted.emit(order)
-    assert trade.status == Trade.Status.POST
+    assert trade.status == Trade.Status.NEW
 
     order.fulfilled.emit(
         order,
@@ -427,6 +431,7 @@ def test_Trade():  # {{{
 
     dt2 = dt + ONE_DAY
     op2 = Operation(
+        account_name="_unittest",
         dt=dt2,
         direction=Operation.Direction.BUY,
         asset=asset,
@@ -459,6 +464,7 @@ def test_Trade():  # {{{
 
     dt3 = dt2 + ONE_DAY
     op3 = Operation(
+        account_name="_unittest",
         dt=dt3,
         direction=Operation.Direction.SELL,
         asset=asset,

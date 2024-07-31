@@ -137,27 +137,23 @@ class Trade:  # {{{
     # }}}
     # @slot  #orderPosted # {{{
     def orderPosted(self, order):
-        assert False
-        # TODO: погоди, тут надо еще разбираться какой статус в итоге будет
         assert order.trade_ID == self.ID
-        self.__info["status"] = Trade.Status.NEW
+        if self.status == Trade.Status.INITIAL:
+            self.status = Trade.Status.NEW
 
     # }}}
-    # @slot  #orderExecuted # {{{
-    def orderExecuted(self, order, operations: list[Operation]):
+    # @slot  #orderFulfilled # {{{
+    def orderFulfilled(self, order, operations: list[Operation]):
         assert order.trade_ID == self.ID
         for op in operations:
             self.addOperation(op)
 
     # }}}
     def addOrder(self, order: Order):  # {{{
-        assert False
-        # TODO: погоди, тут надо еще разбираться какой статус в итоге будет
         order.trade_ID = self.ID
         order.posted.connect(self.orderPosted)
-        order.fulfilled.connect(self.orderExecuted)
+        order.fulfilled.connect(self.orderFulfilled)
         self.__info["orders"].append(order)
-        self.__info["status"] = Trade.Status.NEW
 
     # }}}
     def addOperation(self, op: Operation):  # {{{
@@ -309,7 +305,6 @@ class Trade:  # {{{
         assert self.status in (
             Trade.Status.OPEN,
             Trade.Status.CLOSE,
-            Trade.Status.ARCHIVE,
         )
         return self.__info["operations"][0].dt
 
@@ -318,7 +313,6 @@ class Trade:  # {{{
         assert self.status in (
             Trade.Status.OPEN,
             Trade.Status.CLOSE,
-            Trade.Status.ARCHIVE,
         )
         if self.isLong():
             return self.buyAverage()
