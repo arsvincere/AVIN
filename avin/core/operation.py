@@ -80,6 +80,7 @@ class Operation:  # {{{
     @classmethod  # toJson{{{
     def toJson(cls, op: Operation) -> dict:
         obj = {
+            "account": op.account_name,
             "dt": str(op.dt),
             "direction": op.direction.name,
             "asset": Asset.toJson(op.asset),
@@ -95,6 +96,7 @@ class Operation:  # {{{
     @classmethod  # fromJson{{{
     def fromJson(cls, obj):
         o = Operation(
+            account_name=obj["account"],
             dt=datetime.fromisoformat(obj["dt"]),
             direction=Operation.Direction.fromStr(obj["direction"]),
             asset=Asset.fromJson(obj["asset"]),
