@@ -54,6 +54,7 @@ class Keeper:  # {{{
         ...
 
     # }}}
+
     async def addExchange(self, exchange: Exchange):  # {{{
         request = f"""
         INSERT INTO "Exchange"(name)
@@ -280,6 +281,7 @@ class Keeper:  # {{{
     async def deleteTrade(self, trade: Trade): ...
 
     # }}}
+
     async def deleteExchange(self, exchange: Exchange):  # {{{
         request = f"""
         DELETE FROM "Exchange" WHERE name = '{exchange.name}';
@@ -349,6 +351,26 @@ class Keeper:  # {{{
         return res
 
     # }}}
+
+    async def updateTradeStatus(self, trade: Trade):  # {{{
+        request = f"""
+            UPDATE "Trade" SET status = '{trade.status.name}'
+            WHERE trade_id = '{trade.ID}';
+            """
+        res = await self.transaction(request)
+        return res
+
+    # }}}
+    async def updateOrderStatus(self, order: Order):  # {{{
+        request = f"""
+            UPDATE "Order" SET status = '{order.status.name}'
+            WHERE order_id = '{order.ID}';
+            """
+        res = await self.transaction(request)
+        return res
+
+    # }}}
+
     async def loadBars(self, ID, data_type, begin, end):  # {{{
         table_name = self.__getTableName(ID, data_type)
         request = f"""
@@ -374,6 +396,7 @@ class Keeper:  # {{{
         return bars
 
     # }}}
+
     async def __createEnums(self):  # {{{
         requests = [  # {{{
             """DROP TYPE IF EXISTS public."DataSource";""",
