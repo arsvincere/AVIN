@@ -23,7 +23,7 @@ from avin.logger import logger
 __all__ = ("Keeper",)
 
 
-class Keeper:
+class Keeper:  # {{{
     def __init__(self):  # {{{
         self.user = Usr.PG_USER
         self.database = Usr.PG_DATABASE
@@ -50,6 +50,7 @@ class Keeper:
         await self.__createTradeTable()
         await self.__createOrderTable()
         await self.__createOperationTable()
+        await self.__createMarketDataScheme()
         ...
 
     # }}}
@@ -62,7 +63,7 @@ class Keeper:
         return res
 
     # }}}
-    async def addAsset(self, asset: Asset):  # {{{
+    async def addAsset(self, asset: Asset | Id):  # {{{
         request = f"""
         INSERT INTO "Asset" (
             exchange,
@@ -83,26 +84,27 @@ class Keeper:
         return res
 
     # }}}
-    async def addNewData(self, asset, data_type, data):  # {{{
-        def formatBarData(bar: Bar):  # {{{
-            dt = f"'{bar.dt.isoformat()}'"
-            string = (
-                "(" f"{dt},{bar.open},{bar.high},{bar.low},{bar.close},{bar.vol}" "),\n"
-            )
-            return string
+    async def addData(self, ID: Id, data_type: DataType, data: list[object]):  # {{{
+        def formatBarData(b: Bar):
+            # Bar to postgres value
+            dt = f"'{b.dt.isoformat()}'"
+            s = f"({dt},{b.open},{b.high},{b.low},{b.close},{b.vol}),\n"
+            return s
 
-        # }}}
+        # Format data in postges value
         values = str()
         for bar in data:
             value = formatBarData(bar)
             values += value
-        values = values[0:-2] + ";"
+        values = values[0:-2] + ";"  # '<text>,\n' -> '<text>;'
 
-        table_name = f"{asset.figi}_{data_type.name}"
-        await self.__createBarsDataTable(asset, data_type)
+        # Create table if not exist
+        table_name = self.__getTableName(ID, data_type)
+        await self.__createBarsDataTable(ID, data_type)
 
+        # Add bars data
         request = f"""
-        INSERT INTO "{table_name}" (dt, open, high, low, close, volume)
+        INSERT INTO data."{table_name}" (dt, open, high, low, close, volume)
         VALUES
             {values}
         """
@@ -111,17 +113,15 @@ class Keeper:
         return res
 
     # }}}
-    async def addAccount(self, name: str, broker: str, broker_id: str):  # {{{
+    async def addAccount(self, account: Account):  # {{{
         request = f"""
         INSERT INTO "Account" (
             name,
-            broker,
-            broker_id
+            broker
             )
         VALUES (
-            '{name}',
-            '{broker}',
-            '{broker_id}'
+            '{account.name}',
+            '{account.broker.name}'
             );
         """
         res = await self.transaction(request)
@@ -243,6 +243,7 @@ class Keeper:
 
         request = f"""
             INSERT INTO "Operation" (
+                operation_id,
                 account,
                 dt,
                 direction,
@@ -257,6 +258,7 @@ class Keeper:
                 meta
             )
             VALUES (
+                {operation.ID},
                 '{operation.account_name}',
                 '{operation.dt}',
                 '{operation.direction.name}',
@@ -282,7 +284,6 @@ class Keeper:
         request = f"""
         DELETE FROM "Exchange" WHERE name = '{exchange.name}';
         """
-        print(request)
         res = await self.transaction(request)
         return res
 
@@ -290,6 +291,15 @@ class Keeper:
     async def deleteAsset(self, asset: Asset):  # {{{
         request = f"""
         DELETE FROM "Asset" WHERE figi = '{asset.figi}';
+        """
+        res = await self.transaction(request)
+        return res
+
+    # }}}
+    async def deleteData(self, ID: Id, data_type: DataType):  # {{{
+        table_name = self.__getTableName(ID, data_type)
+        request = f"""
+        DROP TABLE data."{table_name}";
         """
         res = await self.transaction(request)
         return res
@@ -312,11 +322,35 @@ class Keeper:
         return res
 
     # }}}
-    async def loadBars(self, asset, data_type, begin, end):  # {{{
-        # TODO: data_type или все таки таймфрейм тут ????
-        # А!!! стопе. Это вообще должно происходить через интерфейс
-        # модуля дата. И тогда дата тайп.
-        table_name = f"{asset.figi}_{data_type.name}"
+    async def deleteTrade(self, trade: Trade):  # {{{
+        request = f"""
+            DELETE FROM "Trade"
+            WHERE trade_id = '{trade.ID}';
+            """
+        res = await self.transaction(request)
+        return res
+
+    # }}}
+    async def deleteOrder(self, order: Order):  # {{{
+        request = f"""
+            DELETE FROM "Order"
+            WHERE order_id = '{order.ID}';
+            """
+        res = await self.transaction(request)
+        return res
+
+    # }}}
+    async def deleteOperation(self, operation: Operation):  # {{{
+        request = f"""
+            DELETE FROM "Operation"
+            WHERE operation_id = '{operation.ID}';
+            """
+        res = await self.transaction(request)
+        return res
+
+    # }}}
+    async def loadBars(self, ID, data_type, begin, end):  # {{{
+        table_name = self.__getTableName(ID, data_type)
         request = f"""
             SELECT dt, open, high, low, close, volume
             FROM "{table_name}"
@@ -457,12 +491,12 @@ class Keeper:
         return res
 
     # }}}
-    async def __createBarsDataTable(self, asset: Asset, data_type: DataType):  # {{{
+    async def __createBarsDataTable(self, ID: Id, data_type: DataType):  # {{{
         assert data_type != DataType.TIC
         assert data_type != DataType.BOOK
-        table_name = f"{asset.figi}_{data_type.name}"
+        table_name = self.__getTableName(ID, data_type)
         request = f"""
-        CREATE TABLE IF NOT EXISTS "{table_name}" (
+        CREATE TABLE IF NOT EXISTS data."{table_name}" (
             dt TIMESTAMP WITH TIME ZONE PRIMARY KEY,
             open float,
             high float,
@@ -479,11 +513,47 @@ class Keeper:
         request = """
         CREATE TABLE IF NOT EXISTS "Account" (
             name text PRIMARY KEY,
-            broker text,
-            broker_id text
+            broker text
             );
         """
         res = await self.transaction(request)
+
+        # if not exist, create system account for back-tester
+        request = f"""
+        SELECT name FROM "Account"
+        WHERE name = '_backtest'
+        """
+        res = await self.transaction(request)
+        if not res:
+            request = f"""
+            INSERT INTO "Account" (
+                name,
+                broker
+                )
+            VALUES
+                ('_backtest', 'ArsVincere')
+                ;
+            """
+            res = await self.transaction(request)
+
+        # if not exist, create system account for unit-tests
+        request = f"""
+        SELECT name FROM "Account"
+        WHERE name = '_unittest'
+        """
+        res = await self.transaction(request)
+        if not res:
+            request = f"""
+            INSERT INTO "Account" (
+                name,
+                broker
+                )
+            VALUES
+                ('_unittest', 'ArsVincere')
+                ;
+            """
+            res = await self.transaction(request)
+
         return res
 
     # }}}
@@ -545,6 +615,7 @@ class Keeper:
     async def __createOperationTable(self):  # {{{
         request = """
         CREATE TABLE IF NOT EXISTS "Operation" (
+            operation_id    float PRIMARY KEY,
             account         text REFERENCES "Account"(name),
             dt              TIMESTAMP WITH TIME ZONE,
             direction       "OperationDirection",
@@ -562,15 +633,20 @@ class Keeper:
         res = await self.transaction(request)
         return res
 
+    # }}}
+    async def __createMarketDataScheme(self):  # {{{
+        request = """
+        CREATE SCHEMA IF NOT EXISTS data
+        """
+        res = await self.transaction(request)
+        return res
+
+    # }}}
+    def __getTableName(self, asset: Asset | Id, data_type):  # {{{
+        table_name = f"_{asset.figi}_{data_type.name}"
+        return table_name
+
+    # }}}
+
 
 # }}}
-
-
-async def main():
-    k = Keeper()
-    await k.createDataBase()
-    ...
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

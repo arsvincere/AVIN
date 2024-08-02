@@ -7,21 +7,24 @@
 # ============================================================================
 
 from __future__ import annotations
-import os
+
 import abc
-import moexalgo
-import tinkoff.invest
-import pandas as pd
+import os
 from dataclasses import dataclass
-from datetime import datetime, date, time, timedelta
+from datetime import date, datetime, time, timedelta
+
+import moexalgo
+import pandas as pd
+import tinkoff.invest
+
 from avin.const import *
-from avin.logger import logger
-from avin.utils import Cmd, now
-from avin.data.source import Source
+from avin.data.asset_type import AssetType
 from avin.data.data_type import DataType
 from avin.data.exchange import Exchange
-from avin.data.asset_type import AssetType
 from avin.data.id import Id
+from avin.data.source import Source
+from avin.logger import logger
+from avin.utils import Cmd, now
 
 # TODO: Usr.auto_update_historical_data = True
 # и тогда при импорте модуля, проверяем файли last_update в корне

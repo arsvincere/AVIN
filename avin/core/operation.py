@@ -61,6 +61,7 @@ class Operation:  # {{{
         self.quantity = quantity
         self.amount = amount
         self.commission = commission
+        self.ID = ID if ID else GId.newGId(self)
         self.trade_ID = trade_ID
         self.order_ID = order_ID
         self.meta = meta
