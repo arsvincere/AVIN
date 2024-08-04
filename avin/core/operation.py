@@ -40,30 +40,30 @@ class Operation:  # {{{
         account_name: str,
         dt: datetime,
         direction: Direction,
-        asset: Asset,
+        figi: str,
         lots: int,
         quantity: int,
         price: float,
         amount: float,
         commission: float,
         ID: GId = None,
-        trade_ID: GId = None,
-        order_ID: GId = None,
+        trade_id: GId = None,
+        order_id: GId = None,
         meta: object = None,
     ):
 
         self.account_name = account_name
         self.dt = dt
         self.direction = direction
-        self.asset = asset
+        self.figi = figi
         self.price = price
         self.lots = lots
         self.quantity = quantity
         self.amount = amount
         self.commission = commission
         self.ID = ID if ID else GId.newGId(self)
-        self.trade_ID = trade_ID
-        self.order_ID = order_ID
+        self.trade_id = trade_id
+        self.order_id = order_id
         self.meta = meta
 
     # }}}
@@ -71,7 +71,7 @@ class Operation:  # {{{
         usr_dt = self.dt + Usr.TIME_DIF
         str_dt = usr_dt.strftime("%Y-%m-%d %H:%M")
         string = (
-            f"{str_dt} {self.direction.name} {self.asset.ticker} "
+            f"{str_dt} {self.direction.name} {self.figi} "
             f"{self.quantity} * {self.price} = {self.amount} "
             f"+ {self.commission}"
         )
@@ -106,6 +106,26 @@ class Operation:  # {{{
             price=obj["price"],
             amount=obj["amount"],
             commission=obj["commission"],
+        )
+        return o
+
+    # }}}
+    @classmethod  # fromRecord{{{
+    def fromRecord(cls, record):
+        o = Operation(
+            account_name=record["account"],
+            dt=record["dt"],
+            direction=Operation.Direction.fromStr(record["direction"]),
+            figi=record["figi"],
+            lots=record["lots"],
+            quantity=record["quantity"],
+            price=record["price"],
+            amount=record["amount"],
+            commission=record["commission"],
+            ID=record["operation_id"],
+            trade_id=record["trade_id"],
+            order_id=record["order_id"],
+            meta=record["meta"],
         )
         return o
 

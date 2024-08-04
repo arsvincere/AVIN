@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import enum
 
 from avin.const import ONE_DAY, Usr
@@ -15,6 +16,7 @@ from avin.core.gid import GId
 from avin.core.operation import Operation
 from avin.core.order import Order
 from avin.core.position import Position
+from avin.keeper import Keeper
 from avin.utils import Signal
 
 
@@ -23,6 +25,14 @@ class Trade:  # {{{
         UNDEFINE = 0
         LONG = 1
         SHORT = 2
+
+        @classmethod  # fromStr
+        def fromStr(cls, string: str) -> Trade.Type:
+            types = {
+                "LONG": Trade.Type.LONG,
+                "SHORT": Trade.Type.SHORT,
+            }
+            return types[string]
 
     # }}}
     class Status(enum.Enum):  # {{{
@@ -33,32 +43,50 @@ class Trade:  # {{{
         CLOSE = 4
         CANCELED = 5
 
+        @classmethod  # fromStr
+        def fromStr(cls, string: str) -> Trade.Type:
+            statuses = {
+                "INITIAL": Trade.Status.INITIAL,
+                "NEW": Trade.Status.NEW,
+                "OPEN": Trade.Status.OPEN,
+                "CLOSE": Trade.Status.CLOSE,
+                "CANCELED": Trade.Status.CANCELED,
+            }
+            return statuses[string]
+
     # }}}
     def __init__(  # {{{
         self,
         dt: datetime,
-        strategy: Strategy,
-        trade_type: Type,
-        asset: Asset,
+        strategy: str,
+        version: str,
+        trade_type: Trade.Type,
+        figi: str,
         status: Trade.Status = None,
         ID: GId = None,
+        orders: list = None,
+        operations: list = None,
     ):
 
         if status is None:
             status = Trade.Status.INITIAL
         if ID is None:
             ID = GId.newGId(self)
+        if orders is None:
+            orders = list()
+        if operations is None:
+            operations = list()
 
         self.__info = {
             "ID": ID,
             "datetime": dt,
             "status": status,
-            "strategy": strategy.name,
-            "version": strategy.version,
+            "strategy": strategy,
+            "version": version,
             "type": trade_type,
-            "asset": asset,
-            "orders": list(),
-            "operations": list(),
+            "figi": figi,
+            "orders": orders,
+            "operations": operations,
             # "result": None,
             # "percent": None,
             # "holding_days": None,
@@ -81,7 +109,7 @@ class Trade:  # {{{
         dt = dt.strftime("%Y-%m-%d %H:%M")
         string = (
             f"=> Trade {dt} {self.strategy}-{self.version} "
-            f"{self.asset.ticker} {self.type.name.lower()}"
+            f"{self.figi} {self.type.name.lower()}"
         )
         return string
 
@@ -120,9 +148,9 @@ class Trade:  # {{{
         return self.__info["type"]
 
     # }}}
-    @property  # asset# {{{
-    def asset(self):
-        return self.__info["asset"]
+    @property  # figi# {{{
+    def figi(self):
+        return self.__info["figi"]
 
     # }}}
     @property  # orders# {{{
@@ -390,6 +418,35 @@ class Trade:  # {{{
         assert False
 
     # }}}
+
+    @classmethod  # fromRecord
+    async def fromRecord(cls, record):
+        trade_id = record["trade_id"]
+
+        # request operations of trade
+        operations = await Keeper.get(
+            what=Operation,
+            trade_id=trade_id,
+        )
+
+        # request orders of trade
+        orders = await Keeper.get(
+            what=Order,
+            trade_id=trade_id,
+        )
+
+        t = Trade(
+            dt=record["dt"],
+            strategy=record["strategy"],
+            version=record["version"],
+            trade_type=Trade.Type.fromStr(record["type"]),
+            figi=record["figi"],
+            status=Trade.Status.fromStr(record["status"]),
+            ID=record["trade_id"],
+            orders=orders,
+            operations=operations,
+        )
+        return t
 
 
 # }}}

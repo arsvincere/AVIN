@@ -62,11 +62,33 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         REJECT = 9  # отклонен брокером
         WAIT = 10  # ожидает выполнения условий для выставления
 
+        @classmethod  # fromStr
+        def fromStr(cls, string: str) -> Order.Status:
+            statuses = {
+                "NEW": Order.Status.NEW,
+                "POST": Order.Status.POST,
+                "PARTIAL": Order.Status.PARTIAL,
+                "EXECUTED": Order.Status.EXECUTED,
+                "OFF": Order.Status.OFF,
+                "CANCEL": Order.Status.CANCEL,
+                "REJECT": Order.Status.REJECT,
+                "WAIT": Order.Status.WAIT,
+            }
+            return statuses[string]
+
     # }}}
     class Direction(enum.Enum):  # {{{
         UNDEFINE = 0
         BUY = 1
         SELL = 2
+
+        @classmethod  # fromStr
+        def fromStr(cls, string: str) -> Order.Direction:
+            directions = {
+                "BUY": Order.Direction.BUY,
+                "SELL": Order.Direction.SELL,
+            }
+            return directions[string]
 
     # }}}
 
@@ -75,24 +97,24 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         def __init__(
             self,
             direction,
-            asset,
+            figi,
             lots,
             quantity,
             account_name,
             status,
             ID,
-            trade_ID,
+            trade_id,
             meta,
         ):
 
             self.direction = direction
-            self.asset = asset
+            self.figi = figi
             self.lots = lots
             self.quantity = quantity
 
             self.account_name = account_name
             self.status = status if status else Order.Status.NEW
-            self.trade_ID = trade_ID
+            self.trade_id = trade_id
             self.meta = meta
 
             if ID is None:
@@ -176,25 +198,25 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         def __init__(
             self,
             direction: Order.Direction,
-            asset: Asset,
+            figi: str,
             lots: int,
             quantity: int,
             account_name: str = None,
             status: Order.Status = None,
             ID: GId = None,
-            trade_ID: GId = None,
+            trade_id: GId = None,
             meta=None,
         ):
 
             super().__init__(
                 direction,
-                asset,
+                figi,
                 lots,
                 quantity,
                 account_name,
                 status,
                 ID,
-                trade_ID,
+                trade_id,
                 meta=None,
             )
             self.type = Order.Type.MARKET
@@ -204,26 +226,26 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         def __init__(
             self,
             direction: Order.Direction,
-            asset: Asset,
+            figi: str,
             lots: int,
             quantity: int,
             price: float,
             account_name: str = None,
             status: Order.Status = None,
             ID: GId = None,
-            trade_ID: GId = None,
+            trade_id: GId = None,
             meta=None,
         ):
 
             super().__init__(
                 direction,
-                asset,
+                figi,
                 lots,
                 quantity,
                 account_name,
                 status,
                 ID,
-                trade_ID,
+                trade_id,
                 meta=None,
             )
             self.type = Order.Type.LIMIT
@@ -234,7 +256,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         def __init__(
             self,
             direction: Order.Direction,
-            asset: Asset,
+            figi: str,
             lots: int,
             quantity: int,
             stop_price: float,
@@ -242,7 +264,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             account_name: str = None,
             status: Order.Status = None,
             ID: GId = None,
-            trade_ID: GId = None,
+            trade_id: GId = None,
             meta=None,
         ):
 
@@ -254,7 +276,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
                 account_name,
                 status,
                 ID,
-                trade_ID,
+                trade_id,
                 meta=None,
             )
             self.type = Order.Type.STOP
@@ -268,7 +290,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             position: Position,  # ??? NOTE подумай еще раз
             stop_price: float,
             exec_price: float,
-            trade_ID: GId = None,
+            trade_id: GId = None,
             status: Order.Status = None,
         ):
 
@@ -281,7 +303,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             position: Position,  # ??? NOTE подумай еще раз
             stop_price: float,
             exec_price: float,
-            trade_ID: GId = None,
+            trade_id: GId = None,
             status: Order.Status = None,
         ):
 
@@ -297,8 +319,68 @@ class Order(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
 
+    @classmethod  # fromRecord{{{
+    def fromRecord(cls, record):
+        methods = {
+            "MARKET": Order.__marketOrderFromRecord,
+            "LIMIT": Order.__limitOrderFromRecord,
+            "STOP": Order.__stopOrderFromRecord,
+        }
+        method = methods[record["type"]]
+        return method(record)
+
+    # }}}
+    @classmethod  # __marketOrderFromRecord{{{
+    def __marketOrderFromRecord(cls, record):
+        order = Order.Market(
+            direction=Order.Direction.fromStr(record["direction"]),
+            figi=record["figi"],
+            lots=record["lots"],
+            quantity=record["quantity"],
+            account_name=record["account"],
+            status=Order.Status.fromStr(record["status"]),
+            ID=record["order_id"],
+            trade_id=record["trade_id"],
+            meta=None,
+        )
+        return order
+
+    # }}}
+    @classmethod  # __limitOrderFromRecord{{{
+    def __limitOrderFromRecord(cls, record):
+        order = Order.Limit(
+            direction=Order.Direction.fromStr(record["direction"]),
+            figi=record["figi"],
+            lots=record["lots"],
+            quantity=record["quantity"],
+            price=record["price"],
+            account_name=record["account"],
+            status=Order.Status.fromStr(record["status"]),
+            ID=record["order_id"],
+            trade_id=record["trade_id"],
+            meta=None,
+        )
+        return order
+
+    # }}}
+    @classmethod  # __stopOrderFromRecord{{{
+    def __stopOrderFromRecord(cls, record):
+        order = Order.Stop(
+            direction=Order.Direction.fromStr(record["direction"]),
+            figi=record["figi"],
+            lots=record["lots"],
+            quantity=record["quantity"],
+            stop_price=record["stop_price"],
+            exec_price=record["exec_price"],
+            account_name=record["account"],
+            status=Order.Status.fromStr(record["status"]),
+            ID=record["order_id"],
+            trade_id=record["trade_id"],
+            meta=None,
+        )
+        return order
+
 
 # }}}
 
-if __name__ == "avin.logger":
-    configure(logger)
+# }}}

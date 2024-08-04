@@ -6,33 +6,31 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-""" doc
-"""
+"""The module provides interaction with the postgresql database"""
+
 from __future__ import annotations
 
 import asyncio
+import inspect
 from datetime import UTC, datetime
 
 import asyncpg
 
 from avin.const import Usr
-from avin.core import Asset, AssetList, Bar, Order, TimeFrame
-from avin.data import AssetType, Data, DataType, Exchange
 from avin.logger import logger
 
 __all__ = ("Keeper",)
 
 
-class Keeper:  # {{{
-    def __init__(self):  # {{{
-        self.user = Usr.PG_USER
-        self.database = Usr.PG_DATABASE
-        self.host = Usr.PG_HOST
+class Keeper:
+    USER = Usr.PG_USER
+    DATABASE = Usr.PG_DATABASE
+    HOST = Usr.PG_HOST
 
-    # }}}
-    async def transaction(self, request: str):  # {{{
+    @classmethod  # transaction# {{{
+    async def transaction(cls, request: str):
         conn = await asyncpg.connect(
-            user=self.user, database=self.database, host=self.host
+            user=cls.USER, database=cls.DATABASE, host=cls.HOST
         )
 
         values = await conn.fetch(request)
@@ -41,30 +39,121 @@ class Keeper:  # {{{
         return values
 
     # }}}
-    async def createDataBase(self):  # {{{
-        # await self.__createEnums()
-        await self.__createExchangeTable()
-        await self.__createAssetTable()
-        await self.__createAccountTable()
-        await self.__createStrategyTable()
-        await self.__createTradeTable()
-        await self.__createOrderTable()
-        await self.__createOperationTable()
-        await self.__createMarketDataScheme()
-        ...
+    @classmethod  # createDataBase# {{{
+    async def createDataBase(cls):
+        # await cls.__createEnums()
+        await cls.__createExchangeTable()
+        await cls.__createAssetTable()
+        await cls.__createAccountTable()
+        await cls.__createStrategyTable()
+        await cls.__createTradeTable()
+        await cls.__createOrderTable()
+        await cls.__createOperationTable()
+        await cls.__createMarketDataScheme()
+
+    # }}}
+    @classmethod  # add# {{{
+    async def add(cls, obj):
+        if inspect.isclass(obj):
+            class_name = obj.__name__
+        else:
+            class_name = obj.__class__.__name__
+
+        methods = {
+            "Asset": cls.__addAsset,
+            "Share": cls.__addAsset,
+            "Index": cls.__addAsset,
+            "Account": cls.__addAccount,
+            "Strategy": cls.__addStrategy,
+            "Trade": cls.__addTrade,
+            "Operation": cls.__addOperation,
+            "Market": cls.__addOrder,
+            "Limit": cls.__addOrder,
+            "Stop": cls.__addOrder,
+            "MOEX": cls.__addExchange,
+            "SPB": cls.__addExchange,
+        }
+        method = methods[class_name]
+        await method(obj)
+
+    # }}}
+    @classmethod  # delete# {{{
+    async def delete(cls, obj):
+        if inspect.isclass(obj):
+            class_name = obj.__name__
+        else:
+            class_name = obj.__class__.__name__
+
+        methods = {
+            "Asset": cls.__deleteAsset,
+            "Share": cls.__deleteAsset,
+            "Index": cls.__deleteAsset,
+            "Account": cls.__deleteAccount,
+            "Strategy": cls.__deleteStrategy,
+            "Trade": cls.__deleteTrade,
+            "Operation": cls.__deleteOperation,
+            "Market": cls.__deleteOrder,
+            "Limit": cls.__deleteOrder,
+            "Stop": cls.__deleteOrder,
+            "MOEX": cls.__deleteExchange,
+            "SPB": cls.__deleteExchange,
+        }
+        method = methods[class_name]
+        await method(obj)
+
+    # }}}
+    @classmethod  # update# {{{
+    async def update(cls, obj):
+        if inspect.isclass(obj):
+            class_name = obj.__name__
+        else:
+            class_name = obj.__class__.__name__
+
+        methods = {
+            "Trade": cls.__updateTrade,
+            "Market": cls.__updateOrder,
+            "Limit": cls.__updateOrder,
+            "Stop": cls.__updateOrder,
+        }
+        method = methods[class_name]
+        await method(obj)
+
+    # }}}
+    @classmethod  # get# {{{
+    async def get(cls, what: class_, **kwargs):
+        # of: object | ID = None,
+        # status: list[statuses] = None,
+        # begin: datetime = None,
+        # end: datetime = None,
+        assert inspect.isclass(what)
+
+        methods = {
+            "Asset": cls.__getAsset,
+            "Trade": cls.__getTrades,
+            "Operation": cls.__getOperations,
+            "Order": cls.__getOrders,
+            # "Market": cls.__getOrders,
+            # "Limit": cls.__getOrders,
+            # "Stop": cls.__getOrders,
+        }
+        method = methods[what.__name__]
+        result = await method(what, kwargs)
+        return result
 
     # }}}
 
-    async def addExchange(self, exchange: Exchange):  # {{{
+    @classmethod  # __addExchange# {{{
+    async def __addExchange(cls, exchange: Exchange):
         request = f"""
         INSERT INTO "Exchange"(name)
         VALUES ('{exchange.name}');
         """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
     # }}}
-    async def addAsset(self, asset: Asset | Id):  # {{{
+    @classmethod  # __addAsset# {{{
+    async def __addAsset(cls, asset: Asset | Id):
         request = f"""
         INSERT INTO "Asset" (
             exchange,
@@ -81,11 +170,12 @@ class Keeper:  # {{{
             '{asset.figi}'
             );
         """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
     # }}}
-    async def addData(self, ID: Id, data_type: DataType, data: list[object]):  # {{{
+    @classmethod  # __addData# {{{
+    async def __addData(cls, ID: Id, data_type: DataType, data: list[object]):
         def formatBarData(b: Bar):
             # Bar to postgres value
             dt = f"'{b.dt.isoformat()}'"
@@ -100,8 +190,8 @@ class Keeper:  # {{{
         values = values[0:-2] + ";"  # '<text>,\n' -> '<text>;'
 
         # Create table if not exist
-        table_name = self.__getTableName(ID, data_type)
-        await self.__createBarsDataTable(ID, data_type)
+        table_name = cls.__getTableName(ID, data_type)
+        await cls.__createBarsDataTable(ID, data_type)
 
         # Add bars data
         request = f"""
@@ -110,11 +200,12 @@ class Keeper:  # {{{
             {values}
         """
 
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
     # }}}
-    async def addAccount(self, account: Account):  # {{{
+    @classmethod  # __addAccount# {{{
+    async def __addAccount(cls, account: Account):
         request = f"""
         INSERT INTO "Account" (
             name,
@@ -125,11 +216,12 @@ class Keeper:  # {{{
             '{account.broker.name}'
             );
         """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
     # }}}
-    async def addStrategy(self, strategy: Strategy):  # {{{
+    @classmethod  # __addStrategy# {{{
+    async def __addStrategy(cls, strategy: Strategy):
         request = f"""
         INSERT INTO "Strategy" (
             name,
@@ -140,11 +232,12 @@ class Keeper:  # {{{
             '{strategy.version}'
             );
         """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
     # }}}
-    async def addTrade(self, trade: Trade):  # {{{
+    @classmethod  # __addTrade# {{{
+    async def __addTrade(cls, trade: Trade):
         request = f"""
             INSERT INTO "Trade" (
                 trade_id, dt, status, strategy, version, type, figi
@@ -159,25 +252,32 @@ class Keeper:  # {{{
                 '{trade.asset.figi}'
                 );
             """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
-    async def deleteTrade(self, trade: Trade): ...
+    async def deleteTrade(cls, trade: Trade): ...
 
     # }}}
-    async def addOrder(self, order: Order):  # {{{
+    @classmethod  # __addOrder# {{{
+    async def __addOrder(cls, order: Order):
         assert order.trade_ID is not None
         assert order.account_name is not None
 
-        if order.type == Order.Type.MARKET:
+        # Используется проверка типа ордера через строки...
+        # Логично было бы использовать enum Type из класса Order, например так:
+        # if order.type == Order.Type.LIMIT
+        # но для этого нужно импортировать модуль order, а тогда модуль order
+        # не сможет импортировать модуль keeper (circular import)
+        # хз как лучше, пока пусть типо по имени проверяет
+        if order.type.name == "MARKET":
             price = "NULL"
             stop_price = "NULL"
             exec_price = "NULL"
-        elif order.type == Order.Type.LIMIT:
+        elif order.type.name == "LIMIT":
             price = order.price
             stop_price = "NULL"
             exec_price = "NULL"
-        elif order.type == Order.Type.STOP:
+        elif order.type.name == "STOP":
             price = "NULL"
             stop_price = order.stop_price
             exec_price = order.exec_price
@@ -223,13 +323,14 @@ class Keeper:  # {{{
                 {meta}
                 );
             """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
-    async def deleteTrade(self, trade: Trade): ...
+    async def deleteTrade(cls, trade: Trade): ...
 
     # }}}
-    async def addOperation(self, operation: Operation):  # {{{
+    @classmethod  # __addOperation# {{{
+    async def __addOperation(cls, operation: Operation):
         assert operation.trade_ID is not None
         assert operation.order_ID is not None
 
@@ -275,104 +376,147 @@ class Keeper:  # {{{
             );
         """
 
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
-    async def deleteTrade(self, trade: Trade): ...
+    async def deleteTrade(cls, trade: Trade): ...
 
     # }}}
 
-    async def deleteExchange(self, exchange: Exchange):  # {{{
+    @classmethod  # __deleteExchange# {{{
+    async def __deleteExchange(cls, exchange: Exchange):
         request = f"""
         DELETE FROM "Exchange" WHERE name = '{exchange.name}';
         """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
     # }}}
-    async def deleteAsset(self, asset: Asset):  # {{{
+    @classmethod  # __deleteAsset# {{{
+    async def __deleteAsset(cls, asset: Asset):
         request = f"""
         DELETE FROM "Asset" WHERE figi = '{asset.figi}';
         """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
     # }}}
-    async def deleteData(self, ID: Id, data_type: DataType):  # {{{
-        table_name = self.__getTableName(ID, data_type)
+    @classmethod  # __deleteData# {{{
+    async def __deleteData(cls, ID: Id, data_type: DataType):
+        table_name = cls.__getTableName(ID, data_type)
         request = f"""
         DROP TABLE data."{table_name}";
         """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
     # }}}
-    async def deleteAccount(self, account: Account):  # {{{
+    @classmethod  # __deleteAccount# {{{
+    async def __deleteAccount(cls, account: Account):
         request = f"""
         DELETE FROM "Account" WHERE name = '{account.name}';
         """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
     # }}}
-    async def deleteStrategy(self, strategy: Strategy):  # {{{
+    @classmethod  # __deleteStrategy# {{{
+    async def __deleteStrategy(cls, strategy: Strategy):
         request = f"""
         DELETE FROM "Strategy"
         WHERE name = '{strategy.name}' AND version = '{strategy.version}';
         """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
     # }}}
-    async def deleteTrade(self, trade: Trade):  # {{{
+    @classmethod  # __deleteTrade# {{{
+    async def __deleteTrade(cls, trade: Trade):
         request = f"""
             DELETE FROM "Trade"
             WHERE trade_id = '{trade.ID}';
             """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
     # }}}
-    async def deleteOrder(self, order: Order):  # {{{
+    @classmethod  # __deleteOrder# {{{
+    async def __deleteOrder(cls, order: Order):
         request = f"""
             DELETE FROM "Order"
             WHERE order_id = '{order.ID}';
             """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
     # }}}
-    async def deleteOperation(self, operation: Operation):  # {{{
+    @classmethod  # __deleteOperation# {{{
+    async def __deleteOperation(cls, operation: Operation):
         request = f"""
             DELETE FROM "Operation"
             WHERE operation_id = '{operation.ID}';
             """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
     # }}}
 
-    async def updateTradeStatus(self, trade: Trade):  # {{{
+    @classmethod  # __updateTrade# {{{
+    async def __updateTrade(cls, trade: Trade):
         request = f"""
-            UPDATE "Trade" SET status = '{trade.status.name}'
-            WHERE trade_id = '{trade.ID}';
+            UPDATE "Trade"
+            SET
+                dt = '{trade.dt}',
+                status = '{trade.status.name}',
+                strategy = '{trade.strategy}',
+                version = '{trade.version}',
+                type = '{trade.type.name}',
+                figi = '{trade.asset.figi}'
+            WHERE
+                trade_id = '{trade.ID}';
             """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
     # }}}
-    async def updateOrderStatus(self, order: Order):  # {{{
+    @classmethod  # __updateOrder# {{{
+    async def __updateOrder(cls, order: Order):
         request = f"""
-            UPDATE "Order" SET status = '{order.status.name}'
-            WHERE order_id = '{order.ID}';
+            UPDATE "Order"
+            SET
+                status = '{order.status.name}'
+            WHERE
+                order_id = '{order.ID}';
             """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
     # }}}
 
-    async def loadBars(self, ID, data_type, begin, end):  # {{{
-        table_name = self.__getTableName(ID, data_type)
+    @classmethod  # __getAsset # {{{
+    async def __getAsset(cls, asset_class, kwargs: dict):
+        figi = kwargs.get("figi")
+
+        request = f"""
+            SELECT
+                exchange,
+                type,
+                ticker,
+                name,
+                figi
+            FROM "Asset"
+            WHERE figi = {figi}
+            ;
+            """
+        asset_record = await cls.transaction(request)
+
+        asset = asset_class.fromRecord(asset_record)
+        return asset
+
+    # }}}
+    @classmethod  # __getBars # {{{
+    async def __getBars(cls, ID, data_type, begin, end):
+        table_name = cls.__getTableName(ID, data_type)
         request = f"""
             SELECT dt, open, high, low, close, volume
             FROM "{table_name}"
@@ -381,7 +525,7 @@ class Keeper:  # {{{
             ;
             """
 
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         bars = list()
         for i in res:
             bar = Bar(
@@ -396,15 +540,142 @@ class Keeper:  # {{{
         return bars
 
     # }}}
+    @classmethod  # __getTrades # {{{
+    async def __getTrades(cls, trade_class, kwargs: dict):
+        strategy = kwargs.get("strategy")
+        statuses = kwargs.get("status")
+        begin = kwargs.get("begin")
+        end = kwargs.get("end")
 
-    async def __createEnums(self):  # {{{
+        # create condition for strategy:
+        if strategy is None:
+            pg_strategy = "TRUE"
+        else:
+            pg_strategy = (
+                f"(strategy = '{strategy.name}' AND version = '{strategy.version}')"
+            )
+
+        # create condition for statuses, like this:
+        # (status = 'INITIAL' OR status = 'NEW' OR status = 'OPEN')
+        if statuses is None:
+            pg_statuses = "TRUE"
+        else:
+            pg_statuses = f"(status = '{statuses[0].name}'"
+            i = 1
+            while i < len(statuses):
+                pg_statuses += f" OR status = '{statuses[i].name}'"
+                i += 1
+            pg_statuses += ")"
+
+        # create condition for begin datetime:
+        if begin is None:
+            pg_begin = "TRUE"
+        else:
+            pg_begin = f"dt >= '{begin}'"
+
+        # create condition for end datetime:
+        if end is None:
+            pg_end = "TRUE"
+        else:
+            pg_end = f"dt < '{end}'"
+
+        request = f"""
+            SELECT trade_id, dt, status, strategy, version, type, figi
+            FROM "Trade"
+            WHERE {pg_strategy} AND {pg_statuses} AND {pg_begin} AND {pg_end}
+            ORDER BY dt
+            ;
+            """
+        trade_records = await cls.transaction(request)
+
+        # create Trade objects
+        tlist = list()
+        for i in trade_records:
+            trade = await trade_class.fromRecord(i)
+            tlist.append(trade)
+
+        return tlist
+
+    # }}}
+    @classmethod  # __getOperations # {{{
+    async def __getOperations(cls, constructor, kwargs):
+        trade_id = kwargs.get("trade_id")
+
+        request = f"""
+            SELECT
+                operation_id,
+                account,
+                dt,
+                direction,
+                figi,
+                lots,
+                quantity,
+                price,
+                amount,
+                commission,
+                trade_id,
+                order_id,
+                meta
+            FROM "Operation"
+            WHERE trade_id = {trade_id}
+            ORDER BY dt
+            ;
+            """
+        op_records = await cls.transaction(request)
+
+        # create operation objects
+        op_list = list()
+        for i in op_records:
+            op = constructor.fromRecord(i)
+            op_list.append(op)
+
+        return op_list
+
+    # }}}
+    @classmethod  # __getOrders # {{{
+    async def __getOrders(cls, constructor, kwargs):
+        trade_id = kwargs.get("trade_id")
+
+        request = f"""
+            SELECT
+                order_id,
+                account,
+                type,
+                status,
+                direction,
+                figi,
+                lots,
+                quantity,
+                price,
+                stop_price,
+                exec_price,
+                trade_id,
+                meta
+            FROM "Order"
+            WHERE trade_id = {trade_id}
+            ;
+            """
+        order_records = await cls.transaction(request)
+
+        # create order objects
+        order_list = list()
+        for i in order_records:
+            order = constructor.fromRecord(i)
+            order_list.append(order)
+
+        return order_list
+
+    # }}}
+
+    @classmethod  # __createEnums# {{{
+    async def __createEnums(cls):
         requests = [  # {{{
-            """DROP TYPE IF EXISTS public."DataSource";""",
+            """DROP TYPE IF EXISTS public."Data.Source";""",
             """ CREATE TYPE "DataSource" AS ENUM (
                 'MOEX',
                 'TINKOFF'
                 );""",
-            """DROP TYPE IF EXISTS public."AssetType";""",
+            """DROP TYPE IF EXISTS public."Asset.Type";""",
             """ CREATE TYPE "AssetType" AS ENUM (
                 'CASH',
                 'INDEX',
@@ -415,7 +686,7 @@ class Keeper:  # {{{
                 'CURRENCY',
                 'ETF'
                 );""",
-            """DROP TYPE IF EXISTS public."DataType";""",
+            """DROP TYPE IF EXISTS public."Data.Type";""",
             """ CREATE TYPE "DataType" AS ENUM (
                 'BAR_1M',
                 'BAR_5M',
@@ -439,8 +710,8 @@ class Keeper:  # {{{
                 'Q',
                 'Y'
                 );""",
-            """DROP TYPE IF EXISTS public."OrderType";""",
-            """ CREATE TYPE "OrderType" AS ENUM (
+            """DROP TYPE IF EXISTS public."Order.Type";""",
+            """ CREATE TYPE "Order.Type" AS ENUM (
                 'MARKET',
                 'LIMIT',
                 'STOP',
@@ -449,13 +720,13 @@ class Keeper:  # {{{
                 'WAIT',
                 'TRAILING'
                 );""",
-            """DROP TYPE IF EXISTS public."OrderDirection";""",
-            """ CREATE TYPE "OrderDirection" AS ENUM (
+            """DROP TYPE IF EXISTS public."Order.Direction";""",
+            """ CREATE TYPE "Order.Direction" AS ENUM (
                 'BUY',
                 'SELL'
                 );""",
-            """DROP TYPE IF EXISTS public."OrderStatus";""",
-            """ CREATE TYPE "OrderStatus" AS ENUM (
+            """DROP TYPE IF EXISTS public."Order.Status";""",
+            """ CREATE TYPE "Order.Status" AS ENUM (
                 'NEW',
                 'POST',
                 'PARTIAL',
@@ -465,18 +736,18 @@ class Keeper:  # {{{
                 'REJECT',
                 'WAIT'
                 );""",
-            """DROP TYPE IF EXISTS public."OperationDirection";""",
-            """ CREATE TYPE "OperationDirection" AS ENUM (
+            """DROP TYPE IF EXISTS public."Operation.Direction";""",
+            """ CREATE TYPE "Operation.Direction" AS ENUM (
                 'BUY',
                 'SELL'
                 );""",
-            """DROP TYPE IF EXISTS public."TradeType";""",
-            """ CREATE TYPE "TradeType" AS ENUM (
+            """DROP TYPE IF EXISTS public."Trade.Type";""",
+            """ CREATE TYPE "Trade.Type" AS ENUM (
                 'LONG',
                 'SHORT'
                 );""",
-            """DROP TYPE IF EXISTS public."TradeStatus";""",
-            """ CREATE TYPE "TradeStatus" AS ENUM (
+            """DROP TYPE IF EXISTS public."Trade.Status";""",
+            """ CREATE TYPE "Trade.Status" AS ENUM (
                 'INITIAL',
                 'NEW',
                 'OPEN',
@@ -485,21 +756,23 @@ class Keeper:  # {{{
                 );""",
         ]  # }}}
         for i in requests:
-            await self.transaction(i)
+            await cls.transaction(i)
 
     # }}}
-    async def __createExchangeTable(self):  # {{{
+    @classmethod  # __createExchangeTable# {{{
+    async def __createExchangeTable(cls):
         keeper = Keeper()
         request = """
         CREATE TABLE IF NOT EXISTS "Exchange" (
             name text PRIMARY KEY
             );
         """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
     # }}}
-    async def __createAssetTable(self):  # {{{
+    @classmethod  # __createAssetTable# {{{
+    async def __createAssetTable(cls):
         keeper = Keeper()
         request = """
         CREATE TABLE IF NOT EXISTS "Asset" (
@@ -510,14 +783,15 @@ class Keeper:  # {{{
             figi text PRIMARY KEY
             );
         """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
     # }}}
-    async def __createBarsDataTable(self, ID: Id, data_type: DataType):  # {{{
+    @classmethod  # __createBarsDataTable# {{{
+    async def __createBarsDataTable(cls, ID: Id, data_type: DataType):
         assert data_type != DataType.TIC
         assert data_type != DataType.BOOK
-        table_name = self.__getTableName(ID, data_type)
+        table_name = cls.__getTableName(ID, data_type)
         request = f"""
         CREATE TABLE IF NOT EXISTS data."{table_name}" (
             dt TIMESTAMP WITH TIME ZONE PRIMARY KEY,
@@ -528,25 +802,26 @@ class Keeper:  # {{{
             volume integer
             );
             """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
     # }}}
-    async def __createAccountTable(self):  # {{{
+    @classmethod  # __createAccountTable# {{{
+    async def __createAccountTable(cls):
         request = """
         CREATE TABLE IF NOT EXISTS "Account" (
             name text PRIMARY KEY,
             broker text
             );
         """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
 
         # if not exist, create system account for back-tester
         request = f"""
         SELECT name FROM "Account"
         WHERE name = '_backtest'
         """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         if not res:
             request = f"""
             INSERT INTO "Account" (
@@ -557,14 +832,14 @@ class Keeper:  # {{{
                 ('_backtest', 'ArsVincere')
                 ;
             """
-            res = await self.transaction(request)
+            res = await cls.transaction(request)
 
         # if not exist, create system account for unit-tests
         request = f"""
         SELECT name FROM "Account"
         WHERE name = '_unittest'
         """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         if not res:
             request = f"""
             INSERT INTO "Account" (
@@ -575,12 +850,13 @@ class Keeper:  # {{{
                 ('_unittest', 'ArsVincere')
                 ;
             """
-            res = await self.transaction(request)
+            res = await cls.transaction(request)
 
         return res
 
     # }}}
-    async def __createStrategyTable(self):  # {{{
+    @classmethod  # __createStrategyTable# {{{
+    async def __createStrategyTable(cls):
         request = """
         CREATE TABLE IF NOT EXISTS "Strategy" (
             name text,
@@ -588,38 +864,40 @@ class Keeper:  # {{{
             CONSTRAINT strategy_pkey PRIMARY KEY (name, version)
             );
         """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
     # }}}
-    async def __createTradeTable(self):  # {{{
+    @classmethod  # __createTradeTable# {{{
+    async def __createTradeTable(cls):
         request = """
         CREATE TABLE IF NOT EXISTS "Trade" (
             trade_id    float PRIMARY KEY,
             dt          TIMESTAMP WITH TIME ZONE,
-            status      "TradeStatus",
+            status      "Trade.Status",
             strategy    text,
             version     text,
-            type        "TradeType",
+            type        "Trade.Type",
             figi        text REFERENCES "Asset"(figi),
 
 			FOREIGN KEY (strategy, version)
                 REFERENCES "Strategy" (name, version)
 			);
             """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
     # }}}
-    async def __createOrderTable(self):  # {{{
+    @classmethod  # __createOrderTable# {{{
+    async def __createOrderTable(cls):
         # TODO добавить частично исполненный - сколько там уже исполнено
         request = """
         CREATE TABLE IF NOT EXISTS "Order" (
             order_id        float PRIMARY KEY,
             account         text REFERENCES "Account"(name),
-            type            "OrderType",
-            status          "OrderStatus",
-            direction       "OrderDirection",
+            type            "Order.Type",
+            status          "Order.Status",
+            direction       "Order.Direction",
             figi            text REFERENCES "Asset"(figi),
             lots            integer,
             quantity        integer,
@@ -631,17 +909,18 @@ class Keeper:  # {{{
 			meta            text
 			);
             """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
     # }}}
-    async def __createOperationTable(self):  # {{{
+    @classmethod  # __createOperationTable# {{{
+    async def __createOperationTable(cls):
         request = """
         CREATE TABLE IF NOT EXISTS "Operation" (
             operation_id    float PRIMARY KEY,
             account         text REFERENCES "Account"(name),
             dt              TIMESTAMP WITH TIME ZONE,
-            direction       "OperationDirection",
+            direction       "Operation.Direction",
             figi            text REFERENCES "Asset"(figi),
             lots            integer,
             quantity        integer,
@@ -653,23 +932,22 @@ class Keeper:  # {{{
 			meta            text
 			);
             """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
     # }}}
-    async def __createMarketDataScheme(self):  # {{{
+    @classmethod  # __createMarketDataScheme# {{{
+    async def __createMarketDataScheme(cls):
         request = """
         CREATE SCHEMA IF NOT EXISTS data
         """
-        res = await self.transaction(request)
+        res = await cls.transaction(request)
         return res
 
     # }}}
-    def __getTableName(self, asset: Asset | Id, data_type):  # {{{
+    @classmethod  # __getTableName# {{{
+    def __getTableName(cls, asset: Asset | Id, data_type):
         table_name = f"_{asset.figi}_{data_type.name}"
         return table_name
 
     # }}}
-
-
-# }}}

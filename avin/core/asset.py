@@ -172,6 +172,18 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         return asset
 
     # }}}
+    @classmethod  # fromRecord# {{{
+    def fromRecord(cls, record):
+        exchange = Exchange.fromStr(record["exchange"])
+        asset_type = record["type"]
+        ticker = record["ticker"]
+        figi = record["figi"]
+        name = record["name"]
+        ID = Id(exchange, asset_type, name, ticker, figi)
+        asset = Asset.byId(ID)
+        return asset
+
+    # }}}
     @classmethod  # __checkArgs# {{{
     def __checkArgs(cls, timeframe, begin, end):
         # TODO сделать реальную проверку аргументов, а не только
