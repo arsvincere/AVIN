@@ -10,7 +10,7 @@ import enum
 import os
 from datetime import UTC, time, timedelta
 
-__all__ = (  # {{{
+__all__ = (
     "Dir",
     "Res",
     "Usr",
@@ -27,7 +27,6 @@ __all__ = (  # {{{
     "DAY_BEGIN",
     "DAY_END",
 )
-# }}}
 
 
 class Dir:  # {{{
@@ -114,11 +113,9 @@ class Usr:  # {{{
     # Auto update market data
     AUTO_UPDATE_MARKET_DATA = True
 
-    # Postresql
-    # PG_USER =       "alex"
-    # PG_PASSWORD =   ""
+    # Postresql settings
     PG_USER = "alex"
-    PG_PASSWORD = "6546"
+    PG_PASSWORD = ""
     PG_DATABASE = "appdb"
     PG_HOST = "127.0.0.1"
 
