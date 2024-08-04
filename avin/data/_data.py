@@ -26,9 +26,6 @@ from avin.data.source import Source
 from avin.logger import logger
 from avin.utils import Cmd, now
 
-# TODO: Usr.auto_update_historical_data = True
-# и тогда при импорте модуля, проверяем файли last_update в корне
-# папки с датой, и обновляем все что можно.
 
 class Data():# {{{
     @classmethod  #assets # {{{
@@ -1457,8 +1454,8 @@ class _TinkoffData(_AbstractSource):# {{{
             f"curl -s --location '{data_url}?figi={figi}&year={year}' "
             f"-H 'Authorization: Bearer {cls._TOKEN}' "
             f"-o {file_name} "
-            # "-w '%{http_code\\n'"
             )
+
         code = os.system(command)
         if Cmd.isExist(file_name):
             Cmd.replace(file_name, file_path)
