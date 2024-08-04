@@ -4,3 +4,4 @@ pandas
 pyqt6
 asyncpg
 pgadmin4
+qasync
