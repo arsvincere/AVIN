@@ -7,24 +7,27 @@
 # ============================================================================
 
 from __future__ import annotations
+
 from avin.const import Usr
-from avin.data.exchange import Exchange
 from avin.data.asset_type import AssetType
+from avin.data.exchange import Exchange
 from avin.utils import Cmd
 
-class Id():# {{{
-    """ doc # {{{
+
+class Id:  # {{{
+    """doc # {{{
     Unified identifier for all assets.
     """
+
     # }}}
-    def __init__(# {{{
+    def __init__(  # {{{
         self,
         exchange: Exchange,
         asset_type: AssetType,
         name: str,
         ticker: str,
         figi: str,
-        ):
+    ):
 
         self.__info = {
             "exchange": exchange,
@@ -32,54 +35,63 @@ class Id():# {{{
             "name": name,
             "ticker": ticker,
             "figi": figi,
-            }
+        }
+
     # }}}
-    def __str__(self):# {{{
+    def __str__(self):  # {{{
         s = f"{self.exchange.name}-{self.type.name}-{self.ticker}"
         return s
+
     # }}}
-    def __eq__(self, other):# {{{
+    def __eq__(self, other):  # {{{
         return self.__info == other.__info
+
     # }}}
-    @property  #exchange# {{{
+    @property  # exchange# {{{
     def exchange(self):
         return self.__info["exchange"]
+
     # }}}
-    @property  #type# {{{
+    @property  # type# {{{
     def type(self):
         return self.__info["type"]
+
     # }}}
-    @property  #ticker# {{{
+    @property  # ticker# {{{
     def ticker(self):
         return self.__info["ticker"]
+
     # }}}
-    @property  #figi# {{{
+    @property  # figi# {{{
     def figi(self):
         return self.__info["figi"]
+
     # }}}
-    @property  #name# {{{
+    @property  # name# {{{
     def name(self):
         return self.__info["name"]
+
     # }}}
-    @property  #dir_path# {{{
+    @property  # dir_path# {{{
     def dir_path(self):
-        path = Cmd.path(
-            Usr.DATA, self.exchange.name, self.type.name, self.ticker
-            )
+        path = Cmd.path(Usr.DATA, self.exchange.name, self.type.name, self.ticker)
         return path
+
     # }}}
-    @classmethod  #save# {{{
+    @classmethod  # save# {{{
     def save(cls, ID: Id, file_path: str) -> None:
         obj = cls.toJson(ID)
         Cmd.saveJson(obj, file_path)
+
     # }}}
-    @classmethod  #load# {{{
+    @classmethod  # load# {{{
     def load(cls, file_path) -> Id:
         obj = Cmd.loadJson(file_path)
         ID = cls.fromJson(obj)
         return ID
+
     # }}}
-    @classmethod  #toJson# {{{
+    @classmethod  # toJson# {{{
     def toJson(cls, ID: Id) -> object:
         obj = {
             "exchange": ID.exchange.name,
@@ -89,17 +101,20 @@ class Id():# {{{
             "figi": ID.figi,
         }
         return obj
+
     # }}}
-    @classmethod  #fromJson# {{{
+    @classmethod  # fromJson# {{{
     def fromJson(cls, obj) -> Id:
         ID = Id(
-            exchange= Exchange.fromStr(obj["exchange"]),
-            asset_type= AssetType.fromStr(obj["type"]),
-            name= obj["name"],
-            ticker= obj["ticker"],
-            figi= obj["figi"]
-            )
+            exchange=Exchange.fromStr(obj["exchange"]),
+            asset_type=AssetType.fromStr(obj["type"]),
+            name=obj["name"],
+            ticker=obj["ticker"],
+            figi=obj["figi"],
+        )
         return ID
-    # }}}
-# }}}
 
+    # }}}
+
+
+# }}}
