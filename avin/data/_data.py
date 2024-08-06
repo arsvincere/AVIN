@@ -552,6 +552,7 @@ class _TickDataFile():# {{{
 # }}}
 
 class _AbstractSource(metaclass=abc.ABCMeta):# {{{
+    # TODO Usr.AUTO_UPDATE_ASSETS_CACHE
     """ const """# {{{
     _SUB_DIR = None
     _CACHE_DIR = None

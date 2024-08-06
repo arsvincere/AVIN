@@ -100,17 +100,14 @@ class Usr:  # {{{
     # Number of stored log files
     LOG_HISTORY = 5
 
-    # Token file name, by default in dir 'ROOT/usr/connect/tinkoff/'
-    # TODO: здесь пусть будет full_path до файла, и система не делает
-    # никаких предположений где он лежит
-    TINKOFF_TOKEN = "token.txt"
+    # Tinkoff token file, by default in dir 'ROOT/usr/connect/tinkoff/token.txt'
+    TINKOFF_TOKEN = os.path.join(CONNECT, "tinkoff", "token.txt")
 
-    # MOEX account file name, by default in dir 'ROOT/usr/connect/moex/'
-    # TODO: здесь пусть будет full_path до файла, и система не делает
-    # никаких предположений где он лежит
-    MOEX_ACCOUNT = "account.txt"
+    # MOEX account file, by default in dir 'ROOT/usr/connect/moex/account.txt'
+    MOEX_ACCOUNT = os.path.join(CONNECT, "moex", "account.txt")
 
-    # Auto update market data
+    # Auto update
+    AUTO_UPDATE_ASSET_CACHE = True
     AUTO_UPDATE_MARKET_DATA = True
 
     # Postresql settings
