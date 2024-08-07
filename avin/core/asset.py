@@ -14,7 +14,7 @@ from datetime import UTC, date, datetime
 from avin.const import DAY_BEGIN, Usr
 from avin.core.chart import Chart
 from avin.core.timeframe import TimeFrame
-from avin.data import AssetType, Data, Exchange, Id
+from avin.data import AssetType, Data, Exchange, InstrumentId
 from avin.logger import logger
 from avin.utils import Cmd, now
 

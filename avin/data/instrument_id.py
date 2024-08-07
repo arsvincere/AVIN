@@ -14,7 +14,7 @@ from avin.data.exchange import Exchange
 from avin.utils import Cmd
 
 
-class Id:  # {{{
+class InstrumentId:  # {{{
     """doc # {{{
     Unified identifier for all assets.
     """
@@ -79,20 +79,20 @@ class Id:  # {{{
 
     # }}}
     @classmethod  # save# {{{
-    def save(cls, ID: Id, file_path: str) -> None:
+    def save(cls, ID: InstrumentId, file_path: str) -> None:
         obj = cls.toJson(ID)
         Cmd.saveJson(obj, file_path)
 
     # }}}
     @classmethod  # load# {{{
-    def load(cls, file_path) -> Id:
+    def load(cls, file_path) -> InstrumentId:
         obj = Cmd.loadJson(file_path)
         ID = cls.fromJson(obj)
         return ID
 
     # }}}
     @classmethod  # toJson# {{{
-    def toJson(cls, ID: Id) -> object:
+    def toJson(cls, ID: InstrumentId) -> object:
         obj = {
             "exchange": ID.exchange.name,
             "type": ID.type.name,
@@ -104,8 +104,8 @@ class Id:  # {{{
 
     # }}}
     @classmethod  # fromJson# {{{
-    def fromJson(cls, obj) -> Id:
-        ID = Id(
+    def fromJson(cls, obj) -> InstrumentId:
+        ID = InstrumentId(
             exchange=Exchange.fromStr(obj["exchange"]),
             asset_type=AssetType.fromStr(obj["type"]),
             name=obj["name"],
