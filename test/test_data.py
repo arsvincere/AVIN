@@ -7,11 +7,13 @@
 # ============================================================================
 
 from datetime import datetime, timedelta
+
 from avin.const import *
 from avin.data import *
 from avin.utils import Cmd
 
-def test_Source():# {{{
+
+def test_Source():  # {{{
     src = Source.TINKOFF
     assert src.name == "TINKOFF"
 
@@ -24,8 +26,10 @@ def test_Source():# {{{
     assert loaded_src.name == "TINKOFF"
 
     Cmd.delete(file_path)
+
+
 # }}}
-def test_DataType():# {{{
+def test_DataType():  # {{{
     data_type = DataType.BAR_D
     assert data_type.value == "D"
     assert data_type.toTimedelta() == timedelta(days=1)
@@ -43,23 +47,29 @@ def test_DataType():# {{{
     assert from_str_data_type.value == "1M"
 
     Cmd.delete(file_path)
+
+
 # }}}
-def test_Exchange():# {{{
+def test_Exchange():  # {{{
     moex = Exchange.MOEX
     spb = Exchange.SPB
     assert moex.name == "MOEX"
     assert spb.name == "SPB"
     assert moex != spb
+
+
 # }}}
-def test_AssetType():# {{{
+def test_AssetType():  # {{{
     share = AssetType.SHARE
     index = AssetType.INDEX
     assert share.name == "SHARE"
     assert index.name == "INDEX"
     assert share != index
     assert share == share
+
+
 # }}}
-def test_Id():# {{{
+def test_InstrumentId():  # {{{
     sber = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
     assert sber.exchange == Exchange.MOEX
     assert sber.type == AssetType.SHARE
@@ -69,27 +79,31 @@ def test_Id():# {{{
     assert str(sber) == "MOEX-SHARE-SBER"
 
     file_path = Cmd.path(Dir.TMP, "id")
-    Id.save(sber, file_path)
+    InstrumentId.save(sber, file_path)
     assert Cmd.isExist(file_path)
 
-    loaded_id = Id.load(file_path)
+    loaded_id = InstrumentId.load(file_path)
     assert sber == loaded_id
     Cmd.delete(file_path)
+
+
 # }}}
-def test_Data_assets():# {{{
+def test_Data_assets():  # {{{
     source = Source.MOEX
     asset_type = AssetType.INDEX
     assets = Data.assets(source, asset_type)
     assert len(assets) > 0
-    assert isinstance(assets[0], Id)
+    assert isinstance(assets[0], InstrumentId)
 
     source = Source.TINKOFF
     asset_type = AssetType.SHARE
     assets = Data.assets(source, asset_type)
     assert len(assets) > 0
-    assert isinstance(assets[0], Id)
+    assert isinstance(assets[0], InstrumentId)
+
+
 # }}}
-def test_Data_find():# {{{
+def test_Data_find():  # {{{
     sber = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
     assert sber.name == "Сбер Банк"
     assert sber.figi == "BBG004730N88"
@@ -97,8 +111,10 @@ def test_Data_find():# {{{
     imoex = Data.find(Exchange.MOEX, AssetType.INDEX, "IMOEX")
     assert imoex.name == "Индекс МосБиржи"
     assert imoex.figi == None
+
+
 # }}}
-def test_Data_info():# {{{
+def test_Data_info():  # {{{
     gazp_id = Data.find(Exchange.MOEX, AssetType.SHARE, "GAZP")
     full_info = Data.info(gazp_id)
     assert full_info["uid"] == "962e2a95-02a9-4171-abd7-aa198dbe643a"
@@ -112,8 +128,10 @@ def test_Data_info():# {{{
     assert full_info["CURRENCYID"] == "RUB"
     assert full_info["BOARDID"] == "SNDX"
     # ...
+
+
 # }}}
-def test_Data_firstDateTime():# {{{
+def test_Data_firstDateTime():  # {{{
     sber = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
     # dt_d_moex = Data.firstDateTime(Source.MOEX, DataType.BAR_D, sber)
     # dt_1m_moex = Data.firstDateTime(Source.MOEX, DataType.BAR_1M, sber)
@@ -122,8 +140,10 @@ def test_Data_firstDateTime():# {{{
     # dt_d_tinkoff = Data.firstDateTime(Source.TINKOFF, DataType.BAR_D, sber)
     # dt_1m_tinkoff = Data.firstDateTime(Source.TINKOFF, DataType.BAR_1M, sber)
     # assert dt_1m_tinkoff > dt_d_tinkoff
+
+
 # }}}
-def test_Data_download_add_clear_convert_delete():# {{{
+def test_Data_download_add_clear_convert_delete():  # {{{
     # make backup user data abio
     backup_abio = False
     user_abio = Cmd.path(Usr.DATA, "MOEX", "SHARE", "ABIO")
@@ -195,7 +215,6 @@ def test_Data_download_add_clear_convert_delete():# {{{
     if backup_abrd:
         Cmd.copyDir(backup_abrd_path, user_abrd)
         Cmd.deleteDir(backup_abrd_path)
+
+
 # }}}
-
-
-
