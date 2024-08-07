@@ -6,12 +6,18 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-"""The module provides interaction with the postgresql database"""
+"""The module provides interaction with the postgresql database
+
+It is assumed, that the user does not use this class directly. All other classes in program turn to the database through the interface of this class "Keeper". Thus, the entire SQL code is collected inside this class.
+
+But if you really need to make a direct request to the database, you can use the 'transaction(sql_request)' method.
+"""
 
 from __future__ import annotations
 
 import asyncio
 import inspect
+import json
 from datetime import UTC, datetime
 
 import asyncpg
@@ -42,6 +48,7 @@ class Keeper:
     @classmethod  # createDataBase# {{{
     async def createDataBase(cls):
         # await cls.__createEnums()
+        await cls.__createCacheTable()
         await cls.__createExchangeTable()
         await cls.__createAssetTable()
         await cls.__createAccountTable()
@@ -50,6 +57,78 @@ class Keeper:
         await cls.__createOrderTable()
         await cls.__createOperationTable()
         await cls.__createMarketDataScheme()
+
+    # }}}
+    @classmethod  # find# {{{
+    async def find(cls, source: Source, **kwargs) -> list[InstrumentId]:
+        # create source condition
+        if source is None:
+            pg_source = "TRUE"
+        else:
+            pg_source = f"source = '{source.name}'"
+
+        # create kwargs condition
+        if asset_type is None:
+            pg_kwargs = "TRUE"
+        else:
+            json_string = json.dumps(kwargs, ensure_ascii=False)
+            pg_kwargs = f"info @> '{json_string}'"
+
+        # request assets info records
+        request = f"""
+            SELECT
+                info
+            FROM "Cache"
+            WHERE {pg_source} AND {pg_kwargs};
+            """
+        res = await cls.transaction(request)
+
+        # extract info dicts from records
+        assets_info = list()
+        for record in res:
+            info_dict = record["info"]
+            assets_info.append(info_dict)
+
+        return assets_info
+
+    # }}}
+    @classmethod  # info# {{{
+    async def info(cls, source: Source, asset_type: AssetType, **kwargs):
+        # create source condition
+        if source is None:
+            pg_source = "TRUE"
+        else:
+            pg_source = f"source = '{source.name}'"
+
+        # create asset_type condition
+        if asset_type is None:
+            pg_asset_type = "TRUE"
+        else:
+            pg_asset_type = f"type = '{asset_type.name}'"
+
+        # create kwarg condition
+        if asset_type is None:
+            pg_kwargs = "TRUE"
+        else:
+            json_string = json.dumps(kwargs, ensure_ascii=False)
+            pg_kwargs = f"info @> '{json_string}'"
+
+        # request assets info records
+        request = f"""
+            SELECT
+                info
+            FROM "Cache"
+            WHERE {pg_source} AND {pg_asset_type} AND {pg_kwargs};
+            """
+        res = await cls.transaction(request)
+
+        # extract info dicts from records
+        assets_info = list()
+        for record in res:
+            info_dict = record["info"]
+            assets_info.append(info_dict)
+
+        return assets_info
 
     # }}}
     @classmethod  # add# {{{
@@ -114,6 +193,7 @@ class Keeper:
             "Market": cls.__updateOrder,
             "Limit": cls.__updateOrder,
             "Stop": cls.__updateOrder,
+            "_InstrumentInfoCache": cls.__updateCache,
         }
         method = methods[class_name]
         await method(obj)
@@ -492,6 +572,64 @@ class Keeper:
         return res
 
     # }}}
+    @classmethod  # __updateCache# {{{
+    async def __updateCache(cls, cache: _InstrumentInfoCache):
+        # delete old cache
+        request = f"""
+            DELETE FROM "Cache"
+            WHERE
+                source = '{cache.source.name}' AND
+                type = '{cache.asset_type.name}'
+                ;
+            """
+        res = await cls.transaction(request)
+
+        # format cache into postgres values
+        def formatCache(cache: _InstrumentInfoCache) -> str:
+            # cache to postgres value
+            values = str()
+            for i in cache.assets_info:
+                pg_source = f"'{cache.source.name}'"
+                pg_asset_type = f"'{cache.asset_type.name}'"
+                pg_asset_info = "'" + str(i).replace("'", '"') + "'"
+
+                # fix some values to be valid for postgres
+                pg_asset_info = (
+                    "'"
+                    + json.dumps(i, ensure_ascii=False, default=cache._encoderJson)
+                    + "'"
+                )
+
+                # pg_asset_info = pg_asset_info.replace('"None"', "null")
+                # pg_asset_info = pg_asset_info.replace("None", "null")
+                # pg_asset_info = pg_asset_info.replace('"Артген"', "Артген")
+
+                val = f"({pg_source}, {pg_asset_type}, {pg_asset_info}),\n"
+                values += val
+
+            # remove ",\n" after last value
+            values = values[0:-2]
+            return values
+
+        # save new cache
+        values = formatCache(cache)
+
+        request = f"""
+            INSERT INTO "Cache" (
+                source,
+                type,
+                info
+                )
+            VALUES
+                {values}
+                ;
+        """
+        res = await cls.transaction(request)
+
+        # update "last_update" datetime
+        return res
+
+    # }}}
 
     @classmethod  # __getAsset # {{{
     async def __getAsset(cls, asset_class, kwargs: dict):
@@ -670,12 +808,12 @@ class Keeper:
     @classmethod  # __createEnums# {{{
     async def __createEnums(cls):
         requests = [  # {{{
-            """DROP TYPE IF EXISTS public."Data.Source";""",
+            """DROP TYPE IF EXISTS public."DataSource";""",
             """ CREATE TYPE "DataSource" AS ENUM (
                 'MOEX',
                 'TINKOFF'
                 );""",
-            """DROP TYPE IF EXISTS public."Asset.Type";""",
+            """DROP TYPE IF EXISTS public."AssetType";""",
             """ CREATE TYPE "AssetType" AS ENUM (
                 'CASH',
                 'INDEX',
@@ -686,7 +824,7 @@ class Keeper:
                 'CURRENCY',
                 'ETF'
                 );""",
-            """DROP TYPE IF EXISTS public."Data.Type";""",
+            """DROP TYPE IF EXISTS public."DataType";""",
             """ CREATE TYPE "DataType" AS ENUM (
                 'BAR_1M',
                 'BAR_5M',
@@ -757,6 +895,20 @@ class Keeper:
         ]  # }}}
         for i in requests:
             await cls.transaction(i)
+
+    # }}}
+    @classmethod  # __createCacheTable# {{{
+    async def __createCacheTable(cls):
+        keeper = Keeper()
+        request = """
+        CREATE TABLE IF NOT EXISTS "Cache" (
+            source "DataSource",
+            type "AssetType",
+            info jsonb
+            );
+        """
+        res = await cls.transaction(request)
+        return res
 
     # }}}
     @classmethod  # __createExchangeTable# {{{
