@@ -22,24 +22,24 @@ class InstrumentId:  # {{{
     # }}}
     def __init__(  # {{{
         self,
-        exchange: Exchange,
         asset_type: AssetType,
-        name: str,
+        exchange: Exchange,
         ticker: str,
         figi: str,
+        name: str,
     ):
 
         self.__info = {
-            "exchange": exchange,
             "type": asset_type,
-            "name": name,
+            "exchange": exchange,
             "ticker": ticker,
             "figi": figi,
+            "name": name,
         }
 
     # }}}
     def __str__(self):  # {{{
-        s = f"{self.exchange.name}-{self.type.name}-{self.ticker}"
+        s = f"{self.type.name}-{self.exchange.name}-{self.ticker}"
         return s
 
     # }}}
@@ -97,8 +97,8 @@ class InstrumentId:  # {{{
             "exchange": ID.exchange.name,
             "type": ID.type.name,
             "ticker": ID.ticker,
-            "name": ID.name,
             "figi": ID.figi,
+            "name": ID.name,
         }
         return obj
 

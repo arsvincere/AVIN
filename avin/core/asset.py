@@ -18,6 +18,15 @@ from avin.data import AssetType, Data, Exchange, InstrumentId
 from avin.logger import logger
 from avin.utils import Cmd, now
 
+# TODO
+# Share запрос количества лотов и любой другой информации -
+# проверяется наличие словаря info, если он None, запрашиваем
+# у БД и кэшируем его.
+# Таким образом в памяти будут валяться только словари
+# для активов по которым ведется работа в тестере например.
+# и не будет грузиться просто для активов из АссетЛиста
+# какого нибудь
+
 
 class Asset(metaclass=abc.ABCMeta):  # {{{
     @abc.abstractmethod  # __init__# {{{
@@ -143,19 +152,30 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
     @classmethod  # byTicker# {{{
-    def byTicker(cls, exchange: Exchange, asset_type: AssetType, ticker: str):
-        ID = Data.find(exchange, asset_type, ticker)
+    async def byTicker(cls, asset_type: AssetType, exchange: Exchange, ticker: str):
+        ID = await Data.find(asset_type, exchange, ticker)
+        assert len(ID) == 1
+        ID = ID[0]
         return Asset.__getCertainTypeAsset(ID)
 
     # }}}
     @classmethod  # byFigi# {{{
-    def byFigi(cls, exchange: Exchange, asset_type: AssetType, figi: str):
-        ID = Data.find(exchange, asset_type, figi)
+    async def byFigi(cls, exchange: Exchange, asset_type: AssetType, figi: str):
+        ID = await Data.find(asset_type, exchange, figi=figi)
+        assert len(ID) == 1
+        ID = ID[0]
         return Asset.__getCertainTypeAsset(ID)
 
     # }}}
     @classmethod  # byUid# {{{
     def byUid(cls, exchange: Exchange, asset_type: AssetType, uid: str):
+        # DEPRICATE
+        # не надо залипать на эту чисто тиньковскую хрень,
+        # если и использовать ее, то только в пределах класса ТинькоБрокер
+        # в общий код системы это не должно лазить
+        # выпили ее, не знаю используется ли она еще где то, пока
+        # с ассертом пусть постоит
+        assert False
         ID = Data.find(exchange, asset_type, uid)
         return Asset.__getCertainTypeAsset(ID)
 

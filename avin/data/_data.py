@@ -30,51 +30,60 @@ from avin.utils import Cmd, now
 
 
 class Data:  # {{{
-    @classmethod  # assets # {{{
-    def assets(cls, source: Source, asset_type: AssetType) -> list[InstrumentId]:
-        check = cls.__checkArgs(source=source, asset_type=asset_type)
-        if check:
-            source = cls.__getSource(source)
-            return source.assets(asset_type)
-
-    # }}}
     @classmethod  # find# {{{
-    def find(
-        cls, exchange: Exchange, asset_type: AssetType, querry: str
-    ) -> InstrumentId:
+    async def find(
+        cls,
+        asset_type: AssetType = None,
+        exchange: Exchange = None,
+        ticker: str = None,
+        figi: str = None,
+        name: str = None,
+        source: Source = None,
+    ) -> list[InstrumentId]:
 
         check = cls.__checkArgs(
-            exchange=exchange,
             asset_type=asset_type,
-            querry=querry,
+            exchange=exchange,
+            ticker=ticker,
+            figi=figi,
+            name=name,
+            source=source,
         )
         if not check:
             return None
 
-        if exchange == Exchange.MOEX and asset_type == AssetType.INDEX:
-            md = _MoexData()
-            return md.find(exchange, asset_type, querry)
+        if source == Source.MOEX:
+            class_ = _MoexData
+        elif source == Source.TINKOFF:
+            class_ = _TinkoffData
+        # if source is None,
+        # uses _MoexData for indexes,
+        # and _TinkoffData otherwise
+        elif asset_type == AssetType.INDEX:
+            class_ = _MoexData
         else:
-            td = _TinkoffData()
-            return td.find(exchange, asset_type, querry)
+            class_ = _TinkoffData
+
+        id_list = await class_.find(asset_type, exchange, ticker, figi, name)
+        return id_list
 
     # }}}
     @classmethod  # info# {{{
-    def info(cls, ID: InstrumentId) -> dict:
+    async def info(cls, ID: InstrumentId) -> dict:
         check = cls.__checkArgs(ID=ID)
         if not check:
             return None
 
         if ID.exchange == Exchange.MOEX and ID.type == AssetType.INDEX:
-            md = _MoexData()
-            return md.info(ID)
+            class_ = _MoexData
         else:
-            td = _TinkoffData()
-            return td.info(ID)
+            class_ = _TinkoffData
+        info = await class_.info(ID)
+        return info
 
     # }}}
     @classmethod  # firstDateTime# {{{
-    def firstDateTime(
+    async def firstDateTime(
         cls, source: Source, data_type: DataType, ID: InstrumentId
     ) -> datetime:
 
@@ -90,26 +99,26 @@ class Data:  # {{{
             logger.error("First datetime availible only for '1M' and 'D'")
             return None
 
-        source = cls.__getSource(source)
-        dt = source.firstDateTime(ID, data_type)
+        class_ = cls.__getSource(source)
+        dt = await class_.firstDateTime(ID, data_type)
         return dt
 
     # }}}
     @classmethod  # download# {{{
-    def download(
+    async def download(
         cls, source: Source, data_type: DataType, ID: InstrumentId, year: int
-    ) -> bool:
+    ) -> None:
 
         check = cls.__checkArgs(source=source, ID=ID, data_type=data_type, year=year)
-        if check:
-            source = cls.__getSource(source)
-            source.download(ID, data_type, year)
-            return True
-        return False
+        if not check:
+            return
+
+        class_ = cls.__getSource(source)
+        await class_.download(ID, data_type, year)
 
     # }}}
     @classmethod  # add# {{{
-    def add(cls, source: Source) -> bool:
+    async def add(cls, source: Source) -> bool:
         check = cls.__checkArgs(
             source=source,
         )
@@ -121,7 +130,9 @@ class Data:  # {{{
 
     # }}}
     @classmethod  # convert# {{{
-    def convert(cls, ID: InstrumentId, in_type: DataType, out_type: DataType) -> bool:
+    async def convert(
+        cls, ID: InstrumentId, in_type: DataType, out_type: DataType
+    ) -> bool:
         check = cls.__checkArgs(ID=ID, in_type=in_type, out_type=out_type)
         if not check:
             return False
@@ -138,7 +149,7 @@ class Data:  # {{{
 
     # }}}
     @classmethod  # clear# {{{
-    def clear(cls, source: Source) -> bool:
+    async def clear(cls, source: Source) -> bool:
         check = cls.__checkArgs(
             source=source,
         )
@@ -150,7 +161,7 @@ class Data:  # {{{
 
     # }}}
     @classmethod  # delete# {{{
-    def delete(cls, ID: InstrumentId, data_type: DataType) -> bool:
+    async def delete(cls, ID: InstrumentId, data_type: DataType) -> bool:
         check = cls.__checkArgs(
             ID=ID,
             data_type=data_type,
@@ -167,7 +178,7 @@ class Data:  # {{{
 
     # }}}
     @classmethod  # update# {{{
-    def update(cls, ID: InstrumentId, data_type: DataType = None) -> bool:
+    async def update(cls, ID: InstrumentId, data_type: DataType = None) -> bool:
         assert ID.exchange == Exchange.MOEX
         assert data_type != DataType.TIC
         assert data_type != DataType.BOOK
@@ -182,12 +193,12 @@ class Data:  # {{{
 
     # }}}
     @classmethod  # updateAll# {{{
-    def updateAll(cls) -> bool:
+    async def updateAll(cls) -> bool:
         _Manager.updateAll()
 
     # }}}
     @classmethod  # request# {{{
-    def request(
+    async def request(
         cls,
         ID: InstrumentId,
         data_type: DataType,
@@ -216,9 +227,11 @@ class Data:  # {{{
     def __checkArgs(
         cls,
         source=None,
-        exchange=None,
         asset_type=None,
-        querry=None,
+        exchange=None,
+        ticker=None,
+        figi=None,
+        name=None,
         ID=None,
         data_type=None,
         year=None,
@@ -235,8 +248,12 @@ class Data:  # {{{
             cls.__checkExchange(exchange)
         if asset_type:
             cls.__checkAssetType(asset_type)
-        if querry:
-            cls.__checkQuerry(querry)
+        if ticker:
+            cls.__checkTicker(ticker)
+        if figi:
+            cls.__checkFigi(figi)
+        if name:
+            cls.__checkName(name)
         if ID:
             cls.__checkID(ID)
         if data_type:
@@ -279,9 +296,21 @@ class Data:  # {{{
 
     # }}}
     @classmethod  # __checkTicker# {{{
-    def __checkQuerry(cls, querry):
-        if not isinstance(querry, str):
-            raise TypeError("You stupid monkey, use type str for argument 'querry'")
+    def __checkTicker(cls, ticker):
+        if not isinstance(ticker, str):
+            raise TypeError("You stupid monkey, use type str for argument 'ticker'")
+
+    # }}}
+    @classmethod  # __checkFigi# {{{
+    def __checkFigi(cls, figi):
+        if not isinstance(figi, str):
+            raise TypeError("You stupid monkey, use type str for argument 'figi'")
+
+    # }}}
+    @classmethod  # __checkName# {{{
+    def __checkName(cls, name):
+        if not isinstance(name, str):
+            raise TypeError("You stupid monkey, use type str for argument 'name'")
 
     # }}}
     @classmethod  # __checkID# {{{
@@ -341,8 +370,7 @@ class Data:  # {{{
     def __getSource(cls, source: Source) -> object:
         classes = {Source.MOEX: _MoexData, Source.TINKOFF: _TinkoffData}
         class_ = classes.get(source, None)
-        obj = class_()
-        return obj
+        return class_
 
     # }}}
 
@@ -389,7 +417,7 @@ class _Bar:
 
 
 # }}}
-class _BarsDataFile:  # {{{
+class _BarsData:  # {{{
     def __init__(  # {{{
         self,
         ID: InstrumentId,
@@ -436,103 +464,10 @@ class _BarsDataFile:  # {{{
         return dt
 
     # }}}
-    @property  # year# {{{
-    def year(self):
-        y = self.bars[-1].dt.year
-        return y
-
-    # }}}
-    @property  # dir_path# {{{
-    def dir_path(self):
-        dir_path = Cmd.path(self.__ID.dir_path, str(self.data_type.value))
-        Cmd.makeDirs(dir_path)
-        return dir_path
-
-    # }}}
-    def add(self, new_bars: list[_Bar]):  # {{{
-        assert new_bars[-1].dt.year == self.year
-        self.__bars += new_bars
-
-    # }}}
-    @classmethod  # save# {{{
-    def save(cls, data):
+    @classmethod  # save
+    async def save(cls, data):  # {{{
         logger.debug(f"{cls.__name__}.save({data.ID.ticker})")
-        cls.__saveID(data)
-        cls.__saveDataType(data)
-        cls.__saveBars(data)
-        cls.__saveSource(data)
-
-    # }}}
-    @classmethod  # load# {{{
-    def load(cls, ID: InstrumentId, data_type: DataType, year: int) -> _BarsDataFile:
-        bars = cls.__loadBars(ID, data_type, year)
-        source = cls.__loadSource(ID, data_type)
-        data = _BarsDataFile(ID, data_type, bars, source)
-        return data
-
-    # }}}
-    @classmethod  # __saveID# {{{
-    def __saveID(cls, data: _BarsDataFile):
-        path = Cmd.path(data.dir_path, "id")
-        InstrumentId.save(data.ID, path)
-
-    # }}}
-    @classmethod  # __saveDataType# {{{
-    def __saveDataType(cls, data):
-        path = Cmd.path(data.dir_path, "data_type")
-        Cmd.write(data.data_type.value, path)
-
-    # }}}
-    @classmethod  # __saveBars# {{{
-    def __saveBars(cls, data):
-        text = list()
-        for bar in data.__bars:
-            line = _Bar.toCSV(bar) + "\n"
-            text.append(line)
-        year = data.bars[0].dt.year
-        file_path = Cmd.path(data.dir_path, f"{year}.csv")
-        Cmd.saveText(text, file_path)
-
-    # }}}
-    @classmethod  # __saveSource# {{{
-    def __saveSource(cls, data: _BarsDataFile):
-        file_path = Cmd.path(data.dir_path, "source")
-        Source.save(data.source, file_path)
-
-    # }}}
-    @classmethod  # __loadID# {{{
-    def __loadID(cls, path, parent=None):
-        ID = InstrumentId.load(path)
-        return ID
-
-    # }}}
-    @classmethod  # __loadDataType# {{{
-    def __loadDataType(cls, path, parent=None):
-        data_type = DataType.load(path)
-        return data_type
-
-    # }}}
-    @classmethod  # __loadBars# {{{
-    def __loadBars(
-        cls, ID: InstrumentId, data_type: DataType, year: int
-    ) -> _BarsDataFile:
-        file_path = Cmd.path(ID.dir_path, data_type.value, f"{year}.csv")
-        if not Cmd.isExist(file_path):
-            logger.error(f"No csv data: {ID.ticker}-{data_type.value} {year}")
-            return list()
-        text = Cmd.loadText(file_path)
-        bars = list()
-        for line in text:
-            bar = _Bar.fromCSV(line)
-            bars.append(bar)
-        return bars
-
-    # }}}
-    @classmethod  # __loadDataType# {{{
-    def __loadSource(cls, ID, data_type):
-        path = Cmd.path(ID.dir_path, data_type.value, "source")
-        source = Source.load(path)
-        return source
+        await Keeper.add(data)
 
     # }}}
 
@@ -549,7 +484,7 @@ class _BarsDataFileIterator:  # {{{
     def __next__(self):  # {{{
         if self.index < len(self.years):
             year = self.years[self.index]
-            data = _BarsDataFile.load(self.ID, self.data_type, year)
+            data = _BarsData.load(self.ID, self.data_type, year)
             self.index += 1
             return data
         else:
@@ -589,30 +524,25 @@ class _InstrumentInfoCache:  # {{{
 
     # }}}
     @classmethod  # save# {{{
-    def save(cls, cache: _InstrumentInfoCache) -> None:
+    async def save(cls, cache: _InstrumentInfoCache) -> None:
         # save cache in res files
         cache_dir = Cmd.path(Res.CACHE, cache.source.name.lower())
         file_path = Cmd.path(cache_dir, f"{cache.asset_type.name}.json")
-        Cmd.saveJson(cache.assets_info, file_path, encoder=cls._encoderJson)
+        Cmd.saveJson(cache.assets_info, file_path, encoder=cls.encoderJson)
 
         # save cache in postgres
-        loop = asyncio.get_event_loop()
-        if not loop.is_running():
-            loop.run_until_complete(Keeper.update(cache))
-        else:
-            # TODO run update in current event loop
-            assert False
+        await Keeper.update(cache)
 
     # }}}
     @classmethod  # load# {{{
     def load(cls, source: Source, asset_type: AssetType):
         cache_dir = Cmd.path(Res.CACHE, source.name.lower())
         cache_path = Cmd.path(cache_dir, f"{asset_type.name}.json")
-        cache = Cmd.loadJson(cache_path, decoder=cls._decoderJson)
+        cache = Cmd.loadJson(cache_path, decoder=cls.decoderJson)
         return cache
 
     # }}}
-    @classmethod  # chechCachingDate# {{{
+    @classmethod  # checkCachingDate# {{{
     def checkCachingDate(cls, source: Source):
         file_path = Cmd.path(Res.CACHE, source.name.lower(), "last_update")
         if Cmd.isExist(file_path):
@@ -630,15 +560,20 @@ class _InstrumentInfoCache:  # {{{
         Cmd.write(dt, file_path)
 
     # }}}
-    @staticmethod  # _encoderJson# {{{
-    def _encoderJson(obj):
+    @staticmethod  # encoderJson# {{{
+    def encoderJson(obj):
+        # TODO: собрать сюда все что по модулю разбросано как
+        # изменения в словаре для postgres... удаление ' в двух местах там
+        # в моекс и в тиньков соурс... только как их тут
+        # ????? Все строки реплейсить - бред
+        # а если всетаки внутри кипера эти преобразования делать?
         if isinstance(obj, (datetime, date)):
             return obj.isoformat()
 
     # }}}
-    @staticmethod  # _decoderJson# {{{
-    def _decoderJson(obj):
-        # TODO: encoder and decoder - вынести в классы потомки ???
+    @staticmethod  # decoderJson# {{{
+    def decoderJson(obj):
+        # TODO:
         # см формат файлов кэша, там слишком много деталей спецефичных
         # сейчас в MOEX файлах после чтения остаются строками разные даты:
         # "SETTLEDATE": "2024-05-31"
@@ -657,13 +592,10 @@ class _InstrumentInfoCache:  # {{{
 
 
 # }}}
-
-
 class _AbstractSource(metaclass=abc.ABCMeta):  # {{{
     """const"""  # {{{
 
     _SUB_DIR = None
-    _CACHE_IS_UP_TO_DATE = None
 
     # }}}
     @abc.abstractmethod  # __init__# {{{
@@ -719,50 +651,13 @@ class _AbstractSource(metaclass=abc.ABCMeta):  # {{{
         return standart_asset_type
 
     # }}}
-    @classmethod  # _selectCache# {{{
-    def _selectCache(cls, asset_type: AssetType):
-
-        if not cls._CACHE_IS_UP_TO_DATE:
-            logger.error(f"{cls.__name__} assets cache unavailible")
-            return None
-        elif asset_type == AssetType.INDEX:
-            cache = cls._INDEX_CACHE
-        elif asset_type == AssetType.SHARE:
-            cache = cls._SHARE_CACHE
-        elif asset_type == AssetType.BOND:
-            cache = cls._BONDS_CACHE
-        elif asset_type == AssetType.FUTURE:
-            cache = cls._FUTURE_CACHE
-        elif asset_type == AssetType.CURRENCY:
-            cache = cls._CURRENCY_CACHE
-        elif asset_type == AssetType.ETF:
-            cache = cls._ETF_CACHE
-
-        if cache is None:
-            cache = _InstrumentInfoCache.load(cls.source, asset_type)
-
-        return cache
-
-    # }}}
-    @classmethod  # _searchBy# {{{
-    def _searchBy(cls, exchange, parameter, value, cache):
-        # argument 'exchenge' is not used yet, but may be needed in the future
-        # now the exchange name is checked by the class Data at the input of a
-        # request from the user
-        for i in cache:
-            if i[parameter] == value:
-                return i
-        logger.error(f"{cls.__name__}._searchBy: Asset {parameter}={value} not found")
-        return None
-
-    # }}}
     @classmethod  # _parseFileName# {{{
     def _parseFileName(cls, file_name):
         exchange, asset_type, ticker, data_type, year = file_name.split("-")
 
         exchange = Exchange.fromStr(exchange)
         asset_type = AssetType.fromStr(asset_type)
-        # TODO FIXME а как бы от сюда выпилить вызов фасадного класса..
+        # FIXME а как бы от сюда выпилить вызов фасадного класса..
         # и убрать все эти классы в другие файлы
         ID = Data.find(exchange, asset_type, ticker)
 
@@ -796,70 +691,96 @@ class _MoexData(_AbstractSource):  # {{{
     _PASSWORD = None
     _AUTHORIZATION = None
 
-    _CACHE_IS_UP_TO_DATE = None
+    _AUTO_UPDATE = Usr.AUTO_UPDATE_ASSET_CACHE
     _INDEX_CACHE = None
     _SHARE_CACHE = None
     _FUTURE_CACHE = None
     _CURRENCY_CACHE = None
 
     # }}}
-    def __init__(self):  # {{{
-        if not self._CACHE_IS_UP_TO_DATE:
-            self.__cacheAssetsInfo()
-
-    # }}}
-    def assets(self, asset_type=None) -> list:  # {{{
-        cache = self._selectCache(asset_type)
-        if not cache:
-            return list()
-
-        if asset_type == AssetType.INDEX:
-            return self.__getAllIndex(cache)
-        elif asset_type == AssetType.SHARE:
-            return self.__getAllShares(cache)
-        elif asset_type in []:
-            logger.error(
-                "MOEX does not provide figi. Figi needed for unified "
-                "identifier for all assets. To obtain IDs of "
-                "futures, currencies, bonds, use the Tinkoff source. "
-                "Recommended use Source.MOEX only for receive indexes."
-            )
-            return list()
-
-    # }}}
-    def find(  # {{{
-        self, exchange: Exchange, asset_type: AssetType, querry: str
+    @classmethod  # find  # {{{
+    async def find(
+        cls,
+        asset_type: AssetType,
+        exchange: Exchange,
+        ticker: str,
+        figi: str,
+        name: str,
     ) -> InstrumentId:
 
-        cache = super()._selectCache(asset_type)
-        info = self.__info(exchange, asset_type, querry, cache)
-        if info is not None:
-            ID = InstrumentId(
-                exchange=exchange,
-                asset_type=asset_type,
-                name=info["NAME"],
-                ticker=info["SECID"],
-                figi=None,  # Indexes not have figi
+        if cls._AUTO_UPDATE:
+            await _MoexData.__cacheAssetsInfo()
+            ...
+
+        assets_info = await Keeper.info(
+            cls.source,
+            asset_type,
+            EXCHANGE=exchange.name if exchange else None,
+            SECID=ticker,
+            FIGI=figi,
+            NAME=name,
+        )
+
+        # for INDEXes:
+        id_list = list()
+        if asset_type == AssetType.INDEX:
+            for i in assets_info:
+                ID = InstrumentId(
+                    asset_type,
+                    Exchange.fromStr(i["EXCHANGE"]),
+                    i["SECID"],
+                    i["FIGI"],  # use my fake figi
+                    i["NAME"],
+                )
+                id_list.append(ID)
+            return id_list
+
+        # for other types, or None:
+        # MOEX does not provide instruments 'figi',
+        # load 'figi' from Tinkoff cache
+        # and use 'name' from Tinkoff too
+        for i in assets_info:
+            exchange = Exchange.fromStr(i["EXCHANGE"])
+            asset_type = AssetType.fromStr(i["TYPE"])
+            ticker = i["SECID"]
+            tinkoff_info = await Keeper.info(
+                Source.TINKOFF,
+                asset_type,
+                exchange=exchange.name,
+                ticker=ticker,
             )
-            return ID
-        else:
-            return None
+            if tinkoff_info:
+                figi = tinkoff_info[0]["figi"]
+                name = tinkoff_info[0]["name"]
+                ID = InstrumentId(asset_type, exchange, ticker, figi, name)
+                id_list.append(ID)
+            else:
+                # NOTE
+                # если у Тинька нет информации по активу, поторговать
+                # им все равно пока не получится, так что просто
+                # пропускаем этот актив
+                pass
+
+        return id_list
 
     # }}}
-    def info(self, ID: InstrumentId) -> dict:  # {{{
-        cache = super()._selectCache(ID.type)
-        info = self.__info(ID.exchange, ID.type, ID.ticker, cache)
-        return info
+    @classmethod  # info  # {{{
+    async def info(cls, ID: InstrumentId) -> dict:
+        assert ID.type == AssetType.INDEX
+        info = await Keeper.info(cls.source, ID.type, FIGI=ID.figi)
+        assert len(info) == 1
+        return info[0]
 
     # }}}
-    def firstDateTime(self, ID: InstrumentId, data_type: DataType) -> datetime:  # {{{
+    @classmethod  # firstDateTime  # {{{
+    async def firstDateTime(cls, ID: InstrumentId, data_type: DataType) -> datetime:
         date_start = date(1990, 1, 1)
         try:
             asset = moexalgo.Ticker(ID.ticker)
             candles = asset.candles(
                 start=date_start,
                 end="today",
-                period=self.__convert(data_type),
+                period=cls.__convert(data_type),
                 use_dataframe=False,
             )
         except LookupError as err:
@@ -867,36 +788,46 @@ class _MoexData(_AbstractSource):  # {{{
             return None
         candle = candles.send(None)
         dt = candle.begin
-        return self.__toUTC(dt)
+        return cls.__toUTC(dt)
 
     # }}}
-    def download(self, ID: InstrumentId, data_type: DataType, year: int) -> bool:  # {{{
-        assert data_type.value in ["1M", "10M", "1H", "D", "W", "M"]
-        self.__authorizate()
+    @classmethod  # download  # {{{
+    async def download(cls, ID: InstrumentId, data_type: DataType, year: int) -> bool:
+        assert data_type in cls.AVAILIBLE_DATA
+        await cls.__authorizate()
+
         logger.info(f":: Download {ID.ticker}-{data_type.value} from {year}")
-        begin, end = self.__getPeriod(year)
-        candles = self.__getHistoricalCandles(ID, data_type, begin, end)
+        begin, end = cls.__getPeriod(year)
+        candles = cls.__getHistoricalCandles(ID, data_type, begin, end)
         if len(candles) == 0:
             logger.warning(f"No data received for {ID.ticker}-{data_type.value}-{year}")
             return
-        self.__saveCandles(ID, data_type, year, candles)
+
+        bars = cls.__convertCandlesToBars(candles)
+        data = _BarsData(ID, data_type, bars, cls.source)
+        await _BarsData.save(data)
+
+        for b in bars:
+            print(b.dt)
 
     # }}}
-    def export(self) -> None:  # {{{
+    @classmethod  # export  # {{{
+    async def export(cls) -> None:
         logger.info(f":: MOEX exporting data in standart format")
-        files = Cmd.getFiles(self._DOWNLOAD, full_path=True, include_sub_dir=True)
+        files = Cmd.getFiles(cls._DOWNLOAD, full_path=True, include_sub_dir=True)
         files = sorted(Cmd.select(files, extension=".csv"))
         for file in files:
             logger.info(f"  - exporting '{file}'")
-            ID, data_type, bars = self.__readDataFile(file)
-            data = _BarsDataFile(ID, data_type, bars, Source.MOEX)
-            _BarsDataFile.save(data)
+            ID, data_type, bars = cls.__readDataFile(file)
+            data = _BarsData(ID, data_type, bars, Source.MOEX)
+            _BarsData.save(data)
         logger.info(f"Export complete")
 
     # }}}
-    def clear(self) -> bool:  # {{{
+    @classmethod  # clear  # {{{
+    async def clear(cls) -> bool:
         logger.info(f":: Clear MOEX files")
-        path = self._DOWNLOAD
+        path = cls._DOWNLOAD
         if not Cmd.isExist(path):
             logger.info(f"  - no data in '{path}'")
             return
@@ -904,20 +835,21 @@ class _MoexData(_AbstractSource):  # {{{
         logger.info(f"  - successful complete")
 
     # }}}
-    def getHistoricalBars(  # {{{
-        self, ID: InstrumentId, data_type: DataType, begin: datetime, end: datetime
+    @classmethod  # getHistoricalBars  # {{{
+    async def getHistoricalBars(
+        cls, ID: InstrumentId, data_type: DataType, begin: datetime, end: datetime
     ) -> list[_Bar]:
 
-        begin = self.__toMSK(begin)
-        end = self.__toMSK(end)
+        begin = cls.__toMSK(begin)
+        end = cls.__toMSK(end)
 
-        candles = self.__getHistoricalCandles(ID, data_type, begin, end)
-        bars = self.__convert(candles)
+        candles = cls.__getHistoricalCandles(ID, data_type, begin, end)
+        bars = cls.__convert(candles)
         return bars
 
     # }}}
-    @classmethod  # __authorizate# {{{
-    def __authorizate(cls):
+    @classmethod  # __authorizate  # {{{
+    async def __authorizate(cls):
         if cls._AUTHORIZATION:
             return
 
@@ -947,14 +879,13 @@ class _MoexData(_AbstractSource):  # {{{
             )
 
     # }}}
-    @classmethod  # __cacheAssetsInfo# {{{
-    def __cacheAssetsInfo(cls):
+    @classmethod  # __cacheAssetsInfo  # {{{
+    async def __cacheAssetsInfo(cls):
         if _InstrumentInfoCache.checkCachingDate(cls.source):
-            cls._CACHE_IS_UP_TO_DATE = True
             return
 
         logger.info(f":: Caching assets info from MOEX")
-        cls.__authorizate()
+        await cls.__authorizate()
         if not cls._AUTHORIZATION:
             return
 
@@ -965,10 +896,9 @@ class _MoexData(_AbstractSource):  # {{{
             assets_info = cls.__formatAssetsInfo(assets_info)
             asset_type = cls._getStandartAssetType(type_)
             cache = _InstrumentInfoCache(Source.MOEX, asset_type, assets_info)
-            _InstrumentInfoCache.save(cache)
+            await _InstrumentInfoCache.save(cache)
 
         _InstrumentInfoCache.updateCachingDate(cls.source)
-        cls._CACHE_IS_UP_TO_DATE = True
 
     # }}}
     @classmethod  # __formatAssetsInfo# {{{
@@ -977,12 +907,19 @@ class _MoexData(_AbstractSource):  # {{{
             i["EXCHANGE"] = "MOEX"
             if i["BOARDID"] == "SNDX":
                 i["TYPE"] = AssetType.INDEX.name
+                # NOTE
+                # Indexes not have 'figi', but I'm use figi in
+                # InstrumentId - unified identificator for all assets
+                # for use search by figi, I'm add in to indices
+                # not real global figi, its only my local idea,
+                # figi = <exchane_name>_<ticker>
+                i["FIGI"] = f"MOEX_{i['SECID']}"
             elif i["BOARDID"] == "TQBR":
                 i["TYPE"] = AssetType.SHARE.name
-                # FIXME
-                # "LATNAME": "Perm' EnergoSbyt", и другие подобные
-                # одинарная кавчка потом мешается при преобразовании
-                # в postgres jsonb
+                # NOTE
+                # "Latname": "Perm 'Energosbyt", and other similar ones ..
+                # a single roll then interferes when transforming
+                # in postgres jsonb, delete thats fucked symbol '
                 i["LATNAME"] = i["LATNAME"].replace("'", "")
             elif i["BOARDID"] == "RFUD":
                 i["TYPE"] = AssetType.FUTURE.name
@@ -992,62 +929,18 @@ class _MoexData(_AbstractSource):  # {{{
         return assets_info
 
     # }}}
-    @classmethod  # __info# {{{
-    def __info(cls, exchange, asset_type, querry, cache: str) -> dict[str]:
-        if len(querry) <= 12:
-            return cls._searchBy(exchange, "SECID", querry, cache)
-        else:
-            logger.error(
-                "{cls.__name__}.__info: failed. Unknown identifier "
-                f"exchange={exchange} type={asset_type} querry={querry}."
-            )
-            return None
-
-    # }}}
-    @classmethod  # __getAllIndex# {{{
-    def __getAllIndex(cls, cache: list[dict]) -> list(InstrumentId):
-        all_id = list()
-        for asset in cache:
-            ticker = (asset["SECID"],)
-            ID = InstrumentId(
-                exchange=Exchange.MOEX,
-                asset_type=AssetType.INDEX,
-                name=asset["NAME"],
-                ticker=ticker,
-                figi=f"MOEX_{ticker}",  # Indexes not have figi,
-                # it is my local value
-            )
-            all_id.append(ID)
-        return all_id
-
-    # }}}
-    @classmethod  # __getAllShares# {{{
-    def __getAllShares(cls, cache: list[dict]) -> list(InstrumentId):
-        all_id = list()
-        for asset in cache:
-            # MOEX does not provide figi. Figi needed for unified
-            # identifier for all assets. Receiving it from Tinkoff,
-            # but assets only from MOEX TQBR, and only availible
-            # for trading at Tinkoff broker
-            td = _TinkoffData()
-            ID = td.find(Exchange.MOEX, AssetType.SHARE, asset["SECID"])
-            if ID is not None:
-                all_id.append(ID)
-        return all_id
-
-    # }}}
     @classmethod  # __convert# {{{
-    def __convert(self, obj: object):
+    def __convert(cls, obj: object):
         if isinstance(obj, DataType):
-            return self.__convertDataType(obj)
+            return cls.__convertDataTypeToMoexPeriod(obj)
         elif isinstance(obj, list):
-            return self.__candlesToBars(obj)
+            return cls.__convertCandlesToBars(obj)
         else:
             assert False, f"unknown object type '{type(obj)}'"
 
     # }}}
-    @classmethod  # __convertDataType# {{{
-    def __convertDataType(self, data_type: DataType):
+    @classmethod  # __convertDataTypeToMoexPeriod# {{{
+    def __convertDataTypeToMoexPeriod(cls, data_type: DataType):
         moex_period = {
             "1M": "1min",
             "10M": "10min",
@@ -1059,8 +952,8 @@ class _MoexData(_AbstractSource):  # {{{
         return moex_period[data_type.value]
 
     # }}}
-    @classmethod  # __candlesToBars# {{{
-    def __candlesToBars(cls, candles):
+    @classmethod  # __convertCandlesToBars# {{{
+    def __convertCandlesToBars(cls, candles):
         bars = list()
         for i in candles:
             bar = _Bar(
@@ -1076,7 +969,7 @@ class _MoexData(_AbstractSource):  # {{{
 
     # }}}
     @classmethod  # __getPeriod# {{{
-    def __getPeriod(self, year: int) -> (datetime, datetime):
+    def __getPeriod(cls, year: int) -> (datetime, datetime):
         begin = datetime(year, 1, 1)
         end = datetime(year + 1, 1, 1)
         if end >= datetime.now():
@@ -1156,7 +1049,7 @@ class _MoexData(_AbstractSource):  # {{{
         if not candles:
             return list()
 
-        # timeframe M
+        # skip uncomplete candle timeframe M
         if data_type == DataType.BAR_M:
             last_candle_month = candles[-1].end.month
             now_month = date.today().month
@@ -1164,7 +1057,7 @@ class _MoexData(_AbstractSource):  # {{{
                 candles.pop(-1)
             return candles
 
-        # other timeframes
+        # skip uncomplete candle other timeframes
         period = data_type.toTimedelta()
         if period <= ONE_WEEK:
             last_candle_begin = candles[-1].begin
@@ -1176,6 +1069,7 @@ class _MoexData(_AbstractSource):  # {{{
         assert False, "Тут мы никак не должны оказаться"
 
     # }}}
+
     @classmethod  # __createFilePath# {{{
     def __createFilePath(cls, ID: InstrumentId, data_type: DataType, year: int):
         dir_path = Cmd.path(cls._DOWNLOAD, ID.type.name, ID.ticker)
@@ -1280,9 +1174,10 @@ class _TinkoffData(_AbstractSource):  # {{{
     _DOWNLOAD = Cmd.path(Usr.DOWNLOAD, _SUB_DIR)
 
     _TARGET = ti.constants.INVEST_GRPC_API
+    _TOKEN_PATH = Usr.TINKOFF_TOKEN
     _TOKEN = None
 
-    _CACHE_IS_UP_TO_DATE = None
+    _AUTO_UPDATE = Usr.AUTO_UPDATE_ASSET_CACHE
     _SHARE_CACHE = None
     _BONDS_CACHE = None
     _FUTURE_CACHE = None
@@ -1290,81 +1185,113 @@ class _TinkoffData(_AbstractSource):  # {{{
     _ETF_CACHE = None
 
     # }}}
-    def __init__(self):  # {{{
-        if not _TinkoffData._CACHE_IS_UP_TO_DATE:
-            self.__cacheAssetsInfo()
-
-    # }}}
-    def assets(self, asset_type: AssetType) -> list[InstrumentId]:  # {{{
-        cache = self._selectCache(asset_type)
-        if cache:
-            return self.__getAllId(cache)
-        else:
-            return list()
-
-    # }}}
-    def find(  # {{{
-        self, exchange: Exchange, asset_type: AssetType, querry: str
+    @classmethod  # find  # {{{
+    async def find(
+        cls,
+        asset_type: AssetType,
+        exchange: Exchange,
+        ticker: str,
+        figi: str,
+        name: str,
     ) -> InstrumentId:
+
+        if cls._AUTO_UPDATE:
+            await cls.__cacheAssetsInfo()
+
+        assets_info = await Keeper.info(
+            cls.source,
+            asset_type,
+            exchange=exchange.name if exchange else None,
+            ticker=ticker,
+            figi=figi,
+            name=name,
+        )
+
+        id_list = list()
+        for i in assets_info:
+            e = i.get("exchange")
+            if e is None:
+                print(i)
+                input("STOP")
+            ID = InstrumentId(
+                AssetType.fromStr(i["type"]),
+                Exchange.fromStr(i["exchange"]),
+                i["ticker"],
+                i["figi"],
+                i["name"],
+            )
+            id_list.append(ID)
+        return id_list
+
         cache = super()._selectCache(asset_type)
-        info = self.__info(exchange, asset_type, querry, cache)
+        info = cls.__info(exchange, asset_type, querry, cache)
         if info is not None:
-            ID = self.__getId(info)
+            ID = cls.__getId(info)
             return ID
         else:
             return None
 
     # }}}
-    def info(self, ID: InstrumentId) -> dict:  # {{{
-        cache = super()._selectCache(ID.type)
-        info = self.__info(ID.exchange, ID.type, ID.ticker, cache)
-        return info
+    @classmethod  # info  # {{{
+    async def info(cls, ID: InstrumentId) -> dict:
+        info = await Keeper.info(cls.source, ID.type, figi=ID.figi)
+        assert len(info) == 1
+        return info[0]
 
     # }}}
-    def firstDateTime(self, ID: InstrumentId, data_type: DataType) -> datetime:  # {{{
-        # assert data_type.value == "1M"
-        cache = super()._selectCache(ID.type)
-        info = self.__info(ID.exchange, ID.type, ID.ticker, cache)
+    @classmethod  # firstDateTime  # {{{
+    async def firstDateTime(cls, ID: InstrumentId, data_type: DataType) -> datetime:
+        info = await cls.info(ID)
         if data_type.value == "1M":
             return info["first_1min_candle_date"]
         elif data_type.value == "D":
             return info["first_1day_candle_date"]
 
     # }}}
-    def download(cls, ID: InstrumentId, data_type: DataType, year: int) -> None:  # {{{
+    @classmethod  # download  # {{{
+    async def download(cls, ID: InstrumentId, data_type: DataType, year: int) -> None:
+        assert False, "переписать на postgres, пока качаю только с МОЕКС"
+
         assert data_type.value == "1M"
-        if not cls.__authorizate():
+        auth = await cls.__authorizate()
+        if not auth:
             return
 
         logger.info(f":: Download {ID.ticker}-{data_type.value} from {year}")
         cls.__requestHistoricalData(ID, year)
 
     # }}}
-    def export(self) -> None:  # {{{
+    @classmethod  # export  # {{{
+    async def export(cls) -> None:
+        assert False, "переписать на postgres, пока качаю только с МОЕКС"
+
         # TODO fix - not exclude holidays files
         logger.info(f":: Tinkoff exporting data in standart format")
-        files = Cmd.getFiles(self._DOWNLOAD, full_path=True, include_sub_dir=True)
+        files = Cmd.getFiles(cls._DOWNLOAD, full_path=True, include_sub_dir=True)
         archives = sorted(Cmd.select(files, extension=".zip"))
 
         for archive in archives:
             logger.info(f"  - exporting '{archive}'")
-            tmp_dir = Cmd.path(Dir.TMP, self._SUB_DIR)
+            tmp_dir = Cmd.path(Dir.TMP, cls._SUB_DIR)
             Cmd.extract(archive, tmp_dir)
 
-            bars = self.__loadDataDir(tmp_dir)
-            ID, data_type = self._parseFileName(Cmd.name(archive))
+            bars = cls.__loadDataDir(tmp_dir)
+            ID, data_type = cls._parseFileName(Cmd.name(archive))
 
-            data = _BarsDataFile(ID, data_type, bars, Source.TINKOFF)
-            _BarsDataFile.save(data)
+            data = _BarsData(ID, data_type, bars, Source.TINKOFF)
+            _BarsData.save(data)
 
             Cmd.deleteDir(tmp_dir)
 
         logger.info(f"Export complete")
 
     # }}}
-    def clear(self) -> None:  # {{{
+    @classmethod  # clear  # {{{
+    async def clear(cls) -> None:
+        assert False, "переписать на postgres, пока качаю только с МОЕКС"
+
         logger.info(f":: Clear Tinkoff files")
-        path = self._DOWNLOAD
+        path = cls._DOWNLOAD
         if not Cmd.isExist(path):
             logger.info(f"  - no data in '{path}'")
             return
@@ -1372,26 +1299,29 @@ class _TinkoffData(_AbstractSource):  # {{{
         logger.info(f"  - successful complete")
 
     # }}}
-    def getHistoricalBars(  # {{{
-        self, ID: InstrumentId, data_type: DataType, begin: datetime, end: datetime
+    @classmethod  # getHistoricalBars  # {{{
+    async def getHistoricalBars(
+        cls, ID: InstrumentId, data_type: DataType, begin: datetime, end: datetime
     ) -> list[_Bar]:
+
+        assert False, "переписать на postgres, пока качаю только с МОЕКС"
         logger.info(f"  - request {ID.ticker}-{data_type.value} from {begin.date()}")
 
-        if not self.__authorizate():
+        if not cls.__authorizate():
             return
 
         new_bars = list()
-        with ti.Client(self._TOKEN) as client:
+        with ti.Client(cls._TOKEN) as client:
             try:
                 candles = client.get_all_candles(
                     figi=ID.figi,
                     from_=begin,
                     to=end,
-                    interval=_TinkoffData._CandleIntervalFrom(data_type),
+                    interval=_TinkoffData.__CandleIntervalFrom(data_type),
                 )
                 for candle in candles:
                     if candle.is_complete:
-                        bar = _TinkoffData._toBar(candle)
+                        bar = _TinkoffData.__toBar(candle)
                         new_bars.append(bar)
             except ti.exceptions.RequestError as err:
                 logger.exception(err)
@@ -1400,22 +1330,24 @@ class _TinkoffData(_AbstractSource):  # {{{
 
     # }}}
     @classmethod  # __authorizate# {{{
-    def __authorizate(cls) -> bool:
+    async def __authorizate(cls) -> bool:
+        # if cls._TOKEN is not None, then it's valid token
         if cls._TOKEN is not None:
             return True
 
-        token_path = Cmd.path(Usr.CONNECT, cls._SUB_DIR, Usr.TINKOFF_TOKEN)
-        if not Cmd.isExist(token_path):
+        # check token file
+        if not Cmd.isExist(cls._TOKEN_PATH):
             logger.warning(
                 "Tinkoff not exist token file, operations with market data "
                 "and orders unavailible. Make a token and put it in a "
-                f"'{token_path}'. Read more about token: "
+                f"'{cls._TOKEN_PATH}'. Read more about token: "
                 "https://developer.tinkoff.ru/docs/intro/"
                 "manuals/self-service-auth"
             )
             return False
 
-        token = Cmd.read(token_path).strip()
+        # read token from file, and try to connect
+        token = Cmd.read(cls._TOKEN_PATH).strip()
         try:
             with ti.Client(token) as client:
                 response = client.users.get_accounts()
@@ -1434,32 +1366,30 @@ class _TinkoffData(_AbstractSource):  # {{{
 
     # }}}
     @classmethod  # __cacheAssetsInfo# {{{
-    def __cacheAssetsInfo(cls):
+    async def __cacheAssetsInfo(cls):
         if _InstrumentInfoCache.checkCachingDate(cls.source):
-            cls._CACHE_IS_UP_TO_DATE = True
             return
 
         logger.info(f":: Caching assets info from Tinkoff")
-        if not cls.__authorizate():
+        auth = await cls.__authorizate()
+        if not auth:
             return
 
         types = ["shares", "bonds", "futures", "currencies"]
         for type_ in types:
             logger.info(f"  - caching {type_}")
             assets_info = cls.__requestAvailibleAssets(type_)
-            f = lambda x: x["exchange_specific"] not in [
-                "otc_ncc",
-                "LSE_MORNING",
-                "moex_close",
-                "Issuance",
-                "unknown",
-            ]
-            assets_info = [i for i in filter(f, assets_info)]
+            print(len(assets_info))
+            input(1)
+            none_exchange = lambda x: x["exchange"] is not None
+            assets_info = [i for i in filter(none_exchange, assets_info)]
+            print(len(assets_info))
+            input(1)
             asset_type = cls._getStandartAssetType(type_)
             cache = _InstrumentInfoCache(cls.source, asset_type, assets_info)
-            _InstrumentInfoCache.save(cache)
+            await _InstrumentInfoCache.save(cache)
+
         _InstrumentInfoCache.updateCachingDate(cls.source)
-        cls._CACHE_IS_UP_TO_DATE = True
 
     # }}}
     @classmethod  # __requestAvailibleAssets# {{{
@@ -1483,23 +1413,46 @@ class _TinkoffData(_AbstractSource):  # {{{
         # define short function name
         to_decimal = ti.utils.quotation_to_decimal
 
-        # if "instr.exchange" contain values as "MOEX_PLUS", "MOEX_WEEKEND"...
-        # set "echange"="MOEX"
+        # set simple exchange name, original exchange name
+        # will saved after in the key 'exchange_specific'
         if "MOEX" in instr.exchange.upper():
+            # NOTE
+            # "instr.exchange" contain values as "MOEX_PLUS", "MOEX_WEEKEND"...
+            # set "echange"="MOEX"
             exchange = "MOEX"
-        # if "instr.exchange" contain values as "SPB_RU_MORNING"...
-        # set "echange"="SPB"
         elif "SPB" in instr.exchange.upper():
+            # NOTE
+            # "instr.exchange" contain values as "SPB_RU_MORNING"...
+            # set "echange"="SPB"
             exchange = "SPB"
+        elif "FORTS" in instr.exchange.upper():
+            # NOTE
+            # FUTURE - у них биржа указана FORTS_EVENING, но похеру
+            # пока для простоты ставлю им тоже биржу MOEX
+            exchange = "MOEX"
+        elif instr.exchange == "FX":
+            # NOTE
+            # CURRENCY - у них биржа указана FX, но похеру
+            # пока для простоты ставлю им тоже биржу MOEX
+            exchange = "MOEX"
         else:
+            # NOTE
+            # там всякая странная хуйня еще есть в биржах
+            # "otc_ncc", "LSE_MORNING", "moex_close", "Issuance",
+            # "unknown"...
+            # Часть из них по факту американские биржи, по которым сейчас
+            # один хрен торги не доступны, другие хз, внебирживые еще, я всем
+            # этим не торгую, поэтому сейчас ставим всем непонятным активам
+            # биржу None, а потом перед сохранением делаем фильтр
+            # если биржа None - отбрасываем этот ассет из кэша
             exchange = None
 
         info = {
-            # FIXME
+            # NOTE
             # "name": "O'Key Group SA", и другие подобные
             # одинарная кавчка потом мешается при преобразовании
             # в postgres jsonb
-            "name": instr.name.replace("'", ""), # remove ' in name
+            "name": instr.name.replace("'", ""),  # remove ' in name
             "ticker": instr.ticker,
             "country_of_risk": instr.country_of_risk,
             "currency": instr.currency,
@@ -1529,26 +1482,6 @@ class _TinkoffData(_AbstractSource):  # {{{
             info["sector"] = instr.sector
 
         return info
-
-    # }}}
-    @classmethod  # __info# {{{
-    def __info(cls, exchange, asset_type, querry, cache: str) -> dict[str]:
-        if len(querry) == 12 and (
-            querry.startswith("BBG")
-            or querry.startswith("FUT")
-            or querry.startswith("TCS")
-        ):
-            return cls._searchBy(exchange, "figi", querry, cache)
-        elif len(querry) <= 12:
-            return cls._searchBy(exchange, "ticker", querry, cache)
-        elif len(querry) > 12:
-            return cls._searchBy(exchange, "uid", querry, cache)
-        else:
-            logger.error(
-                "_TinkoffData.__info: failed. Unknown identifier "
-                f"exchange={exchange} type={asset_type} querry={querry}."
-            )
-            return None
 
     # }}}
     @classmethod  # __getId# {{{
@@ -1610,19 +1543,19 @@ class _TinkoffData(_AbstractSource):  # {{{
 
     # }}}
     @classmethod  # __loadDataDir# {{{
-    def __loadDataDir(self, dir_path):
+    def __loadDataDir(cls, dir_path):
         files = sorted(Cmd.getFiles(dir_path, full_path=True))
-        if self.EXCLUDE_HOLIDAYS:
-            files = self.__excludeHolidaysFiles(files)
+        if cls.EXCLUDE_HOLIDAYS:
+            files = cls.__excludeHolidaysFiles(files)
         all_bars = list()
         for file in files:
-            tinkoff_bars = self.__readTinkoffFile(file)
+            tinkoff_bars = cls.__readTinkoffFile(file)
             all_bars += tinkoff_bars
         return all_bars
 
     # }}}
     @classmethod  # __excludeHolidaysFiles# {{{
-    def __excludeHolidaysFiles(self, files):
+    def __excludeHolidaysFiles(cls, files):
         # file name like: '53b67587-96eb-4b41-8e0c-d2e3c0bdd234_20190103.csv'
         # consist of 'uid_date.csv'
         i = 0
@@ -1651,17 +1584,17 @@ class _TinkoffData(_AbstractSource):  # {{{
 
     # }}}
     @classmethod  # __readTinkoffFile# {{{
-    def __readTinkoffFile(self, file_path):
+    def __readTinkoffFile(cls, file_path):
         tinkoff_bars = list()
         text = Cmd.loadText(file_path)
         for line in text:
-            bar = self.__parseLineTinkoff(line)
+            bar = cls.__parseLineTinkoff(line)
             tinkoff_bars.append(bar)
         return tinkoff_bars
 
     # }}}
     @classmethod  # __parseLineTinkoff# {{{
-    def __parseLineTinkoff(self, line):
+    def __parseLineTinkoff(cls, line):
         fields = line.split(";")
         UID, DATETIME, OPEN, CLOSE, HIGH, LOW, VOLUME = range(7)
         opn = float(fields[OPEN])
@@ -1674,8 +1607,8 @@ class _TinkoffData(_AbstractSource):  # {{{
         return bar
 
     # }}}
-    @classmethod  # _CandleIntervalFrom# {{{
-    def _CandleIntervalFrom(cls, data_type: DataType) -> ti.CandleInterval:
+    @classmethod  # __CandleIntervalFrom# {{{
+    def __CandleIntervalFrom(cls, data_type: DataType) -> ti.CandleInterval:
 
         intervals = {
             "1M": ti.CandleInterval.CANDLE_INTERVAL_1_MIN,
@@ -1689,8 +1622,8 @@ class _TinkoffData(_AbstractSource):  # {{{
         return intervals[data_type.value]
 
     # }}}
-    @classmethod  # _toBar# {{{
-    def _toBar(cls, candle) -> _Bar:
+    @classmethod  # __toBar# {{{
+    def __toBar(cls, candle) -> _Bar:
         opn = float(ti.utils.quotation_to_decimal(candle.open))
         cls = float(ti.utils.quotation_to_decimal(candle.close))
         hgh = float(ti.utils.quotation_to_decimal(candle.high))
@@ -1702,9 +1635,8 @@ class _TinkoffData(_AbstractSource):  # {{{
 
     # }}}
 
-    # }}}
 
-
+# }}}
 class _Manager:  # {{{
     _DATA_DIR = Usr.DATA
     _AUTO_UPDATE = Usr.AUTO_UPDATE_MARKET_DATA
@@ -1769,8 +1701,8 @@ class _Manager:  # {{{
         for data in _BarsDataFileIterator(ID, in_type):
             logger.info(f"  - converting {data.year}")
             bars = converter(data.bars, in_type, out_type)
-            converted = _BarsDataFile(ID, out_type, bars, data.source)
-            _BarsDataFile.save(converted)
+            converted = _BarsData(ID, out_type, bars, data.source)
+            _BarsData.save(converted)
 
     # }}}
     @classmethod  # update# {{{
@@ -1793,8 +1725,8 @@ class _Manager:  # {{{
                 f"does not provide type '{data_type.value}'. "
                 f"Operation canceled."
             )
-        # }}}
 
+    # }}}
     @classmethod  # updateAll# {{{
     def updateAll(cls):
         logger.info(f":: Update all market data")
@@ -1804,8 +1736,8 @@ class _Manager:  # {{{
             ID, data_type, source = i
             logger.info(f":: updating {n}/{count}")
             cls.update(ID, data_type)
-        # }}}
 
+    # }}}
     @classmethod  # request# {{{
     def request(
         cls, ID: InstrumentId, data_type: DataType, begin: int, end: int
@@ -1817,17 +1749,17 @@ class _Manager:  # {{{
         files = cls.__findFiles(ID, data_type)
         files = cls.__selectYear(files, begin, end)
         return files
-        # }}}
 
+    # }}}
     @classmethod  # delete# {{{
     def delete(cls, ID: InstrumentId, data_type: DataType):
         logger.info(f":: Delete {ID.ticker}-{data_type.value}")
         dir_path = Cmd.path(ID.dir_path, data_type.value)
         Cmd.deleteDir(dir_path)
         logger.info(f"  - complete")
-        # }}}
 
-    @classmethod  # _checkUpdate# {{{
+    # }}}
+    @classmethod  # __checkUpdate# {{{
     def __checkUpdate(cls):
         # Check the file with the date of the last update of the market data
         if Cmd.isExist(cls._LAST_UPDATE_FILE):
@@ -1870,18 +1802,18 @@ class _Manager:  # {{{
 
     # }}}
     @classmethod  # __lastBarsDataFile# {{{
-    def __lastBarsDataFile(cls, ID: InstrumentId, data_type: DataType) -> _BarsDataFile:
+    def __lastBarsDataFile(cls, ID: InstrumentId, data_type: DataType) -> _BarsData:
 
         years = cls.availibleYears(ID, data_type)
         if years:
-            data = _BarsDataFile.load(ID, data_type, years[-1])
+            data = _BarsData.load(ID, data_type, years[-1])
             return data
         else:
             return None
-        # }}}
 
+    # }}}
     @classmethod  # __update# {{{
-    def __update(cls, data: _BarsDataFile, source: _AbstractSource):
+    def __update(cls, data: _BarsData, source: _AbstractSource):
         begin = data.last_dt + data.data_type.toTimedelta()
         end = now().replace(microsecond=0)
         src = source()  # FIXME: это пиздец как не очевидно, что тут
@@ -1895,14 +1827,14 @@ class _Manager:  # {{{
 
         logger.info(f"  - received {count} bars -> {new_bars[-1].dt}")
         cls.__saveNewBars(data, new_bars)
-        # }}}
 
+    # }}}
     @classmethod  # __saveNewBars # {{{
-    def __saveNewBars(cls, data: _BarsDataFile, new_bars):
+    def __saveNewBars(cls, data: _BarsData, new_bars):
         year = data.year
         bars = cls.__popYear(new_bars, year)  # extract only equal year
         data.add(bars)
-        _BarsDataFile.save(data)
+        _BarsData.save(data)
 
         # if 'new_bars' consist some more bars, create new files
         ID = data.ID
@@ -1911,10 +1843,10 @@ class _Manager:  # {{{
         while len(new_bars) > 0:
             year += 1
             bars = cls.__popYear(new_bars, year)
-            new_data = _BarsDataFile(ID, data_type, bars, source)
-            _BarsDataFile.save(new_data)
-        # }}}
+            new_data = _BarsData(ID, data_type, bars, source)
+            _BarsData.save(new_data)
 
+    # }}}
     @classmethod  # __popYear# {{{
     def __popYear(cls, bars, year):
         assert isinstance(bars, list)
@@ -1924,8 +1856,8 @@ class _Manager:  # {{{
             bar = bars.pop(0)
             extract.append(bar)
         return extract
-        # }}}
 
+    # }}}
     @classmethod  # __fillVoid# {{{
     def __fillVoid(cls, bars: list[_Bar], data_type: DataType) -> list[_Bar]:
         time = datetime.combine(bars[0].dt.date(), DAY_BEGIN)

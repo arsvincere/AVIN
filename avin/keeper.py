@@ -34,14 +34,12 @@ class Keeper:
     HOST = Usr.PG_HOST
 
     @classmethod  # transaction# {{{
-    async def transaction(cls, request: str):
+    async def transaction(cls, sql_request: str):
         conn = await asyncpg.connect(
             user=cls.USER, database=cls.DATABASE, host=cls.HOST
         )
-
-        values = await conn.fetch(request)
+        values = await conn.fetch(sql_request)
         await conn.close()
-
         return values
 
     # }}}
@@ -59,41 +57,20 @@ class Keeper:
         await cls.__createMarketDataScheme()
 
     # }}}
-    @classmethod  # find# {{{
-    async def find(cls, source: Source, **kwargs) -> list[InstrumentId]:
-        # create source condition
-        if source is None:
-            pg_source = "TRUE"
-        else:
-            pg_source = f"source = '{source.name}'"
-
-        # create kwargs condition
-        if asset_type is None:
-            pg_kwargs = "TRUE"
-        else:
-            json_string = json.dumps(kwargs, ensure_ascii=False)
-            pg_kwargs = f"info @> '{json_string}'"
-
-        # request assets info records
-        request = f"""
-            SELECT
-                info
-            FROM "Cache"
-            WHERE {pg_source} AND {pg_kwargs};
-            """
-        res = await cls.transaction(request)
-
-        # extract info dicts from records
-        assets_info = list()
-        for record in res:
-            info_dict = record["info"]
-            assets_info.append(info_dict)
-
-        return assets_info
-
-    # }}}
     @classmethod  # info# {{{
     async def info(cls, source: Source, asset_type: AssetType, **kwargs):
+        """Looks for information about the asset in the cache.
+
+        Returns a list of dictionaries with information about assets
+        suitable for a request 'kwargs'
+
+        """
+
+        # remove None values
+        none_keys = [key for key in kwargs if kwargs[key] is None]
+        for i in none_keys:
+            kwargs.pop(i)
+
         # create source condition
         if source is None:
             pg_source = "TRUE"
@@ -107,7 +84,7 @@ class Keeper:
             pg_asset_type = f"type = '{asset_type.name}'"
 
         # create kwarg condition
-        if asset_type is None:
+        if not kwargs:
             pg_kwargs = "TRUE"
         else:
             json_string = json.dumps(kwargs, ensure_ascii=False)
@@ -125,7 +102,8 @@ class Keeper:
         # extract info dicts from records
         assets_info = list()
         for record in res:
-            info_dict = record["info"]
+            json_string = record["info"]
+            info_dict = json.loads(json_string)
             assets_info.append(info_dict)
 
         return assets_info
@@ -151,6 +129,7 @@ class Keeper:
             "Stop": cls.__addOrder,
             "MOEX": cls.__addExchange,
             "SPB": cls.__addExchange,
+            "_BarsData": cls.__addBarsData,
         }
         method = methods[class_name]
         await method(obj)
@@ -212,9 +191,6 @@ class Keeper:
             "Trade": cls.__getTrades,
             "Operation": cls.__getOperations,
             "Order": cls.__getOrders,
-            # "Market": cls.__getOrders,
-            # "Limit": cls.__getOrders,
-            # "Stop": cls.__getOrders,
         }
         method = methods[what.__name__]
         result = await method(what, kwargs)
@@ -254,24 +230,28 @@ class Keeper:
         return res
 
     # }}}
-    @classmethod  # __addData# {{{
-    async def __addData(cls, ID: Id, data_type: DataType, data: list[object]):
-        def formatBarData(b: Bar):
-            # Bar to postgres value
-            dt = f"'{b.dt.isoformat()}'"
-            s = f"({dt},{b.open},{b.high},{b.low},{b.close},{b.vol}),\n"
-            return s
-
-        # Format data in postges value
+    @classmethod  # __addBarsData# {{{
+    async def __addBarsData(cls, data: _BarsData):
+        # Format bars data in postges value
         values = str()
-        for bar in data:
-            value = formatBarData(bar)
-            values += value
-        values = values[0:-2] + ";"  # '<text>,\n' -> '<text>;'
+        for b in data.bars:
+            dt = f"'{b.dt.isoformat()}'"
+            val = f"({dt},{b.open},{b.high},{b.low},{b.close},{b.vol}),\n"
+            values += val
+        values = values[0:-2]  # remove ",\n" after last value
 
         # Create table if not exist
-        table_name = cls.__getTableName(ID, data_type)
-        await cls.__createBarsDataTable(ID, data_type)
+        table_name = cls.__getTableName(data.ID, data.data_type)
+        await cls.__createBarsDataTable(table_name)
+
+        # delete old data at the same period
+        request = f"""
+            DELETE FROM data."{table_name}"
+            WHERE
+                '{data.first_dt}' <= dt AND dt <= '{data.last_dt}'
+                ;
+            """
+        res = await cls.transaction(request)
 
         # Add bars data
         request = f"""
@@ -279,7 +259,6 @@ class Keeper:
         VALUES
             {values}
         """
-
         res = await cls.transaction(request)
         return res
 
@@ -411,8 +390,8 @@ class Keeper:
     # }}}
     @classmethod  # __addOperation# {{{
     async def __addOperation(cls, operation: Operation):
-        assert operation.trade_ID is not None
-        assert operation.order_ID is not None
+        assert operation.trade_id is not None
+        assert operation.order_id is not None
 
         if operation.meta is None:
             meta = "NULL"
@@ -444,14 +423,14 @@ class Keeper:
                 '{operation.account_name}',
                 '{operation.dt}',
                 '{operation.direction.name}',
-                '{operation.asset.figi}',
+                '{operation.figi}',
                 {operation.lots},
                 {operation.quantity},
                 {operation.price},
                 {operation.amount},
                 {operation.commission},
-                {operation.trade_ID},
-                {operation.order_ID},
+                {operation.trade_id},
+                {operation.order_id},
                 {meta}
             );
         """
@@ -586,34 +565,23 @@ class Keeper:
 
         # format cache into postgres values
         def formatCache(cache: _InstrumentInfoCache) -> str:
-            # cache to postgres value
             values = str()
             for i in cache.assets_info:
                 pg_source = f"'{cache.source.name}'"
                 pg_asset_type = f"'{cache.asset_type.name}'"
-                pg_asset_info = "'" + str(i).replace("'", '"') + "'"
-
-                # fix some values to be valid for postgres
-                pg_asset_info = (
-                    "'"
-                    + json.dumps(i, ensure_ascii=False, default=cache._encoderJson)
-                    + "'"
+                json_string = json.dumps(
+                    i, ensure_ascii=False, default=cache.encoderJson
                 )
-
-                # pg_asset_info = pg_asset_info.replace('"None"', "null")
-                # pg_asset_info = pg_asset_info.replace("None", "null")
-                # pg_asset_info = pg_asset_info.replace('"Артген"', "Артген")
+                pg_asset_info = f"'{json_string}'"
 
                 val = f"({pg_source}, {pg_asset_type}, {pg_asset_info}),\n"
                 values += val
 
-            # remove ",\n" after last value
-            values = values[0:-2]
+            values = values[0:-2]  # remove ",\n" after last value
             return values
 
         # save new cache
         values = formatCache(cache)
-
         request = f"""
             INSERT INTO "Cache" (
                 source,
@@ -633,6 +601,12 @@ class Keeper:
 
     @classmethod  # __getAsset # {{{
     async def __getAsset(cls, asset_class, kwargs: dict):
+        """Search asset
+
+        Looks for assets only among those for which exchange data are loaded.
+        Returns the asset.
+        """
+        # TODO добавить поиск по тикеру типу и бирже
         figi = kwargs.get("figi")
 
         request = f"""
@@ -736,7 +710,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __getOperations # {{{
-    async def __getOperations(cls, constructor, kwargs):
+    async def __getOperations(cls, operation_class, kwargs):
         trade_id = kwargs.get("trade_id")
 
         request = f"""
@@ -764,14 +738,14 @@ class Keeper:
         # create operation objects
         op_list = list()
         for i in op_records:
-            op = constructor.fromRecord(i)
+            op = operation_class.fromRecord(i)
             op_list.append(op)
 
         return op_list
 
     # }}}
     @classmethod  # __getOrders # {{{
-    async def __getOrders(cls, constructor, kwargs):
+    async def __getOrders(cls, order_class, kwargs):
         trade_id = kwargs.get("trade_id")
 
         request = f"""
@@ -798,7 +772,7 @@ class Keeper:
         # create order objects
         order_list = list()
         for i in order_records:
-            order = constructor.fromRecord(i)
+            order = order_class.fromRecord(i)
             order_list.append(order)
 
         return order_list
@@ -940,10 +914,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __createBarsDataTable# {{{
-    async def __createBarsDataTable(cls, ID: Id, data_type: DataType):
-        assert data_type != DataType.TIC
-        assert data_type != DataType.BOOK
-        table_name = cls.__getTableName(ID, data_type)
+    async def __createBarsDataTable(cls, table_name: str):
         request = f"""
         CREATE TABLE IF NOT EXISTS data."{table_name}" (
             dt TIMESTAMP WITH TIME ZONE PRIMARY KEY,
@@ -1098,8 +1069,9 @@ class Keeper:
 
     # }}}
     @classmethod  # __getTableName# {{{
-    def __getTableName(cls, asset: Asset | Id, data_type):
-        table_name = f"_{asset.figi}_{data_type.name}"
+    def __getTableName(cls, ID: InstrumentId, data_type):
+        # table_name = f"{asset.figi}_{data_type.name}"
+        table_name = f"{ID.exchange.name}_{ID.type.name}_{ID.ticker}_{data_type.name}"
         return table_name
 
     # }}}
