@@ -9,9 +9,11 @@
 # ============================================================================
 
 import sys
+
 from avin.const import *
 from avin.data import *
 from avin.logger import logger
+
 
 def main():
     print("Welcome to AVIN Trade System!")
@@ -23,4 +25,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
