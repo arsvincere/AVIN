@@ -8,17 +8,18 @@
 
 """The module provides interaction with the postgresql database
 
-It is assumed, that the user does not use this class directly. All other classes in program turn to the database through the interface of this class "Keeper". Thus, the entire SQL code is collected inside this class.
+It is assumed, that the user does not use this class directly. All other
+classes in program turn to the database through the interface of this class
+"Keeper". Thus, the entire SQL code is collected inside this class.
 
-But if you really need to make a direct request to the database, you can use the 'transaction(sql_request)' method.
+But if you really need to make a direct request to the database, you can use
+the 'transaction(sql_request)' method.
 """
 
 from __future__ import annotations
 
-import asyncio
 import inspect
 import json
-from datetime import UTC, datetime
 
 import asyncpg
 
@@ -35,12 +36,16 @@ class Keeper:
 
     @classmethod  # transaction# {{{
     async def transaction(cls, sql_request: str):
-        conn = await asyncpg.connect(
-            user=cls.USER, database=cls.DATABASE, host=cls.HOST
-        )
-        values = await conn.fetch(sql_request)
-        await conn.close()
-        return values
+        try:
+            conn = await asyncpg.connect(
+                user=cls.USER, database=cls.DATABASE, host=cls.HOST
+            )
+            values = await conn.fetch(sql_request)
+            await conn.close()
+            return values
+        except asyncpg.exceptions.NumericValueOutOfRangeError as err:
+            logger.error(err)
+            logger.error(f"Request:\n{sql_request}")
 
     # }}}
     @classmethod  # createDataBase# {{{
@@ -179,11 +184,7 @@ class Keeper:
 
     # }}}
     @classmethod  # get# {{{
-    async def get(cls, what: class_, **kwargs):
-        # of: object | ID = None,
-        # status: list[statuses] = None,
-        # begin: datetime = None,
-        # end: datetime = None,
+    async def get(cls, what: Class, **kwargs):
         assert inspect.isclass(what)
 
         methods = {
@@ -191,6 +192,7 @@ class Keeper:
             "Trade": cls.__getTrades,
             "Operation": cls.__getOperations,
             "Order": cls.__getOrders,
+            "_Bar": cls.__getBars,
         }
         method = methods[what.__name__]
         result = await method(what, kwargs)
@@ -239,6 +241,18 @@ class Keeper:
             val = f"({dt},{b.open},{b.high},{b.low},{b.close},{b.vol}),\n"
             values += val
         values = values[0:-2]  # remove ",\n" after last value
+
+        # Create new Asset if not exist
+        request = f"""
+            SELECT add_asset_if_not_exist(
+                '{data.ID.figi}',
+                '{data.ID.type.name}',
+                '{data.ID.exchange.name}',
+                '{data.ID.ticker}',
+                '{data.ID.name}'
+                )
+            """
+        res = await cls.transaction(request)
 
         # Create table if not exist
         table_name = cls.__getTableName(data.ID, data.data_type)
@@ -627,27 +641,33 @@ class Keeper:
 
     # }}}
     @classmethod  # __getBars # {{{
-    async def __getBars(cls, ID, data_type, begin, end):
+    async def __getBars(cls, bar_class, kwargs):
+        ID = kwargs["ID"]
+        data_type = kwargs["data_type"]
+        begin = kwargs.get("begin")
+        end = kwargs.get("end")
+
+        # create condition for begin-end:
+        if begin is None and end is None:
+            pg_period = "TRUE"
+        else:
+            pg_period = f"'{begin}' <= dt AND dt < '{end}'"
+
+        # request
         table_name = cls.__getTableName(ID, data_type)
         request = f"""
             SELECT dt, open, high, low, close, volume
-            FROM "{table_name}"
-            WHERE dt >= '{begin}' AND dt < '{end}'
+            FROM data."{table_name}"
+            WHERE {pg_period}
             ORDER BY dt
             ;
             """
-
         res = await cls.transaction(request)
+
+        # create bars from records
         bars = list()
         for i in res:
-            bar = Bar(
-                i["dt"],
-                i["open"],
-                i["high"],
-                i["low"],
-                i["close"],
-                i["volume"],
-            )
+            bar = bar_class.fromRecord(i)
             bars.append(bar)
         return bars
 
@@ -663,9 +683,7 @@ class Keeper:
         if strategy is None:
             pg_strategy = "TRUE"
         else:
-            pg_strategy = (
-                f"(strategy = '{strategy.name}' AND version = '{strategy.version}')"
-            )
+            pg_strategy = f"(strategy = '{strategy.name}' AND version = '{strategy.version}')"
 
         # create condition for statuses, like this:
         # (status = 'INITIAL' OR status = 'NEW' OR status = 'OPEN')
@@ -899,15 +917,37 @@ class Keeper:
     # }}}
     @classmethod  # __createAssetTable# {{{
     async def __createAssetTable(cls):
-        keeper = Keeper()
         request = """
         CREATE TABLE IF NOT EXISTS "Asset" (
-            exchange text REFERENCES "Exchange"(name),
+            figi text PRIMARY KEY,
             type "AssetType",
+            exchange text REFERENCES "Exchange"(name),
             ticker text,
-            name text,
-            figi text PRIMARY KEY
+            name text
             );
+        """
+        res = await cls.transaction(request)
+
+        request = """
+        CREATE OR REPLACE FUNCTION add_asset_if_not_exist(
+            a_figi text,
+            a_type "AssetType",
+            a_exchange text,
+            a_ticker text,
+            a_name text
+            )
+        RETURNS void
+        LANGUAGE plpgsql
+        AS $$
+            BEGIN
+                IF NOT EXISTS (SELECT figi FROM "Asset" WHERE figi = a_figi)
+                THEN
+                    INSERT INTO "Asset" (figi, type, exchange, ticker, name)
+                    VALUES
+                        (a_figi, a_type, a_exchange, a_ticker, a_name);
+                END IF;
+            END;
+        $$;
         """
         res = await cls.transaction(request)
         return res
@@ -922,7 +962,7 @@ class Keeper:
             high float,
             low float,
             close float,
-            volume integer
+            volume bigint
             );
             """
         res = await cls.transaction(request)
@@ -1071,7 +1111,9 @@ class Keeper:
     @classmethod  # __getTableName# {{{
     def __getTableName(cls, ID: InstrumentId, data_type):
         # table_name = f"{asset.figi}_{data_type.name}"
-        table_name = f"{ID.exchange.name}_{ID.type.name}_{ID.ticker}_{data_type.name}"
+        table_name = (
+            f"{ID.exchange.name}_{ID.type.name}_{ID.ticker}_{data_type.value}"
+        )
         return table_name
 
     # }}}

@@ -9,16 +9,24 @@
 from __future__ import annotations
 
 import abc
-import asyncio
 import os
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 
 import moexalgo
 import pandas as pd
 import tinkoff.invest as ti
 
-from avin.const import *
+from avin.const import (
+    DAY_BEGIN,
+    DAY_END,
+    ONE_DAY,
+    ONE_WEEK,
+    Dir,
+    Res,
+    Usr,
+    WeekDays,
+)
 from avin.data.asset_type import AssetType
 from avin.data.data_type import DataType
 from avin.data.exchange import Exchange
@@ -40,7 +48,11 @@ class Data:  # {{{
         name: str = None,
         source: Source = None,
     ) -> list[InstrumentId]:
+        """Find instrument id
 
+        Args:
+            asset_type - kkk
+        """
         check = cls.__checkArgs(
             asset_type=asset_type,
             exchange=exchange,
@@ -56,6 +68,7 @@ class Data:  # {{{
             class_ = _MoexData
         elif source == Source.TINKOFF:
             class_ = _TinkoffData
+
         # if source is None,
         # uses _MoexData for indexes,
         # and _TinkoffData otherwise
@@ -86,7 +99,6 @@ class Data:  # {{{
     async def firstDateTime(
         cls, source: Source, data_type: DataType, ID: InstrumentId
     ) -> datetime:
-
         check = cls.__checkArgs(
             source=source,
             ID=ID,
@@ -108,25 +120,14 @@ class Data:  # {{{
     async def download(
         cls, source: Source, data_type: DataType, ID: InstrumentId, year: int
     ) -> None:
-
-        check = cls.__checkArgs(source=source, ID=ID, data_type=data_type, year=year)
+        check = cls.__checkArgs(
+            source=source, ID=ID, data_type=data_type, year=year
+        )
         if not check:
             return
 
         class_ = cls.__getSource(source)
         await class_.download(ID, data_type, year)
-
-    # }}}
-    @classmethod  # add# {{{
-    async def add(cls, source: Source) -> bool:
-        check = cls.__checkArgs(
-            source=source,
-        )
-        if check:
-            source = cls.__getSource(source)
-            source.export()
-            return True
-        return False
 
     # }}}
     @classmethod  # convert# {{{
@@ -144,20 +145,8 @@ class Data:  # {{{
             )
             return False
 
-        _Manager.convert(ID, in_type, out_type)
+        await _Manager.convert(ID, in_type, out_type)
         return True
-
-    # }}}
-    @classmethod  # clear# {{{
-    async def clear(cls, source: Source) -> bool:
-        check = cls.__checkArgs(
-            source=source,
-        )
-        if check:
-            source = cls.__getSource(source)
-            source.clear()
-            return True
-        return False
 
     # }}}
     @classmethod  # delete# {{{
@@ -178,7 +167,9 @@ class Data:  # {{{
 
     # }}}
     @classmethod  # update# {{{
-    async def update(cls, ID: InstrumentId, data_type: DataType = None) -> bool:
+    async def update(
+        cls, ID: InstrumentId, data_type: DataType = None
+    ) -> bool:
         assert ID.exchange == Exchange.MOEX
         assert data_type != DataType.TIC
         assert data_type != DataType.BOOK
@@ -205,7 +196,6 @@ class Data:  # {{{
         begin: int,
         end: int,
     ) -> list[str]:
-
         check = cls.__checkArgs(
             ID=ID,
             data_type=data_type,
@@ -239,8 +229,6 @@ class Data:  # {{{
         out_type=None,
         begin=None,
         end=None,
-        decoder=None,
-        requester=None,
     ):
         if source:
             cls.__checkSource(source)
@@ -264,8 +252,6 @@ class Data:  # {{{
             cls.__checkIOType(in_type, out_type)
         if begin and end:
             cls.__checkBeginEnd(begin, end)
-        if decoder or requester:
-            cls.__checkDecoderRequester(decoder, requester)
         return True
 
     # }}}
@@ -273,7 +259,8 @@ class Data:  # {{{
     def __checkSource(cls, source):
         if not isinstance(source, Source):
             raise TypeError(
-                "You stupid monkey, select the 'source' from the enum " "Source."
+                "You stupid monkey, select the 'source' from the enum "
+                "Source."
             )
 
     # }}}
@@ -291,26 +278,33 @@ class Data:  # {{{
     def __checkAssetType(cls, asset_type):
         if not isinstance(asset_type, AssetType):
             raise TypeError(
-                "You stupid monkey, select the 'asset_type' from the enum " "AssetType."
+                "You stupid monkey, select the 'asset_type' from the enum "
+                "AssetType."
             )
 
     # }}}
     @classmethod  # __checkTicker# {{{
     def __checkTicker(cls, ticker):
         if not isinstance(ticker, str):
-            raise TypeError("You stupid monkey, use type str for argument 'ticker'")
+            raise TypeError(
+                "You stupid monkey, use type str for argument 'ticker'"
+            )
 
     # }}}
     @classmethod  # __checkFigi# {{{
     def __checkFigi(cls, figi):
         if not isinstance(figi, str):
-            raise TypeError("You stupid monkey, use type str for argument 'figi'")
+            raise TypeError(
+                "You stupid monkey, use type str for argument 'figi'"
+            )
 
     # }}}
     @classmethod  # __checkName# {{{
     def __checkName(cls, name):
         if not isinstance(name, str):
-            raise TypeError("You stupid monkey, use type str for argument 'name'")
+            raise TypeError(
+                "You stupid monkey, use type str for argument 'name'"
+            )
 
     # }}}
     @classmethod  # __checkID# {{{
@@ -327,14 +321,17 @@ class Data:  # {{{
         assert data_type != DataType.TIC
         if not isinstance(data_type, DataType):
             raise TypeError(
-                "You stupid monkey, select the 'data_type' from the enum " "DataType."
+                "You stupid monkey, select the 'data_type' from the enum "
+                "DataType."
             )
 
     # }}}
     @classmethod  # __checkYear# {{{
     def __checkYear(cls, year):
         if not isinstance(year, int):
-            raise TypeError("You stupid monkey, use type int for argument 'year'")
+            raise TypeError(
+                "You stupid monkey, use type int for argument 'year'"
+            )
 
     # }}}
     @classmethod  # __checkIOType# {{{
@@ -345,20 +342,26 @@ class Data:  # {{{
         assert out_type != DataType.TIC
         if not isinstance(in_type, DataType):
             raise TypeError(
-                "You stupid monkey, select the 'in_type' from the enum " "DataType."
+                "You stupid monkey, select the 'in_type' from the enum "
+                "DataType."
             )
         if not isinstance(out_type, DataType):
             raise TypeError(
-                "You stupid monkey, select the 'out_type' from the enum " "DataType."
+                "You stupid monkey, select the 'out_type' from the enum "
+                "DataType."
             )
 
     # }}}
     @classmethod  # __checkBeginEnd# {{{
     def __checkBeginEnd(cls, begin, end):
         if not isinstance(begin, int):
-            raise TypeError("You stupid monkey, use type <int> for argument 'begin'")
+            raise TypeError(
+                "You stupid monkey, use type <int> for argument 'begin'"
+            )
         if not isinstance(end, int):
-            raise TypeError("You stupid monkey, use type <int> for argument 'end'")
+            raise TypeError(
+                "You stupid monkey, use type <int> for argument 'end'"
+            )
         if begin > end:
             raise ValueError(
                 f"You're still a stupid monkey, how the fuck you to get data "
@@ -390,6 +393,19 @@ class _Bar:
     def __post_init__(self):  # {{{
         if isinstance(self.dt, str):
             self.dt = datetime.fromisoformat(self.dt)
+
+    # }}}
+    @classmethod  # fromRecord{{{
+    def fromRecord(cls, record):
+        bar = cls(
+            record["dt"],
+            record["open"],
+            record["high"],
+            record["low"],
+            record["close"],
+            record["volume"],
+        )
+        return bar
 
     # }}}
     @classmethod  # toCSV# {{{
@@ -425,7 +441,6 @@ class _BarsData:  # {{{
         bars: list[_Bar],
         source: Source,
     ):
-        assert bars[0].dt.year == bars[-1].dt.year
         self.__ID = ID
         self.__data_type = data_type
         self.__bars = bars
@@ -439,6 +454,7 @@ class _BarsData:  # {{{
     # }}}
     @property  # data_type# {{{
     def data_type(self):
+        # TODO: rename 'data_type' -> 'type'
         return self.__data_type
 
     # }}}
@@ -464,48 +480,43 @@ class _BarsData:  # {{{
         return dt
 
     # }}}
-    @classmethod  # save
-    async def save(cls, data):  # {{{
+    @classmethod  # save  # {{{
+    async def save(cls, data: _BarsData):
         logger.debug(f"{cls.__name__}.save({data.ID.ticker})")
         await Keeper.add(data)
+        logger.info(f"Saved {data.ID.ticker}-{data.data_type.value}")
+
+    # }}}
+    @classmethod  # load  # {{{
+    async def load(
+        cls,
+        ID: InstrumentId,
+        data_type: DataType,
+        begin: datetime,
+        end: datetime,
+    ) -> _BarsData:
+        logger.debug(f"{cls.__name__}.load({ID.ticker})")
+
+        bars = await Keeper.get(
+            _Bar, ID=ID, data_type=data_type, begin=begin, end=end
+        )
+        # TODO
+        # Пока источник данных только один Source.MOEX, и он не хранится...
+        # Так что я его тут прямо беру и указываю, в будущем, источник
+        # данных нужно тоже хранить в базе, и получать от туда
+        data = _BarsData(ID, data_type, bars, Source.MOEX)
+        return data
 
     # }}}
 
 
 # }}}
-class _BarsDataFileIterator:  # {{{
-    def __init__(self, ID: InstrumentId, data_type):  # {{{
-        self.ID = ID
-        self.data_type = data_type
-        self.years = _Manager.availibleYears(ID, data_type)
-        self.index = 0
-
-    # }}}
-    def __next__(self):  # {{{
-        if self.index < len(self.years):
-            year = self.years[self.index]
-            data = _BarsData.load(self.ID, self.data_type, year)
-            self.index += 1
-            return data
-        else:
-            raise StopIteration
-
-    # }}}
-    def __iter__(self):  # {{{
-        # При передаче объекта функции iter возвращает самого себя
-        # тем самым в точности реализуя протокол итератора
-        return self
-
-    # }}}
-
-
-# }}}
-class _StockDataFile:  # {{{
+class _StockData:  # {{{
     ...
 
 
 # }}}
-class _TickDataFile:  # {{{
+class _TickData:  # {{{
     ...
 
 
@@ -517,7 +528,6 @@ class _InstrumentInfoCache:  # {{{
         asset_type: AssetType,
         assets_info: list,
     ):
-
         self.source = source
         self.asset_type = asset_type
         self.assets_info = assets_info
@@ -607,7 +617,9 @@ class _AbstractSource(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
     @abc.abstractmethod  # find# {{{
-    def find(self, exchange: str, asset_type: str, querry: str) -> InstrumentId: ...
+    def find(
+        self, exchange: str, asset_type: str, querry: str
+    ) -> InstrumentId: ...
 
     # }}}
     @abc.abstractmethod  # info# {{{
@@ -615,11 +627,15 @@ class _AbstractSource(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
     @abc.abstractmethod  # firstDateTime# {{{
-    def firstDateTime(self, ID: InstrumentId, data_type: DataType) -> datetime: ...
+    def firstDateTime(
+        self, ID: InstrumentId, data_type: DataType
+    ) -> datetime: ...
 
     # }}}
     @abc.abstractmethod  # download# {{{
-    def download(self, ID: InstrumentId, data_type: DataType, year: int) -> bool: ...
+    def download(
+        self, ID: InstrumentId, data_type: DataType, year: int
+    ) -> bool: ...
 
     # }}}
     @abc.abstractmethod  # export# {{{
@@ -632,7 +648,11 @@ class _AbstractSource(metaclass=abc.ABCMeta):  # {{{
     # }}}
     @abc.abstractmethod  # getHistoricalBars# {{{
     def getHistoricalBars(
-        self, ID: InstrumentId, data_type: DataType, begin: datetime, end: datetime
+        self,
+        ID: InstrumentId,
+        data_type: DataType,
+        begin: datetime,
+        end: datetime,
     ) -> list[_Bar]: ...
 
     # }}}
@@ -707,7 +727,6 @@ class _MoexData(_AbstractSource):  # {{{
         figi: str,
         name: str,
     ) -> InstrumentId:
-
         if cls._AUTO_UPDATE:
             await _MoexData.__cacheAssetsInfo()
             ...
@@ -773,7 +792,9 @@ class _MoexData(_AbstractSource):  # {{{
 
     # }}}
     @classmethod  # firstDateTime  # {{{
-    async def firstDateTime(cls, ID: InstrumentId, data_type: DataType) -> datetime:
+    async def firstDateTime(
+        cls, ID: InstrumentId, data_type: DataType
+    ) -> datetime:
         date_start = date(1990, 1, 1)
         try:
             asset = moexalgo.Ticker(ID.ticker)
@@ -783,7 +804,7 @@ class _MoexData(_AbstractSource):  # {{{
                 period=cls.__convert(data_type),
                 use_dataframe=False,
             )
-        except LookupError as err:
+        except LookupError:
             logger.warning(f"_MoexData: no market data for {ID.ticker}")
             return None
         candle = candles.send(None)
@@ -792,7 +813,9 @@ class _MoexData(_AbstractSource):  # {{{
 
     # }}}
     @classmethod  # download  # {{{
-    async def download(cls, ID: InstrumentId, data_type: DataType, year: int) -> bool:
+    async def download(
+        cls, ID: InstrumentId, data_type: DataType, year: int
+    ) -> bool:
         assert data_type in cls.AVAILIBLE_DATA
         await cls.__authorizate()
 
@@ -800,46 +823,50 @@ class _MoexData(_AbstractSource):  # {{{
         begin, end = cls.__getPeriod(year)
         candles = cls.__getHistoricalCandles(ID, data_type, begin, end)
         if len(candles) == 0:
-            logger.warning(f"No data received for {ID.ticker}-{data_type.value}-{year}")
+            logger.warning(
+                f"No data received for {ID.ticker}-{data_type.value}-{year}"
+            )
             return
 
         bars = cls.__convertCandlesToBars(candles)
         data = _BarsData(ID, data_type, bars, cls.source)
         await _BarsData.save(data)
 
-        for b in bars:
-            print(b.dt)
-
     # }}}
     @classmethod  # export  # {{{
     async def export(cls) -> None:
-        logger.info(f":: MOEX exporting data in standart format")
-        files = Cmd.getFiles(cls._DOWNLOAD, full_path=True, include_sub_dir=True)
+        logger.info(":: MOEX exporting data in standart format")
+        files = Cmd.getFiles(
+            cls._DOWNLOAD, full_path=True, include_sub_dir=True
+        )
         files = sorted(Cmd.select(files, extension=".csv"))
         for file in files:
             logger.info(f"  - exporting '{file}'")
             ID, data_type, bars = cls.__readDataFile(file)
             data = _BarsData(ID, data_type, bars, Source.MOEX)
             _BarsData.save(data)
-        logger.info(f"Export complete")
+        logger.info("Export complete")
 
     # }}}
     @classmethod  # clear  # {{{
     async def clear(cls) -> bool:
-        logger.info(f":: Clear MOEX files")
+        logger.info(":: Clear MOEX files")
         path = cls._DOWNLOAD
         if not Cmd.isExist(path):
             logger.info(f"  - no data in '{path}'")
             return
         Cmd.deleteDir(path)
-        logger.info(f"  - successful complete")
+        logger.info("  - successful complete")
 
     # }}}
     @classmethod  # getHistoricalBars  # {{{
     async def getHistoricalBars(
-        cls, ID: InstrumentId, data_type: DataType, begin: datetime, end: datetime
+        cls,
+        ID: InstrumentId,
+        data_type: DataType,
+        begin: datetime,
+        end: datetime,
     ) -> list[_Bar]:
-
         begin = cls.__toMSK(begin)
         end = cls.__toMSK(end)
 
@@ -884,7 +911,7 @@ class _MoexData(_AbstractSource):  # {{{
         if _InstrumentInfoCache.checkCachingDate(cls.source):
             return
 
-        logger.info(f":: Caching assets info from MOEX")
+        logger.info(":: Caching assets info from MOEX")
         await cls.__authorizate()
         if not cls._AUTHORIZATION:
             return
@@ -913,7 +940,7 @@ class _MoexData(_AbstractSource):  # {{{
                 # for use search by figi, I'm add in to indices
                 # not real global figi, its only my local idea,
                 # figi = <exchane_name>_<ticker>
-                i["FIGI"] = f"MOEX_{i['SECID']}"
+                i["FIGI"] = f"_MOEX_{i['SECID']}"
             elif i["BOARDID"] == "TQBR":
                 i["TYPE"] = AssetType.SHARE.name
                 # NOTE
@@ -979,27 +1006,38 @@ class _MoexData(_AbstractSource):  # {{{
     # }}}
     @classmethod  # __requestCandles# {{{
     def __requestCandles(
-        cls, ID: InstrumentId, data_type: DataType, begin: datetime, end: datetime
+        cls,
+        ID: InstrumentId,
+        data_type: DataType,
+        begin: datetime,
+        end: datetime,
     ):
         period = data_type.toTimedelta()
         if period < ONE_DAY:
-            return cls.__requestCandlesSmallTimeFrame(ID, data_type, begin, end)
+            return cls.__requestCandlesSmallTimeFrame(
+                ID, data_type, begin, end
+            )
         else:
             return cls.__requestCandlesBigTimeFrame(ID, data_type, begin, end)
 
     # }}}
     @classmethod  # __requestCandlesBigTimeFrame# {{{
     def __requestCandlesBigTimeFrame(
-        cls, ID: InstrumentId, data_type: DataType, begin: datetime, end: datetime
+        cls,
+        ID: InstrumentId,
+        data_type: DataType,
+        begin: datetime,
+        end: datetime,
     ):
-
         all_candles = list()
         asset = moexalgo.Ticker(ID.ticker)
         period = cls.__convert(data_type)
         current = begin
 
         while current < end:
-            logger.info(f"  - request {ID.ticker}-{data_type.value} {current.date()}")
+            logger.info(
+                f"  - request {ID.ticker}-{data_type.value} {current.date()}"
+            )
             candles = asset.candles(
                 start=current,
                 end=current.replace(year=current.year + 1),
@@ -1026,7 +1064,8 @@ class _MoexData(_AbstractSource):  # {{{
         current = begin
         while current < end:
             logger.info(
-                f"  - request {ID.ticker}-{data_type.value} " f"from {current.date()}"
+                f"  - request {ID.ticker}-{data_type.value} "
+                f"from {current.date()}"
             )
             candles = asset.candles(
                 start=current,
@@ -1042,9 +1081,12 @@ class _MoexData(_AbstractSource):  # {{{
     # }}}
     @classmethod  # __getHistoricalCandles# {{{
     def __getHistoricalCandles(
-        cls, ID: InstrumentId, data_type: DataType, begin: datetime, end: datetime
+        cls,
+        ID: InstrumentId,
+        data_type: DataType,
+        begin: datetime,
+        end: datetime,
     ):
-
         candles = cls.__requestCandles(ID, data_type, begin, end)
         if not candles:
             return list()
@@ -1071,7 +1113,9 @@ class _MoexData(_AbstractSource):  # {{{
     # }}}
 
     @classmethod  # __createFilePath# {{{
-    def __createFilePath(cls, ID: InstrumentId, data_type: DataType, year: int):
+    def __createFilePath(
+        cls, ID: InstrumentId, data_type: DataType, year: int
+    ):
         dir_path = Cmd.path(cls._DOWNLOAD, ID.type.name, ID.ticker)
         Cmd.makeDirs(dir_path)
         file_name = (
@@ -1090,7 +1134,6 @@ class _MoexData(_AbstractSource):  # {{{
         year: int,
         candles: list[moexalgo.models.Candle],
     ):
-
         path = cls.__createFilePath(ID, data_type, year)
         df = pd.DataFrame(candles)
         df.to_csv(path, sep=";")
@@ -1194,7 +1237,6 @@ class _TinkoffData(_AbstractSource):  # {{{
         figi: str,
         name: str,
     ) -> InstrumentId:
-
         if cls._AUTO_UPDATE:
             await cls.__cacheAssetsInfo()
 
@@ -1209,10 +1251,6 @@ class _TinkoffData(_AbstractSource):  # {{{
 
         id_list = list()
         for i in assets_info:
-            e = i.get("exchange")
-            if e is None:
-                print(i)
-                input("STOP")
             ID = InstrumentId(
                 AssetType.fromStr(i["type"]),
                 Exchange.fromStr(i["exchange"]),
@@ -1223,14 +1261,6 @@ class _TinkoffData(_AbstractSource):  # {{{
             id_list.append(ID)
         return id_list
 
-        cache = super()._selectCache(asset_type)
-        info = cls.__info(exchange, asset_type, querry, cache)
-        if info is not None:
-            ID = cls.__getId(info)
-            return ID
-        else:
-            return None
-
     # }}}
     @classmethod  # info  # {{{
     async def info(cls, ID: InstrumentId) -> dict:
@@ -1240,7 +1270,9 @@ class _TinkoffData(_AbstractSource):  # {{{
 
     # }}}
     @classmethod  # firstDateTime  # {{{
-    async def firstDateTime(cls, ID: InstrumentId, data_type: DataType) -> datetime:
+    async def firstDateTime(
+        cls, ID: InstrumentId, data_type: DataType
+    ) -> datetime:
         info = await cls.info(ID)
         if data_type.value == "1M":
             return info["first_1min_candle_date"]
@@ -1249,7 +1281,9 @@ class _TinkoffData(_AbstractSource):  # {{{
 
     # }}}
     @classmethod  # download  # {{{
-    async def download(cls, ID: InstrumentId, data_type: DataType, year: int) -> None:
+    async def download(
+        cls, ID: InstrumentId, data_type: DataType, year: int
+    ) -> None:
         assert False, "переписать на postgres, пока качаю только с МОЕКС"
 
         assert data_type.value == "1M"
@@ -1266,8 +1300,10 @@ class _TinkoffData(_AbstractSource):  # {{{
         assert False, "переписать на postgres, пока качаю только с МОЕКС"
 
         # TODO fix - not exclude holidays files
-        logger.info(f":: Tinkoff exporting data in standart format")
-        files = Cmd.getFiles(cls._DOWNLOAD, full_path=True, include_sub_dir=True)
+        logger.info(":: Tinkoff exporting data in standart format")
+        files = Cmd.getFiles(
+            cls._DOWNLOAD, full_path=True, include_sub_dir=True
+        )
         archives = sorted(Cmd.select(files, extension=".zip"))
 
         for archive in archives:
@@ -1283,29 +1319,34 @@ class _TinkoffData(_AbstractSource):  # {{{
 
             Cmd.deleteDir(tmp_dir)
 
-        logger.info(f"Export complete")
+        logger.info("Export complete")
 
     # }}}
     @classmethod  # clear  # {{{
     async def clear(cls) -> None:
         assert False, "переписать на postgres, пока качаю только с МОЕКС"
 
-        logger.info(f":: Clear Tinkoff files")
+        logger.info(":: Clear Tinkoff files")
         path = cls._DOWNLOAD
         if not Cmd.isExist(path):
             logger.info(f"  - no data in '{path}'")
             return
         Cmd.deleteDir(path)
-        logger.info(f"  - successful complete")
+        logger.info("  - successful complete")
 
     # }}}
     @classmethod  # getHistoricalBars  # {{{
     async def getHistoricalBars(
-        cls, ID: InstrumentId, data_type: DataType, begin: datetime, end: datetime
+        cls,
+        ID: InstrumentId,
+        data_type: DataType,
+        begin: datetime,
+        end: datetime,
     ) -> list[_Bar]:
-
         assert False, "переписать на postgres, пока качаю только с МОЕКС"
-        logger.info(f"  - request {ID.ticker}-{data_type.value} from {begin.date()}")
+        logger.info(
+            f"  - request {ID.ticker}-{data_type.value} from {begin.date()}"
+        )
 
         if not cls.__authorizate():
             return
@@ -1370,7 +1411,7 @@ class _TinkoffData(_AbstractSource):  # {{{
         if _InstrumentInfoCache.checkCachingDate(cls.source):
             return
 
-        logger.info(f":: Caching assets info from Tinkoff")
+        logger.info(":: Caching assets info from Tinkoff")
         auth = await cls.__authorizate()
         if not auth:
             return
@@ -1379,12 +1420,8 @@ class _TinkoffData(_AbstractSource):  # {{{
         for type_ in types:
             logger.info(f"  - caching {type_}")
             assets_info = cls.__requestAvailibleAssets(type_)
-            print(len(assets_info))
-            input(1)
             none_exchange = lambda x: x["exchange"] is not None
             assets_info = [i for i in filter(none_exchange, assets_info)]
-            print(len(assets_info))
-            input(1)
             asset_type = cls._getStandartAssetType(type_)
             cache = _InstrumentInfoCache(cls.source, asset_type, assets_info)
             await _InstrumentInfoCache.save(cache)
@@ -1462,8 +1499,12 @@ class _TinkoffData(_AbstractSource):  # {{{
             "figi": instr.figi,
             "uid": instr.uid,
             "lot": instr.lot,
-            "min_price_increment": float(to_decimal(instr.min_price_increment)),
-            "trading_status": ti.SecurityTradingStatus(instr.trading_status).name,
+            "min_price_increment": float(
+                to_decimal(instr.min_price_increment)
+            ),
+            "trading_status": ti.SecurityTradingStatus(
+                instr.trading_status
+            ).name,
             "for_qual_investor_flag": instr.for_qual_investor_flag,
             "api_trade_available_flag": instr.api_trade_available_flag,
             "buy_available_flag": instr.buy_available_flag,
@@ -1609,7 +1650,6 @@ class _TinkoffData(_AbstractSource):  # {{{
     # }}}
     @classmethod  # __CandleIntervalFrom# {{{
     def __CandleIntervalFrom(cls, data_type: DataType) -> ti.CandleInterval:
-
         intervals = {
             "1M": ti.CandleInterval.CANDLE_INTERVAL_1_MIN,
             "10M": ti.CandleInterval.CANDLE_INTERVAL_10_MIN,
@@ -1655,13 +1695,15 @@ class _Manager:  # {{{
         # }}}
 
     # }}}
-    def __init__(self):
+
+    def __init__(self):  # {{{
         if _Manager._AUTO_UPDATE:
             self.__checkUpdate()
 
+    # }}}
     @classmethod  # allDataList{{{
     def allDataList(cls) -> list[tuple(InstrumentId, DataType, Source)]:
-        logger.debug(f"Data.getAllDataDirs()")
+        logger.debug("Data.getAllDataDirs()")
 
         all_list = list()
         for root, dirs, files in os.walk(Usr.DATA):
@@ -1695,14 +1737,32 @@ class _Manager:  # {{{
 
     # }}}
     @classmethod  # convert# {{{
-    def convert(cls, ID: InstrumentId, in_type: DataType, out_type: DataType):
-        logger.info(f":: Convert {ID.ticker}-{in_type.value} to {out_type.value}")
+    async def convert(
+        cls, ID: InstrumentId, in_type: DataType, out_type: DataType
+    ):
+        logger.info(
+            f":: Convert {ID.ticker}-{in_type.value} -> {out_type.value}"
+        )
         converter = cls.__choseConverter(out_type)
-        for data in _BarsDataFileIterator(ID, in_type):
-            logger.info(f"  - converting {data.year}")
-            bars = converter(data.bars, in_type, out_type)
-            converted = _BarsData(ID, out_type, bars, data.source)
-            _BarsData.save(converted)
+
+        # load 'in' data
+        # TODO: ну не надо же все подряд конвертить...
+        # Надо сначала проверить какие данные уже
+        # сконвертированы и есть ли они
+        # и доставать не все пачкой а по годам
+        # пока сделаю закладку begin end на будущее
+        in_data = await _BarsData.load(ID, in_type, begin=None, end=None)
+
+        # convert bars
+        out_bars = converter(in_data.bars, in_type, out_type)
+
+        # save converted data
+        # TODO
+        # Пока источник данных только один Source.MOEX, и он не хранится...
+        # Так что я его тут прямо беру и указываю, в будущем, источник
+        # данных нужно тоже хранить в базе, и получать от туда
+        converted_data = _BarsData(ID, out_type, out_bars, Source.MOEX)
+        await _BarsData.save(converted_data)
 
     # }}}
     @classmethod  # update# {{{
@@ -1710,14 +1770,21 @@ class _Manager:  # {{{
         data = cls.__lastBarsDataFile(ID, data_type)
         if not data:
             logger.error(
-                f"No data for {ID.ticker}-{data_type.value}. " f"Operation canceled."
+                f"No data for {ID.ticker}-{data_type.value}. "
+                f"Operation canceled."
             )
             return
 
         # selecting the same source as the data and check availiblity data_type
-        if data.source == Source.MOEX and data_type in _MoexData.AVAILIBLE_DATA:
+        if (
+            data.source == Source.MOEX
+            and data_type in _MoexData.AVAILIBLE_DATA
+        ):
             cls.__update(data, _MoexData)
-        elif data.source == Source.TINKOFF and data_type in _TinkoffData.AVAILIBLE_DATA:
+        elif (
+            data.source == Source.TINKOFF
+            and data_type in _TinkoffData.AVAILIBLE_DATA
+        ):
             cls.__update(data, _TinkoffData)
         else:
             logger.error(
@@ -1729,7 +1796,7 @@ class _Manager:  # {{{
     # }}}
     @classmethod  # updateAll# {{{
     def updateAll(cls):
-        logger.info(f":: Update all market data")
+        logger.info(":: Update all market data")
         data_list = cls.allDataList()
         count = len(data_list)
         for n, i in enumerate(data_list, 1):
@@ -1741,8 +1808,7 @@ class _Manager:  # {{{
     @classmethod  # request# {{{
     def request(
         cls, ID: InstrumentId, data_type: DataType, begin: int, end: int
-    ) -> list[file_path]:
-
+    ) -> list:
         if cls._AUTO_UPDATE and not cls._DATA_IS_UP_TO_DATE:
             cls.__checkUpdate()
 
@@ -1756,7 +1822,7 @@ class _Manager:  # {{{
         logger.info(f":: Delete {ID.ticker}-{data_type.value}")
         dir_path = Cmd.path(ID.dir_path, data_type.value)
         Cmd.deleteDir(dir_path)
-        logger.info(f"  - complete")
+        logger.info("  - complete")
 
     # }}}
     @classmethod  # __checkUpdate# {{{
@@ -1802,8 +1868,9 @@ class _Manager:  # {{{
 
     # }}}
     @classmethod  # __lastBarsDataFile# {{{
-    def __lastBarsDataFile(cls, ID: InstrumentId, data_type: DataType) -> _BarsData:
-
+    def __lastBarsDataFile(
+        cls, ID: InstrumentId, data_type: DataType
+    ) -> _BarsData:
         years = cls.availibleYears(ID, data_type)
         if years:
             data = _BarsData.load(ID, data_type, years[-1])
@@ -1822,7 +1889,7 @@ class _Manager:  # {{{
         new_bars = src.getHistoricalBars(data.ID, data.data_type, begin, end)
         count = len(new_bars)
         if count == 0:
-            logger.info(f"  - no new bars")
+            logger.info("  - no new bars")
             return
 
         logger.info(f"  - received {count} bars -> {new_bars[-1].dt}")
@@ -1923,7 +1990,6 @@ class _Manager:  # {{{
     def __convertWeekTimeFrame(cls, bars, in_type, out_type):
         assert in_type.toTimedelta() == timedelta(days=1)
         bars = cls.__fillVoid(bars, in_type)
-        period = out_type.toTimedelta()
         first = 0
         last = 0
         converted = list()
@@ -1952,8 +2018,7 @@ class _Manager:  # {{{
             while last < len(bars):
                 if bars[last].dt.day == 1:
                     break
-                else:
-                    last += 1
+                last += 1
             new_bar = cls.__join(bars[first:last])
             if new_bar is not None:
                 converted.append(new_bar)
@@ -1981,8 +2046,8 @@ class _Manager:  # {{{
             volume = sum([bar.vol for bar in bars])
             join_bar = _Bar(dt_first_bar, opn, hgh, low, close, volume)
             return join_bar
-        else:
-            return None  # возвращаем None, если не было баров с данными
+
+        return None  # возвращаем None, если не было баров с данными
 
     # }}}
 
