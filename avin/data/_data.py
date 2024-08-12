@@ -51,7 +51,7 @@ class Data:  # {{{
         """Find instrument id
 
         Args:
-            asset_type - kkk
+            asset_type - ...
         """
         check = cls.__checkArgs(
             asset_type=asset_type,
@@ -91,6 +91,7 @@ class Data:  # {{{
             class_ = _MoexData
         else:
             class_ = _TinkoffData
+
         info = await class_.info(ID)
         return info
 
@@ -150,20 +151,24 @@ class Data:  # {{{
 
     # }}}
     @classmethod  # delete# {{{
-    async def delete(cls, ID: InstrumentId, data_type: DataType) -> bool:
+    async def delete(
+        cls,
+        ID: InstrumentId,
+        data_type: DataType,
+        begin: datetime = None,
+        end: datetime = None,
+    ) -> None:
         check = cls.__checkArgs(
             ID=ID,
             data_type=data_type,
         )
-        if check:
-            if data_type == DataType.BOOK:
-                assert False
-            elif data_type == DataType.TIC:
-                assert False
-            else:
-                _Manager.delete(ID, data_type)
-                return True
-        return False
+        if not check:
+            return
+
+        if data_type == DataType.BOOK or data_type == DataType.TIC:
+            assert False
+
+        await _Manager.delete(ID, data_type, begin, end)
 
     # }}}
     @classmethod  # update# {{{
@@ -204,9 +209,7 @@ class Data:  # {{{
         )
 
         if check:
-            if data_type == DataType.BOOK:
-                assert False
-            elif data_type == DataType.TIC:
+            if data_type == DataType.BOOK or data_type == DataType.TIC:
                 assert False
             else:
                 bars = _Manager.request(ID, data_type, begin, end)
@@ -372,7 +375,7 @@ class Data:  # {{{
     @classmethod  # __getSource# {{{
     def __getSource(cls, source: Source) -> object:
         classes = {Source.MOEX: _MoexData, Source.TINKOFF: _TinkoffData}
-        class_ = classes.get(source, None)
+        class_ = classes.get(source)
         return class_
 
     # }}}
@@ -506,6 +509,21 @@ class _BarsData:  # {{{
         # данных нужно тоже хранить в базе, и получать от туда
         data = _BarsData(ID, data_type, bars, Source.MOEX)
         return data
+
+    # }}}
+    @classmethod  # delete  # {{{
+    async def delete(
+        cls,
+        ID: InstrumentId,
+        data_type: DataType,
+        begin: datetime,
+        end: datetime,
+    ) -> _BarsData:
+        logger.debug(f"{cls.__name__}.delete()")
+
+        bars = await Keeper.delete(
+            _Bar, ID=ID, data_type=data_type, begin=begin, end=end
+        )
 
     # }}}
 
@@ -1420,8 +1438,6 @@ class _TinkoffData(_AbstractSource):  # {{{
         for type_ in types:
             logger.info(f"  - caching {type_}")
             assets_info = cls.__requestAvailibleAssets(type_)
-            none_exchange = lambda x: x["exchange"] is not None
-            assets_info = [i for i in filter(none_exchange, assets_info)]
             asset_type = cls._getStandartAssetType(type_)
             cache = _InstrumentInfoCache(cls.source, asset_type, assets_info)
             await _InstrumentInfoCache.save(cache)
@@ -1440,6 +1456,8 @@ class _TinkoffData(_AbstractSource):  # {{{
             )().instruments
             for item in response:
                 item_info = cls.__extractBrokerInfo(item)
+                if item_info["exchange"] is None:
+                    continue
                 item_info["type"] = cls._getStandartAssetType(asset_type).name
                 all_info.append(item_info)
             return all_info
@@ -1447,14 +1465,11 @@ class _TinkoffData(_AbstractSource):  # {{{
     # }}}
     @classmethod  # __extractBrokerInfo# {{{
     def __extractBrokerInfo(cls, instr: ti.Instrument) -> dict:
-        # define short function name
-        to_decimal = ti.utils.quotation_to_decimal
-
         # set simple exchange name, original exchange name
         # will saved after in the key 'exchange_specific'
         if "MOEX" in instr.exchange.upper():
             # NOTE
-            # "instr.exchange" contain values as "MOEX_PLUS", "MOEX_WEEKEND"...
+            # "instr.exchange" contain values as "MOEX_PLUS", "MOEX_WEEKEND"..
             # set "echange"="MOEX"
             exchange = "MOEX"
         elif "SPB" in instr.exchange.upper():
@@ -1484,6 +1499,8 @@ class _TinkoffData(_AbstractSource):  # {{{
             # если биржа None - отбрасываем этот ассет из кэша
             exchange = None
 
+        # define short function name
+        to_decimal = ti.utils.quotation_to_decimal
         info = {
             # NOTE
             # "name": "O'Key Group SA", и другие подобные
@@ -1530,9 +1547,10 @@ class _TinkoffData(_AbstractSource):  # {{{
         # In dictionaries received from the broker, the moex exchange is
         # designated in several ways:
         # MOEX, MOEX_PLUS, MOEX_EVENING_WEEKEND, moex_extended...
-        if "MOEX" in info["exchange"].upper():
-            exchange = Exchange.MOEX
-        elif info["exchange"] == "FORTS_EVENING":  # MOEX Futures
+        if (
+            "MOEX" in info["exchange"].upper()
+            or info["exchange"] == "FORTS_EVENING"
+        ):
             exchange = Exchange.MOEX
         # Similar to SPB exchange: spb_close, SPB_RU_MORNING..
         elif "SPB" in info["exchange"].upper():
@@ -1571,13 +1589,14 @@ class _TinkoffData(_AbstractSource):  # {{{
         file_name = f"{exchange}-{type_}-{ticker}-1M-{year}.zip"
         file_path = Cmd.path(cls._DOWNLOAD, type_, ticker, file_name)
         data_url = "https://invest-public-api.tinkoff.ru/history-data"
-        command = (
+
+        bash_command = (
             f"curl -s --location '{data_url}?figi={figi}&year={year}' "
             f"-H 'Authorization: Bearer {cls._TOKEN}' "
             f"-o {file_name} "
         )
+        os.system(bash_command)
 
-        code = os.system(command)
         if Cmd.isExist(file_name):
             Cmd.replace(file_name, file_path)
             logger.info(f"  - saved {file_path}")
@@ -1775,7 +1794,8 @@ class _Manager:  # {{{
             )
             return
 
-        # selecting the same source as the data and check availiblity data_type
+        # selecting the same source as the data and
+        # check availiblity data_type
         if (
             data.source == Source.MOEX
             and data_type in _MoexData.AVAILIBLE_DATA
@@ -1818,10 +1838,15 @@ class _Manager:  # {{{
 
     # }}}
     @classmethod  # delete# {{{
-    def delete(cls, ID: InstrumentId, data_type: DataType):
+    async def delete(
+        cls,
+        ID: InstrumentId,
+        data_type: DataType,
+        begin: datetime,
+        end: datetime,
+    ):
         logger.info(f":: Delete {ID.ticker}-{data_type.value}")
-        dir_path = Cmd.path(ID.dir_path, data_type.value)
-        Cmd.deleteDir(dir_path)
+        await _BarsData.delete(ID, data_type, begin, end)
         logger.info("  - complete")
 
     # }}}

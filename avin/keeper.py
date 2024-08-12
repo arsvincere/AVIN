@@ -122,6 +122,8 @@ class Keeper:
             class_name = obj.__class__.__name__
 
         methods = {
+            "MOEX": cls.__addExchange,
+            "SPB": cls.__addExchange,
             "Asset": cls.__addAsset,
             "Share": cls.__addAsset,
             "Index": cls.__addAsset,
@@ -129,11 +131,10 @@ class Keeper:
             "Strategy": cls.__addStrategy,
             "Trade": cls.__addTrade,
             "Operation": cls.__addOperation,
+            "Order": cls.__addOrder,
             "Market": cls.__addOrder,
             "Limit": cls.__addOrder,
             "Stop": cls.__addOrder,
-            "MOEX": cls.__addExchange,
-            "SPB": cls.__addExchange,
             "_BarsData": cls.__addBarsData,
         }
         method = methods[class_name]
@@ -141,13 +142,15 @@ class Keeper:
 
     # }}}
     @classmethod  # delete# {{{
-    async def delete(cls, obj):
+    async def delete(cls, obj, **kwargs):
         if inspect.isclass(obj):
             class_name = obj.__name__
         else:
             class_name = obj.__class__.__name__
 
         methods = {
+            "MOEX": cls.__deleteExchange,
+            "SPB": cls.__deleteExchange,
             "Asset": cls.__deleteAsset,
             "Share": cls.__deleteAsset,
             "Index": cls.__deleteAsset,
@@ -155,14 +158,14 @@ class Keeper:
             "Strategy": cls.__deleteStrategy,
             "Trade": cls.__deleteTrade,
             "Operation": cls.__deleteOperation,
+            "Order": cls.__deleteOrder,
             "Market": cls.__deleteOrder,
             "Limit": cls.__deleteOrder,
             "Stop": cls.__deleteOrder,
-            "MOEX": cls.__deleteExchange,
-            "SPB": cls.__deleteExchange,
+            "_Bar": cls.__deleteBarsData,
         }
         method = methods[class_name]
-        await method(obj)
+        await method(obj, kwargs)
 
     # }}}
     @classmethod  # update# {{{
@@ -235,7 +238,7 @@ class Keeper:
     @classmethod  # __addBarsData# {{{
     async def __addBarsData(cls, data: _BarsData):
         # Format bars data in postges value
-        values = str()
+        values = ""
         for b in data.bars:
             dt = f"'{b.dt.isoformat()}'"
             val = f"({dt},{b.open},{b.high},{b.low},{b.close},{b.vol}),\n"
@@ -328,8 +331,6 @@ class Keeper:
         res = await cls.transaction(request)
         return res
 
-    async def deleteTrade(cls, trade: Trade): ...
-
     # }}}
     @classmethod  # __addOrder# {{{
     async def __addOrder(cls, order: Order):
@@ -399,8 +400,6 @@ class Keeper:
         res = await cls.transaction(request)
         return res
 
-    async def deleteTrade(cls, trade: Trade): ...
-
     # }}}
     @classmethod  # __addOperation# {{{
     async def __addOperation(cls, operation: Operation):
@@ -452,8 +451,6 @@ class Keeper:
         res = await cls.transaction(request)
         return res
 
-    async def deleteTrade(cls, trade: Trade): ...
-
     # }}}
 
     @classmethod  # __deleteExchange# {{{
@@ -474,8 +471,18 @@ class Keeper:
         return res
 
     # }}}
-    @classmethod  # __deleteData# {{{
-    async def __deleteData(cls, ID: Id, data_type: DataType):
+    @classmethod  # __deleteBarsData# {{{
+    async def __deleteBarsData(cls, _Bar: class_, kwargs):
+        ID = kwargs["ID"]
+        data_type = kwargs["data_type"]
+        begin = kwargs.get("begin")
+        end = kwargs.get("end")
+
+        # TODO:
+        # удаление не всей таблицы а определенного периода.
+        # Затем проверка есть ли для этого актива еще данные,
+        # если нет, то удалить и сам актив
+
         table_name = cls.__getTableName(ID, data_type)
         request = f"""
         DROP TABLE data."{table_name}";
@@ -579,7 +586,7 @@ class Keeper:
 
         # format cache into postgres values
         def formatCache(cache: _InstrumentInfoCache) -> str:
-            values = str()
+            values = ""
             for i in cache.assets_info:
                 pg_source = f"'{cache.source.name}'"
                 pg_asset_type = f"'{cache.asset_type.name}'"
@@ -891,7 +898,6 @@ class Keeper:
     # }}}
     @classmethod  # __createCacheTable# {{{
     async def __createCacheTable(cls):
-        keeper = Keeper()
         request = """
         CREATE TABLE IF NOT EXISTS "Cache" (
             source "DataSource",
@@ -905,7 +911,6 @@ class Keeper:
     # }}}
     @classmethod  # __createExchangeTable# {{{
     async def __createExchangeTable(cls):
-        keeper = Keeper()
         request = """
         CREATE TABLE IF NOT EXISTS "Exchange" (
             name text PRIMARY KEY
@@ -980,13 +985,13 @@ class Keeper:
         res = await cls.transaction(request)
 
         # if not exist, create system account for back-tester
-        request = f"""
+        request = """
         SELECT name FROM "Account"
         WHERE name = '_backtest'
         """
         res = await cls.transaction(request)
         if not res:
-            request = f"""
+            request = """
             INSERT INTO "Account" (
                 name,
                 broker
@@ -998,13 +1003,13 @@ class Keeper:
             res = await cls.transaction(request)
 
         # if not exist, create system account for unit-tests
-        request = f"""
+        request = """
         SELECT name FROM "Account"
         WHERE name = '_unittest'
         """
         res = await cls.transaction(request)
         if not res:
-            request = f"""
+            request = """
             INSERT INTO "Account" (
                 name,
                 broker
