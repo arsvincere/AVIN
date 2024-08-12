@@ -58,6 +58,7 @@ class Res:  # {{{
     """Resource subdirectories"""
 
     CACHE = os.path.join(Dir.RES, "cache")
+    MARKET_DATA = os.path.join(Dir.RES, "market_data")
     ICON = os.path.join(Dir.RES, "icon")
     PALETTE = os.path.join(Dir.RES, "palette")
     SOUND = os.path.join(Dir.RES, "sound")
@@ -100,10 +101,12 @@ class Usr:  # {{{
     # Number of stored log files
     LOG_HISTORY = 5
 
-    # Tinkoff token file, by default in dir 'ROOT/usr/connect/tinkoff/token.txt'
+    # Tinkoff token file, by default in dir
+    # 'ROOT/usr/connect/tinkoff/token.txt'
     TINKOFF_TOKEN = os.path.join(CONNECT, "tinkoff", "token.txt")
 
-    # MOEX account file, by default in dir 'ROOT/usr/connect/moex/account.txt'
+    # MOEX account file, by default in dir
+    # 'ROOT/usr/connect/moex/account.txt'
     MOEX_ACCOUNT = os.path.join(CONNECT, "moex", "account.txt")
 
     # Auto update
@@ -131,16 +134,12 @@ class WeekDays(enum.Enum):  # {{{
 
     @staticmethod  # isWorkday# {{{
     def isWorkday(day_number: int):
-        if day_number < 5:
-            return True
-        return False
+        return day_number < 5
 
     # }}}
     @staticmethod  # isHoliday# {{{
     def isHoliday(day_number):
-        if day_number in (5, 6):
-            return True
-        return False
+        return day_number in (5, 6)
 
     # }}}
 
@@ -155,5 +154,6 @@ ONE_HOUR = timedelta(hours=1)
 ONE_DAY = timedelta(days=1)
 ONE_WEEK = timedelta(weeks=1)
 ONE_MONTH = timedelta(days=30)
+ONE_YEAR = timedelta(days=365)
 DAY_BEGIN = time(0, 0, tzinfo=UTC)
 DAY_END = time(23, 59, tzinfo=UTC)

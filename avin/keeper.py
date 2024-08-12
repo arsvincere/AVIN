@@ -191,6 +191,7 @@ class Keeper:
         assert inspect.isclass(what)
 
         methods = {
+            "InstrumentId": cls.__getInstrumentId,
             "Asset": cls.__getAsset,
             "Trade": cls.__getTrades,
             "Operation": cls.__getOperations,
@@ -620,6 +621,65 @@ class Keeper:
 
     # }}}
 
+    @classmethod  # __getInstrumentId # {{{
+    async def __getInstrumentId(cls, InstrumentId, kwargs: dict):
+        figi = kwargs.get("figi")
+
+        if figi:
+            pg_figi = "figi = {figi}"
+        else:
+            pg_figi = "TRUE"
+
+        request = """
+            SELECT
+                exchange,
+                type,
+                ticker,
+                name,
+                figi
+            FROM "Asset"
+            WHERE pg_figi
+            ;
+            """
+        asset_record = await cls.transaction(request)
+
+        ID = InstrumentId.fromRecord(asset_record)
+        return ID
+
+    # }}}
+    @classmethod  # __getDataType # {{{
+    async def __getDataType(cls, DataType, kwargs: dict):
+        ID = kwargs["ID"]
+
+        request = """
+            SELECT table_name FROM information_schema.tables
+            WHERE
+                table_schema='data';
+            """
+        asset_record = await cls.transaction(request)
+
+        if figi:
+            pg_figi = "figi = {figi}"
+        else:
+            pg_figi = "TRUE"
+
+        request = """
+            SELECT
+                exchange,
+                type,
+                ticker,
+                name,
+                figi
+            FROM "Asset"
+            WHERE pg_figi
+            ;
+            """
+        asset_record = await cls.transaction(request)
+
+        ID = InstrumentId.fromRecord(asset_record)
+        return ID
+
+    # }}}
     @classmethod  # __getAsset # {{{
     async def __getAsset(cls, asset_class, kwargs: dict):
         """Search asset

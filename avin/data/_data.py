@@ -22,6 +22,7 @@ from avin.const import (
     DAY_END,
     ONE_DAY,
     ONE_WEEK,
+    ONE_YEAR,
     Dir,
     Res,
     Usr,
@@ -112,8 +113,7 @@ class Data:  # {{{
             logger.error("First datetime availible only for '1M' and 'D'")
             return None
 
-        class_ = cls.__getSource(source)
-        dt = await class_.firstDateTime(ID, data_type)
+        dt = await _Manager.firstDateTime(ID, data_type)
         return dt
 
     # }}}
@@ -127,8 +127,7 @@ class Data:  # {{{
         if not check:
             return
 
-        class_ = cls.__getSource(source)
-        await class_.download(ID, data_type, year)
+        await _Manager.download(ID, data_type, year)
 
     # }}}
     @classmethod  # convert# {{{
@@ -161,6 +160,8 @@ class Data:  # {{{
         check = cls.__checkArgs(
             ID=ID,
             data_type=data_type,
+            begin=begin,
+            end=end,
         )
         if not check:
             return
@@ -174,7 +175,7 @@ class Data:  # {{{
     @classmethod  # update# {{{
     async def update(
         cls, ID: InstrumentId, data_type: DataType = None
-    ) -> bool:
+    ) -> None:
         assert ID.exchange == Exchange.MOEX
         assert data_type != DataType.TIC
         assert data_type != DataType.BOOK
@@ -182,10 +183,10 @@ class Data:  # {{{
             ID=ID,
             data_type=data_type,
         )
-        if check:
-            data_type = DataType(data_type)
-            _Manager.update(ID, data_type)
-            return True
+        if not check:
+            return
+
+        await _Manager.update(ID, data_type)
 
     # }}}
     @classmethod  # updateAll# {{{
@@ -372,13 +373,6 @@ class Data:  # {{{
             )
 
     # }}}
-    @classmethod  # __getSource# {{{
-    def __getSource(cls, source: Source) -> object:
-        classes = {Source.MOEX: _MoexData, Source.TINKOFF: _TinkoffData}
-        class_ = classes.get(source)
-        return class_
-
-    # }}}
 
 
 # }}}
@@ -521,7 +515,7 @@ class _BarsData:  # {{{
     ) -> _BarsData:
         logger.debug(f"{cls.__name__}.delete()")
 
-        bars = await Keeper.delete(
+        await Keeper.delete(
             _Bar, ID=ID, data_type=data_type, begin=begin, end=end
         )
 
@@ -730,10 +724,6 @@ class _MoexData(_AbstractSource):  # {{{
     _AUTHORIZATION = None
 
     _AUTO_UPDATE = Usr.AUTO_UPDATE_ASSET_CACHE
-    _INDEX_CACHE = None
-    _SHARE_CACHE = None
-    _FUTURE_CACHE = None
-    _CURRENCY_CACHE = None
 
     # }}}
     @classmethod  # find  # {{{
@@ -1239,11 +1229,6 @@ class _TinkoffData(_AbstractSource):  # {{{
     _TOKEN = None
 
     _AUTO_UPDATE = Usr.AUTO_UPDATE_ASSET_CACHE
-    _SHARE_CACHE = None
-    _BONDS_CACHE = None
-    _FUTURE_CACHE = None
-    _CURRENCY_CACHE = None
-    _ETF_CACHE = None
 
     # }}}
     @classmethod  # find  # {{{
@@ -1720,39 +1705,17 @@ class _Manager:  # {{{
             self.__checkUpdate()
 
     # }}}
-    @classmethod  # allDataList{{{
-    def allDataList(cls) -> list[tuple(InstrumentId, DataType, Source)]:
-        logger.debug("Data.getAllDataDirs()")
-
-        all_list = list()
-        for root, dirs, files in os.walk(Usr.DATA):
-            id_file = Cmd.select(files, name="id")
-            type_file = Cmd.select(files, name="data_type")
-            source_file = Cmd.select(files, name="source")
-            csv_files = sorted(Cmd.select(files, extension=".csv"))
-
-            # only one file per folder is possible, therefore use [0]
-            if id_file and type_file and source_file and csv_files:
-                id_path = Cmd.path(root, id_file[0])
-                type_path = Cmd.path(root, type_file[0])
-                source_path = Cmd.path(root, source_file[0])
-
-                ID = InstrumentId.load(id_path)
-                data_type = DataType.load(type_path)
-                source = Source.load(source_path)
-
-                all_list.append((ID, data_type, source))
-        return all_list
+    @classmethod  # firstDateTime{{{
+    async def firstDateTime(cls, ID, data_type):
+        class_ = cls.__getSourceClass(source)
+        dt = await class_.firstDateTime(ID, data_type)
+        return dt
 
     # }}}
-    @classmethod  # availibleYears# {{{
-    def availibleYears(cls, ID: InstrumentId, data_type: DataType):
-        files = cls.__findFiles(ID, data_type)
-        csv_files = Cmd.select(files, extension=".csv")
-        years = [int(Cmd.name(i)) for i in (csv_files)]  # file_name == year
-        if len(years) == 0:
-            logger.warning(f"{ID.ticker}-{data_type.value} no data files")
-        return years
+    @classmethod  # download{{{
+    async def download(cls, ID, data_type, year):
+        class_ = cls.__getSourceClass(source)
+        await class_.download(ID, data_type, year)
 
     # }}}
     @classmethod  # convert# {{{
@@ -1784,45 +1747,65 @@ class _Manager:  # {{{
         await _BarsData.save(converted_data)
 
     # }}}
+    @classmethod  # delete# {{{
+    async def delete(
+        cls,
+        ID: InstrumentId,
+        data_type: DataType,
+        begin: datetime,
+        end: datetime,
+    ):
+        logger.info(f":: Delete {ID.ticker}-{data_type.value}")
+        await _BarsData.delete(ID, data_type, begin, end)
+        logger.info("  - complete")
+
+    # }}}
     @classmethod  # update# {{{
-    def update(cls, ID: InstrumentId, data_type: DataType):
-        data = cls.__lastBarsDataFile(ID, data_type)
-        if not data:
+    async def update(cls, ID: InstrumentId, data_type: DataType):
+        # TODO
+        # пока сделаю проще - запрос данных за последние 365 дней
+        # если там что то есть - считаем что данные есть
+        end = now()
+        begin = end - ONE_YEAR
+        data = await _BarsData.load(ID, data_type, begin, end)
+        if not data.bars:
             logger.error(
                 f"No data for {ID.ticker}-{data_type.value}. "
                 f"Operation canceled."
             )
             return
 
-        # selecting the same source as the data and
-        # check availiblity data_type
-        if (
-            data.source == Source.MOEX
-            and data_type in _MoexData.AVAILIBLE_DATA
-        ):
-            cls.__update(data, _MoexData)
-        elif (
-            data.source == Source.TINKOFF
-            and data_type in _TinkoffData.AVAILIBLE_DATA
-        ):
-            cls.__update(data, _TinkoffData)
-        else:
-            logger.error(
-                f"Data source '{data.source.name}' "
-                f"does not provide type '{data_type.value}'. "
-                f"Operation canceled."
-            )
+        # request new bars from data source
+        begin = data.last_dt + data.data_type.toTimedelta()
+        end = now().replace(microsecond=0)
+        source_class = cls.__getSourceClass(data.source)
+        new_bars = await source_class.getHistoricalBars(
+            data.ID, data.data_type, begin, end
+        )
+
+        # check: is new bars found
+        count = len(new_bars)
+        if count == 0:
+            logger.info("  - no new bars")
+            return
+
+        # save new bars
+        logger.info(f"  - received {count} bars -> {new_bars[-1].dt}")
+        new_data = _BarsData(data.ID, data.data_type, new_bars, data.source)
+        await _BarsData.save(new_data)
 
     # }}}
     @classmethod  # updateAll# {{{
-    def updateAll(cls):
+    async def updateAll(cls):
         logger.info(":: Update all market data")
-        data_list = cls.allDataList()
-        count = len(data_list)
-        for n, i in enumerate(data_list, 1):
-            ID, data_type, source = i
+        IDs = await Keeper.get(InstrumentId, figi=None)  # get all availible
+
+        count = len(IDs)
+        for n, i in enumerate(IDs, 1):
             logger.info(f":: updating {n}/{count}")
-            cls.update(ID, data_type)
+            data_types = await Keeper.get(DataType, ID=i)
+            for typ in data_types:
+                cls.update(ID, data_type)
 
     # }}}
     @classmethod  # request# {{{
@@ -1837,17 +1820,11 @@ class _Manager:  # {{{
         return files
 
     # }}}
-    @classmethod  # delete# {{{
-    async def delete(
-        cls,
-        ID: InstrumentId,
-        data_type: DataType,
-        begin: datetime,
-        end: datetime,
-    ):
-        logger.info(f":: Delete {ID.ticker}-{data_type.value}")
-        await _BarsData.delete(ID, data_type, begin, end)
-        logger.info("  - complete")
+    @classmethod  # __getSourceClass# {{{
+    def __getSourceClass(cls, source: Source) -> object:
+        classes = {Source.MOEX: _MoexData, Source.TINKOFF: _TinkoffData}
+        class_ = classes.get(source)
+        return class_
 
     # }}}
     @classmethod  # __checkUpdate# {{{
@@ -1869,85 +1846,6 @@ class _Manager:  # {{{
         dt = now().isoformat()
         Cmd.write(dt, cls._LAST_UPDATE_FILE)
         logger.info("Update complete")
-
-    # }}}
-    @classmethod  # __findFiles# {{{
-    def __findFiles(cls, ID: InstrumentId, data_type: DataType) -> list[str]:
-        data_dir = Cmd.path(ID.dir_path, data_type.value)
-        if not Cmd.isExist(data_dir):
-            return list()
-        files = sorted(Cmd.getFiles(data_dir, full_path=True))
-        files = Cmd.select(files, extension=".csv")
-        return files
-
-    # }}}
-    @classmethod  # __selectYear# {{{
-    def __selectYear(cls, files, begin: int, end: int):
-        out_files = list()
-        for file in files:
-            # Имена файлов выглядят так: 2022.csv, 2023.csv ...
-            file_year = int(Cmd.name(file))
-            if begin <= file_year <= end:
-                out_files.append(file)
-        return out_files
-
-    # }}}
-    @classmethod  # __lastBarsDataFile# {{{
-    def __lastBarsDataFile(
-        cls, ID: InstrumentId, data_type: DataType
-    ) -> _BarsData:
-        years = cls.availibleYears(ID, data_type)
-        if years:
-            data = _BarsData.load(ID, data_type, years[-1])
-            return data
-        else:
-            return None
-
-    # }}}
-    @classmethod  # __update# {{{
-    def __update(cls, data: _BarsData, source: _AbstractSource):
-        begin = data.last_dt + data.data_type.toTimedelta()
-        end = now().replace(microsecond=0)
-        src = source()  # FIXME: это пиздец как не очевидно, что тут
-        # создается объект _MoexData или _TinkoffData
-        # надо как то переделать
-        new_bars = src.getHistoricalBars(data.ID, data.data_type, begin, end)
-        count = len(new_bars)
-        if count == 0:
-            logger.info("  - no new bars")
-            return
-
-        logger.info(f"  - received {count} bars -> {new_bars[-1].dt}")
-        cls.__saveNewBars(data, new_bars)
-
-    # }}}
-    @classmethod  # __saveNewBars # {{{
-    def __saveNewBars(cls, data: _BarsData, new_bars):
-        year = data.year
-        bars = cls.__popYear(new_bars, year)  # extract only equal year
-        data.add(bars)
-        _BarsData.save(data)
-
-        # if 'new_bars' consist some more bars, create new files
-        ID = data.ID
-        data_type = data.data_type
-        source = data.source
-        while len(new_bars) > 0:
-            year += 1
-            bars = cls.__popYear(new_bars, year)
-            new_data = _BarsData(ID, data_type, bars, source)
-            _BarsData.save(new_data)
-
-    # }}}
-    @classmethod  # __popYear# {{{
-    def __popYear(cls, bars, year):
-        assert isinstance(bars, list)
-        assert isinstance(year, int)
-        extract = list()
-        while len(bars) > 0 and bars[0].dt.year == year:
-            bar = bars.pop(0)
-            extract.append(bar)
-        return extract
 
     # }}}
     @classmethod  # __fillVoid# {{{

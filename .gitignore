@@ -33,6 +33,7 @@ avin/trader
 avin/company.py.bak
 
 res/cache
+res/market_data
 res/icon
 res/sound
 res/uid
