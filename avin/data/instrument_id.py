@@ -28,7 +28,6 @@ class InstrumentId:  # {{{
         figi: str,
         name: str,
     ):
-
         self.__info = {
             "type": asset_type,
             "exchange": exchange,
@@ -74,7 +73,9 @@ class InstrumentId:  # {{{
     # }}}
     @property  # dir_path# {{{
     def dir_path(self):
-        path = Cmd.path(Usr.DATA, self.exchange.name, self.type.name, self.ticker)
+        path = Cmd.path(
+            Usr.DATA, self.exchange.name, self.type.name, self.ticker
+        )
         return path
 
     # }}}
@@ -111,6 +112,18 @@ class InstrumentId:  # {{{
             name=obj["name"],
             ticker=obj["ticker"],
             figi=obj["figi"],
+        )
+        return ID
+
+    # }}}
+    @classmethod  # fromRecord# {{{
+    def fromRecord(cls, record) -> InstrumentId:
+        ID = InstrumentId(
+            exchange=Exchange.fromStr(record["exchange"]),
+            asset_type=AssetType.fromStr(record["type"]),
+            name=record["name"],
+            ticker=record["ticker"],
+            figi=record["figi"],
         )
         return ID
 

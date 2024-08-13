@@ -54,6 +54,7 @@ class Keeper:
         await cls.__createCacheTable()
         await cls.__createExchangeTable()
         await cls.__createAssetTable()
+        await cls.__createDataTable()
         await cls.__createAccountTable()
         await cls.__createStrategyTable()
         await cls.__createTradeTable()
@@ -238,14 +239,6 @@ class Keeper:
     # }}}
     @classmethod  # __addBarsData# {{{
     async def __addBarsData(cls, data: _BarsData):
-        # Format bars data in postges value
-        values = ""
-        for b in data.bars:
-            dt = f"'{b.dt.isoformat()}'"
-            val = f"({dt},{b.open},{b.high},{b.low},{b.close},{b.vol}),\n"
-            values += val
-        values = values[0:-2]  # remove ",\n" after last value
-
         # Create new Asset if not exist
         request = f"""
             SELECT add_asset_if_not_exist(
@@ -255,6 +248,7 @@ class Keeper:
                 '{data.ID.ticker}',
                 '{data.ID.name}'
                 )
+            ;
             """
         res = await cls.transaction(request)
 
@@ -262,7 +256,7 @@ class Keeper:
         table_name = cls.__getTableName(data.ID, data.data_type)
         await cls.__createBarsDataTable(table_name)
 
-        # delete old data at the same period
+        # If exist - delete old data at the same period
         request = f"""
             DELETE FROM data."{table_name}"
             WHERE
@@ -271,12 +265,42 @@ class Keeper:
             """
         res = await cls.transaction(request)
 
+        # Format bars data in postges value
+        values = ""
+        for b in data.bars:
+            dt = f"'{b.dt.isoformat()}'"
+            val = f"({dt},{b.open},{b.high},{b.low},{b.close},{b.vol}),\n"
+            values += val
+        values = values[0:-2]  # remove ",\n" after last value
+
         # Add bars data
         request = f"""
         INSERT INTO data."{table_name}" (dt, open, high, low, close, volume)
         VALUES
             {values}
+            ;
         """
+        res = await cls.transaction(request)
+
+        # Update table "Data" - information about availible market data
+        request = f"""
+            DELETE FROM "Data"
+            WHERE
+                figi = '{data.ID.figi}' AND
+                type = '{data.data_type.name}'
+                ;
+            """
+        res = await cls.transaction(request)
+        request = f"""
+            INSERT INTO "Data"(figi, type, source, first_dt, last_dt)
+            VALUES (
+                '{data.ID.figi}',
+                '{data.data_type.name}',
+                '{data.source.name}',
+                (SELECT min(dt) FROM data."{table_name}"),
+                (SELECT max(dt) FROM data."{table_name}")
+            );
+            """
         res = await cls.transaction(request)
         return res
 
@@ -630,7 +654,7 @@ class Keeper:
         else:
             pg_figi = "TRUE"
 
-        request = """
+        request = f"""
             SELECT
                 exchange,
                 type,
@@ -638,13 +662,15 @@ class Keeper:
                 name,
                 figi
             FROM "Asset"
-            WHERE pg_figi
+            WHERE {pg_figi}
             ;
             """
-        asset_record = await cls.transaction(request)
-
-        ID = InstrumentId.fromRecord(asset_record)
-        return ID
+        asset_records = await cls.transaction(request)
+        id_list = list()
+        for i in asset_records:
+            ID = InstrumentId.fromRecord(i)
+            id_list.append(ID)
+        return id_list
 
     # }}}
     @classmethod  # __getDataType # {{{
@@ -1015,6 +1041,22 @@ class Keeper:
         $$;
         """
         res = await cls.transaction(request)
+        return res
+
+    # }}}
+    @classmethod  # __createDataTable# {{{
+    async def __createDataTable(cls):
+        request = """
+        CREATE TABLE IF NOT EXISTS "Data" (
+            figi text REFERENCES "Asset"(figi),
+            type "DataType",
+            source "DataSource",
+            first_dt TIMESTAMP WITH TIME ZONE,
+            last_dt TIMESTAMP WITH TIME ZONE
+            );
+        """
+        res = await cls.transaction(request)
+
         return res
 
     # }}}

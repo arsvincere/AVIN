@@ -191,7 +191,7 @@ class Data:  # {{{
     # }}}
     @classmethod  # updateAll# {{{
     async def updateAll(cls) -> bool:
-        _Manager.updateAll()
+        await _Manager.updateAll()
 
     # }}}
     @classmethod  # request# {{{
@@ -1714,8 +1714,10 @@ class _Manager:  # {{{
     # }}}
     @classmethod  # download{{{
     async def download(cls, ID, data_type, year):
-        class_ = cls.__getSourceClass(source)
-        await class_.download(ID, data_type, year)
+        # TODO
+        # пока грузим все исторические данные только с MOEX
+        # независимо ни от чего
+        await _MoexData.download(ID, data_type, year)
 
     # }}}
     @classmethod  # convert# {{{
@@ -1804,8 +1806,11 @@ class _Manager:  # {{{
         for n, i in enumerate(IDs, 1):
             logger.info(f":: updating {n}/{count}")
             data_types = await Keeper.get(DataType, ID=i)
+            print(data_types)
+            input("data_types", data_types)
+            exit(100500)
             for typ in data_types:
-                cls.update(ID, data_type)
+                cls.update(ID, typ)
 
     # }}}
     @classmethod  # request# {{{
