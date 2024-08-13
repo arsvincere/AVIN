@@ -503,17 +503,52 @@ class Keeper:
         begin = kwargs.get("begin")
         end = kwargs.get("end")
 
-        # TODO:
-        # удаление не всей таблицы а определенного периода.
-        # Затем проверка есть ли для этого актива еще данные,
-        # если нет, то удалить и сам актив
+        if begin and end:
+            pg_period = "'{begin}' <= dt AND dt < '{end}'"
+        else:
+            pg_period = "TRUE"
 
+        # Delete bars
         table_name = cls.__getTableName(ID, data_type)
         request = f"""
-        DROP TABLE data."{table_name}";
-        """
+            DELETE FROM data."{table_name}"
+            WHERE
+                {pg_period}
+            """
         res = await cls.transaction(request)
-        return res
+
+        # Delete table & info if its empty
+        request = f"""
+            SELECT * FROM data."{table_name}"
+            """
+        res = await cls.transaction(request)
+        if not res:
+            request = f"""
+                DROP TABLE data."{table_name}";
+                """
+            res = await cls.transaction(request)
+            request = f"""
+                DELETE FROM "Data"
+                WHERE
+                    figi = '{ID.figi}' AND
+                    type = '{data_type.name}'
+                """
+            res = await cls.transaction(request)
+
+        # Delete asset if its not have market data
+        request = f"""
+            SELECT * FROM "Data"
+            WHERE
+                figi = '{ID.figi}'
+            """
+        res = await cls.transaction(request)
+        if not res:
+            request = f"""
+                DELETE FROM "Asset"
+                WHERE
+                    figi = '{ID.figi}'
+                """
+            res = await cls.transaction(request)
 
     # }}}
     @classmethod  # __deleteAccount# {{{
