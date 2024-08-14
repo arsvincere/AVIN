@@ -78,16 +78,12 @@ class Keeper:
             kwargs.pop(i)
 
         # create source condition
-        if source is None:
-            pg_source = "TRUE"
-        else:
-            pg_source = f"source = '{source.name}'"
+        pg_source = f"source = '{source.name}'" if source else "TRUE"
 
         # create asset_type condition
-        if asset_type is None:
-            pg_asset_type = "TRUE"
-        else:
-            pg_asset_type = f"type = '{asset_type.name}'"
+        pg_asset_type = (
+            f"type = '{asset_type.name}'" if asset_type else "TRUE"
+        )
 
         # create kwarg condition
         if not kwargs:
@@ -364,7 +360,7 @@ class Keeper:
         assert order.account_name is not None
 
         # Используется проверка типа ордера через строки...
-        # Логично было бы использовать enum Type из класса Order, например так:
+        # Логично было бы использовать enum Type из класса Order, например:
         # if order.type == Order.Type.LIMIT
         # но для этого нужно импортировать модуль order, а тогда модуль order
         # не сможет импортировать модуль keeper (circular import)
@@ -698,10 +694,8 @@ class Keeper:
     async def __getInstrumentId(cls, InstrumentId, kwargs: dict):
         figi = kwargs.get("figi")
 
-        if figi:
-            pg_figi = "figi = {figi}"
-        else:
-            pg_figi = "TRUE"
+        # figi condition
+        pg_figi = "figi = {figi}" if figi else "TRUE"
 
         request = f"""
             SELECT
@@ -711,7 +705,8 @@ class Keeper:
                 name,
                 figi
             FROM "Asset"
-            WHERE {pg_figi}
+            WHERE
+                {pg_figi}
             ;
             """
         asset_records = await cls.transaction(request)
@@ -811,7 +806,10 @@ class Keeper:
         if strategy is None:
             pg_strategy = "TRUE"
         else:
-            pg_strategy = f"(strategy = '{strategy.name}' AND version = '{strategy.version}')"
+            pg_strategy = (
+                f"(strategy = '{strategy.name}' AND"
+                f"version = '{strategy.version}')"
+            )
 
         # create condition for statuses, like this:
         # (status = 'INITIAL' OR status = 'NEW' OR status = 'OPEN')
@@ -826,16 +824,10 @@ class Keeper:
             pg_statuses += ")"
 
         # create condition for begin datetime:
-        if begin is None:
-            pg_begin = "TRUE"
-        else:
-            pg_begin = f"dt >= '{begin}'"
+        pg_begin = f"dt >= '{begin}'" if begin else "TRUE"
 
         # create condition for end datetime:
-        if end is None:
-            pg_end = "TRUE"
-        else:
-            pg_end = f"dt < '{end}'"
+        pg_end = f"dt < '{end}'" if end else "TRUE"
 
         request = f"""
             SELECT trade_id, dt, status, strategy, version, type, figi
