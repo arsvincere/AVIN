@@ -193,6 +193,7 @@ class Keeper:
 
         methods = {
             "InstrumentId": cls.__getInstrumentId,
+            "DataType": cls.__getDataType,
             "Asset": cls.__getAsset,
             "Trade": cls.__getTrades,
             "Operation": cls.__getOperations,
@@ -504,7 +505,7 @@ class Keeper:
         end = kwargs.get("end")
 
         if begin and end:
-            pg_period = "'{begin}' <= dt AND dt < '{end}'"
+            pg_period = f"'{begin}' <= dt AND dt < '{end}'"
         else:
             pg_period = "TRUE"
 
@@ -514,6 +515,19 @@ class Keeper:
             DELETE FROM data."{table_name}"
             WHERE
                 {pg_period}
+            """
+        res = await cls.transaction(request)
+
+        # Update table "Data" - information about availible market data
+        request = f"""
+            UPDATE "Data"
+            SET
+                first_dt = (SELECT min(dt) FROM data."MOEX_INDEX_IMOEX_D"),
+                last_dt = (SELECT max(dt) FROM data."MOEX_INDEX_IMOEX_D")
+			WHERE
+                figi = '{ID.figi}' AND
+                type = '{data_type.name}'
+            ;
             """
         res = await cls.transaction(request)
 
@@ -712,33 +726,19 @@ class Keeper:
     async def __getDataType(cls, DataType, kwargs: dict):
         ID = kwargs["ID"]
 
-        request = """
-            SELECT table_name FROM information_schema.tables
+        request = f"""
+            SELECT (type) FROM "Data"
             WHERE
-                table_schema='data';
+                figi = '{ID.figi}';
             """
-        asset_record = await cls.transaction(request)
+        records = await cls.transaction(request)
 
-        if figi:
-            pg_figi = "figi = {figi}"
-        else:
-            pg_figi = "TRUE"
+        data_types = list()
+        for i in records:
+            typ = DataType.fromStr(i["type"])
+            data_types.append(typ)
 
-        request = """
-            SELECT
-                exchange,
-                type,
-                ticker,
-                name,
-                figi
-            FROM "Asset"
-            WHERE pg_figi
-            ;
-            """
-        asset_record = await cls.transaction(request)
-
-        ID = InstrumentId.fromRecord(asset_record)
-        return ID
+        return data_types
 
     # }}}
     @classmethod  # __getAsset # {{{

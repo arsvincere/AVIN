@@ -154,8 +154,8 @@ class Data:  # {{{
         cls,
         ID: InstrumentId,
         data_type: DataType,
-        begin: datetime = None,
-        end: datetime = None,
+        begin: int,
+        end: int,
     ) -> None:
         check = cls.__checkArgs(
             ID=ID,
@@ -481,7 +481,6 @@ class _BarsData:  # {{{
     async def save(cls, data: _BarsData):
         logger.debug(f"{cls.__name__}.save({data.ID.ticker})")
         await Keeper.add(data)
-        logger.info(f"Saved {data.ID.ticker}-{data.data_type.value}")
 
     # }}}
     @classmethod  # load  # {{{
@@ -510,11 +509,13 @@ class _BarsData:  # {{{
         cls,
         ID: InstrumentId,
         data_type: DataType,
-        begin: datetime,
-        end: datetime,
+        begin: int,
+        end: int,
     ) -> _BarsData:
         logger.debug(f"{cls.__name__}.delete()")
 
+        begin = datetime(begin, 1, 1, tzinfo=UTC)
+        end = datetime(end, 1, 1, tzinfo=UTC)
         await Keeper.delete(
             _Bar, ID=ID, data_type=data_type, begin=begin, end=end
         )
@@ -875,6 +876,10 @@ class _MoexData(_AbstractSource):  # {{{
         begin: datetime,
         end: datetime,
     ) -> list[_Bar]:
+        # Without authorization - delay is more than 15min
+        # for authorized users delay is 2-4 min
+        await cls.__authorizate()
+
         begin = cls.__toMSK(begin)
         end = cls.__toMSK(end)
 
@@ -1754,10 +1759,10 @@ class _Manager:  # {{{
         cls,
         ID: InstrumentId,
         data_type: DataType,
-        begin: datetime,
-        end: datetime,
+        begin: int,
+        end: int,
     ):
-        logger.info(f":: Delete {ID.ticker}-{data_type.value}")
+        logger.info(f":: Delete {ID.ticker}-{data_type.value} {begin}-{end}")
         await _BarsData.delete(ID, data_type, begin, end)
         logger.info("  - complete")
 
@@ -1800,17 +1805,15 @@ class _Manager:  # {{{
     @classmethod  # updateAll# {{{
     async def updateAll(cls):
         logger.info(":: Update all market data")
-        IDs = await Keeper.get(InstrumentId, figi=None)  # get all availible
 
-        count = len(IDs)
-        for n, i in enumerate(IDs, 1):
-            logger.info(f":: updating {n}/{count}")
-            data_types = await Keeper.get(DataType, ID=i)
-            print(data_types)
-            input("data_types", data_types)
-            exit(100500)
+        # get info about all abailible market data
+        all_instrument_id = await Keeper.get(InstrumentId, figi=None)
+        count = len(all_instrument_id)
+        for n, ID in enumerate(all_instrument_id, 1):
+            logger.info(f"{n}/{count}: {ID.ticker}")
+            data_types = await Keeper.get(DataType, ID=ID)
             for typ in data_types:
-                cls.update(ID, typ)
+                await cls.update(ID, typ)
 
     # }}}
     @classmethod  # request# {{{
