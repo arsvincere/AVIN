@@ -8,16 +8,13 @@
 
 from __future__ import annotations
 
-import asyncio
 import enum
 
 from avin.const import ONE_DAY, Usr
 from avin.core.gid import GId
 from avin.core.operation import Operation
 from avin.core.order import Order
-from avin.core.position import Position
 from avin.keeper import Keeper
-from avin.utils import Signal
 
 
 class Trade:  # {{{
@@ -63,22 +60,21 @@ class Trade:  # {{{
         trade_type: Trade.Type,
         figi: str,
         status: Trade.Status = None,
-        ID: GId = None,
+        trade_id: GId = None,
         orders: list = None,
         operations: list = None,
     ):
-
         if status is None:
             status = Trade.Status.INITIAL
-        if ID is None:
-            ID = GId.newGId(self)
+        if trade_id is None:
+            trade_id = GId.newGId(self)
         if orders is None:
             orders = list()
         if operations is None:
             operations = list()
 
         self.__info = {
-            "ID": ID,
+            "trade_id": trade_id,
             "datetime": dt,
             "status": status,
             "strategy": strategy,
@@ -114,9 +110,9 @@ class Trade:  # {{{
         return string
 
     # }}}
-    @property  # ID# {{{
-    def ID(self):
-        return self.__info["ID"]
+    @property  # trade_id# {{{
+    def trade_id(self):
+        return self.__info["trade_id"]
 
     # }}}
     @property  # dt# {{{
@@ -165,32 +161,38 @@ class Trade:  # {{{
     # }}}
     # @slot  #orderPosted # {{{
     def orderPosted(self, order):
-        assert order.trade_ID == self.ID
+        assert order.trade_id == self.trade_id
         if self.status == Trade.Status.INITIAL:
             self.status = Trade.Status.NEW
 
     # }}}
     # @slot  #orderFulfilled # {{{
     def orderFulfilled(self, order, operations: list[Operation]):
-        assert order.trade_ID == self.ID
+        assert order.trade_id == self.trade_id
         for op in operations:
             self.addOperation(op)
 
     # }}}
-    def addOrder(self, order: Order):  # {{{
-        order.trade_ID = self.ID
+    async def addOrder(self, order: Order):  # {{{
+        order.trade_id = self.trade_id
         order.posted.connect(self.orderPosted)
         order.fulfilled.connect(self.orderFulfilled)
         self.__info["orders"].append(order)
 
+        await Keeper.add(order)
+
     # }}}
-    def addOperation(self, op: Operation):  # {{{
-        op.trade_ID = self.ID
-        self.__info["operations"].append(op)
+    async def addOperation(self, operation: Operation):  # {{{
+        operation.trade_id = self.trade_id
+        self.__info["operations"].append(operation)
+
         if self.lots() == 0:
             self.status = Trade.Status.CLOSE
         else:
             self.status = Trade.Status.OPEN
+
+        await Keeper.add(operation)
+        await Keeper.update(self)
 
     # }}}
     def chart(self, timeframe: TimeFrame) -> Chart:  # {{{
@@ -418,8 +420,7 @@ class Trade:  # {{{
         assert False
 
     # }}}
-
-    @classmethod  # fromRecord
+    @classmethod  # fromRecord{{{
     async def fromRecord(cls, record):
         trade_id = record["trade_id"]
 
@@ -442,16 +443,20 @@ class Trade:  # {{{
             trade_type=Trade.Type.fromStr(record["type"]),
             figi=record["figi"],
             status=Trade.Status.fromStr(record["status"]),
-            ID=record["trade_id"],
+            trade_id=record["trade_id"],
             orders=orders,
             operations=operations,
         )
         return t
 
+    # }}}
+
 
 # }}}
 class TradeList:  # {{{
-    def __init__(self, name: str = "unnamed", trades=None, parent=None):  # {{{
+    def __init__(
+        self, name: str = "unnamed", trades=None, parent=None
+    ):  # {{{
         self._name = name
         self._trades = trades if trades is not None else list()
         self._childs = list()
@@ -531,7 +536,9 @@ class TradeList:  # {{{
             if x == value:
                 selected.append(trade)
         tlist = TradeList(
-            name="- " + self.name + f" risk-{key}-{value}", trades=selected, parent=self
+            name="- " + self.name + f" risk-{key}-{value}",
+            trades=selected,
+            parent=self,
         )
         tlist._asset = self.asset
         self._childs.append(tlist)
@@ -545,7 +552,9 @@ class TradeList:  # {{{
             if x == value:
                 selected.append(trade)
         tlist = TradeList(
-            name="- " + self.name + f" risk-{key}-{value}", trades=selected, parent=self
+            name="- " + self.name + f" risk-{key}-{value}",
+            trades=selected,
+            parent=self,
         )
         tlist._asset = self.asset
         self._childs.append(tlist)
