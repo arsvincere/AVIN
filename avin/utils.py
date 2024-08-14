@@ -139,7 +139,8 @@ class Cmd:  # {{{
                 return os.path.join(root, file_name)
             else:
                 raise FileNotFoundError(
-                    f"Файл '{file_name}' не найден " "в директории '{dir_path}'"
+                    f"Файл '{file_name}' не найден "
+                    "в директории '{dir_path}'"
                 )
 
     # }}}
@@ -215,7 +216,7 @@ class Cmd:  # {{{
     @staticmethod  # read# {{{
     def read(file_path: str) -> str:
         """Read file as one string"""
-        with open(file_path, "r", encoding="utf-8") as file:
+        with open(file_path, encoding="utf-8") as file:
             string = file.read()
         logger.debug(f"Cmd.read: {file_path}")
         return string
@@ -248,7 +249,7 @@ class Cmd:  # {{{
         очередь, у которой максимальная длина n... таким образом
         дойдя до конца файла в очереди останется n последних строк
         """
-        with open(file_path, "r", encoding="utf-8") as file:
+        with open(file_path, encoding="utf-8") as file:
             text = list(deque(file, n))
         return text
 
@@ -267,7 +268,7 @@ class Cmd:  # {{{
     def loadText(file_path: str) -> list[str]:
         """Read file by row, return list[str]"""
         text = list()
-        with open(file_path, "r", encoding="utf-8") as file:
+        with open(file_path, encoding="utf-8") as file:
             for line in file:
                 text.append(line)
         logger.debug(f"Cmd.load: {file_path}")
@@ -291,7 +292,7 @@ class Cmd:  # {{{
     # }}}
     @staticmethod  # loadJson# {{{
     def loadJson(file_path, decoder=None) -> object:
-        with open(file_path, "r", encoding="utf-8") as file:
+        with open(file_path, encoding="utf-8") as file:
             obj = json.load(
                 fp=file,
                 object_hook=decoder,
@@ -323,7 +324,7 @@ class Cmd:  # {{{
             else:
                 fh = open(file_path, "wb")
             pickle.dump(obj, fh, pickle.HIGHEST_PROTOCOL)
-        except (EnvironmentError, pickle.PicklingError) as err:
+        except (OSError, pickle.PicklingError) as err:
             logger.exception(err)
             exit(1)
         finally:
@@ -333,7 +334,7 @@ class Cmd:  # {{{
     # }}}
     @staticmethod  # loadBin# {{{
     def loadBin(file_path) -> object:
-        GZIP_MAGIC = b"\x1F\x8B"  # метка .gzip файлов
+        GZIP_MAGIC = b"\x1f\x8b"  # метка .gzip файлов
         fh = None
         try:
             fh = open(file_path, "rb")
@@ -345,7 +346,7 @@ class Cmd:  # {{{
                 fh.seek(0)
             obj = pickle.load(fh)
             return obj
-        except (EnvironmentError, pickle.UnpicklingError) as err:
+        except (OSError, pickle.UnpicklingError) as err:
             logger.exception(err)
             exit(1)
         finally:
@@ -524,6 +525,17 @@ def codeCounter(dir_path):  # {{{
                 count_str += n
                 count_file += 1
     return count_file, count_str
+
+
+# }}}
+def askUser(message: str) -> bool:  # {{{
+    while True:
+        answer = input(f"> {message} (y/n): ")
+        if answer in "yY":
+            return True
+        if answer in "nN":
+            return False
+        print("Некорректный ввод. Введите 'y' или 'n': ")
 
 
 # }}}
