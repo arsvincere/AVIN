@@ -20,11 +20,13 @@ from __future__ import annotations
 
 import inspect
 import json
+import os
 
 import asyncpg
 
 from avin.const import Usr
 from avin.logger import logger
+from avin.utils import askUser
 
 __all__ = ("Keeper",)
 
@@ -50,7 +52,8 @@ class Keeper:
     # }}}
     @classmethod  # createDataBase# {{{
     async def createDataBase(cls):
-        # await cls.__createEnums()
+        os.system(f"createdb {cls.DATABASE}")
+        await cls.__createEnums()
         await cls.__createCacheTable()
         await cls.__createExchangeTable()
         await cls.__createAssetTable()
@@ -61,10 +64,25 @@ class Keeper:
         await cls.__createOrderTable()
         await cls.__createOperationTable()
         await cls.__createMarketDataScheme()
+        logger.info("Database has been created")
+
+    # }}}
+    @classmethod  # dropDataBase# {{{
+    async def dropDataBase(cls):
+        if not askUser("Delete database?"):
+            return
+
+        if not askUser("Double confirmation. Are you sure?"):
+            return
+
+        os.system(f"dropdb {cls.DATABASE}")
+        logger.info("Database has been deleted")
 
     # }}}
     @classmethod  # info# {{{
-    async def info(cls, source: Source, asset_type: AssetType, **kwargs):
+    async def info(
+        cls, source: Source, asset_type: AssetType, **kwargs
+    ) -> list[dict]:
         """Looks for information about the asset in the cache.
 
         Returns a list of dictionaries with information about assets
@@ -119,6 +137,7 @@ class Keeper:
             class_name = obj.__class__.__name__
 
         methods = {
+            "_TEST_EXCHANGE": cls.__addExchange,
             "MOEX": cls.__addExchange,
             "SPB": cls.__addExchange,
             "Asset": cls.__addAsset,
@@ -146,6 +165,7 @@ class Keeper:
             class_name = obj.__class__.__name__
 
         methods = {
+            "_TEST_EXCHANGE": cls.__deleteExchange,
             "MOEX": cls.__deleteExchange,
             "SPB": cls.__deleteExchange,
             "Asset": cls.__deleteAsset,
@@ -321,13 +341,13 @@ class Keeper:
     @classmethod  # __addStrategy# {{{
     async def __addStrategy(cls, strategy: Strategy):
         request = f"""
-        INSERT INTO "Strategy" (
-            name,
-            version
+            INSERT INTO "Strategy" (
+                name,
+                version
             )
-        VALUES (
-            '{strategy.name}',
-            '{strategy.version}'
+            VALUES (
+                '{strategy.name}',
+                '{strategy.version}'
             );
         """
         res = await cls.transaction(request)
@@ -476,7 +496,7 @@ class Keeper:
     # }}}
 
     @classmethod  # __deleteExchange# {{{
-    async def __deleteExchange(cls, exchange: Exchange):
+    async def __deleteExchange(cls, exchange: Exchange, kwargs):
         request = f"""
         DELETE FROM "Exchange" WHERE name = '{exchange.name}';
         """
