@@ -37,8 +37,18 @@ from avin.keeper import Keeper
 from avin.logger import logger
 from avin.utils import Cmd, now
 
+# TODO logging debug, info - проверить
+
 
 class Data:  # {{{
+    @classmethod  # cache# {{{
+    async def cache(cls) -> None:
+        """Make cache of assets info"""
+
+        logger.debug(f"{cls.__name__}.cache()")
+        await _Manager.cacheAssetsInfo()
+
+    # }}}
     @classmethod  # find# {{{
     async def find(
         cls,
@@ -727,6 +737,28 @@ class _MoexData(_AbstractSource):  # {{{
     _AUTO_UPDATE = Usr.AUTO_UPDATE_ASSET_CACHE
 
     # }}}
+    @classmethod  # cacheAssetsInfo  # {{{
+    async def cacheAssetsInfo(cls):
+        if _InstrumentInfoCache.checkCachingDate(cls.source):
+            return
+
+        logger.info(":: Caching assets info from MOEX")
+        await cls.__authorizate()
+        if not cls._AUTHORIZATION:
+            return
+
+        types = ["index", "shares", "currency", "futures"]
+        for type_ in types:
+            logger.info(f"  - caching {type_}")
+            assets_info = moexalgo.Market(type_).tickers(use_dataframe=False)
+            assets_info = cls.__formatAssetsInfo(assets_info)
+            asset_type = cls._getStandartAssetType(type_)
+            cache = _InstrumentInfoCache(Source.MOEX, asset_type, assets_info)
+            await _InstrumentInfoCache.save(cache)
+
+        _InstrumentInfoCache.updateCachingDate(cls.source)
+
+    # }}}
     @classmethod  # find  # {{{
     async def find(
         cls,
@@ -737,7 +769,7 @@ class _MoexData(_AbstractSource):  # {{{
         name: str,
     ) -> InstrumentId:
         if cls._AUTO_UPDATE:
-            await _MoexData.__cacheAssetsInfo()
+            await _MoexData.cacheAssetsInfo()
             ...
 
         assets_info = await Keeper.info(
@@ -917,28 +949,6 @@ class _MoexData(_AbstractSource):  # {{{
                 "Operations with real time market data unavailible. "
                 f"Login='{login}' password='{password}'"
             )
-
-    # }}}
-    @classmethod  # __cacheAssetsInfo  # {{{
-    async def __cacheAssetsInfo(cls):
-        if _InstrumentInfoCache.checkCachingDate(cls.source):
-            return
-
-        logger.info(":: Caching assets info from MOEX")
-        await cls.__authorizate()
-        if not cls._AUTHORIZATION:
-            return
-
-        types = ["index", "shares", "currency", "futures"]
-        for type_ in types:
-            logger.info(f"  - caching {type_}")
-            assets_info = moexalgo.Market(type_).tickers(use_dataframe=False)
-            assets_info = cls.__formatAssetsInfo(assets_info)
-            asset_type = cls._getStandartAssetType(type_)
-            cache = _InstrumentInfoCache(Source.MOEX, asset_type, assets_info)
-            await _InstrumentInfoCache.save(cache)
-
-        _InstrumentInfoCache.updateCachingDate(cls.source)
 
     # }}}
     @classmethod  # __formatAssetsInfo# {{{
@@ -1124,7 +1134,6 @@ class _MoexData(_AbstractSource):  # {{{
         assert False, "Тут мы никак не должны оказаться"
 
     # }}}
-
     @classmethod  # __createFilePath# {{{
     def __createFilePath(
         cls, ID: InstrumentId, data_type: DataType, year: int
@@ -1236,6 +1245,27 @@ class _TinkoffData(_AbstractSource):  # {{{
     _AUTO_UPDATE = Usr.AUTO_UPDATE_ASSET_CACHE
 
     # }}}
+    @classmethod  # cacheAssetsInfo# {{{
+    async def cacheAssetsInfo(cls):
+        if _InstrumentInfoCache.checkCachingDate(cls.source):
+            return
+
+        logger.info(":: Caching assets info from Tinkoff")
+        auth = await cls.__authorizate()
+        if not auth:
+            return
+
+        types = ["shares", "bonds", "futures", "currencies"]
+        for type_ in types:
+            logger.info(f"  - caching {type_}")
+            assets_info = cls.__requestAvailibleAssets(type_)
+            asset_type = cls._getStandartAssetType(type_)
+            cache = _InstrumentInfoCache(cls.source, asset_type, assets_info)
+            await _InstrumentInfoCache.save(cache)
+
+        _InstrumentInfoCache.updateCachingDate(cls.source)
+
+    # }}}
     @classmethod  # find  # {{{
     async def find(
         cls,
@@ -1246,7 +1276,7 @@ class _TinkoffData(_AbstractSource):  # {{{
         name: str,
     ) -> InstrumentId:
         if cls._AUTO_UPDATE:
-            await cls.__cacheAssetsInfo()
+            await cls.cacheAssetsInfo()
 
         assets_info = await Keeper.info(
             cls.source,
@@ -1412,27 +1442,6 @@ class _TinkoffData(_AbstractSource):  # {{{
                 f"Token='{token}'"
             )
             return False
-
-    # }}}
-    @classmethod  # __cacheAssetsInfo# {{{
-    async def __cacheAssetsInfo(cls):
-        if _InstrumentInfoCache.checkCachingDate(cls.source):
-            return
-
-        logger.info(":: Caching assets info from Tinkoff")
-        auth = await cls.__authorizate()
-        if not auth:
-            return
-
-        types = ["shares", "bonds", "futures", "currencies"]
-        for type_ in types:
-            logger.info(f"  - caching {type_}")
-            assets_info = cls.__requestAvailibleAssets(type_)
-            asset_type = cls._getStandartAssetType(type_)
-            cache = _InstrumentInfoCache(cls.source, asset_type, assets_info)
-            await _InstrumentInfoCache.save(cache)
-
-        _InstrumentInfoCache.updateCachingDate(cls.source)
 
     # }}}
     @classmethod  # __requestAvailibleAssets# {{{
@@ -1708,6 +1717,15 @@ class _Manager:  # {{{
     def __init__(self):  # {{{
         if _Manager._AUTO_UPDATE:
             self.__checkUpdate()
+
+    # }}}
+    @classmethod  # cacheAssetsInfo  # {{{
+    async def cacheAssetsInfo(cls):
+        logger.info(":: Start caching assets info")
+        for i in Source:
+            class_ = cls.__getSourceClass(i)
+            await class_.cacheAssetsInfo()
+        logger.info("Cache is up to date")
 
     # }}}
     @classmethod  # firstDateTime{{{
