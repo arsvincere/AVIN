@@ -6,7 +6,6 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-import enum
 from datetime import UTC, time
 
 
@@ -20,6 +19,9 @@ class Exchange:  # {{{
 
     class SPB:
         name = "SPB"
+
+    class _TEST_EXCHANGE:
+        name = "_TEST_EXCHANGE"
 
     @classmethod  # fromStr {{{
     def fromStr(cls, string):
