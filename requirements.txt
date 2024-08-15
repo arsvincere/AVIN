@@ -1,8 +1,10 @@
+ruff
+pytest
+pytest-asyncio
 moexalgo
 tinkoff-investments
 pandas
 pyqt6
+qasync
 asyncpg
 pgadmin4
-qasync
-ruff
