@@ -7,10 +7,14 @@
 # ============================================================================
 
 from __future__ import annotations
+
 import enum
 import time as timer
 
-class GId():# {{{
+# TODO rename GId -> Id
+
+
+class GId:  # {{{
     # {{{-- doc
     """GId - Globa Identifier for trades, orders, operations, positions.
 
@@ -30,27 +34,31 @@ class GId():# {{{
     --------
     Type: enum.Enum
         Enum the type of valid objects
-    """ # }}}
+    """  # }}}
 
-    class Type(enum.Enum):# {{{
+    class Type(enum.Enum):  # {{{
         """Enum the type of valid objects"""
 
-        UNDEFINE =  0
-        TRADE =     1
-        ORDER =     2
+        UNDEFINE = 0
+        TRADE = 1
+        ORDER = 2
         OPERATION = 3
-        POSITION =  4
+        POSITION = 4
+
     # }}}
-    def __init__(self, timestamp: float):# {{{
+    def __init__(self, timestamp: float):  # {{{
         self.__val = timestamp
+
     # }}}
-    def __str__(self):# {{{
+    def __str__(self):  # {{{
         return f"{self.__val}"
+
     # }}}
-    def __eq__(self, other: GId):# {{{
+    def __eq__(self, other: GId):  # {{{
         return self.__val == other.__val
+
     # }}}
-    @classmethod  #fromStr# {{{
+    @classmethod  # fromStr# {{{
     def fromStr(cls, string: str) -> GId:
         """Create GId from string
 
@@ -74,8 +82,9 @@ class GId():# {{{
 
         gid = GId(float(string))
         return gid
+
     # }}}
-    @classmethod  #newGId# {{{
+    @classmethod  # newGId# {{{
     def newGId(cls, obj: Trade | Order | Operation | Position) -> GId:
         """Generate new global identifier
 
@@ -93,6 +102,8 @@ class GId():# {{{
 
         gid = GId(timer.time())
         return gid
-    # }}}
-# }}}
 
+    # }}}
+
+
+# }}}

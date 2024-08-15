@@ -137,9 +137,11 @@ class Keeper:
             class_name = obj.__class__.__name__
 
         methods = {
-            "_TEST_EXCHANGE": cls.__addExchange,
             "MOEX": cls.__addExchange,
             "SPB": cls.__addExchange,
+            "_TEST_EXCHANGE": cls.__addExchange,
+            "InstrumentId": cls.__addAsset,
+            "_BarsData": cls.__addBarsData,
             "Asset": cls.__addAsset,
             "Share": cls.__addAsset,
             "Index": cls.__addAsset,
@@ -151,7 +153,6 @@ class Keeper:
             "Market": cls.__addOrder,
             "Limit": cls.__addOrder,
             "Stop": cls.__addOrder,
-            "_BarsData": cls.__addBarsData,
         }
         method = methods[class_name]
         await method(obj)
@@ -159,6 +160,16 @@ class Keeper:
     # }}}
     @classmethod  # delete# {{{
     async def delete(cls, obj, **kwargs):
+        # TODO
+        # obj может заменить на класс?
+        # что будет логичнее, удалять не конкретный объект
+        # а класс - то есть удаляем из таблицы с именем класса
+        # и в kwargs можно передать уже параметры для удаления
+        # да код удаления возможно будет чуточку сложнее.
+        # Keeper.delete(obj)
+        # Keeper.delete(Class, kwargs)
+        # но это пиздец как логичнее
+
         if inspect.isclass(obj):
             class_name = obj.__name__
         else:
@@ -168,6 +179,7 @@ class Keeper:
             "_TEST_EXCHANGE": cls.__deleteExchange,
             "MOEX": cls.__deleteExchange,
             "SPB": cls.__deleteExchange,
+            "InstrumentId": cls.__deleteAsset,
             "Asset": cls.__deleteAsset,
             "Share": cls.__deleteAsset,
             "Index": cls.__deleteAsset,
@@ -210,7 +222,9 @@ class Keeper:
         methods = {
             "InstrumentId": cls.__getInstrumentId,
             "DataType": cls.__getDataType,
+            "Data": cls.__getDataInfo,
             "Asset": cls.__getAsset,
+            "Account": cls.__getAccount,
             "Trade": cls.__getTrades,
             "Operation": cls.__getOperations,
             "Order": cls.__getOrders,
@@ -228,8 +242,12 @@ class Keeper:
         INSERT INTO "Exchange"(name)
         VALUES ('{exchange.name}');
         """
-        res = await cls.transaction(request)
-        return res
+        try:
+            await cls.transaction(request)
+        except asyncpg.UniqueViolationError:
+            logger.warning(
+                "Exchange '{exchange.name}' already exist in database"
+            )
 
     # }}}
     @classmethod  # __addAsset# {{{
@@ -250,8 +268,10 @@ class Keeper:
             '{asset.figi}'
             );
         """
-        res = await cls.transaction(request)
-        return res
+        try:
+            await cls.transaction(request)
+        except asyncpg.UniqueViolationError:
+            logger.warning(f"Asset '{asset}' already exist in database")
 
     # }}}
     @classmethod  # __addBarsData# {{{
@@ -331,11 +351,16 @@ class Keeper:
             )
         VALUES (
             '{account.name}',
-            '{account.broker.name}'
+            '{account.broker}'
             );
         """
-        res = await cls.transaction(request)
-        return res
+        try:
+            await cls.transaction(request)
+        except asyncpg.UniqueViolationError:
+            logger.warning(
+                f"Account '{account.name}-{account.broker}'"
+                "already exist in database"
+            )
 
     # }}}
     @classmethod  # __addStrategy# {{{
@@ -350,8 +375,13 @@ class Keeper:
                 '{strategy.version}'
             );
         """
-        res = await cls.transaction(request)
-        return res
+        try:
+            await cls.transaction(request)
+        except asyncpg.UniqueViolationError:
+            logger.warning(
+                f"Strategy '{strategy.name}-{strategy.version}'"
+                "already exist in database"
+            )
 
     # }}}
     @classmethod  # __addTrade# {{{
@@ -361,13 +391,13 @@ class Keeper:
                 trade_id, dt, status, strategy, version, type, figi
                 )
             VALUES (
-                {trade.ID},
+                {trade.trade_id},
                 '{trade.dt}',
                 '{trade.status.name}',
                 '{trade.strategy}',
                 '{trade.version}',
                 '{trade.type.name}',
-                '{trade.asset.figi}'
+                '{trade.figi}'
                 );
             """
         res = await cls.transaction(request)
@@ -376,7 +406,7 @@ class Keeper:
     # }}}
     @classmethod  # __addOrder# {{{
     async def __addOrder(cls, order: Order):
-        assert order.trade_ID is not None
+        assert order.trade_id is not None
         assert order.account_name is not None
 
         # Используется проверка типа ордера через строки...
@@ -424,18 +454,18 @@ class Keeper:
                 meta
                 )
             VALUES (
-                {order.ID},
+                {order.order_id},
                 '{order.account_name}',
                 '{order.type.name}',
                 '{order.status.name}',
                 '{order.direction.name}',
-                '{order.asset.figi}',
+                '{order.figi}',
                 {order.lots},
                 {order.quantity},
                 {price},
                 {stop_price},
                 {exec_price},
-                {order.trade_ID},
+                {order.trade_id},
                 {meta}
                 );
             """
@@ -474,7 +504,7 @@ class Keeper:
                 meta
             )
             VALUES (
-                {operation.ID},
+                {operation.operation_id},
                 '{operation.account_name}',
                 '{operation.dt}',
                 '{operation.direction.name}',
@@ -505,7 +535,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __deleteAsset# {{{
-    async def __deleteAsset(cls, asset: Asset):
+    async def __deleteAsset(cls, asset: Asset, kwargs):
         request = f"""
         DELETE FROM "Asset" WHERE figi = '{asset.figi}';
         """
@@ -538,8 +568,8 @@ class Keeper:
         request = f"""
             UPDATE "Data"
             SET
-                first_dt = (SELECT min(dt) FROM data."MOEX_INDEX_IMOEX_D"),
-                last_dt = (SELECT max(dt) FROM data."MOEX_INDEX_IMOEX_D")
+                first_dt = (SELECT min(dt) FROM data."{table_name}"),
+                last_dt = (SELECT max(dt) FROM data."{table_name}")
 			WHERE
                 figi = '{ID.figi}' AND
                 type = '{data_type.name}'
@@ -582,52 +612,58 @@ class Keeper:
 
     # }}}
     @classmethod  # __deleteAccount# {{{
-    async def __deleteAccount(cls, account: Account):
+    async def __deleteAccount(cls, account: Account, kwargs: dict):
+        # TODO подумать... а в таких методах которые раньше
+        # принимали сам объект - можно стандартизировать
+        # пусть тоже принимают класс и словарь, а то хуйня какая то
+        # получается а не интерфейс
         request = f"""
         DELETE FROM "Account" WHERE name = '{account.name}';
         """
-        res = await cls.transaction(request)
-        return res
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __deleteStrategy# {{{
-    async def __deleteStrategy(cls, strategy: Strategy):
+    async def __deleteStrategy(cls, Strategy, kwargs: dict):
+        name = kwargs["name"]
+        version = kwargs["version"]
+
         request = f"""
-        DELETE FROM "Strategy"
-        WHERE name = '{strategy.name}' AND version = '{strategy.version}';
+            DELETE FROM "Strategy"
+            WHERE name = '{name}' AND version = '{version}';
         """
         res = await cls.transaction(request)
         return res
 
     # }}}
     @classmethod  # __deleteTrade# {{{
-    async def __deleteTrade(cls, trade: Trade):
+    async def __deleteTrade(cls, trade: Trade, kwargs):
         request = f"""
             DELETE FROM "Trade"
-            WHERE trade_id = '{trade.ID}';
+            WHERE trade_id = '{trade.trade_id}';
             """
         res = await cls.transaction(request)
         return res
 
     # }}}
     @classmethod  # __deleteOrder# {{{
-    async def __deleteOrder(cls, order: Order):
+    async def __deleteOrder(cls, order: Order, kwargs):
         request = f"""
             DELETE FROM "Order"
-            WHERE order_id = '{order.ID}';
+            WHERE order_id = '{order.order_id}';
             """
         res = await cls.transaction(request)
         return res
 
     # }}}
     @classmethod  # __deleteOperation# {{{
-    async def __deleteOperation(cls, operation: Operation):
+    async def __deleteOperation(cls, operation: Operation, kwargs):
         request = f"""
             DELETE FROM "Operation"
-            WHERE operation_id = '{operation.ID}';
-            """
-        res = await cls.transaction(request)
-        return res
+            WHERE
+                operation_id = '{operation.operation_id}';
+        """
+        await cls.transaction(request)
 
     # }}}
 
@@ -641,9 +677,9 @@ class Keeper:
                 strategy = '{trade.strategy}',
                 version = '{trade.version}',
                 type = '{trade.type.name}',
-                figi = '{trade.asset.figi}'
+                figi = '{trade.figi}'
             WHERE
-                trade_id = '{trade.ID}';
+                trade_id = '{trade.trade_id}';
             """
         res = await cls.transaction(request)
         return res
@@ -715,7 +751,7 @@ class Keeper:
         figi = kwargs.get("figi")
 
         # figi condition
-        pg_figi = "figi = {figi}" if figi else "TRUE"
+        pg_figi = f"figi = '{figi}'" if figi else "TRUE"
 
         request = f"""
             SELECT
@@ -756,39 +792,27 @@ class Keeper:
         return data_types
 
     # }}}
-    @classmethod  # __getAsset # {{{
-    async def __getAsset(cls, asset_class, kwargs: dict):
-        """Search asset
+    @classmethod  # __getDataInfo # {{{
+    async def __getDataInfo(cls, Data, kwargs: dict):
+        ID = kwargs["ID"]
 
-        Looks for assets only among those for which exchange data are loaded.
-        Returns the asset.
-        """
-        # TODO добавить поиск по тикеру типу и бирже
-        figi = kwargs.get("figi")
+        pg_id = f"figi = '{ID.figi}'" if ID else "TRUE"
 
         request = f"""
-            SELECT
-                exchange,
-                type,
-                ticker,
-                name,
-                figi
-            FROM "Asset"
-            WHERE figi = {figi}
-            ;
+            SELECT * FROM "Data"
+            WHERE
+                {pg_id};
             """
-        asset_record = await cls.transaction(request)
-
-        asset = asset_class.fromRecord(asset_record)
-        return asset
+        records = await cls.transaction(request)
+        return records
 
     # }}}
     @classmethod  # __getBars # {{{
     async def __getBars(cls, bar_class, kwargs):
         ID = kwargs["ID"]
         data_type = kwargs["data_type"]
-        begin = kwargs.get("begin")
-        end = kwargs.get("end")
+        begin: datatime = kwargs.get("begin")
+        end: datetime = kwargs.get("end")
 
         # create condition for begin-end:
         if begin is None and end is None:
@@ -815,6 +839,54 @@ class Keeper:
         return bars
 
     # }}}
+    @classmethod  # __getAsset # {{{
+    async def __getAsset(cls, asset_class, kwargs: dict):
+        """Search asset
+
+        Looks for assets only among those for which exchange data are loaded.
+        Returns the asset.
+        """
+        # TODO добавить поиск по тикеру типу и бирже
+        figi = kwargs.get("figi")
+
+        request = f"""
+            SELECT
+                exchange,
+                type,
+                ticker,
+                name,
+                figi
+            FROM "Asset"
+            WHERE figi = '{figi}'
+            ;
+            """
+        asset_records = await cls.transaction(request)
+
+        assert len(asset_records) == 1
+        asset = asset_class.fromRecord(asset_records[0])
+        return asset
+
+    # }}}
+    @classmethod  # __getAccount # {{{
+    async def __getAccount(cls, Account, kwargs: dict):
+        name = kwargs.get("name")
+
+        pg_name = f"name = '{name}'" if name else "TRUE"
+        request = f"""
+            SELECT name, broker FROM "Account"
+            WHERE
+                {pg_name}
+            ;
+            """
+        records = await cls.transaction(request)
+
+        accounts = list()
+        for i in records:
+            acc = Account.fromRecord(i)
+            accounts.append(acc)
+        return accounts
+
+    # }}}
     @classmethod  # __getTrades # {{{
     async def __getTrades(cls, trade_class, kwargs: dict):
         strategy = kwargs.get("strategy")
@@ -827,7 +899,7 @@ class Keeper:
             pg_strategy = "TRUE"
         else:
             pg_strategy = (
-                f"(strategy = '{strategy.name}' AND"
+                f"(strategy = '{strategy.name}' AND "
                 f"version = '{strategy.version}')"
             )
 

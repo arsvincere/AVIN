@@ -46,12 +46,11 @@ class Operation:  # {{{
         price: float,
         amount: float,
         commission: float,
-        ID: GId = None,
-        trade_id: GId = None,
+        operation_id: GId = None,
         order_id: GId = None,
+        trade_id: GId = None,
         meta: object = None,
     ):
-
         self.account_name = account_name
         self.dt = dt
         self.direction = direction
@@ -61,9 +60,9 @@ class Operation:  # {{{
         self.quantity = quantity
         self.amount = amount
         self.commission = commission
-        self.ID = ID if ID else GId.newGId(self)
-        self.trade_id = trade_id
+        self.operation_id = operation_id if operation_id else GId.newGId(self)
         self.order_id = order_id
+        self.trade_id = trade_id
         self.meta = meta
 
     # }}}
@@ -122,9 +121,9 @@ class Operation:  # {{{
             price=record["price"],
             amount=record["amount"],
             commission=record["commission"],
-            ID=record["operation_id"],
-            trade_id=record["trade_id"],
+            operation_id=record["operation_id"],
             order_id=record["order_id"],
+            trade_id=record["trade_id"],
             meta=record["meta"],
         )
         return o

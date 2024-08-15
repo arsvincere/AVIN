@@ -28,6 +28,7 @@ class Exchange:  # {{{
         types = {
             "MOEX": Exchange.MOEX,
             "SPB": Exchange.SPB,
+            "_TEST_EXCHANGE": Exchange._TEST_EXCHANGE,
         }
         return types[string]
 

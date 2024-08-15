@@ -101,7 +101,6 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         begin: date | str = None,
         end: date | str = None,
     ):
-
         timeframe, begin, end = self.__checkArgs(timeframe, begin, end)
         chart = Chart(self, timeframe, begin, end)
         self.__charts[timeframe] = chart
@@ -119,7 +118,8 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         end: datetime | str = None,
     ):
         logger.debug(
-            f"{self.__class__.__name__}.loadChart " "{self.ticker}-{timeframe}"
+            f"{self.__class__.__name__}.loadChart "
+            "{self.ticker}-{timeframe}"
         )
         timeframe, begin, end = self.__checkArgs(timeframe, begin, end)
         return Chart(self, timeframe, begin, end)
@@ -152,7 +152,14 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
     @classmethod  # byTicker# {{{
-    async def byTicker(cls, asset_type: AssetType, exchange: Exchange, ticker: str):
+    async def byTicker(
+        cls, asset_type: AssetType, exchange: Exchange, ticker: str
+    ):
+        # TODO
+        # подумать. А может вообще здесь не через дату запрашивать...
+        # а напрямую через кипера... и запрашивать конкретно ассет.
+        # тогда можно будет получать только активы для которых
+        # уже есть биржевые данные, ну типо мои активы. Это логично.
         ID = await Data.find(asset_type, exchange, ticker)
         assert len(ID) == 1
         ID = ID[0]
@@ -160,7 +167,9 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
     @classmethod  # byFigi# {{{
-    async def byFigi(cls, exchange: Exchange, asset_type: AssetType, figi: str):
+    async def byFigi(
+        cls, exchange: Exchange, asset_type: AssetType, figi: str
+    ):
         ID = await Data.find(asset_type, exchange, figi=figi)
         assert len(ID) == 1
         ID = ID[0]
@@ -195,11 +204,11 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
     @classmethod  # fromRecord# {{{
     def fromRecord(cls, record):
         exchange = Exchange.fromStr(record["exchange"])
-        asset_type = record["type"]
+        asset_type = AssetType.fromStr(record["type"])
         ticker = record["ticker"]
         figi = record["figi"]
         name = record["name"]
-        ID = Id(exchange, asset_type, name, ticker, figi)
+        ID = InstrumentId(asset_type, exchange, ticker, figi, name)
         asset = Asset.byId(ID)
         return asset
 
@@ -214,15 +223,20 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
             timeframe = TimeFrame(timeframe)
         else:
             logger.critical(
-                f"Wrong timeframe='{timeframe}', use valid 'str' " "or class TimeFrame"
+                f"Wrong timeframe='{timeframe}', use valid 'str' "
+                "or class TimeFrame"
             )
             exit(1)
         if isinstance(begin, str):
             begin = datetime.combine(
-                date.fromisoformat(begin), Exchange.MOEX.SESSION_BEGIN, tzinfo=UTC
+                date.fromisoformat(begin),
+                Exchange.MOEX.SESSION_BEGIN,
+                tzinfo=UTC,
             )
         if isinstance(end, str):
-            end = datetime.combine(date.fromisoformat(end), DAY_BEGIN, tzinfo=UTC)
+            end = datetime.combine(
+                date.fromisoformat(end), DAY_BEGIN, tzinfo=UTC
+            )
         if begin is None and end is None:
             period = timeframe * Chart.DEFAULT_BARS_COUNT
             begin = now() - period
@@ -234,9 +248,13 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
     @classmethod  # __getCertainTypeAsset# {{{
     def __getCertainTypeAsset(cls, ID: Id):
         if ID.type == AssetType.INDEX:
-            return Index(ID)
+            index = Index(ID)
+            return index
         elif ID.type == AssetType.SHARE:
-            return Share(ID)
+            share = Share(ID)
+            return share
+        else:
+            assert False
 
     # }}}
 
@@ -365,7 +383,7 @@ class AssetList:  # {{{
         try:
             self.__assets.remove(asset)
             return True
-        except ValueError as err:
+        except ValueError:
             logger.exception(
                 f"AssetList.remove(asset): Fail: "
                 f"инструмент '{asset.ticker}' нет в списке '{self.name}'",
@@ -424,7 +442,9 @@ class AssetList:  # {{{
     def delete(cls, asset_list) -> None:
         file_path = asset_list.path
         if not Cmd.isExist(file_path):
-            logger.error(f"Fail delete asset list, file not exist '{file_path}'")
+            logger.error(
+                f"Fail delete asset list, file not exist '{file_path}'"
+            )
         Cmd.delete(file_path)
 
     # }}}

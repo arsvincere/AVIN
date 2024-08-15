@@ -16,6 +16,13 @@ from avin.core.operation import Operation
 from avin.core.order import Order
 from avin.keeper import Keeper
 
+# TODO
+# а вот trade.asset - это отдельное свойство, или функция...
+# короче, пусть этот ассет собирается уже через фиги.
+# а внутри трейда не хранится. Внутри трейда только текстовые поля
+# и перечисления (так уж и быть).
+# и ордер и операция тоже самое только строки и числа
+
 
 class Trade:  # {{{
     class Type(enum.Enum):  # {{{
@@ -436,6 +443,7 @@ class Trade:  # {{{
             trade_id=trade_id,
         )
 
+        # create trade
         t = Trade(
             dt=record["dt"],
             strategy=record["strategy"],

@@ -28,6 +28,9 @@ class InstrumentId:  # {{{
         figi: str,
         name: str,
     ):
+        assert isinstance(asset_type, AssetType)
+        assert hasattr(exchange, "name")
+
         self.__info = {
             "type": asset_type,
             "exchange": exchange,

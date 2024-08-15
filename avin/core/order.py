@@ -10,12 +10,8 @@ from __future__ import annotations
 
 import abc
 import enum
-from dataclasses import dataclass
 
-from avin.core.asset import Asset
 from avin.core.gid import GId
-from avin.core.operation import Operation
-from avin.logger import logger
 from avin.utils import Signal
 
 
@@ -102,11 +98,10 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             quantity,
             account_name,
             status,
-            ID,
+            order_id,
             trade_id,
             meta,
         ):
-
             self.direction = direction
             self.figi = figi
             self.lots = lots
@@ -114,14 +109,9 @@ class Order(metaclass=abc.ABCMeta):  # {{{
 
             self.account_name = account_name
             self.status = status if status else Order.Status.NEW
+            self.order_id = order_id if order_id else GId.newGId(self)
             self.trade_id = trade_id
             self.meta = meta
-
-            if ID is None:
-                self.ID = GId.newGId(self)
-                logger.warning("TODO: сохранение ордера при его создании")
-            else:
-                self.ID = ID
 
             # Signals
             self.posted = Signal(Order._BaseOrder)
@@ -203,11 +193,10 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             quantity: int,
             account_name: str = None,
             status: Order.Status = None,
-            ID: GId = None,
+            order_id: GId = None,
             trade_id: GId = None,
             meta=None,
         ):
-
             super().__init__(
                 direction,
                 figi,
@@ -215,7 +204,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
                 quantity,
                 account_name,
                 status,
-                ID,
+                order_id,
                 trade_id,
                 meta=None,
             )
@@ -232,11 +221,10 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             price: float,
             account_name: str = None,
             status: Order.Status = None,
-            ID: GId = None,
+            order_id: GId = None,
             trade_id: GId = None,
             meta=None,
         ):
-
             super().__init__(
                 direction,
                 figi,
@@ -244,7 +232,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
                 quantity,
                 account_name,
                 status,
-                ID,
+                order_id,
                 trade_id,
                 meta=None,
             )
@@ -263,11 +251,10 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             exec_price: float,
             account_name: str = None,
             status: Order.Status = None,
-            ID: GId = None,
+            order_id: GId = None,
             trade_id: GId = None,
             meta=None,
         ):
-
             super().__init__(
                 direction,
                 asset,
@@ -275,7 +262,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
                 quantity,
                 account_name,
                 status,
-                ID,
+                order_id,
                 trade_id,
                 meta=None,
             )
@@ -293,7 +280,6 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             trade_id: GId = None,
             status: Order.Status = None,
         ):
-
             assert False
 
     # }}}
@@ -306,7 +292,6 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             trade_id: GId = None,
             status: Order.Status = None,
         ):
-
             assert False
 
     # }}}
@@ -339,7 +324,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             quantity=record["quantity"],
             account_name=record["account"],
             status=Order.Status.fromStr(record["status"]),
-            ID=record["order_id"],
+            order_id=record["order_id"],
             trade_id=record["trade_id"],
             meta=None,
         )
@@ -356,7 +341,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             price=record["price"],
             account_name=record["account"],
             status=Order.Status.fromStr(record["status"]),
-            ID=record["order_id"],
+            order_id=record["order_id"],
             trade_id=record["trade_id"],
             meta=None,
         )
@@ -374,7 +359,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             exec_price=record["exec_price"],
             account_name=record["account"],
             status=Order.Status.fromStr(record["status"]),
-            ID=record["order_id"],
+            order_id=record["order_id"],
             trade_id=record["trade_id"],
             meta=None,
         )
