@@ -12,9 +12,11 @@ import enum
 
 from avin.utils import Cmd
 
+# TODO rename module -> data_source
+# TODO rename class -> DataSource
+
 
 class Source(enum.Enum):  # {{{
-    UNDEFINE = 0
     MOEX = 1
     TINKOFF = 2
 
