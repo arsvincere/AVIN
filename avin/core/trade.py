@@ -433,13 +433,13 @@ class Trade:  # {{{
 
         # request operations of trade
         operations = await Keeper.get(
-            what=Operation,
+            Operation,
             trade_id=trade_id,
         )
 
         # request orders of trade
         orders = await Keeper.get(
-            what=Order,
+            Order,
             trade_id=trade_id,
         )
 

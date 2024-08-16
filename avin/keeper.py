@@ -37,21 +37,24 @@ class Keeper:
     HOST = Usr.PG_HOST
 
     @classmethod  # transaction  # {{{
-    async def transaction(cls, sql_request: str):
+    async def transaction(cls, sql_request: str) -> None:
         try:
             conn = await asyncpg.connect(
-                user=cls.USER, database=cls.DATABASE, host=cls.HOST
+                user=cls.USER,
+                database=cls.DATABASE,
+                host=cls.HOST,
             )
-            values = await conn.fetch(sql_request)
+            response = await conn.fetch(sql_request)
             await conn.close()
-            return values
+            return response
         except asyncpg.exceptions.NumericValueOutOfRangeError as err:
-            logger.error(err)
-            logger.error(f"Request:\n{sql_request}")
+            logger.critical(err)
+            logger.critical(f"Request:\n{sql_request}")
+            exit(2)
 
     # }}}
     @classmethod  # createDataBase  # {{{
-    async def createDataBase(cls):
+    async def createDataBase(cls) -> None:
         os.system(f"createdb {cls.DATABASE}")
         await cls.__createEnums()
         await cls.__createCacheTable()
@@ -68,7 +71,7 @@ class Keeper:
 
     # }}}
     @classmethod  # dropDataBase  # {{{
-    async def dropDataBase(cls):
+    async def dropDataBase(cls) -> None:
         if not askUser("Delete database?"):
             return
 
@@ -130,7 +133,7 @@ class Keeper:
 
     # }}}
     @classmethod  # add  # {{{
-    async def add(cls, obj):
+    async def add(cls, obj: object | class_) -> None:
         if inspect.isclass(obj):
             class_name = obj.__name__
         else:
@@ -159,7 +162,7 @@ class Keeper:
 
     # }}}
     @classmethod  # delete  # {{{
-    async def delete(cls, obj, **kwargs):
+    async def delete(cls, obj, **kwargs) -> None:
         # TODO
         # obj может заменить на класс?
         # что будет логичнее, удалять не конкретный объект
@@ -169,6 +172,10 @@ class Keeper:
         # Keeper.delete(obj)
         # Keeper.delete(Class, kwargs)
         # но это пиздец как логичнее
+        # и удалять можно будет через этот интерфейс не поштучно
+        # а группами под условия в kwargs
+        # сделай это отдельным комитом отдельно именно этот файл
+        # так чтобы его если что можно было вернуть
 
         if inspect.isclass(obj):
             class_name = obj.__name__
@@ -198,7 +205,7 @@ class Keeper:
 
     # }}}
     @classmethod  # update  # {{{
-    async def update(cls, obj):
+    async def update(cls, obj: object | class_) -> None:
         if inspect.isclass(obj):
             class_name = obj.__name__
         else:
@@ -216,8 +223,8 @@ class Keeper:
 
     # }}}
     @classmethod  # get  # {{{
-    async def get(cls, what: Class, **kwargs):
-        assert inspect.isclass(what)
+    async def get(cls, Class, **kwargs) -> Any:
+        assert inspect.isclass(Class)
 
         methods = {
             "InstrumentId": cls.__getInstrumentId,
@@ -230,14 +237,14 @@ class Keeper:
             "Order": cls.__getOrders,
             "_Bar": cls.__getBars,
         }
-        method = methods[what.__name__]
-        result = await method(what, kwargs)
+        method = methods[Class.__name__]
+        result = await method(Class, kwargs)
         return result
 
     # }}}
 
     @classmethod  # __addExchange  # {{{
-    async def __addExchange(cls, exchange: Exchange):
+    async def __addExchange(cls, exchange: Exchange) -> None:
         request = f"""
         INSERT INTO "Exchange"(name)
         VALUES ('{exchange.name}');
@@ -251,7 +258,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __addAsset  # {{{
-    async def __addAsset(cls, asset: Asset | Id):
+    async def __addAsset(cls, asset: Asset | Id) -> None:
         request = f"""
         INSERT INTO "Asset" (
             exchange,
@@ -275,7 +282,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __addBarsData  # {{{
-    async def __addBarsData(cls, data: _BarsData):
+    async def __addBarsData(cls, data: _BarsData) -> None:
         # Create new Asset if not exist
         request = f"""
             SELECT add_asset_if_not_exist(
@@ -343,7 +350,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __addAccount  # {{{
-    async def __addAccount(cls, account: Account):
+    async def __addAccount(cls, account: Account) -> None:
         request = f"""
         INSERT INTO "Account" (
             name,
@@ -364,7 +371,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __addStrategy  # {{{
-    async def __addStrategy(cls, strategy: Strategy):
+    async def __addStrategy(cls, strategy: Strategy) -> None:
         request = f"""
             INSERT INTO "Strategy" (
                 name,
@@ -385,7 +392,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __addTrade  # {{{
-    async def __addTrade(cls, trade: Trade):
+    async def __addTrade(cls, trade: Trade) -> None:
         request = f"""
             INSERT INTO "Trade" (
                 trade_id, dt, status, strategy, version, type, figi
@@ -405,7 +412,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __addOrder  # {{{
-    async def __addOrder(cls, order: Order):
+    async def __addOrder(cls, order: Order) -> None:
         assert order.trade_id is not None
         assert order.account_name is not None
 
@@ -474,7 +481,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __addOperation  # {{{
-    async def __addOperation(cls, operation: Operation):
+    async def __addOperation(cls, operation: Operation) -> None:
         assert operation.trade_id is not None
         assert operation.order_id is not None
 
@@ -526,7 +533,7 @@ class Keeper:
     # }}}
 
     @classmethod  # __deleteExchange  # {{{
-    async def __deleteExchange(cls, exchange: Exchange, kwargs):
+    async def __deleteExchange(cls, exchange: Exchange, kwargs: dict) -> None:
         request = f"""
         DELETE FROM "Exchange" WHERE name = '{exchange.name}';
         """
@@ -535,7 +542,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __deleteAsset  # {{{
-    async def __deleteAsset(cls, asset: Asset, kwargs):
+    async def __deleteAsset(cls, asset: Asset, kwargs: dict) -> None:
         request = f"""
         DELETE FROM "Asset" WHERE figi = '{asset.figi}';
         """
@@ -544,7 +551,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __deleteBarsData  # {{{
-    async def __deleteBarsData(cls, _Bar: class_, kwargs):
+    async def __deleteBarsData(cls, _Bar: class_, kwargs: dict) -> None:
         ID = kwargs["ID"]
         data_type = kwargs["data_type"]
         begin = kwargs.get("begin")
@@ -612,7 +619,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __deleteAccount  # {{{
-    async def __deleteAccount(cls, account: Account, kwargs: dict):
+    async def __deleteAccount(cls, account: Account, kwargs: dict) -> None:
         # TODO подумать... а в таких методах которые раньше
         # принимали сам объект - можно стандартизировать
         # пусть тоже принимают класс и словарь, а то хуйня какая то
@@ -624,7 +631,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __deleteStrategy  # {{{
-    async def __deleteStrategy(cls, Strategy, kwargs: dict):
+    async def __deleteStrategy(cls, Strategy, kwargs: dict) -> None:
         name = kwargs["name"]
         version = kwargs["version"]
 
@@ -637,7 +644,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __deleteTrade  # {{{
-    async def __deleteTrade(cls, trade: Trade, kwargs):
+    async def __deleteTrade(cls, trade: Trade, kwargs: dict) -> None:
         request = f"""
             DELETE FROM "Trade"
             WHERE trade_id = '{trade.trade_id}';
@@ -647,7 +654,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __deleteOrder  # {{{
-    async def __deleteOrder(cls, order: Order, kwargs):
+    async def __deleteOrder(cls, order: Order, kwargs: dict) -> None:
         request = f"""
             DELETE FROM "Order"
             WHERE order_id = '{order.order_id}';
@@ -657,7 +664,9 @@ class Keeper:
 
     # }}}
     @classmethod  # __deleteOperation  # {{{
-    async def __deleteOperation(cls, operation: Operation, kwargs):
+    async def __deleteOperation(
+        cls, operation: Operation, kwargs: dict
+    ) -> None:
         request = f"""
             DELETE FROM "Operation"
             WHERE
@@ -668,7 +677,7 @@ class Keeper:
     # }}}
 
     @classmethod  # __updateTrade  # {{{
-    async def __updateTrade(cls, trade: Trade):
+    async def __updateTrade(cls, trade: Trade) -> None:
         request = f"""
             UPDATE "Trade"
             SET
@@ -681,12 +690,11 @@ class Keeper:
             WHERE
                 trade_id = '{trade.trade_id}';
             """
-        res = await cls.transaction(request)
-        return res
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __updateOrder  # {{{
-    async def __updateOrder(cls, order: Order):
+    async def __updateOrder(cls, order: Order) -> None:
         request = f"""
             UPDATE "Order"
             SET
@@ -694,12 +702,11 @@ class Keeper:
             WHERE
                 order_id = '{order.ID}';
             """
-        res = await cls.transaction(request)
-        return res
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __updateCache  # {{{
-    async def __updateCache(cls, cache: _InstrumentInfoCache):
+    async def __updateCache(cls, cache: _InstrumentInfoCache) -> None:
         # delete old cache
         request = f"""
             DELETE FROM "Cache"
@@ -741,13 +748,18 @@ class Keeper:
         """
         res = await cls.transaction(request)
 
+        # TODO
         # update "last_update" datetime
         return res
 
     # }}}
 
     @classmethod  # __getInstrumentId  # {{{
-    async def __getInstrumentId(cls, InstrumentId, kwargs: dict):
+    async def __getInstrumentId(
+        cls,
+        InstrumentId,
+        kwargs: dict,
+    ) -> list[InstrumentId]:
         figi = kwargs.get("figi")
 
         # figi condition
@@ -774,7 +786,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __getDataType  # {{{
-    async def __getDataType(cls, DataType, kwargs: dict):
+    async def __getDataType(cls, DataType, kwargs: dict) -> list[DataType]:
         ID = kwargs["ID"]
 
         request = f"""
@@ -793,7 +805,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __getDataInfo  # {{{
-    async def __getDataInfo(cls, Data, kwargs: dict):
+    async def __getDataInfo(cls, Data, kwargs: dict) -> list[Record]:
         ID = kwargs["ID"]
 
         pg_id = f"figi = '{ID.figi}'" if ID else "TRUE"
@@ -808,7 +820,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __getBars  # {{{
-    async def __getBars(cls, bar_class, kwargs):
+    async def __getBars(cls, Bar, kwargs: dict) -> list[Bar | _Bar]:
         ID = kwargs["ID"]
         data_type = kwargs["data_type"]
         begin: datatime = kwargs.get("begin")
@@ -834,13 +846,13 @@ class Keeper:
         # create bars from records
         bars = list()
         for i in res:
-            bar = bar_class.fromRecord(i)
+            bar = Bar.fromRecord(i)
             bars.append(bar)
         return bars
 
     # }}}
     @classmethod  # __getAsset  # {{{
-    async def __getAsset(cls, asset_class, kwargs: dict):
+    async def __getAsset(cls, Asset, kwargs: dict) -> Asset:
         """Search asset
 
         Looks for assets only among those for which exchange data are loaded.
@@ -863,12 +875,12 @@ class Keeper:
         asset_records = await cls.transaction(request)
 
         assert len(asset_records) == 1
-        asset = asset_class.fromRecord(asset_records[0])
+        asset = Asset.fromRecord(asset_records[0])
         return asset
 
     # }}}
     @classmethod  # __getAccount  # {{{
-    async def __getAccount(cls, Account, kwargs: dict):
+    async def __getAccount(cls, Account, kwargs: dict) -> list[Account]:
         name = kwargs.get("name")
 
         pg_name = f"name = '{name}'" if name else "TRUE"
@@ -888,7 +900,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __getTrades  # {{{
-    async def __getTrades(cls, trade_class, kwargs: dict):
+    async def __getTrades(cls, Trade, kwargs: dict) -> list[Trades]:
         strategy = kwargs.get("strategy")
         statuses = kwargs.get("status")
         begin = kwargs.get("begin")
@@ -933,14 +945,16 @@ class Keeper:
         # create Trade objects
         tlist = list()
         for i in trade_records:
-            trade = await trade_class.fromRecord(i)
+            trade = await Trade.fromRecord(i)
             tlist.append(trade)
 
         return tlist
 
     # }}}
     @classmethod  # __getOperations  # {{{
-    async def __getOperations(cls, operation_class, kwargs):
+    async def __getOperations(
+        cls, Operation, kwargs: dict
+    ) -> list[Operation]:
         trade_id = kwargs.get("trade_id")
 
         request = f"""
@@ -968,14 +982,14 @@ class Keeper:
         # create operation objects
         op_list = list()
         for i in op_records:
-            op = operation_class.fromRecord(i)
+            op = Operation.fromRecord(i)
             op_list.append(op)
 
         return op_list
 
     # }}}
     @classmethod  # __getOrders  # {{{
-    async def __getOrders(cls, order_class, kwargs):
+    async def __getOrders(cls, Order, kwargs: dict) -> list[Order]:
         trade_id = kwargs.get("trade_id")
 
         request = f"""
@@ -1002,7 +1016,7 @@ class Keeper:
         # create order objects
         order_list = list()
         for i in order_records:
-            order = order_class.fromRecord(i)
+            order = Order.fromRecord(i)
             order_list.append(order)
 
         return order_list
@@ -1010,7 +1024,7 @@ class Keeper:
     # }}}
 
     @classmethod  # __createEnums  # {{{
-    async def __createEnums(cls):
+    async def __createEnums(cls) -> None:
         requests = [  # {{{
             """DROP TYPE IF EXISTS public."DataSource";""",
             """ CREATE TYPE "DataSource" AS ENUM (
@@ -1102,7 +1116,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __createCacheTable  # {{{
-    async def __createCacheTable(cls):
+    async def __createCacheTable(cls) -> None:
         request = """
         CREATE TABLE IF NOT EXISTS "Cache" (
             source "DataSource",
@@ -1115,7 +1129,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __createExchangeTable  # {{{
-    async def __createExchangeTable(cls):
+    async def __createExchangeTable(cls) -> None:
         request = """
         CREATE TABLE IF NOT EXISTS "Exchange" (
             name text PRIMARY KEY
@@ -1126,7 +1140,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __createAssetTable  # {{{
-    async def __createAssetTable(cls):
+    async def __createAssetTable(cls) -> None:
         request = """
         CREATE TABLE IF NOT EXISTS "Asset" (
             figi text PRIMARY KEY,
@@ -1164,7 +1178,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __createDataTable  # {{{
-    async def __createDataTable(cls):
+    async def __createDataTable(cls) -> None:
         request = """
         CREATE TABLE IF NOT EXISTS "Data" (
             figi text REFERENCES "Asset"(figi),
@@ -1180,7 +1194,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __createBarsDataTable  # {{{
-    async def __createBarsDataTable(cls, table_name: str):
+    async def __createBarsDataTable(cls, table_name: str) -> None:
         request = f"""
         CREATE TABLE IF NOT EXISTS data."{table_name}" (
             dt TIMESTAMP WITH TIME ZONE PRIMARY KEY,
@@ -1196,7 +1210,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __createAccountTable  # {{{
-    async def __createAccountTable(cls):
+    async def __createAccountTable(cls) -> None:
         request = """
         CREATE TABLE IF NOT EXISTS "Account" (
             name text PRIMARY KEY,
@@ -1245,7 +1259,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __createStrategyTable  # {{{
-    async def __createStrategyTable(cls):
+    async def __createStrategyTable(cls) -> None:
         request = """
         CREATE TABLE IF NOT EXISTS "Strategy" (
             name text,
@@ -1258,7 +1272,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __createTradeTable  # {{{
-    async def __createTradeTable(cls):
+    async def __createTradeTable(cls) -> None:
         request = """
         CREATE TABLE IF NOT EXISTS "Trade" (
             trade_id    float PRIMARY KEY,
@@ -1278,7 +1292,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __createOrderTable  # {{{
-    async def __createOrderTable(cls):
+    async def __createOrderTable(cls) -> None:
         # TODO добавить частично исполненный - сколько там уже исполнено
         request = """
         CREATE TABLE IF NOT EXISTS "Order" (
@@ -1303,7 +1317,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __createOperationTable  # {{{
-    async def __createOperationTable(cls):
+    async def __createOperationTable(cls) -> None:
         request = """
         CREATE TABLE IF NOT EXISTS "Operation" (
             operation_id    float PRIMARY KEY,
@@ -1326,7 +1340,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __createMarketDataScheme  # {{{
-    async def __createMarketDataScheme(cls):
+    async def __createMarketDataScheme(cls) -> None:
         request = """
         CREATE SCHEMA IF NOT EXISTS data
         """
@@ -1335,8 +1349,13 @@ class Keeper:
 
     # }}}
     @classmethod  # __getTableName  # {{{
-    def __getTableName(cls, ID: InstrumentId, data_type):
-        # table_name = f"{asset.figi}_{data_type.name}"
+    def __getTableName(cls, ID: InstrumentId, data_type: DataType) -> str:
+        # TODO: подумать а может включить сюда сразу схему 'data'
+        # возвращать имя таблицы полное:
+        # data."MOEX_SHARE_SBER_D"
+        # вместо того что сейчас:
+        # MOEX_SHARE_SBER_D
+        # мне кажется лучше да, переделать этот момент
         table_name = (
             f"{ID.exchange.name}_{ID.type.name}_{ID.ticker}_{data_type.value}"
         )
