@@ -172,20 +172,6 @@ class Keeper:
     # }}}
     @classmethod  # delete  # {{{
     async def delete(cls, obj, **kwargs) -> None:
-        # TODO
-        # obj может заменить на класс?
-        # что будет логичнее, удалять не конкретный объект
-        # а класс - то есть удаляем из таблицы с именем класса
-        # и в kwargs можно передать уже параметры для удаления
-        # да код удаления возможно будет чуточку сложнее.
-        # Keeper.delete(obj)
-        # Keeper.delete(Class, kwargs)
-        # но это пиздец как логичнее
-        # и удалять можно будет через этот интерфейс не поштучно
-        # а группами под условия в kwargs
-        # сделай это отдельным комитом отдельно именно этот файл
-        # так чтобы его если что можно было вернуть
-
         logger.debug(f"{cls.__name__}.delete()")
 
         # Get class_name & choose method
@@ -321,12 +307,12 @@ class Keeper:
         await cls.transaction(request)
 
         # Create table if not exist
-        table_name = cls.__getTableName(data.ID, data.data_type)
-        await cls.__createBarsDataTable(table_name)
+        bars_table_name = cls.__getTableName(data.ID, data.data_type)
+        await cls.__createBarsDataTable(bars_table_name)
 
         # If exist - delete old data at the same period
         request = f"""
-            DELETE FROM data."{table_name}"
+            DELETE FROM {bars_table_name}
             WHERE
                 '{data.first_dt}' <= dt AND dt <= '{data.last_dt}'
                 ;
@@ -343,7 +329,7 @@ class Keeper:
 
         # Add bars data
         request = f"""
-        INSERT INTO data."{table_name}" (dt, open, high, low, close, volume)
+        INSERT INTO {bars_table_name} (dt, open, high, low, close, volume)
         VALUES
             {values}
             ;
@@ -365,8 +351,8 @@ class Keeper:
                 '{data.ID.figi}',
                 '{data.data_type.name}',
                 '{data.source.name}',
-                (SELECT min(dt) FROM data."{table_name}"),
-                (SELECT max(dt) FROM data."{table_name}")
+                (SELECT min(dt) FROM {bars_table_name}),
+                (SELECT max(dt) FROM {bars_table_name})
             );
             """
         await cls.transaction(request)
@@ -597,9 +583,9 @@ class Keeper:
             pg_period = "TRUE"
 
         # Delete bars
-        table_name = cls.__getTableName(ID, data_type)
+        bars_table_name = cls.__getTableName(ID, data_type)
         request = f"""
-            DELETE FROM data."{table_name}"
+            DELETE FROM {bars_table_name}
             WHERE
                 {pg_period}
             """
@@ -609,8 +595,8 @@ class Keeper:
         request = f"""
             UPDATE "Data"
             SET
-                first_dt = (SELECT min(dt) FROM data."{table_name}"),
-                last_dt = (SELECT max(dt) FROM data."{table_name}")
+                first_dt = (SELECT min(dt) FROM {bars_table_name}),
+                last_dt = (SELECT max(dt) FROM {bars_table_name})
 			WHERE
                 figi = '{ID.figi}' AND
                 type = '{data_type.name}'
@@ -620,12 +606,12 @@ class Keeper:
 
         # Delete table & info if its empty
         request = f"""
-            SELECT * FROM data."{table_name}"
+            SELECT * FROM {bars_table_name}
             """
         records = await cls.transaction(request)
         if not records:
             request = f"""
-                DROP TABLE data."{table_name}";
+                DROP TABLE {bars_table_name};
                 """
             await cls.transaction(request)
             request = f"""
@@ -636,23 +622,17 @@ class Keeper:
                 """
             await cls.transaction(request)
 
-        # Delete asset if its not have market data
-        # TODO
-        # но если у этого ассета уже есть трейды... тогда
-        # его не получится удалить.
-        # И тогда надо подумать как классу Ассет делать запрос
-        # к базе данных на создание ассета...
-        # надо ли его делать через кэш, или только в таблице уже загруженных?
-        # что делать графику при запросе данных если их нет?
-        #   - ну тот то понятно - эррор, лог, и пустой список баров
-        # создавать ассет без данных наверное все таки можно...
-        # можно же выставлять ордера например не имея исторических данных
-        # так что пусть будет.
-        # Итак.
+        # Delete asset if its not have market data?
+        # NOTE
+        # если у этого ассета уже есть трейды, его не получится удалить.
         # Получается тогда удалять ассет из таблицы ассетов вообще
         # не имеет смысла, один раз добавили сюда актив - и все, он тут
         # навсегда. Хотя попытаться удалить его можно, но он удалится
         # только если по нему нет трейдов нигде в базе. Ок.
+        # NOTE
+        # тут программа будет падать, когда до этого дойдет, когда
+        # в гуи буду делать виджет, где будет удаление, там и посмотрю
+        # стоит ли вообще этот кусок кода оставлять
         request = f"""
             SELECT * FROM "Data"
             WHERE
@@ -670,11 +650,6 @@ class Keeper:
     # }}}
     @classmethod  # __deleteAccount  # {{{
     async def __deleteAccount(cls, account: Account, kwargs: dict) -> None:
-        # TODO подумать... а в таких методах которые раньше
-        # принимали сам объект - можно стандартизировать
-        # пусть тоже принимают класс и словарь, а то хуйня какая то
-        # получается а не интерфейс
-
         logger.debug(f"{cls.__name__}.__deleteAccount()")
 
         request = f"""
@@ -843,16 +818,13 @@ class Keeper:
     def __getTableName(cls, ID: InstrumentId, data_type: DataType) -> str:
         logger.debug(f"{cls.__name__}.__getTableName()")
 
-        # TODO: подумать а может включить сюда сразу схему 'data'
-        # возвращать имя таблицы полное:
-        # data."MOEX_SHARE_SBER_D"
-        # вместо того что сейчас:
-        # MOEX_SHARE_SBER_D
-        # мне кажется лучше да, переделать этот момент
-        table_name = (
+        # looks like: data."MOEX_SHARE_SBER_1M"
+        bars_table_name = (
+            'data."'
             f"{ID.exchange.name}_{ID.type.name}_{ID.ticker}_{data_type.value}"
+            '"'
         )
-        return table_name
+        return bars_table_name
 
     # }}}
     @classmethod  # __getInstrumentId  # {{{
@@ -861,6 +833,26 @@ class Keeper:
         InstrumentId,
         kwargs: dict,
     ) -> list[InstrumentId]:
+        """Search InstrumentId
+
+        Unlike the function Keeper.info(...), this method called from
+        Keeper.get(InstrumentId, kwargs) looks for assets not in cache, but
+        only among those for which exchange data are loaded. They are stored
+        in table public."Asset"
+
+        See also: __getAsset
+
+        Args:
+            InstrumentId (class InstrumentId): reference to class, to provide
+                access to the method InstrumentId.fromRecord(...). It is need
+                for return object of class Asset, instead asyncpg.Record.
+                The title letter in the name of the argument recalls that
+                this is the class.
+            kwargs (str): for example: figi="BBG004730N88"
+
+        Returns:
+            InstrumentId
+        """
         logger.debug(f"{cls.__name__}.__getInstrumentId()")
 
         figi = kwargs.get("figi")
@@ -948,11 +940,12 @@ class Keeper:
             pg_period = f"'{begin}' <= dt AND dt < '{end}'"
 
         # request bars
-        table_name = cls.__getTableName(ID, data_type)
+        bars_table_name = cls.__getTableName(ID, data_type)
         request = f"""
             SELECT dt, open, high, low, close, volume
-            FROM data."{table_name}"
-            WHERE {pg_period}
+            FROM {bars_table_name}
+            WHERE
+                {pg_period}
             ORDER BY dt
             ;
             """
@@ -968,16 +961,32 @@ class Keeper:
     # }}}
     @classmethod  # __getAsset  # {{{
     async def __getAsset(cls, Asset, kwargs: dict) -> Asset:
-        # TODO формат док стринг
         """Search asset
 
-        Looks for assets only among those for which exchange data are loaded.
-        Returns the asset.
+        Unlike the function Keeper.info(...), this method called from
+        Keeper.get(Asset, kwargs) looks for assets not in cache, but
+        only among those for which exchange data are loaded. They are stored
+        in table public."Asset"
+
+        See also: __getInstrumentId
+
+        Args:
+            Asset (class Asset): reference to class, to provide access to the
+                method Asset.fromRecord(...). It is need for return object of
+                class Asset, instead asyncpg.Record.
+                The title letter in the name of the argument recalls that
+                this is the class.
+            kwargs (str): for example: figi="BBG004730N88"
+
+        Returns:
+            Asset
         """
 
         logger.debug(f"{cls.__name__}.__getAsset()")
 
         # TODO добавить поиск по тикеру типу и бирже
+        # давай этим займемя когда core будешь снова рефакторить
+        # когда там Asset.by____ методы тестировать буду
         figi = kwargs.get("figi")
 
         request = f"""
@@ -998,6 +1007,7 @@ class Keeper:
         return asset
 
     # }}}
+
     @classmethod  # __getAccount  # {{{
     async def __getAccount(cls, Account, kwargs: dict) -> list[Account]:
         logger.debug(f"{cls.__name__}.__getAccount()")
@@ -1332,11 +1342,21 @@ class Keeper:
 
     # }}}
     @classmethod  # __createBarsDataTable  # {{{
-    async def __createBarsDataTable(cls, table_name: str) -> None:
+    async def __createBarsDataTable(cls, bars_table_name: str) -> None:
+        """Create a separate table for bars
+
+        Every asset have market data candles in different timeframes.
+        I'm create a table for each. For example asset 'SBER' has some tables:
+            - data."MOEX_SHARE_SBER_1M"
+            - data."MOEX_SHARE_SBER_10M"
+            - data."MOEX_SHARE_SBER_1H"
+            - data."MOEX_SHARE_SBER_D"
+            - ...
+        """
         logger.debug(f"{cls.__name__}.__createBarsDataTable()")
 
         request = f"""
-        CREATE TABLE IF NOT EXISTS data."{table_name}" (
+        CREATE TABLE IF NOT EXISTS {bars_table_name} (
             dt TIMESTAMP WITH TIME ZONE PRIMARY KEY,
             open float,
             high float,
