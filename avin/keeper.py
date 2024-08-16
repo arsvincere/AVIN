@@ -307,7 +307,7 @@ class Keeper:
         await cls.transaction(request)
 
         # Create table if not exist
-        bars_table_name = cls.__getTableName(data.ID, data.data_type)
+        bars_table_name = cls.__getTableName(data.ID, data.type)
         await cls.__createBarsDataTable(bars_table_name)
 
         # If exist - delete old data at the same period
@@ -341,7 +341,7 @@ class Keeper:
             DELETE FROM "Data"
             WHERE
                 figi = '{data.ID.figi}' AND
-                type = '{data.data_type.name}'
+                type = '{data.type.name}'
                 ;
             """
         await cls.transaction(request)
@@ -349,7 +349,7 @@ class Keeper:
             INSERT INTO "Data"(figi, type, source, first_dt, last_dt)
             VALUES (
                 '{data.ID.figi}',
-                '{data.data_type.name}',
+                '{data.type.name}',
                 '{data.source.name}',
                 (SELECT min(dt) FROM {bars_table_name}),
                 (SELECT max(dt) FROM {bars_table_name})
@@ -950,13 +950,7 @@ class Keeper:
             ;
             """
         records = await cls.transaction(request)
-
-        # create bars from records
-        bars = list()
-        for i in records:
-            bar = Bar.fromRecord(i)
-            bars.append(bar)
-        return bars
+        return records
 
     # }}}
     @classmethod  # __getAsset  # {{{

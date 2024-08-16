@@ -22,15 +22,16 @@ class Source(enum.Enum):  # {{{
 
     @classmethod  # save# {{{
     def save(cls, source: Source, file_path: str):
+        # DEPICATE
         string = source.name
         Cmd.write(string, file_path)
 
     # }}}
     @classmethod  # load# {{{
     def load(cls, file_path):
+        # DEPICATE
         string = Cmd.read(file_path).strip()
         sources = {
-            "UNDEFINE": Source.UNDEFINE,
             "MOEX": Source.MOEX,
             "TINKOFF": Source.TINKOFF,
         }

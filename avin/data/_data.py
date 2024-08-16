@@ -37,8 +37,6 @@ from avin.keeper import Keeper
 from avin.logger import logger
 from avin.utils import Cmd, now
 
-# TODO logging debug, info - проверить
-
 
 class Data:  # {{{
     @classmethod  # cache# {{{
@@ -98,11 +96,7 @@ class Data:  # {{{
         if not check:
             return None
 
-        if ID.exchange == Exchange.MOEX and ID.type == AssetType.INDEX:
-            class_ = _MoexData
-        else:
-            class_ = _TinkoffData
-
+        class_ = _MoexData if ID.type == AssetType.INDEX else _TinkoffData
         info = await class_.info(ID)
         return info
 
@@ -123,7 +117,7 @@ class Data:  # {{{
             logger.error("First datetime availible only for '1M' and 'D'")
             return None
 
-        dt = await _Manager.firstDateTime(ID, data_type)
+        dt = await _Manager.firstDateTime(source, ID, data_type)
         return dt
 
     # }}}
@@ -164,14 +158,10 @@ class Data:  # {{{
         cls,
         ID: InstrumentId,
         data_type: DataType,
-        begin: int,
-        end: int,
     ) -> None:
         check = cls.__checkArgs(
             ID=ID,
             data_type=data_type,
-            begin=begin,
-            end=end,
         )
         if not check:
             return
@@ -179,7 +169,7 @@ class Data:  # {{{
         if data_type == DataType.BOOK or data_type == DataType.TIC:
             assert False
 
-        await _Manager.delete(ID, data_type, begin, end)
+        await _Manager.delete(ID, data_type)
 
     # }}}
     @classmethod  # update# {{{
@@ -209,22 +199,23 @@ class Data:  # {{{
         cls,
         ID: InstrumentId,
         data_type: DataType,
-        begin: int,
-        end: int,
-    ) -> list[str]:
+        begin: datetime,
+        end: datetime,
+    ) -> list[Record]:
         check = cls.__checkArgs(
             ID=ID,
             data_type=data_type,
             begin=begin,
             end=end,
         )
+        if not check:
+            return
 
-        if check:
-            if data_type == DataType.BOOK or data_type == DataType.TIC:
-                assert False
-            else:
-                bars = _Manager.request(ID, data_type, begin, end)
-                return bars
+        if data_type == DataType.BOOK or data_type == DataType.TIC:
+            assert False
+
+        records = await _Manager.request(ID, data_type, begin, end)
+        return records
 
     # }}}
     @classmethod  # __checkArgs# {{{
@@ -367,20 +358,22 @@ class Data:  # {{{
 
     # }}}
     @classmethod  # __checkBeginEnd# {{{
-    def __checkBeginEnd(cls, begin, end):
-        if not isinstance(begin, int):
+    def __checkBeginEnd(cls, begin: datetime, end: datetime):
+        if not isinstance(begin, datetime):
             raise TypeError(
-                "You stupid monkey, use type <int> for argument 'begin'"
+                "You stupid monkey, use type <datetime> for argument 'begin'"
             )
-        if not isinstance(end, int):
+        if not isinstance(end, datetime):
             raise TypeError(
-                "You stupid monkey, use type <int> for argument 'end'"
+                "You stupid monkey, use type <datetime> for argument 'end'"
             )
         if begin > end:
             raise ValueError(
                 f"You're still a stupid monkey, how the fuck you to get data "
                 f"data from '{begin}' to '{end}'?"
             )
+        assert begin.tzinfo == UTC
+        assert end.tzinfo == UTC
 
     # }}}
 
@@ -449,7 +442,7 @@ class _BarsData:  # {{{
         source: Source,
     ):
         self.__ID = ID
-        self.__data_type = data_type
+        self.__type = data_type
         self.__bars = bars
         self.__source = source
 
@@ -460,9 +453,8 @@ class _BarsData:  # {{{
 
     # }}}
     @property  # data_type# {{{
-    def data_type(self):
-        # TODO: rename 'data_type' -> 'type'
-        return self.__data_type
+    def type(self):
+        return self.__type
 
     # }}}
     @property  # bars# {{{
@@ -503,14 +495,22 @@ class _BarsData:  # {{{
     ) -> _BarsData:
         logger.debug(f"{cls.__name__}.load({ID.ticker})")
 
-        bars = await Keeper.get(
+        # Request bars
+        records = await Keeper.get(
             _Bar, ID=ID, data_type=data_type, begin=begin, end=end
         )
+
+        # Create bars from records
+        bars = list()
+        for i in records:
+            bar = _Bar.fromRecord(i)
+            bars.append(bar)
+
         # TODO
-        # Пока источник данных только один Source.MOEX, и он не хранится...
-        # Так что я его тут прямо беру и указываю, в будущем, источник
-        # данных нужно тоже хранить в базе, и получать от туда
+        # источник данных нужно доставать из таблицы Data,
+        # а не хардкорить тут Source.MOEX
         data = _BarsData(ID, data_type, bars, Source.MOEX)
+
         return data
 
     # }}}
@@ -519,13 +519,18 @@ class _BarsData:  # {{{
         cls,
         ID: InstrumentId,
         data_type: DataType,
-        begin: int,
-        end: int,
+        begin: int = None,
+        end: int = None,
     ) -> _BarsData:
         logger.debug(f"{cls.__name__}.delete()")
 
-        begin = datetime(begin, 1, 1, tzinfo=UTC)
-        end = datetime(end, 1, 1, tzinfo=UTC)
+        # If begin == end == None, delete all the data
+        # fasade class Data do not provide the ability to delete data
+        # from (begin-end) period, only all the asset data.
+        # In this function, agrs 'begin' 'end' is preserved just in case,
+        # it may be needed later. Class Keeper can remove bars from period,
+        # if they are defined. And it removes all the bars of a given
+        # timeframe if it receive begin=None, end=None.
         await Keeper.delete(
             _Bar, ID=ID, data_type=data_type, begin=begin, end=end
         )
@@ -1729,7 +1734,7 @@ class _Manager:  # {{{
 
     # }}}
     @classmethod  # firstDateTime{{{
-    async def firstDateTime(cls, ID, data_type):
+    async def firstDateTime(cls, source, ID, data_type):
         class_ = cls.__getSourceClass(source)
         dt = await class_.firstDateTime(ID, data_type)
         return dt
@@ -1777,11 +1782,9 @@ class _Manager:  # {{{
         cls,
         ID: InstrumentId,
         data_type: DataType,
-        begin: int,
-        end: int,
     ):
-        logger.info(f":: Delete {ID.ticker}-{data_type.value} {begin}-{end}")
-        await _BarsData.delete(ID, data_type, begin, end)
+        logger.info(f":: Delete {ID.ticker}-{data_type.value}")
+        await _BarsData.delete(ID, data_type)
         logger.info("  - complete")
 
     # }}}
@@ -1801,11 +1804,11 @@ class _Manager:  # {{{
             return
 
         # request new bars from data source
-        begin = data.last_dt + data.data_type.toTimedelta()
+        begin = data.last_dt + data.type.toTimedelta()
         end = now().replace(microsecond=0)
         source_class = cls.__getSourceClass(data.source)
         new_bars = await source_class.getHistoricalBars(
-            data.ID, data.data_type, begin, end
+            data.ID, data.type, begin, end
         )
 
         # check: is new bars found
@@ -1816,7 +1819,7 @@ class _Manager:  # {{{
 
         # save new bars
         logger.info(f"  - received {count} bars -> {new_bars[-1].dt}")
-        new_data = _BarsData(data.ID, data.data_type, new_bars, data.source)
+        new_data = _BarsData(data.ID, data.type, new_bars, data.source)
         await _BarsData.save(new_data)
 
     # }}}
@@ -1835,29 +1838,20 @@ class _Manager:  # {{{
 
     # }}}
     @classmethod  # request# {{{
-    def request(
-        cls, ID: InstrumentId, data_type: DataType, begin: int, end: int
+    async def request(
+        cls,
+        ID: InstrumentId,
+        data_type: DataType,
+        begin: datetime,
+        end: datetime,
     ) -> list:
         if cls._AUTO_UPDATE and not cls._DATA_IS_UP_TO_DATE:
             cls.__checkUpdate()
 
-        # FIXME
-        # NOTE
-        # TODO
-        # сука... надо еще дописать, и решить что делать с бегин энд...
-        # дейттайм же надо сюда передавать...
-        # а модуль дата уже содержит аргументы бегин энд в функции делете...
-        # короче блять я хз, наверное надо все таки делете не делать
-        # с бегин энд... ну сам подумай нахуя удалять данные не полностю?
-        # а если для тестов... или какая то ошибка...
-        # а само приложение такой функцией пользоваться то и не будет..
-        # ну тогда у кипера оставь такую возможность, а в модуле дата
-        # убери ее, удалить данные - значит удалить полностью.
-        assert False
-
-        files = cls.__findFiles(ID, data_type)
-        files = cls.__selectYear(files, begin, end)
-        return files
+        records = await Keeper.get(
+            _Bar, ID=ID, data_type=data_type, begin=begin, end=end
+        )
+        return records
 
     # }}}
     @classmethod  # __getSourceClass# {{{

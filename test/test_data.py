@@ -8,6 +8,8 @@
 
 from datetime import datetime, timedelta
 
+import pytest
+
 from avin.const import *
 from avin.data import *
 from avin.utils import Cmd
@@ -70,13 +72,13 @@ def test_AssetType():  # {{{
 
 # }}}
 def test_InstrumentId():  # {{{
-    sber = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
-    assert sber.exchange == Exchange.MOEX
-    assert sber.type == AssetType.SHARE
-    assert sber.name == "Сбер Банк"
-    assert sber.ticker == "SBER"
-    assert sber.figi == "BBG004730N88"
-    assert str(sber) == "MOEX-SHARE-SBER"
+    sber = InstrumentId(
+        asset_type=AssetType.SHARE,
+        exchange=Exchange.MOEX,
+        ticker="SBER",
+        figi="BBG004730N88",
+        name="Сбер Банк",
+    )
 
     file_path = Cmd.path(Dir.TMP, "id")
     InstrumentId.save(sber, file_path)
@@ -88,133 +90,110 @@ def test_InstrumentId():  # {{{
 
 
 # }}}
-def test_Data_assets():  # {{{
-    source = Source.MOEX
-    asset_type = AssetType.INDEX
-    assets = Data.assets(source, asset_type)
-    assert len(assets) > 0
-    assert isinstance(assets[0], InstrumentId)
 
-    source = Source.TINKOFF
-    asset_type = AssetType.SHARE
-    assets = Data.assets(source, asset_type)
-    assert len(assets) > 0
-    assert isinstance(assets[0], InstrumentId)
+
+@pytest.mark.asyncio  # test_Data_cache  # {{{
+async def test_Data_cache(event_loop):
+    await Data.cache()
 
 
 # }}}
-def test_Data_find():  # {{{
-    sber = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
+@pytest.mark.asyncio  # test_Data_find  # {{{
+async def test_Data_find(event_loop):
+    id_list = await Data.find(AssetType.SHARE, Exchange.MOEX, "SBER")
+    assert len(id_list) == 1
+    sber = id_list[0]
     assert sber.name == "Сбер Банк"
     assert sber.figi == "BBG004730N88"
 
-    imoex = Data.find(Exchange.MOEX, AssetType.INDEX, "IMOEX")
+    id_list = await Data.find(AssetType.INDEX, Exchange.MOEX, "IMOEX")
+    assert len(id_list) == 1
+    imoex = id_list[0]
     assert imoex.name == "Индекс МосБиржи"
-    assert imoex.figi == None
+    assert imoex.figi == "_MOEX_IMOEX"  # my fake 'figi'
 
 
 # }}}
-def test_Data_info():  # {{{
-    gazp_id = Data.find(Exchange.MOEX, AssetType.SHARE, "GAZP")
-    full_info = Data.info(gazp_id)
+@pytest.mark.asyncio  # test_Data_info  # {{{
+async def test_Data_info(event_loop):
+    id_list = await Data.find(AssetType.SHARE, Exchange.MOEX, "GAZP")
+    assert len(id_list) == 1
+    gazp_id = id_list[0]
+
+    full_info = await Data.info(gazp_id)
     assert full_info["uid"] == "962e2a95-02a9-4171-abd7-aa198dbe643a"
     assert full_info["short_enabled_flag"] == True
-    dt = datetime(2018, 3, 7, 18, 33, tzinfo=UTC)
-    assert full_info["first_1min_candle_date"] == dt
+    assert full_info["lot"] == 10
     # and more other keys...
 
-    imoex = Data.find(Exchange.MOEX, AssetType.INDEX, "IMOEX")
-    full_info = Data.info(imoex)
+    id_list = await Data.find(AssetType.INDEX, Exchange.MOEX, "IMOEX")
+    assert len(id_list) == 1
+    imoex = id_list[0]
+
+    full_info = await Data.info(imoex)
     assert full_info["CURRENCYID"] == "RUB"
     assert full_info["BOARDID"] == "SNDX"
-    # ...
+    # and more other keys...
 
 
 # }}}
-def test_Data_firstDateTime():  # {{{
-    sber = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
-    # dt_d_moex = Data.firstDateTime(Source.MOEX, DataType.BAR_D, sber)
-    # dt_1m_moex = Data.firstDateTime(Source.MOEX, DataType.BAR_1M, sber)
-    # assert dt_1m_moex > dt_d_moex
+@pytest.mark.asyncio  # test_Data_firstDateTime  # {{{
+async def test_Data_firstDateTime(event_loop):
+    id_list = await Data.find(AssetType.SHARE, Exchange.MOEX, "SBER")
+    assert len(id_list) == 1
+    sber = id_list[0]
 
-    # dt_d_tinkoff = Data.firstDateTime(Source.TINKOFF, DataType.BAR_D, sber)
-    # dt_1m_tinkoff = Data.firstDateTime(Source.TINKOFF, DataType.BAR_1M, sber)
-    # assert dt_1m_tinkoff > dt_d_tinkoff
+    dt_d_moex = await Data.firstDateTime(Source.MOEX, DataType.BAR_D, sber)
+    dt_1m_moex = await Data.firstDateTime(Source.MOEX, DataType.BAR_1M, sber)
+    assert dt_1m_moex > dt_d_moex
+
+    dt_d_tinkoff = await Data.firstDateTime(
+        Source.TINKOFF, DataType.BAR_D, sber
+    )
+    dt_1m_tinkoff = await Data.firstDateTime(
+        Source.TINKOFF, DataType.BAR_1M, sber
+    )
+    assert dt_1m_tinkoff > dt_d_tinkoff
 
 
 # }}}
-def test_Data_download_add_clear_convert_delete():  # {{{
-    # make backup user data abio
-    backup_abio = False
-    user_abio = Cmd.path(Usr.DATA, "MOEX", "SHARE", "ABIO")
-    if Cmd.isExist(user_abio):
-        backup_abio_path = Cmd.path(Dir.TMP, "ABIO")
-        Cmd.copyDir(user_abio, backup_abio_path)
-        Cmd.deleteDir(user_abio)
-        backup_abio = True
+@pytest.mark.asyncio  # test_Data_download  # {{{
+async def test_Data_download():
+    id_list = await Data.find(AssetType.SHARE, Exchange.MOEX, "ABRD")
+    abrd = id_list[0]
 
-    # make backup user data abrd
-    backup_abrd = False
-    user_abrd = Cmd.path(Usr.DATA, "MOEX", "SHARE", "ABRD")
-    if Cmd.isExist(user_abrd):
-        backup_abrd_path = Cmd.path(Dir.TMP, "ABRD")
-        Cmd.copyDir(user_abrd, backup_abrd_path)
-        Cmd.deleteDir(user_abrd)
-        backup_abrd = True
+    # Download one asset, one year, timeframe D, from MOEX
+    await Data.download(Source.MOEX, DataType.BAR_D, abrd, 2023)
 
-    # Download one asset, one year, from MOEX
-    source = Source.MOEX
-    data_type = DataType.BAR_D
-    abio_id = Data.find(Exchange.MOEX, AssetType.SHARE, "ABIO")
-    Data.download(source, data_type, abio_id, 2024)
-    path = Cmd.path(Usr.DOWNLOAD, "moex", "SHARE", "ABIO")
-    assert Cmd.isExist(path)
 
-    # Download one asset, one year, from Tinkoff
-    source = Source.TINKOFF
-    data_type = DataType.BAR_1M
-    abrd_id = Data.find(Exchange.MOEX, AssetType.SHARE, "ABRD")
-    Data.download(source, data_type, abrd_id, 2024)
-    path = Cmd.path(Usr.DOWNLOAD, "tinkoff", "SHARE", "ABRD")
-    assert Cmd.isExist(path)
+# }}}
+@pytest.mark.asyncio  # test_Data_convert  # {{{
+async def test_Data_convert():
+    id_list = await Data.find(AssetType.SHARE, Exchange.MOEX, "ABRD")
+    abrd = id_list[0]
 
-    # test importing moex data, then clear
-    Data.add(Source.MOEX)
-    path = Cmd.path(Usr.DATA, "MOEX", "SHARE", "ABIO")
-    assert Cmd.isExist(path)
-    Data.clear(Source.MOEX)
+    # convert ABRD D -> M
+    await Data.convert(abrd, DataType.BAR_D, DataType.BAR_M)
 
-    # test importing tinkoff data, then clear
-    path = Cmd.path(Usr.DATA, "MOEX", "SHARE", "ABRD")
-    Data.add(Source.TINKOFF)
-    assert Cmd.isExist(path)
-    Data.clear(Source.TINKOFF)
 
-    # convert ABIO D -> M, then delete
-    Data.convert(abio_id, DataType.BAR_D, DataType.BAR_M)
-    path_M = Cmd.path(user_abio, "M")
-    assert Cmd.isExist(path)
-    Data.delete(abio_id, DataType.BAR_M)
-    assert not Cmd.isExist(path_M)
+# }}}
+@pytest.mark.asyncio  # test_Data_request  # {{{
+async def test_Data_request():
+    id_list = await Data.find(AssetType.SHARE, Exchange.MOEX, "ABRD")
+    abrd = id_list[0]
 
-    # convert abrd 1M -> D
-    Data.convert(abrd_id, DataType.BAR_1M, DataType.BAR_D)
-    path_D = Cmd.path(user_abrd, "D")
-    assert Cmd.isExist(path)
-    Data.delete(abrd_id, DataType.BAR_D)
-    assert not Cmd.isExist(path_D)
+    # request period is half open [begin, end)  (august 2023)
+    begin = datetime(2023, 8, 1, tzinfo=UTC)
+    end = datetime(2023, 9, 1, tzinfo=UTC)
+    records = await Data.request(abrd, DataType.BAR_D, begin, end)
+    assert records[0]["dt"] == begin
+    assert records[-1]["dt"] == end - ONE_DAY
 
-    # delete all abio, abrd
-    Cmd.deleteDir(user_abio)
-    Cmd.deleteDir(user_abrd)
-
-    # restore backup
-    if backup_abio:
-        Cmd.copyDir(backup_abio_path, user_abio)
-        Cmd.deleteDir(backup_abio_path)
-    if backup_abrd:
-        Cmd.copyDir(backup_abrd_path, user_abrd)
-        Cmd.deleteDir(backup_abrd_path)
+    # request timeframe M from all 2023 year
+    begin = datetime(2023, 1, 1, tzinfo=UTC)
+    end = datetime(2024, 1, 1, tzinfo=UTC)
+    records = await Data.request(abrd, DataType.BAR_M, begin, end)
+    assert len(records) == 12
 
 
 # }}}
