@@ -227,6 +227,7 @@ class Keeper:
         # Get class_name & choose method
         class_name = cls.__getClassName(Class)
         methods = {
+            "Source": cls.__getSource,
             "InstrumentId": cls.__getInstrumentId,
             "DataType": cls.__getDataType,
             "Data": cls.__getDataInfo,
@@ -258,7 +259,7 @@ class Keeper:
             await cls.transaction(request)
         except asyncpg.UniqueViolationError:
             logger.warning(
-                "Exchange '{exchange.name}' already exist in database"
+                f"Exchange '{exchange.name}' already exist in database"
             )
 
     # }}}
@@ -822,6 +823,26 @@ class Keeper:
             '"'
         )
         return bars_table_name
+
+    # }}}
+    @classmethod  # __getSource  # {{{
+    async def __getSource(cls, Source, kwargs: dict) -> list[DataType]:
+        logger.debug(f"{cls.__name__}.__getDataType()")
+
+        ID = kwargs["ID"]
+        data_type = kwargs["data_type"]
+
+        request = f"""
+            SELECT (source) FROM "Data"
+            WHERE
+                figi = '{ID.figi}' AND type = '{data_type.name}'
+                ;
+            """
+        records = await cls.transaction(request)
+        assert len(records) == 1
+
+        source = Source.fromRecord(records[0])
+        return source
 
     # }}}
     @classmethod  # __getInstrumentId  # {{{

@@ -495,6 +495,9 @@ class _BarsData:  # {{{
     ) -> _BarsData:
         logger.debug(f"{cls.__name__}.load({ID.ticker})")
 
+        # Request source
+        source = await Keeper.get(Source, ID=ID, data_type=data_type)
+
         # Request bars
         records = await Keeper.get(
             _Bar, ID=ID, data_type=data_type, begin=begin, end=end
@@ -506,11 +509,7 @@ class _BarsData:  # {{{
             bar = _Bar.fromRecord(i)
             bars.append(bar)
 
-        # TODO
-        # источник данных нужно доставать из таблицы Data,
-        # а не хардкорить тут Source.MOEX
-        data = _BarsData(ID, data_type, bars, Source.MOEX)
-
+        data = _BarsData(ID, data_type, bars, source)
         return data
 
     # }}}
@@ -600,18 +599,13 @@ class _InstrumentInfoCache:  # {{{
     # }}}
     @staticmethod  # encoderJson# {{{
     def encoderJson(obj):
-        # TODO: собрать сюда все что по модулю разбросано как
-        # изменения в словаре для postgres... удаление ' в двух местах там
-        # в моекс и в тиньков соурс... только как их тут
-        # ????? Все строки реплейсить - бред
-        # а если всетаки внутри кипера эти преобразования делать?
         if isinstance(obj, (datetime, date)):
             return obj.isoformat()
 
     # }}}
     @staticmethod  # decoderJson# {{{
     def decoderJson(obj):
-        # TODO:
+        # NOTE:
         # см формат файлов кэша, там слишком много деталей спецефичных
         # сейчас в MOEX файлах после чтения остаются строками разные даты:
         # "SETTLEDATE": "2024-05-31"
@@ -1742,7 +1736,7 @@ class _Manager:  # {{{
     # }}}
     @classmethod  # download{{{
     async def download(cls, ID, data_type, year):
-        # TODO
+        # NOTE
         # пока грузим все исторические данные только с MOEX
         # независимо ни от чего
         await _MoexData.download(ID, data_type, year)
@@ -1769,11 +1763,7 @@ class _Manager:  # {{{
         out_bars = converter(in_data.bars, in_type, out_type)
 
         # save converted data
-        # TODO
-        # Пока источник данных только один Source.MOEX, и он не хранится...
-        # Так что я его тут прямо беру и указываю, в будущем, источник
-        # данных нужно тоже хранить в базе, и получать от туда
-        converted_data = _BarsData(ID, out_type, out_bars, Source.MOEX)
+        converted_data = _BarsData(ID, out_type, out_bars, in_data.source)
         await _BarsData.save(converted_data)
 
     # }}}

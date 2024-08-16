@@ -20,6 +20,16 @@ class Source(enum.Enum):  # {{{
     MOEX = 1
     TINKOFF = 2
 
+    @classmethod  # fromRecord  # {{{
+    def fromRecord(cls, record):
+        string = record["source"]
+        sources = {
+            "MOEX": Source.MOEX,
+            "TINKOFF": Source.TINKOFF,
+        }
+        return sources[string]
+
+    # }}}
     @classmethod  # save# {{{
     def save(cls, source: Source, file_path: str):
         # DEPICATE
