@@ -320,10 +320,12 @@ async def test_trade(event_loop):
     assert t.orders[0].order_id == order_id
     assert t.operations[0].operation_id == operation_id
 
+    # clear all
     await Keeper.delete(operation)
     await Keeper.delete(order)
     await Keeper.delete(trade)
     await Keeper.delete(asset)
+    await Keeper.delete(strategy)
 
 
 # }}}

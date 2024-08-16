@@ -32,9 +32,12 @@ __all__ = ("Keeper",)
 
 
 class Keeper:
+    """const"""  # {{{
+
     USER = Usr.PG_USER
     DATABASE = Usr.PG_DATABASE
     HOST = Usr.PG_HOST
+    # }}}
 
     @classmethod  # transaction  # {{{
     async def transaction(cls, sql_request: str) -> list[Record]:
@@ -46,9 +49,9 @@ class Keeper:
                 database=cls.DATABASE,
                 host=cls.HOST,
             )
-            response = await conn.fetch(sql_request)
+            records = await conn.fetch(sql_request)
             await conn.close()
-            return response
+            return records
         except asyncpg.exceptions.NumericValueOutOfRangeError as err:
             logger.critical(err)
             exit(2)
@@ -70,6 +73,7 @@ class Keeper:
         await cls.__createOrderTable()
         await cls.__createOperationTable()
         await cls.__createMarketDataScheme()
+
         logger.info("Database has been created")
 
     # }}}
@@ -95,21 +99,19 @@ class Keeper:
 
         Returns a list of dictionaries with information about assets
         suitable for a request 'kwargs'
-
         """
 
         logger.debug(f"{cls.__name__}.info()")
 
-        # create source condition
+        # Create source condition
         pg_source = f"source = '{source.name}'" if source else "TRUE"
 
-        # create asset_type condition
+        # Create asset_type condition
         pg_asset_type = (
             f"type = '{asset_type.name}'" if asset_type else "TRUE"
         )
 
-        # create kwargs condition
-        # remove None values
+        # Remove None values & create kwargs condition
         none_keys = [key for key in kwargs if kwargs[key] is None]
         for i in none_keys:
             kwargs.pop(i)
@@ -119,7 +121,7 @@ class Keeper:
             json_string = json.dumps(kwargs, ensure_ascii=False)
             pg_kwargs = f"info @> '{json_string}'"
 
-        # request assets info records
+        # Request assets info records
         request = f"""
             SELECT
                 info
@@ -128,7 +130,7 @@ class Keeper:
             """
         records = await cls.transaction(request)
 
-        # create info dicts from records
+        # Create info dicts from records
         assets_info = list()
         for record in records:
             json_string = record["info"]
@@ -142,11 +144,8 @@ class Keeper:
     async def add(cls, obj: object | class_) -> None:
         logger.debug(f"{cls.__name__}.add()")
 
-        if inspect.isclass(obj):
-            class_name = obj.__name__
-        else:
-            class_name = obj.__class__.__name__
-
+        # Get class_name & choose method
+        class_name = cls.__getClassName(obj)
         methods = {
             "MOEX": cls.__addExchange,
             "SPB": cls.__addExchange,
@@ -165,8 +164,10 @@ class Keeper:
             "Limit": cls.__addOrder,
             "Stop": cls.__addOrder,
         }
-        method = methods[class_name]
-        await method(obj)
+        add_method = methods[class_name]
+
+        # Add object
+        await add_method(obj)
 
     # }}}
     @classmethod  # delete  # {{{
@@ -187,11 +188,8 @@ class Keeper:
 
         logger.debug(f"{cls.__name__}.delete()")
 
-        if inspect.isclass(obj):
-            class_name = obj.__name__
-        else:
-            class_name = obj.__class__.__name__
-
+        # Get class_name & choose method
+        class_name = cls.__getClassName(obj)
         methods = {
             "_TEST_EXCHANGE": cls.__deleteExchange,
             "MOEX": cls.__deleteExchange,
@@ -210,19 +208,18 @@ class Keeper:
             "Stop": cls.__deleteOrder,
             "_Bar": cls.__deleteBarsData,
         }
-        method = methods[class_name]
-        await method(obj, kwargs)
+        delete_method = methods[class_name]
+
+        # Delete object
+        await delete_method(obj, kwargs)
 
     # }}}
     @classmethod  # update  # {{{
     async def update(cls, obj: object | class_) -> None:
         logger.debug(f"{cls.__name__}.update()")
 
-        if inspect.isclass(obj):
-            class_name = obj.__name__
-        else:
-            class_name = obj.__class__.__name__
-
+        # Get class_name & choose method
+        class_name = cls.__getClassName(obj)
         methods = {
             "Trade": cls.__updateTrade,
             "Market": cls.__updateOrder,
@@ -230,8 +227,10 @@ class Keeper:
             "Stop": cls.__updateOrder,
             "_InstrumentInfoCache": cls.__updateCache,
         }
-        method = methods[class_name]
-        await method(obj)
+
+        # Update object
+        update_method = methods[class_name]
+        await update_method(obj)
 
     # }}}
     @classmethod  # get  # {{{
@@ -239,6 +238,8 @@ class Keeper:
         logger.debug(f"{cls.__name__}.get()")
         assert inspect.isclass(Class)
 
+        # Get class_name & choose method
+        class_name = cls.__getClassName(Class)
         methods = {
             "InstrumentId": cls.__getInstrumentId,
             "DataType": cls.__getDataType,
@@ -250,8 +251,10 @@ class Keeper:
             "Order": cls.__getOrders,
             "_Bar": cls.__getBars,
         }
-        method = methods[Class.__name__]
-        result = await method(Class, kwargs)
+        get_method = methods[class_name]
+
+        # Get object(s)
+        result = await get_method(Class, kwargs)
         return result
 
     # }}}
@@ -264,6 +267,7 @@ class Keeper:
         INSERT INTO "Exchange"(name)
         VALUES ('{exchange.name}');
         """
+
         try:
             await cls.transaction(request)
         except asyncpg.UniqueViolationError:
@@ -292,6 +296,7 @@ class Keeper:
             '{asset.figi}'
             );
         """
+
         try:
             await cls.transaction(request)
         except asyncpg.UniqueViolationError:
@@ -381,6 +386,7 @@ class Keeper:
             '{account.broker}'
             );
         """
+
         try:
             await cls.transaction(request)
         except asyncpg.UniqueViolationError:
@@ -404,6 +410,7 @@ class Keeper:
                 '{strategy.version}'
             );
         """
+
         try:
             await cls.transaction(request)
         except asyncpg.UniqueViolationError:
@@ -441,7 +448,7 @@ class Keeper:
         assert order.account_name is not None
 
         # Используется проверка типа ордера через строки...
-        # Логично было бы использовать enum Type из класса Order, например:
+        # логично было бы использовать enum Order.Type, например:
         # if order.type == Order.Type.LIMIT
         # но для этого нужно импортировать модуль order, а тогда модуль order
         # не сможет импортировать модуль keeper (circular import)
@@ -550,7 +557,6 @@ class Keeper:
                 {meta}
             );
         """
-
         await cls.transaction(request)
 
     # }}}
@@ -584,6 +590,7 @@ class Keeper:
         begin = kwargs.get("begin")
         end = kwargs.get("end")
 
+        # Create condition for begin-end:
         if begin and end:
             pg_period = f"'{begin}' <= dt AND dt < '{end}'"
         else:
@@ -615,8 +622,8 @@ class Keeper:
         request = f"""
             SELECT * FROM data."{table_name}"
             """
-        response = await cls.transaction(request)
-        if not response:
+        records = await cls.transaction(request)
+        if not records:
             request = f"""
                 DROP TABLE data."{table_name}";
                 """
@@ -651,8 +658,8 @@ class Keeper:
             WHERE
                 figi = '{ID.figi}'
             """
-        response = await cls.transaction(request)
-        if not response:
+        records = await cls.transaction(request)
+        if not records:
             request = f"""
                 DELETE FROM "Asset"
                 WHERE
@@ -677,15 +684,16 @@ class Keeper:
 
     # }}}
     @classmethod  # __deleteStrategy  # {{{
-    async def __deleteStrategy(cls, Strategy, kwargs: dict) -> None:
+    async def __deleteStrategy(cls, strategy: Strategy, kwargs: dict) -> None:
         logger.debug(f"{cls.__name__}.__deleteStrategy()")
 
-        name = kwargs["name"]
-        version = kwargs["version"]
+        name = strategy.name
+        version = strategy.version
 
         request = f"""
             DELETE FROM "Strategy"
-            WHERE name = '{name}' AND version = '{version}';
+            WHERE
+                name = '{name}' AND version = '{version}';
         """
         await cls.transaction(request)
 
@@ -817,6 +825,20 @@ class Keeper:
 
     # }}}
 
+    @classmethod  # __getClassName  # {{{
+    def __getClassName(cls, obj: object | class_) -> str:
+        logger.debug(f"{cls.__name__}.__getClassName()")
+
+        # Get object class name, 'obj' may be a class, when its Exchange
+        # like class: Exchange.MOEX
+        if inspect.isclass(obj):
+            class_name = obj.__name__
+        else:
+            class_name = obj.__class__.__name__
+
+        return class_name
+
+    # }}}
     @classmethod  # __getTableName  # {{{
     def __getTableName(cls, ID: InstrumentId, data_type: DataType) -> str:
         logger.debug(f"{cls.__name__}.__getTableName()")
@@ -843,9 +865,10 @@ class Keeper:
 
         figi = kwargs.get("figi")
 
-        # figi condition
+        # Create figi condition
         pg_figi = f"figi = '{figi}'" if figi else "TRUE"
 
+        # Request instrument IDs
         request = f"""
             SELECT
                 exchange,
@@ -858,9 +881,11 @@ class Keeper:
                 {pg_figi}
             ;
             """
-        asset_records = await cls.transaction(request)
+        records = await cls.transaction(request)
+
+        # Create 'list' of 'InstrumentId' from records
         id_list = list()
-        for i in asset_records:
+        for i in records:
             ID = InstrumentId.fromRecord(i)
             id_list.append(ID)
         return id_list
@@ -893,8 +918,11 @@ class Keeper:
 
         ID = kwargs["ID"]
 
+        # Create figi condition, that is return all table rows
+        # if 'ID' is None
         pg_id = f"figi = '{ID.figi}'" if ID else "TRUE"
 
+        # Request data info
         request = f"""
             SELECT * FROM "Data"
             WHERE
@@ -919,7 +947,7 @@ class Keeper:
         else:
             pg_period = f"'{begin}' <= dt AND dt < '{end}'"
 
-        # request
+        # request bars
         table_name = cls.__getTableName(ID, data_type)
         request = f"""
             SELECT dt, open, high, low, close, volume
@@ -940,6 +968,7 @@ class Keeper:
     # }}}
     @classmethod  # __getAsset  # {{{
     async def __getAsset(cls, Asset, kwargs: dict) -> Asset:
+        # TODO формат док стринг
         """Search asset
 
         Looks for assets only among those for which exchange data are loaded.
@@ -975,7 +1004,10 @@ class Keeper:
 
         name = kwargs.get("name")
 
+        # Create condition for name
         pg_name = f"name = '{name}'" if name else "TRUE"
+
+        # Request accounts
         request = f"""
             SELECT name, broker FROM "Account"
             WHERE
@@ -984,6 +1016,7 @@ class Keeper:
             """
         records = await cls.transaction(request)
 
+        # Create 'list' of 'Account' from 'Records'
         accounts = list()
         for i in records:
             acc = Account.fromRecord(i)
@@ -1000,7 +1033,7 @@ class Keeper:
         begin = kwargs.get("begin")
         end = kwargs.get("end")
 
-        # create condition for strategy:
+        # Create condition for strategy
         if strategy is None:
             pg_strategy = "TRUE"
         else:
@@ -1009,7 +1042,7 @@ class Keeper:
                 f"version = '{strategy.version}')"
             )
 
-        # create condition for statuses, like this:
+        # Create condition for statuses, like this:
         # (status = 'INITIAL' OR status = 'NEW' OR status = 'OPEN')
         if statuses is None:
             pg_statuses = "TRUE"
@@ -1021,12 +1054,13 @@ class Keeper:
                 i += 1
             pg_statuses += ")"
 
-        # create condition for begin datetime:
+        # Create condition for begin datetime
         pg_begin = f"dt >= '{begin}'" if begin else "TRUE"
 
-        # create condition for end datetime:
+        # Create condition for end datetime
         pg_end = f"dt < '{end}'" if end else "TRUE"
 
+        # Request trades
         request = f"""
             SELECT trade_id, dt, status, strategy, version, type, figi
             FROM "Trade"
@@ -1036,7 +1070,7 @@ class Keeper:
             """
         trade_records = await cls.transaction(request)
 
-        # create Trade objects
+        # Create 'list' of 'Trade' objects from 'Records'
         tlist = list()
         for i in trade_records:
             trade = await Trade.fromRecord(i)
@@ -1074,7 +1108,7 @@ class Keeper:
             """
         op_records = await cls.transaction(request)
 
-        # create operation objects
+        # Create 'list' of 'Operation' objects from 'Records'
         op_list = list()
         for i in op_records:
             op = Operation.fromRecord(i)
@@ -1109,7 +1143,7 @@ class Keeper:
             """
         order_records = await cls.transaction(request)
 
-        # create order objects
+        # Create 'list' of 'Order' objects from 'Records'
         order_list = list()
         for i in order_records:
             order = Order.fromRecord(i)
@@ -1209,6 +1243,7 @@ class Keeper:
                 'CANCELED'
                 );""",
         ]  # }}}
+
         for i in requests:
             await cls.transaction(i)
 
@@ -1243,6 +1278,7 @@ class Keeper:
     async def __createAssetTable(cls) -> None:
         logger.debug(f"{cls.__name__}.__createAssetTable()")
 
+        # Create asset table
         request = """
         CREATE TABLE IF NOT EXISTS "Asset" (
             figi text PRIMARY KEY,
@@ -1254,6 +1290,7 @@ class Keeper:
         """
         await cls.transaction(request)
 
+        # Create function for add asset if it is not exist
         request = """
         CREATE OR REPLACE FUNCTION add_asset_if_not_exist(
             a_figi text,
@@ -1315,6 +1352,7 @@ class Keeper:
     async def __createAccountTable(cls) -> None:
         logger.debug(f"{cls.__name__}.__createAccountTable()")
 
+        # Create account table
         request = """
         CREATE TABLE IF NOT EXISTS "Account" (
             name text PRIMARY KEY,
@@ -1323,7 +1361,7 @@ class Keeper:
         """
         await cls.transaction(request)
 
-        # if not exist, create system account for back-tester
+        # If not exist, create system account for back-tester
         request = """
         SELECT name FROM "Account"
         WHERE name = '_backtest'
@@ -1341,7 +1379,7 @@ class Keeper:
             """
             await cls.transaction(request)
 
-        # if not exist, create system account for unit-tests
+        # If not exist, create system account for unit-tests
         request = """
         SELECT name FROM "Account"
         WHERE name = '_unittest'
