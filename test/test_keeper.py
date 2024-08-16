@@ -232,6 +232,8 @@ async def test_asset(event_loop):
     records = await Keeper.transaction(request)
     assert len(records) == 0
 
+    await Keeper.delete(Exchange._TEST_EXCHANGE)
+
 
 # }}}
 @pytest.mark.asyncio  # test_account  # {{{

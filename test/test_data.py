@@ -197,3 +197,13 @@ async def test_Data_request():
 
 
 # }}}
+@pytest.mark.asyncio  # test_Data_delete  # {{{
+async def test_Data_request():
+    id_list = await Data.find(AssetType.SHARE, Exchange.MOEX, "ABRD")
+    abrd = id_list[0]
+
+    await Data.delete(abrd, DataType.BAR_D)
+    await Data.delete(abrd, DataType.BAR_M)
+
+
+# }}}
