@@ -37,7 +37,7 @@ class Keeper:
     HOST = Usr.PG_HOST
 
     @classmethod  # transaction  # {{{
-    async def transaction(cls, sql_request: str) -> None:
+    async def transaction(cls, sql_request: str) -> list[Record]:
         try:
             conn = await asyncpg.connect(
                 user=cls.USER,
@@ -120,11 +120,11 @@ class Keeper:
             FROM "Cache"
             WHERE {pg_source} AND {pg_asset_type} AND {pg_kwargs};
             """
-        res = await cls.transaction(request)
+        records = await cls.transaction(request)
 
         # extract info dicts from records
         assets_info = list()
-        for record in res:
+        for record in records:
             json_string = record["info"]
             info_dict = json.loads(json_string)
             assets_info.append(info_dict)
@@ -294,7 +294,7 @@ class Keeper:
                 )
             ;
             """
-        res = await cls.transaction(request)
+        await cls.transaction(request)
 
         # Create table if not exist
         table_name = cls.__getTableName(data.ID, data.data_type)
@@ -307,7 +307,7 @@ class Keeper:
                 '{data.first_dt}' <= dt AND dt <= '{data.last_dt}'
                 ;
             """
-        res = await cls.transaction(request)
+        await cls.transaction(request)
 
         # Format bars data in postges value
         values = ""
@@ -324,7 +324,7 @@ class Keeper:
             {values}
             ;
         """
-        res = await cls.transaction(request)
+        await cls.transaction(request)
 
         # Update table "Data" - information about availible market data
         request = f"""
@@ -334,7 +334,7 @@ class Keeper:
                 type = '{data.data_type.name}'
                 ;
             """
-        res = await cls.transaction(request)
+        await cls.transaction(request)
         request = f"""
             INSERT INTO "Data"(figi, type, source, first_dt, last_dt)
             VALUES (
@@ -345,8 +345,7 @@ class Keeper:
                 (SELECT max(dt) FROM data."{table_name}")
             );
             """
-        res = await cls.transaction(request)
-        return res
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __addAccount  # {{{
@@ -407,8 +406,7 @@ class Keeper:
                 '{trade.figi}'
                 );
             """
-        res = await cls.transaction(request)
-        return res
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __addOrder  # {{{
@@ -476,8 +474,7 @@ class Keeper:
                 {meta}
                 );
             """
-        res = await cls.transaction(request)
-        return res
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __addOperation  # {{{
@@ -527,8 +524,7 @@ class Keeper:
             );
         """
 
-        res = await cls.transaction(request)
-        return res
+        await cls.transaction(request)
 
     # }}}
 
@@ -537,8 +533,7 @@ class Keeper:
         request = f"""
         DELETE FROM "Exchange" WHERE name = '{exchange.name}';
         """
-        res = await cls.transaction(request)
-        return res
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __deleteAsset  # {{{
@@ -546,8 +541,7 @@ class Keeper:
         request = f"""
         DELETE FROM "Asset" WHERE figi = '{asset.figi}';
         """
-        res = await cls.transaction(request)
-        return res
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __deleteBarsData  # {{{
@@ -569,7 +563,7 @@ class Keeper:
             WHERE
                 {pg_period}
             """
-        res = await cls.transaction(request)
+        await cls.transaction(request)
 
         # Update table "Data" - information about availible market data
         request = f"""
@@ -582,40 +576,56 @@ class Keeper:
                 type = '{data_type.name}'
             ;
             """
-        res = await cls.transaction(request)
+        await cls.transaction(request)
 
         # Delete table & info if its empty
         request = f"""
             SELECT * FROM data."{table_name}"
             """
-        res = await cls.transaction(request)
-        if not res:
+        response = await cls.transaction(request)
+        if not response:
             request = f"""
                 DROP TABLE data."{table_name}";
                 """
-            res = await cls.transaction(request)
+            await cls.transaction(request)
             request = f"""
                 DELETE FROM "Data"
                 WHERE
                     figi = '{ID.figi}' AND
                     type = '{data_type.name}'
                 """
-            res = await cls.transaction(request)
+            await cls.transaction(request)
 
         # Delete asset if its not have market data
+        # TODO
+        # но если у этого ассета уже есть трейды... тогда
+        # его не получится удалить.
+        # И тогда надо подумать как классу Ассет делать запрос
+        # к базе данных на создание ассета...
+        # надо ли его делать через кэш, или только в таблице уже загруженных?
+        # что делать графику при запросе данных если их нет?
+        #   - ну тот то понятно - эррор, лог, и пустой список баров
+        # создавать ассет без данных наверное все таки можно...
+        # можно же выставлять ордера например не имея исторических данных
+        # так что пусть будет.
+        # Итак.
+        # Получается тогда удалять ассет из таблицы ассетов вообще
+        # не имеет смысла, один раз добавили сюда актив - и все, он тут
+        # навсегда. Хотя попытаться удалить его можно, но он удалится
+        # только если по нему нет трейдов нигде в базе. Ок.
         request = f"""
             SELECT * FROM "Data"
             WHERE
                 figi = '{ID.figi}'
             """
-        res = await cls.transaction(request)
-        if not res:
+        response = await cls.transaction(request)
+        if not response:
             request = f"""
                 DELETE FROM "Asset"
                 WHERE
                     figi = '{ID.figi}'
                 """
-            res = await cls.transaction(request)
+            await cls.transaction(request)
 
     # }}}
     @classmethod  # __deleteAccount  # {{{
@@ -639,8 +649,7 @@ class Keeper:
             DELETE FROM "Strategy"
             WHERE name = '{name}' AND version = '{version}';
         """
-        res = await cls.transaction(request)
-        return res
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __deleteTrade  # {{{
@@ -649,8 +658,7 @@ class Keeper:
             DELETE FROM "Trade"
             WHERE trade_id = '{trade.trade_id}';
             """
-        res = await cls.transaction(request)
-        return res
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __deleteOrder  # {{{
@@ -659,8 +667,7 @@ class Keeper:
             DELETE FROM "Order"
             WHERE order_id = '{order.order_id}';
             """
-        res = await cls.transaction(request)
-        return res
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __deleteOperation  # {{{
@@ -715,7 +722,7 @@ class Keeper:
                 type = '{cache.asset_type.name}'
                 ;
             """
-        res = await cls.transaction(request)
+        await cls.transaction(request)
 
         # format cache into postgres values
         def formatCache(cache: _InstrumentInfoCache) -> str:
@@ -746,11 +753,17 @@ class Keeper:
                 {values}
                 ;
         """
-        res = await cls.transaction(request)
+        await cls.transaction(request)
 
-        # TODO
-        # update "last_update" datetime
-        return res
+        # NOTE
+        # update "last_update" datetime....
+        # Сейчас это хранится в файле ./res/cache/moex/last_update
+        # хотя потом можно будет создать отдельную таблицу и в нее свести
+        # даты всех возможных апдейтов, когдда обновляли последний раз
+        # кэш, исторические данные, когда строили отчеты... когда там еще
+        # что нибудь. Пока это рано. Пока пусть в файлах - это более гибко.
+        # когда выработается понимание какие даты будут храниться, тогда
+        # и делать таблицу
 
     # }}}
 
@@ -841,11 +854,11 @@ class Keeper:
             ORDER BY dt
             ;
             """
-        res = await cls.transaction(request)
+        records = await cls.transaction(request)
 
         # create bars from records
         bars = list()
-        for i in res:
+        for i in records:
             bar = Bar.fromRecord(i)
             bars.append(bar)
         return bars
@@ -1124,8 +1137,7 @@ class Keeper:
             info jsonb
             );
         """
-        res = await cls.transaction(request)
-        return res
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __createExchangeTable  # {{{
@@ -1135,8 +1147,7 @@ class Keeper:
             name text PRIMARY KEY
             );
         """
-        res = await cls.transaction(request)
-        return res
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __createAssetTable  # {{{
@@ -1150,7 +1161,7 @@ class Keeper:
             name text
             );
         """
-        res = await cls.transaction(request)
+        await cls.transaction(request)
 
         request = """
         CREATE OR REPLACE FUNCTION add_asset_if_not_exist(
@@ -1173,8 +1184,7 @@ class Keeper:
             END;
         $$;
         """
-        res = await cls.transaction(request)
-        return res
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __createDataTable  # {{{
@@ -1188,9 +1198,7 @@ class Keeper:
             last_dt TIMESTAMP WITH TIME ZONE
             );
         """
-        res = await cls.transaction(request)
-
-        return res
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __createBarsDataTable  # {{{
@@ -1205,8 +1213,7 @@ class Keeper:
             volume bigint
             );
             """
-        res = await cls.transaction(request)
-        return res
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __createAccountTable  # {{{
@@ -1217,15 +1224,15 @@ class Keeper:
             broker text
             );
         """
-        res = await cls.transaction(request)
+        await cls.transaction(request)
 
         # if not exist, create system account for back-tester
         request = """
         SELECT name FROM "Account"
         WHERE name = '_backtest'
         """
-        res = await cls.transaction(request)
-        if not res:
+        records = await cls.transaction(request)
+        if not records:
             request = """
             INSERT INTO "Account" (
                 name,
@@ -1235,15 +1242,15 @@ class Keeper:
                 ('_backtest', 'ArsVincere')
                 ;
             """
-            res = await cls.transaction(request)
+            await cls.transaction(request)
 
         # if not exist, create system account for unit-tests
         request = """
         SELECT name FROM "Account"
         WHERE name = '_unittest'
         """
-        res = await cls.transaction(request)
-        if not res:
+        records = await cls.transaction(request)
+        if not records:
             request = """
             INSERT INTO "Account" (
                 name,
@@ -1253,9 +1260,7 @@ class Keeper:
                 ('_unittest', 'ArsVincere')
                 ;
             """
-            res = await cls.transaction(request)
-
-        return res
+            await cls.transaction(request)
 
     # }}}
     @classmethod  # __createStrategyTable  # {{{
@@ -1267,8 +1272,7 @@ class Keeper:
             CONSTRAINT strategy_pkey PRIMARY KEY (name, version)
             );
         """
-        res = await cls.transaction(request)
-        return res
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __createTradeTable  # {{{
@@ -1287,8 +1291,7 @@ class Keeper:
                 REFERENCES "Strategy" (name, version)
 			);
             """
-        res = await cls.transaction(request)
-        return res
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __createOrderTable  # {{{
@@ -1312,8 +1315,7 @@ class Keeper:
 			meta            text
 			);
             """
-        res = await cls.transaction(request)
-        return res
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __createOperationTable  # {{{
@@ -1335,8 +1337,7 @@ class Keeper:
 			meta            text
 			);
             """
-        res = await cls.transaction(request)
-        return res
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __createMarketDataScheme  # {{{
@@ -1344,8 +1345,7 @@ class Keeper:
         request = """
         CREATE SCHEMA IF NOT EXISTS data
         """
-        res = await cls.transaction(request)
-        return res
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __getTableName  # {{{
