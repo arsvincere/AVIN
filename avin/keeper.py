@@ -38,6 +38,8 @@ class Keeper:
 
     @classmethod  # transaction  # {{{
     async def transaction(cls, sql_request: str) -> list[Record]:
+        logger.debug(f"{cls.__name__}.transaction()\n{sql_request}")
+
         try:
             conn = await asyncpg.connect(
                 user=cls.USER,
@@ -49,12 +51,13 @@ class Keeper:
             return response
         except asyncpg.exceptions.NumericValueOutOfRangeError as err:
             logger.critical(err)
-            logger.critical(f"Request:\n{sql_request}")
             exit(2)
 
     # }}}
     @classmethod  # createDataBase  # {{{
     async def createDataBase(cls) -> None:
+        logger.debug(f"{cls.__name__}.createDataBase()")
+
         os.system(f"createdb {cls.DATABASE}")
         await cls.__createEnums()
         await cls.__createCacheTable()
@@ -72,6 +75,8 @@ class Keeper:
     # }}}
     @classmethod  # dropDataBase  # {{{
     async def dropDataBase(cls) -> None:
+        logger.debug(f"{cls.__name__}.dropDataBase()")
+
         if not askUser("Delete database?"):
             return
 
@@ -93,10 +98,7 @@ class Keeper:
 
         """
 
-        # remove None values
-        none_keys = [key for key in kwargs if kwargs[key] is None]
-        for i in none_keys:
-            kwargs.pop(i)
+        logger.debug(f"{cls.__name__}.info()")
 
         # create source condition
         pg_source = f"source = '{source.name}'" if source else "TRUE"
@@ -106,7 +108,11 @@ class Keeper:
             f"type = '{asset_type.name}'" if asset_type else "TRUE"
         )
 
-        # create kwarg condition
+        # create kwargs condition
+        # remove None values
+        none_keys = [key for key in kwargs if kwargs[key] is None]
+        for i in none_keys:
+            kwargs.pop(i)
         if not kwargs:
             pg_kwargs = "TRUE"
         else:
@@ -122,7 +128,7 @@ class Keeper:
             """
         records = await cls.transaction(request)
 
-        # extract info dicts from records
+        # create info dicts from records
         assets_info = list()
         for record in records:
             json_string = record["info"]
@@ -134,6 +140,8 @@ class Keeper:
     # }}}
     @classmethod  # add  # {{{
     async def add(cls, obj: object | class_) -> None:
+        logger.debug(f"{cls.__name__}.add()")
+
         if inspect.isclass(obj):
             class_name = obj.__name__
         else:
@@ -177,6 +185,8 @@ class Keeper:
         # сделай это отдельным комитом отдельно именно этот файл
         # так чтобы его если что можно было вернуть
 
+        logger.debug(f"{cls.__name__}.delete()")
+
         if inspect.isclass(obj):
             class_name = obj.__name__
         else:
@@ -206,6 +216,8 @@ class Keeper:
     # }}}
     @classmethod  # update  # {{{
     async def update(cls, obj: object | class_) -> None:
+        logger.debug(f"{cls.__name__}.update()")
+
         if inspect.isclass(obj):
             class_name = obj.__name__
         else:
@@ -224,6 +236,7 @@ class Keeper:
     # }}}
     @classmethod  # get  # {{{
     async def get(cls, Class, **kwargs) -> Any:
+        logger.debug(f"{cls.__name__}.get()")
         assert inspect.isclass(Class)
 
         methods = {
@@ -245,6 +258,8 @@ class Keeper:
 
     @classmethod  # __addExchange  # {{{
     async def __addExchange(cls, exchange: Exchange) -> None:
+        logger.debug(f"{cls.__name__}.__addExchange()")
+
         request = f"""
         INSERT INTO "Exchange"(name)
         VALUES ('{exchange.name}');
@@ -259,6 +274,8 @@ class Keeper:
     # }}}
     @classmethod  # __addAsset  # {{{
     async def __addAsset(cls, asset: Asset | Id) -> None:
+        logger.debug(f"{cls.__name__}.__addAsset()")
+
         request = f"""
         INSERT INTO "Asset" (
             exchange,
@@ -283,6 +300,8 @@ class Keeper:
     # }}}
     @classmethod  # __addBarsData  # {{{
     async def __addBarsData(cls, data: _BarsData) -> None:
+        logger.debug(f"{cls.__name__}.__addBarsData()")
+
         # Create new Asset if not exist
         request = f"""
             SELECT add_asset_if_not_exist(
@@ -350,6 +369,8 @@ class Keeper:
     # }}}
     @classmethod  # __addAccount  # {{{
     async def __addAccount(cls, account: Account) -> None:
+        logger.debug(f"{cls.__name__}.__addAccount()")
+
         request = f"""
         INSERT INTO "Account" (
             name,
@@ -371,6 +392,8 @@ class Keeper:
     # }}}
     @classmethod  # __addStrategy  # {{{
     async def __addStrategy(cls, strategy: Strategy) -> None:
+        logger.debug(f"{cls.__name__}.__addStrategy()")
+
         request = f"""
             INSERT INTO "Strategy" (
                 name,
@@ -392,6 +415,8 @@ class Keeper:
     # }}}
     @classmethod  # __addTrade  # {{{
     async def __addTrade(cls, trade: Trade) -> None:
+        logger.debug(f"{cls.__name__}.__addTrade()")
+
         request = f"""
             INSERT INTO "Trade" (
                 trade_id, dt, status, strategy, version, type, figi
@@ -411,6 +436,7 @@ class Keeper:
     # }}}
     @classmethod  # __addOrder  # {{{
     async def __addOrder(cls, order: Order) -> None:
+        logger.debug(f"{cls.__name__}.__addOrder()")
         assert order.trade_id is not None
         assert order.account_name is not None
 
@@ -479,6 +505,7 @@ class Keeper:
     # }}}
     @classmethod  # __addOperation  # {{{
     async def __addOperation(cls, operation: Operation) -> None:
+        logger.debug(f"{cls.__name__}.__addOperation()")
         assert operation.trade_id is not None
         assert operation.order_id is not None
 
@@ -530,6 +557,8 @@ class Keeper:
 
     @classmethod  # __deleteExchange  # {{{
     async def __deleteExchange(cls, exchange: Exchange, kwargs: dict) -> None:
+        logger.debug(f"{cls.__name__}.__deleteExchange()")
+
         request = f"""
         DELETE FROM "Exchange" WHERE name = '{exchange.name}';
         """
@@ -538,6 +567,8 @@ class Keeper:
     # }}}
     @classmethod  # __deleteAsset  # {{{
     async def __deleteAsset(cls, asset: Asset, kwargs: dict) -> None:
+        logger.debug(f"{cls.__name__}.__deleteAsset()")
+
         request = f"""
         DELETE FROM "Asset" WHERE figi = '{asset.figi}';
         """
@@ -546,6 +577,8 @@ class Keeper:
     # }}}
     @classmethod  # __deleteBarsData  # {{{
     async def __deleteBarsData(cls, _Bar: class_, kwargs: dict) -> None:
+        logger.debug(f"{cls.__name__}.__deleteBarsData()")
+
         ID = kwargs["ID"]
         data_type = kwargs["data_type"]
         begin = kwargs.get("begin")
@@ -634,6 +667,9 @@ class Keeper:
         # принимали сам объект - можно стандартизировать
         # пусть тоже принимают класс и словарь, а то хуйня какая то
         # получается а не интерфейс
+
+        logger.debug(f"{cls.__name__}.__deleteAccount()")
+
         request = f"""
         DELETE FROM "Account" WHERE name = '{account.name}';
         """
@@ -642,6 +678,8 @@ class Keeper:
     # }}}
     @classmethod  # __deleteStrategy  # {{{
     async def __deleteStrategy(cls, Strategy, kwargs: dict) -> None:
+        logger.debug(f"{cls.__name__}.__deleteStrategy()")
+
         name = kwargs["name"]
         version = kwargs["version"]
 
@@ -654,6 +692,8 @@ class Keeper:
     # }}}
     @classmethod  # __deleteTrade  # {{{
     async def __deleteTrade(cls, trade: Trade, kwargs: dict) -> None:
+        logger.debug(f"{cls.__name__}.__deleteTrade()")
+
         request = f"""
             DELETE FROM "Trade"
             WHERE trade_id = '{trade.trade_id}';
@@ -663,6 +703,8 @@ class Keeper:
     # }}}
     @classmethod  # __deleteOrder  # {{{
     async def __deleteOrder(cls, order: Order, kwargs: dict) -> None:
+        logger.debug(f"{cls.__name__}.__deleteOrder()")
+
         request = f"""
             DELETE FROM "Order"
             WHERE order_id = '{order.order_id}';
@@ -674,6 +716,8 @@ class Keeper:
     async def __deleteOperation(
         cls, operation: Operation, kwargs: dict
     ) -> None:
+        logger.debug(f"{cls.__name__}.__deleteOperation()")
+
         request = f"""
             DELETE FROM "Operation"
             WHERE
@@ -685,6 +729,8 @@ class Keeper:
 
     @classmethod  # __updateTrade  # {{{
     async def __updateTrade(cls, trade: Trade) -> None:
+        logger.debug(f"{cls.__name__}.__updateTrade()")
+
         request = f"""
             UPDATE "Trade"
             SET
@@ -702,6 +748,8 @@ class Keeper:
     # }}}
     @classmethod  # __updateOrder  # {{{
     async def __updateOrder(cls, order: Order) -> None:
+        logger.debug(f"{cls.__name__}.__updateOrder()")
+
         request = f"""
             UPDATE "Order"
             SET
@@ -714,6 +762,8 @@ class Keeper:
     # }}}
     @classmethod  # __updateCache  # {{{
     async def __updateCache(cls, cache: _InstrumentInfoCache) -> None:
+        logger.debug(f"{cls.__name__}.__updateCache()")
+
         # delete old cache
         request = f"""
             DELETE FROM "Cache"
@@ -767,12 +817,30 @@ class Keeper:
 
     # }}}
 
+    @classmethod  # __getTableName  # {{{
+    def __getTableName(cls, ID: InstrumentId, data_type: DataType) -> str:
+        logger.debug(f"{cls.__name__}.__getTableName()")
+
+        # TODO: подумать а может включить сюда сразу схему 'data'
+        # возвращать имя таблицы полное:
+        # data."MOEX_SHARE_SBER_D"
+        # вместо того что сейчас:
+        # MOEX_SHARE_SBER_D
+        # мне кажется лучше да, переделать этот момент
+        table_name = (
+            f"{ID.exchange.name}_{ID.type.name}_{ID.ticker}_{data_type.value}"
+        )
+        return table_name
+
+    # }}}
     @classmethod  # __getInstrumentId  # {{{
     async def __getInstrumentId(
         cls,
         InstrumentId,
         kwargs: dict,
     ) -> list[InstrumentId]:
+        logger.debug(f"{cls.__name__}.__getInstrumentId()")
+
         figi = kwargs.get("figi")
 
         # figi condition
@@ -800,6 +868,8 @@ class Keeper:
     # }}}
     @classmethod  # __getDataType  # {{{
     async def __getDataType(cls, DataType, kwargs: dict) -> list[DataType]:
+        logger.debug(f"{cls.__name__}.__getDataType()")
+
         ID = kwargs["ID"]
 
         request = f"""
@@ -819,6 +889,8 @@ class Keeper:
     # }}}
     @classmethod  # __getDataInfo  # {{{
     async def __getDataInfo(cls, Data, kwargs: dict) -> list[Record]:
+        logger.debug(f"{cls.__name__}.__getDataInfo()")
+
         ID = kwargs["ID"]
 
         pg_id = f"figi = '{ID.figi}'" if ID else "TRUE"
@@ -834,6 +906,8 @@ class Keeper:
     # }}}
     @classmethod  # __getBars  # {{{
     async def __getBars(cls, Bar, kwargs: dict) -> list[Bar | _Bar]:
+        logger.debug(f"{cls.__name__}.__getBars()")
+
         ID = kwargs["ID"]
         data_type = kwargs["data_type"]
         begin: datatime = kwargs.get("begin")
@@ -871,6 +945,9 @@ class Keeper:
         Looks for assets only among those for which exchange data are loaded.
         Returns the asset.
         """
+
+        logger.debug(f"{cls.__name__}.__getAsset()")
+
         # TODO добавить поиск по тикеру типу и бирже
         figi = kwargs.get("figi")
 
@@ -894,6 +971,8 @@ class Keeper:
     # }}}
     @classmethod  # __getAccount  # {{{
     async def __getAccount(cls, Account, kwargs: dict) -> list[Account]:
+        logger.debug(f"{cls.__name__}.__getAccount()")
+
         name = kwargs.get("name")
 
         pg_name = f"name = '{name}'" if name else "TRUE"
@@ -914,6 +993,8 @@ class Keeper:
     # }}}
     @classmethod  # __getTrades  # {{{
     async def __getTrades(cls, Trade, kwargs: dict) -> list[Trades]:
+        logger.debug(f"{cls.__name__}.__getTrades()")
+
         strategy = kwargs.get("strategy")
         statuses = kwargs.get("status")
         begin = kwargs.get("begin")
@@ -968,8 +1049,9 @@ class Keeper:
     async def __getOperations(
         cls, Operation, kwargs: dict
     ) -> list[Operation]:
-        trade_id = kwargs.get("trade_id")
+        logger.debug(f"{cls.__name__}.__getOperations()")
 
+        trade_id = kwargs.get("trade_id")
         request = f"""
             SELECT
                 operation_id,
@@ -1003,8 +1085,9 @@ class Keeper:
     # }}}
     @classmethod  # __getOrders  # {{{
     async def __getOrders(cls, Order, kwargs: dict) -> list[Order]:
-        trade_id = kwargs.get("trade_id")
+        logger.debug(f"{cls.__name__}.__getOrders()")
 
+        trade_id = kwargs.get("trade_id")
         request = f"""
             SELECT
                 order_id,
@@ -1038,6 +1121,8 @@ class Keeper:
 
     @classmethod  # __createEnums  # {{{
     async def __createEnums(cls) -> None:
+        logger.debug(f"{cls.__name__}.__createEnums()")
+
         requests = [  # {{{
             """DROP TYPE IF EXISTS public."DataSource";""",
             """ CREATE TYPE "DataSource" AS ENUM (
@@ -1130,6 +1215,8 @@ class Keeper:
     # }}}
     @classmethod  # __createCacheTable  # {{{
     async def __createCacheTable(cls) -> None:
+        logger.debug(f"{cls.__name__}.__createCacheTable()")
+
         request = """
         CREATE TABLE IF NOT EXISTS "Cache" (
             source "DataSource",
@@ -1142,6 +1229,8 @@ class Keeper:
     # }}}
     @classmethod  # __createExchangeTable  # {{{
     async def __createExchangeTable(cls) -> None:
+        logger.debug(f"{cls.__name__}.__createExchangeTable()")
+
         request = """
         CREATE TABLE IF NOT EXISTS "Exchange" (
             name text PRIMARY KEY
@@ -1152,6 +1241,8 @@ class Keeper:
     # }}}
     @classmethod  # __createAssetTable  # {{{
     async def __createAssetTable(cls) -> None:
+        logger.debug(f"{cls.__name__}.__createAssetTable()")
+
         request = """
         CREATE TABLE IF NOT EXISTS "Asset" (
             figi text PRIMARY KEY,
@@ -1189,6 +1280,8 @@ class Keeper:
     # }}}
     @classmethod  # __createDataTable  # {{{
     async def __createDataTable(cls) -> None:
+        logger.debug(f"{cls.__name__}.__createDataTable()")
+
         request = """
         CREATE TABLE IF NOT EXISTS "Data" (
             figi text REFERENCES "Asset"(figi),
@@ -1203,6 +1296,8 @@ class Keeper:
     # }}}
     @classmethod  # __createBarsDataTable  # {{{
     async def __createBarsDataTable(cls, table_name: str) -> None:
+        logger.debug(f"{cls.__name__}.__createBarsDataTable()")
+
         request = f"""
         CREATE TABLE IF NOT EXISTS data."{table_name}" (
             dt TIMESTAMP WITH TIME ZONE PRIMARY KEY,
@@ -1218,6 +1313,8 @@ class Keeper:
     # }}}
     @classmethod  # __createAccountTable  # {{{
     async def __createAccountTable(cls) -> None:
+        logger.debug(f"{cls.__name__}.__createAccountTable()")
+
         request = """
         CREATE TABLE IF NOT EXISTS "Account" (
             name text PRIMARY KEY,
@@ -1265,6 +1362,8 @@ class Keeper:
     # }}}
     @classmethod  # __createStrategyTable  # {{{
     async def __createStrategyTable(cls) -> None:
+        logger.debug(f"{cls.__name__}.__createStrategyTable()")
+
         request = """
         CREATE TABLE IF NOT EXISTS "Strategy" (
             name text,
@@ -1277,6 +1376,8 @@ class Keeper:
     # }}}
     @classmethod  # __createTradeTable  # {{{
     async def __createTradeTable(cls) -> None:
+        logger.debug(f"{cls.__name__}.__createTradeTable()")
+
         request = """
         CREATE TABLE IF NOT EXISTS "Trade" (
             trade_id    float PRIMARY KEY,
@@ -1296,6 +1397,8 @@ class Keeper:
     # }}}
     @classmethod  # __createOrderTable  # {{{
     async def __createOrderTable(cls) -> None:
+        logger.debug(f"{cls.__name__}.__createOrderTable()")
+
         # TODO добавить частично исполненный - сколько там уже исполнено
         request = """
         CREATE TABLE IF NOT EXISTS "Order" (
@@ -1320,6 +1423,8 @@ class Keeper:
     # }}}
     @classmethod  # __createOperationTable  # {{{
     async def __createOperationTable(cls) -> None:
+        logger.debug(f"{cls.__name__}.__createOperationTable()")
+
         request = """
         CREATE TABLE IF NOT EXISTS "Operation" (
             operation_id    float PRIMARY KEY,
@@ -1342,23 +1447,11 @@ class Keeper:
     # }}}
     @classmethod  # __createMarketDataScheme  # {{{
     async def __createMarketDataScheme(cls) -> None:
+        logger.debug(f"{cls.__name__}.__createMarketDataScheme()")
+
         request = """
         CREATE SCHEMA IF NOT EXISTS data
         """
         await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __getTableName  # {{{
-    def __getTableName(cls, ID: InstrumentId, data_type: DataType) -> str:
-        # TODO: подумать а может включить сюда сразу схему 'data'
-        # возвращать имя таблицы полное:
-        # data."MOEX_SHARE_SBER_D"
-        # вместо того что сейчас:
-        # MOEX_SHARE_SBER_D
-        # мне кажется лучше да, переделать этот момент
-        table_name = (
-            f"{ID.exchange.name}_{ID.type.name}_{ID.ticker}_{data_type.value}"
-        )
-        return table_name
 
     # }}}
