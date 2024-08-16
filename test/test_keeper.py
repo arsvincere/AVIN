@@ -77,6 +77,31 @@ async def test_exchange(event_loop):
 
 
 # }}}
+@pytest.mark.asyncio  # test_instrument_id  # {{{
+async def test_instrument_id(event_loop):
+    # create fake share
+    share_id = InstrumentId(
+        AssetType.SHARE,
+        Exchange._TEST_EXCHANGE,
+        ticker="ORIK",
+        figi="bbyby",
+        name="ООО Рога и Копыта",
+    )
+    # add instrument id into db
+    await Keeper.add(Exchange._TEST_EXCHANGE)
+    await Keeper.add(share_id)
+
+    # get instrument id
+    ids = await Keeper.get(InstrumentId, figi="bbyby")
+    assert len(ids) == 1
+    assert share_id == ids[0]
+
+    # clear all
+    await Keeper.delete(share_id)
+    await Keeper.delete(Exchange._TEST_EXCHANGE)
+
+
+# }}}
 @pytest.mark.asyncio  # test_bars_data  # {{{
 async def test_bars_data(event_loop):
     # create fake share and bars data
@@ -131,9 +156,9 @@ async def test_bars_data(event_loop):
     received_bars = await Keeper.get(_Bar, ID=share_id, data_type=data_type)
 
     # Compare the data
-    assert received_bars[0].vol == 100
-    assert received_bars[1].vol == 200
-    assert received_bars[4].vol == 500
+    assert received_bars[0]["volume"] == 100
+    assert received_bars[1]["volume"] == 200
+    assert received_bars[4]["volume"] == 500
 
     # get bars data from period  [begin, end)
     begin = datetime(2024, 8, 16)
@@ -142,8 +167,8 @@ async def test_bars_data(event_loop):
         _Bar, ID=share_id, data_type=data_type, begin=begin, end=end
     )
     assert len(received_bars) == 2
-    assert received_bars[0] == b2
-    assert received_bars[1] == b3
+    assert received_bars[0]["open"] == b2.open
+    assert received_bars[1]["open"] == b3.open
 
     # get bars data from period where database not has bars
     begin = datetime(2024, 1, 1)
@@ -160,37 +185,13 @@ async def test_bars_data(event_loop):
 
 
 # }}}
-@pytest.mark.asyncio  # test_instrument_id  # {{{
-async def test_instrument_id(event_loop):
-    # create fake share
+@pytest.mark.asyncio  # test_asset  # {{{
+async def test_asset(event_loop):
+    # create fake share and exchange
+    await Keeper.add(Exchange._TEST_EXCHANGE)
     share_id = InstrumentId(
         AssetType.SHARE,
         Exchange._TEST_EXCHANGE,
-        ticker="ORIK",
-        figi="bbyby",
-        name="ООО Рога и Копыта",
-    )
-    # add instrument id into db
-    await Keeper.add(Exchange._TEST_EXCHANGE)
-    await Keeper.add(share_id)
-
-    # get instrument id
-    ids = await Keeper.get(InstrumentId, figi="bbyby")
-    assert len(ids) == 1
-    assert share_id == ids[0]
-
-    # clear all
-    await Keeper.delete(share_id)
-    await Keeper.delete(Exchange._TEST_EXCHANGE)
-
-
-# }}}
-@pytest.mark.asyncio  # test_asset  # {{{
-async def test_asset(event_loop):
-    # create fake share
-    share_id = InstrumentId(
-        AssetType.SHARE,
-        Exchange.MOEX,
         ticker="ORIK",
         figi="bbyby",
         name="ООО Рога и Копыта",
@@ -200,7 +201,7 @@ async def test_asset(event_loop):
     # share not in db
     request = """
         SELECT exchange, type, ticker, figi, name FROM "Asset"
-        WHERE ticker = 'ORIK' AND exchange = 'MOEX'
+        WHERE figi = 'bbyby'
         """
     records = await Keeper.transaction(request)
     assert len(records) == 0
@@ -209,24 +210,24 @@ async def test_asset(event_loop):
     await Keeper.add(share)
     request = """
         SELECT exchange, type, ticker, figi, name FROM "Asset"
-        WHERE ticker = 'ORIK' AND exchange = 'MOEX'
+        WHERE figi = 'bbyby'
         """
     records = await Keeper.transaction(request)
     assert len(records) == 1
 
     # get share from db
-    received_abio = await Keeper.get(Asset, figi=share.figi)
-    assert share.name == received_abio.name
-    assert share.figi == received_abio.figi
-    assert share.ticker == received_abio.ticker
-    assert share.type == received_abio.type
-    assert share.exchange == received_abio.exchange
+    received_share = await Keeper.get(Asset, figi=share.figi)
+    assert share.name == received_share.name
+    assert share.figi == received_share.figi
+    assert share.ticker == received_share.ticker
+    assert share.type == received_share.type
+    assert share.exchange == received_share.exchange
 
     # delete share from db
     await Keeper.delete(share)
     request = """
         SELECT exchange, type, ticker, figi, name FROM "Asset"
-        WHERE ticker = 'ORIK' AND exchange = 'MOEX'
+        WHERE figi = 'bbyby'
         """
     records = await Keeper.transaction(request)
     assert len(records) == 0
@@ -252,7 +253,7 @@ async def test_account(event_loop):
 async def test_strategy(event_loop):
     strategy = Strategy("pytest", "v0")
     await Keeper.add(strategy)
-    await Keeper.delete(Strategy, name="pytest", version="v0")
+    await Keeper.delete(strategy)
 
 
 # }}}

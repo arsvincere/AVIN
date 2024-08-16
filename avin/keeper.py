@@ -662,13 +662,10 @@ class Keeper:
     async def __deleteStrategy(cls, strategy: Strategy, kwargs: dict) -> None:
         logger.debug(f"{cls.__name__}.__deleteStrategy()")
 
-        name = strategy.name
-        version = strategy.version
-
         request = f"""
             DELETE FROM "Strategy"
             WHERE
-                name = '{name}' AND version = '{version}';
+                name = '{strategy.name}' AND version = '{strategy.version}';
         """
         await cls.transaction(request)
 
