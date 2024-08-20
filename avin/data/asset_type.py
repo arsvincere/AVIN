@@ -34,6 +34,13 @@ class AssetType(enum.Enum):  # {{{
         return types[string]
 
     # }}}
+    @classmethod  # fromRecord# {{{
+    def fromRecord(cls, record):
+        string_name = record["type"]
+        asset_type = cls.fromStr(string_name)
+        return asset_type
+
+    # }}}
 
 
 # }}}
