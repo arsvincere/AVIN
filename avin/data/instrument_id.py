@@ -11,6 +11,7 @@ from __future__ import annotations
 from avin.const import Usr
 from avin.data.asset_type import AssetType
 from avin.data.exchange import Exchange
+from avin.keeper import Keeper
 from avin.utils import Cmd
 
 
@@ -128,6 +129,14 @@ class InstrumentId:  # {{{
             ticker=record["ticker"],
             figi=record["figi"],
         )
+        return ID
+
+    # }}}
+    @classmethod  # byFigi# {{{
+    async def byFigi(cls, figi) -> InstrumentId:
+        id_list = await Keeper.get(InstrumentId, figi=figi)
+        assert len(id_list) == 1
+        ID = id_list[0]
         return ID
 
     # }}}
