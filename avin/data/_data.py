@@ -22,7 +22,6 @@ from avin.const import (
     DAY_END,
     ONE_DAY,
     ONE_WEEK,
-    ONE_YEAR,
     Dir,
     Res,
     Usr,
@@ -190,7 +189,7 @@ class Data:  # {{{
 
     # }}}
     @classmethod  # updateAll# {{{
-    async def updateAll(cls) -> bool:
+    async def updateAll(cls) -> None:
         await _Manager.updateAll()
 
     # }}}
@@ -1034,6 +1033,11 @@ class _MoexData(_AbstractSource):  # {{{
         begin: datetime,
         end: datetime,
     ):
+        # TODO
+        # можно же сделать запрос по 10.000 баров.
+        # начиная с бегин, и до тех пор пока меньше энд..
+        # и не нужен будет этот геморой с small / big timeframe
+        # и выкачивать быстрее будет
         period = data_type.toTimedelta()
         if period < ONE_DAY:
             return cls.__requestCandlesSmallTimeFrame(
@@ -1719,7 +1723,7 @@ class _Manager:  # {{{
 
     # }}}
     @classmethod  # cacheAssetsInfo  # {{{
-    async def cacheAssetsInfo(cls):
+    async def cacheAssetsInfo(cls) -> None:
         logger.info(":: Start caching assets info")
         for i in Source:
             class_ = cls.__getSourceClass(i)
@@ -1728,14 +1732,14 @@ class _Manager:  # {{{
 
     # }}}
     @classmethod  # firstDateTime{{{
-    async def firstDateTime(cls, source, ID, data_type):
+    async def firstDateTime(cls, source, ID, data_type) -> datetime:
         class_ = cls.__getSourceClass(source)
         dt = await class_.firstDateTime(ID, data_type)
         return dt
 
     # }}}
     @classmethod  # download{{{
-    async def download(cls, ID, data_type, year):
+    async def download(cls, ID, data_type, year) -> None:
         # NOTE
         # пока грузим все исторические данные только с MOEX
         # независимо ни от чего
@@ -1745,7 +1749,7 @@ class _Manager:  # {{{
     @classmethod  # convert# {{{
     async def convert(
         cls, ID: InstrumentId, in_type: DataType, out_type: DataType
-    ):
+    ) -> None:
         logger.info(
             f":: Convert {ID.ticker}-{in_type.value} -> {out_type.value}"
         )
@@ -1772,59 +1776,28 @@ class _Manager:  # {{{
         cls,
         ID: InstrumentId,
         data_type: DataType,
-    ):
+    ) -> None:
         logger.info(f":: Delete {ID.ticker}-{data_type.value}")
         await _BarsData.delete(ID, data_type)
         logger.info("  - complete")
 
     # }}}
-    @classmethod  # update# {{{
-    async def update(cls, ID: InstrumentId, data_type: DataType):
-        # TODO
-        # пока сделаю проще - запрос данных за последние 365 дней
-        # если там что то есть - считаем что данные есть
-        end = now()
-        begin = end - ONE_YEAR
-        data = await _BarsData.load(ID, data_type, begin, end)
-        if not data.bars:
-            logger.error(
-                f"No data for {ID.ticker}-{data_type.value}. "
-                f"Operation canceled."
-            )
-            return
-
-        # request new bars from data source
-        begin = data.last_dt + data.type.toTimedelta()
-        end = now().replace(microsecond=0)
-        source_class = cls.__getSourceClass(data.source)
-        new_bars = await source_class.getHistoricalBars(
-            data.ID, data.type, begin, end
-        )
-
-        # check: is new bars found
-        count = len(new_bars)
-        if count == 0:
-            logger.info("  - no new bars")
-            return
-
-        # save new bars
-        logger.info(f"  - received {count} bars -> {new_bars[-1].dt}")
-        new_data = _BarsData(data.ID, data.type, new_bars, data.source)
-        await _BarsData.save(new_data)
+    @classmethod  # update{{{
+    async def update(cls, ID: InstrumentId, data_type: DataType) -> None:
+        # request info about availible data
+        records = await Keeper.get(Data, ID=ID, data_type=data_type)
+        assert len(records) == 1
+        record = records[0]
+        await cls.__update(record)
 
     # }}}
-    @classmethod  # updateAll# {{{
-    async def updateAll(cls):
+    @classmethod  # updateAll{{{
+    async def updateAll(cls) -> None:
         logger.info(":: Update all market data")
 
-        # get info about all abailible market data
-        all_instrument_id = await Keeper.get(InstrumentId, figi=None)
-        count = len(all_instrument_id)
-        for n, ID in enumerate(all_instrument_id, 1):
-            logger.info(f"{n}/{count}: {ID.ticker}")
-            data_types = await Keeper.get(DataType, ID=ID)
-            for typ in data_types:
-                await cls.update(ID, typ)
+        records = await Keeper.get(Data)
+        for record in records:
+            await cls.__update(record)
 
     # }}}
     @classmethod  # request# {{{
@@ -1995,6 +1968,35 @@ class _Manager:  # {{{
             return join_bar
 
         return None  # возвращаем None, если не было баров с данными
+
+    # }}}
+    @classmethod  # __update  # {{{
+    async def __update(cls, record):
+        # parse record
+        ID = await InstrumentId.byFigi(record["figi"])
+        data_type = DataType.fromRecord(record)
+        source = Source.fromRecord(record)
+        source_class = cls.__getSourceClass(source)
+        last_dt = record["last_dt"]
+        logger.info(f"Updating {ID.ticker}-{data_type.value}")
+
+        # request new bars
+        begin = last_dt + data_type.toTimedelta()
+        end = now().replace(microsecond=0)
+        new_bars = await source_class.getHistoricalBars(
+            ID, data_type, begin, end
+        )
+
+        # check: is new bars found
+        count = len(new_bars)
+        if count == 0:
+            logger.info("  - no new bars")
+            return
+
+        # save new bars
+        logger.info(f"  - received {count} bars -> {new_bars[-1].dt}")
+        new_data = _BarsData(ID, data_type, new_bars, source)
+        await _BarsData.save(new_data)
 
     # }}}
 
