@@ -10,12 +10,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from avin.const import (
-    DAY_BEGIN,
-    DAY_END,
-    Usr,
-    WeekDays,
-)
+from avin.const import DAY_BEGIN, DAY_END, Usr, WeekDays
 from avin.data._data_bar import _Bar, _BarsData
 from avin.data._source_moex import _MoexData
 from avin.data._source_tinkoff import _TinkoffData
@@ -132,7 +127,7 @@ class Data:  # {{{
     @classmethod  # convert# {{{
     async def convert(
         cls, ID: InstrumentId, in_type: DataType, out_type: DataType
-    ) -> bool:
+    ) -> None:
         check = cls.__checkArgs(ID=ID, in_type=in_type, out_type=out_type)
         if not check:
             return False
@@ -145,7 +140,6 @@ class Data:  # {{{
             return False
 
         await _Manager.convert(ID, in_type, out_type)
-        return True
 
     # }}}
     @classmethod  # delete# {{{
