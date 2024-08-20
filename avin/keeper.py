@@ -231,6 +231,7 @@ class Keeper:
             "InstrumentId": cls.__getInstrumentId,
             "DataType": cls.__getDataType,
             "Data": cls.__getDataInfo,
+            "datetime": cls.__getDateTime,
             "Asset": cls.__getAsset,
             "Account": cls.__getAccount,
             "Trade": cls.__getTrades,
@@ -926,20 +927,48 @@ class Keeper:
     async def __getDataInfo(cls, Data, kwargs: dict) -> list[Record]:
         logger.debug(f"{cls.__name__}.__getDataInfo()")
 
-        ID = kwargs["ID"]
+        ID = kwargs.get("ID")
+        data_type = kwargs.get("data_type")
 
-        # Create figi condition, that is return all table rows
-        # if 'ID' is None
+        # Create figi condition
         pg_id = f"figi = '{ID.figi}'" if ID else "TRUE"
+
+        # Create figi condition
+        pg_data_type = f"type = '{data_type.name}'" if data_type else "TRUE"
 
         # Request data info
         request = f"""
             SELECT * FROM "Data"
             WHERE
-                {pg_id};
+                {pg_id} AND {pg_data_type};
             """
         records = await cls.transaction(request)
         return records
+
+    # }}}
+    @classmethod  # __getDateTime  # {{{
+    async def __getDateTime(cls, datetime, kwargs: dict) -> list[Record]:
+        logger.debug(f"{cls.__name__}.__getDataInfo()")
+
+        ID = kwargs["ID"]
+        data_type = kwargs["data_type"]
+
+        # Create figi condition
+        pg_id = f"figi = '{ID.figi}'"
+
+        # Create figi condition
+        pg_data_type = f"type = '{data_type.name}'"
+
+        # Request data info
+        request = f"""
+            SELECT * FROM "Data"
+            WHERE
+                {pg_id} AND {pg_data_type};
+            """
+        records = await cls.transaction(request)
+        assert len(records) == 1
+        record = records[0]
+        return record["first_dt"], record["last_dt"]
 
     # }}}
     @classmethod  # __getBars  # {{{
