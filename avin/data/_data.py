@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from avin.const import DAY_BEGIN, DAY_END, Usr, WeekDays
+from avin.const import DAY_BEGIN, DAY_END, Res, Usr, WeekDays
 from avin.data._data_bar import _Bar, _BarsData
 from avin.data._source_moex import _MoexData
 from avin.data._source_tinkoff import _TinkoffData
@@ -382,9 +382,8 @@ class Data:  # {{{
 
 
 class _Manager:  # {{{
-    _DATA_DIR = Usr.DATA
     _AUTO_UPDATE = Usr.AUTO_UPDATE_MARKET_DATA
-    _LAST_UPDATE_FILE = Cmd.path(_DATA_DIR, "last_update")
+    _LAST_UPDATE_FILE = Cmd.path(Res.DATA, "last_update")
     _DATA_IS_UP_TO_DATE = None
 
     class VoidBar:  # {{{
@@ -400,11 +399,6 @@ class _Manager:  # {{{
 
     # }}}
 
-    def __init__(self):  # {{{
-        if _Manager._AUTO_UPDATE:
-            self.__checkUpdate()
-
-    # }}}
     @classmethod  # cacheAssetsInfo  # {{{
     async def cacheAssetsInfo(cls) -> None:
         logger.info(":: Start caching assets info")
@@ -496,7 +490,7 @@ class _Manager:  # {{{
     ) -> list:
         logger.debug(f"{cls.__name__}.request()")
         if cls._AUTO_UPDATE and not cls._DATA_IS_UP_TO_DATE:
-            cls.__checkUpdate()
+            await cls.__checkUpdate()
 
         records = await Keeper.get(
             _Bar, ID=ID, data_type=data_type, begin=begin, end=end
@@ -516,7 +510,7 @@ class _Manager:  # {{{
 
     # }}}
     @classmethod  # __checkUpdate# {{{
-    def __checkUpdate(cls):
+    async def __checkUpdate(cls):
         logger.debug(f"{cls.__name__}.__checkUpdate()")
         # Check the file with the date of the last update of the market data
         if Cmd.isExist(cls._LAST_UPDATE_FILE):
@@ -528,7 +522,7 @@ class _Manager:  # {{{
 
         # update all availible market data
         logger.info(":: Auto update market data")
-        cls.updateAll()
+        await cls.updateAll()
         cls._DATA_IS_UP_TO_DATE = True
 
         # save last update datetime

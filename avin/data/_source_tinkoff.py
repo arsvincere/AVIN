@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import tinkoff.invest as ti
 
-from avin.const import Usr
+from avin.const import Res, Usr
 from avin.data._cache import _InstrumentInfoCache
 from avin.data.asset_type import AssetType
 from avin.data.data_source import DataSource, _AbstractSource
@@ -18,6 +18,7 @@ from avin.data.data_type import DataType
 from avin.data.exchange import Exchange
 from avin.data.instrument_id import InstrumentId
 from avin.keeper import Keeper
+from avin.logger import logger
 from avin.utils import Cmd
 
 
@@ -39,12 +40,10 @@ class _TinkoffData(_AbstractSource):  # {{{
     ]
 
     _SUB_DIR = "tinkoff"
-    _DOWNLOAD = Cmd.path(Usr.DOWNLOAD, _SUB_DIR)
-
+    _DOWNLOAD = Cmd.path(Res.DOWNLOAD, _SUB_DIR)
     _TARGET = ti.constants.INVEST_GRPC_API
     _TOKEN_PATH = Usr.TINKOFF_TOKEN
     _TOKEN = None
-
     _AUTO_UPDATE = Usr.AUTO_UPDATE_ASSET_CACHE
 
     # }}}

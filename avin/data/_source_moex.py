@@ -42,12 +42,9 @@ class _MoexData(_AbstractSource):  # {{{
     ]
 
     _SUB_DIR = "moex"
-    _DOWNLOAD = Cmd.path(Usr.DOWNLOAD, _SUB_DIR)
-
     _LOGIN = None
     _PASSWORD = None
     _AUTHORIZATION = None
-
     _AUTO_UPDATE = Usr.AUTO_UPDATE_ASSET_CACHE
 
     # }}}
@@ -67,7 +64,9 @@ class _MoexData(_AbstractSource):  # {{{
             assets_info = moexalgo.Market(type_).tickers(use_dataframe=False)
             assets_info = cls.__formatAssetsInfo(assets_info)
             asset_type = cls._getStandartAssetType(type_)
-            cache = _InstrumentInfoCache(Source.MOEX, asset_type, assets_info)
+            cache = _InstrumentInfoCache(
+                DataSource.MOEX, asset_type, assets_info
+            )
             await _InstrumentInfoCache.save(cache)
 
         _InstrumentInfoCache.updateCachingDate(cls.source)
@@ -186,32 +185,6 @@ class _MoexData(_AbstractSource):  # {{{
         bars = cls.__convertCandlesToBars(candles)
         data = _BarsData(ID, data_type, bars, cls.source)
         await _BarsData.save(data)
-
-    # }}}
-    @classmethod  # export  # {{{
-    async def export(cls) -> None:
-        logger.info(":: MOEX exporting data in standart format")
-        files = Cmd.getFiles(
-            cls._DOWNLOAD, full_path=True, include_sub_dir=True
-        )
-        files = sorted(Cmd.select(files, extension=".csv"))
-        for file in files:
-            logger.info(f"  - exporting '{file}'")
-            ID, data_type, bars = cls.__readDataFile(file)
-            data = _BarsData(ID, data_type, bars, Source.MOEX)
-            _BarsData.save(data)
-        logger.info("Export complete")
-
-    # }}}
-    @classmethod  # clear  # {{{
-    async def clear(cls) -> bool:
-        logger.info(":: Clear MOEX files")
-        path = cls._DOWNLOAD
-        if not Cmd.isExist(path):
-            logger.info(f"  - no data in '{path}'")
-            return
-        Cmd.deleteDir(path)
-        logger.info("  - successful complete")
 
     # }}}
     @classmethod  # getHistoricalBars  # {{{
@@ -451,64 +424,6 @@ class _MoexData(_AbstractSource):  # {{{
             return candles
 
         assert False, "Тут мы никак не должны оказаться"
-
-    # }}}
-    @classmethod  # __createFilePath# {{{
-    def __createFilePath(
-        cls, ID: InstrumentId, data_type: DataType, year: int
-    ):
-        dir_path = Cmd.path(cls._DOWNLOAD, ID.type.name, ID.ticker)
-        Cmd.makeDirs(dir_path)
-        file_name = (
-            f"{ID.exchange.name}-{ID.type.name}-{ID.ticker}-"
-            f"{data_type.value}-{year}.csv"
-        )
-        full_path = Cmd.path(dir_path, file_name)
-        return full_path
-
-    # }}}
-    @classmethod  # __saveCandles# {{{
-    def __saveCandles(
-        cls,
-        ID: InstrumentId,
-        data_type: DataType,
-        year: int,
-        candles: list[moexalgo.models.Candle],
-    ):
-        path = cls.__createFilePath(ID, data_type, year)
-        df = pd.DataFrame(candles)
-        df.to_csv(path, sep=";")
-        logger.info(f"Saved {ID.ticker} {data_type.value} {year} in '{path}'")
-
-    # }}}
-    @classmethod  # __readDataFile# {{{
-    def __readDataFile(cls, file_path: str):
-        ID, data_type = cls._parseFileName(Cmd.name(file_path))
-        bars = cls.__readFileText(Cmd.loadText(file_path))
-        return ID, data_type, bars
-
-    # }}}
-    @classmethod  # __readFileText# {{{
-    def __readFileText(cls, text):
-        text.pop(0)  # skip header row
-        bars = list()
-        for line in text:
-            bar = cls.__parseMoexLine(line)
-            bars.append(bar)
-        return bars
-
-    # }}}
-    @classmethod  # __parseMoexLine# {{{
-    def __parseMoexLine(cls, line: str):
-        NUM, OPEN, CLOSE, HIGH, LOW, VALUE, VOLUME, BEGIN, END = range(9)
-        fields = line.split(";")
-        open_ = float(fields[OPEN])
-        high = float(fields[HIGH])
-        low = float(fields[LOW])
-        close = float(fields[CLOSE])
-        volume = int(float(fields[VOLUME]))
-        dt = cls.__toUTC(datetime.fromisoformat(fields[BEGIN]))
-        return _Bar(dt, open_, high, low, close, volume)
 
     # }}}
     @classmethod  # __toUTC# {{{

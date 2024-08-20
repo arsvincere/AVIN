@@ -11,6 +11,8 @@ from __future__ import annotations
 import abc
 import enum
 
+from avin.data.asset_type import AssetType
+
 
 class DataSource(enum.Enum):  # {{{
     MOEX = 1
