@@ -9,8 +9,6 @@
 import enum
 from datetime import timedelta
 
-from avin.utils import Cmd
-
 
 class DataType(enum.Enum):  # {{{
     """doc# {{{
@@ -46,19 +44,6 @@ class DataType(enum.Enum):  # {{{
         return periods[self.value]
 
     # }}}
-    @classmethod  # save# {{{
-    def save(cls, data_type, file_path):
-        string = data_type.value
-        Cmd.write(string, file_path)
-
-    # }}}
-    @classmethod  # load# {{{
-    def load(cls, file_path):
-        string = Cmd.read(file_path).strip()
-        data_type = DataType.fromStr(string)
-        return data_type
-
-    # }}}
     @classmethod  # fromStr#{{{
     def fromStr(cls, string_type: str):
         types = {
@@ -85,27 +70,9 @@ class DataType(enum.Enum):  # {{{
     # }}}
     @classmethod  # fromRecord#{{{
     def fromRecord(cls, record):
-        types = {
-            "1M": DataType.BAR_1M,
-            "5M": DataType.BAR_5M,
-            "10M": DataType.BAR_10M,
-            "1H": DataType.BAR_1H,
-            "D": DataType.BAR_D,
-            "W": DataType.BAR_W,
-            "M": DataType.BAR_M,
-            "BAR_1M": DataType.BAR_1M,
-            "BAR_5M": DataType.BAR_5M,
-            "BAR_10M": DataType.BAR_10M,
-            "BAR_1H": DataType.BAR_1H,
-            "BAR_D": DataType.BAR_D,
-            "BAR_W": DataType.BAR_W,
-            "BAR_M": DataType.BAR_M,
-            "book": DataType.BOOK,
-            "tic": DataType.TIC,
-            "analyse": DataType.ANALYSE,
-        }
         type_name = record["type"]
-        return types[type_name]
+        typ = cls.fromStr(type_name)
+        return typ
 
     # }}}
 
