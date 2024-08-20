@@ -263,7 +263,6 @@ async def test_strategy(event_loop):
 async def test_trade(event_loop):
     asset = await Asset.byTicker(AssetType.SHARE, Exchange.MOEX, "ABIO")
     await Keeper.add(asset)
-    timeframe = TimeFrame("1M")
     strategy = Strategy("Example", "ver")
     await Keeper.add(strategy)
 
