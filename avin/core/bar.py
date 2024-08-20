@@ -6,7 +6,7 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-""" Doc """
+"""Doc"""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ import enum
 from datetime import datetime
 
 from avin.core.range import Range
-from avin.data._data import _Bar
+from avin.data._data_bar import _Bar
 
 
 class Bar(_Bar):  # {{{

@@ -93,7 +93,7 @@ class Keeper:
     # }}}
     @classmethod  # info  # {{{
     async def info(
-        cls, source: Source, asset_type: AssetType, **kwargs
+        cls, source: DataSource, asset_type: AssetType, **kwargs
     ) -> list[dict]:
         """Looks for information about the asset in the cache.
 
@@ -227,7 +227,7 @@ class Keeper:
         # Get class_name & choose method
         class_name = cls.__getClassName(Class)
         methods = {
-            "Source": cls.__getSource,
+            "DataSource": cls.__getDataSource,
             "InstrumentId": cls.__getInstrumentId,
             "DataType": cls.__getDataType,
             "Data": cls.__getDataInfo,
@@ -826,8 +826,10 @@ class Keeper:
         return bars_table_name
 
     # }}}
-    @classmethod  # __getSource  # {{{
-    async def __getSource(cls, Source, kwargs: dict) -> list[DataType]:
+    @classmethod  # __getDataSource  # {{{
+    async def __getDataSource(
+        cls, DataSource, kwargs: dict
+    ) -> list[DataType]:
         logger.debug(f"{cls.__name__}.__getDataType()")
 
         ID = kwargs["ID"]
@@ -842,7 +844,7 @@ class Keeper:
         records = await cls.transaction(request)
         assert len(records) == 1
 
-        source = Source.fromRecord(records[0])
+        source = DataSource.fromRecord(records[0])
         return source
 
     # }}}

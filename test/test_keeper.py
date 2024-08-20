@@ -18,7 +18,7 @@ from avin.trader.account import Account
 async def test_info(event_loop):
     # receive info by exhange + asset_type + ticker
     info_list = await Keeper.info(
-        Source.TINKOFF, AssetType.SHARE, ticker="SBER"
+        DataSource.TINKOFF, AssetType.SHARE, ticker="SBER"
     )
     sber_info = info_list[0]
     assert sber_info["ticker"] == "SBER"
@@ -37,7 +37,7 @@ async def test_info(event_loop):
     assert sber_info["ticker"] == "SBER"
 
     # receive all shares availible on Tinkoff broker
-    info_list = await Keeper.info(Source.TINKOFF, AssetType.SHARE)
+    info_list = await Keeper.info(DataSource.TINKOFF, AssetType.SHARE)
     assert sber_info in info_list
     assert len(info_list) > 100  # about 150 shares abailible now
 
@@ -119,7 +119,7 @@ async def test_bars_data(event_loop):
     b4 = _Bar(datetime(2024, 8, 18, 0, 0, tzinfo=UTC), 13, 15, 12, 14, 400)
     b5 = _Bar(datetime(2024, 8, 19, 0, 0, tzinfo=UTC), 14, 16, 13, 15, 500)
     bars = [b1, b2, b3, b4, b5]
-    source = Source.MOEX
+    source = DataSource.MOEX
     data = _BarsData(share_id, data_type, bars, source)
 
     # add data in db

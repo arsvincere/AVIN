@@ -15,15 +15,15 @@ from avin.data import *
 from avin.utils import Cmd
 
 
-def test_Source():  # {{{
-    src = Source.TINKOFF
+def test_DataSource():  # {{{
+    src = DataSource.TINKOFF
     assert src.name == "TINKOFF"
 
     file_path = Cmd.path(Dir.TMP, "source")
-    Source.save(src, file_path)
+    DataSource.save(src, file_path)
     assert Cmd.isExist(file_path)
 
-    loaded_src = Source.load(file_path)
+    loaded_src = DataSource.load(file_path)
     assert loaded_src == src
     assert loaded_src.name == "TINKOFF"
 
@@ -143,15 +143,19 @@ async def test_Data_firstDateTime(event_loop):
     assert len(id_list) == 1
     sber = id_list[0]
 
-    dt_d_moex = await Data.firstDateTime(Source.MOEX, DataType.BAR_D, sber)
-    dt_1m_moex = await Data.firstDateTime(Source.MOEX, DataType.BAR_1M, sber)
+    dt_d_moex = await Data.firstDateTime(
+        DataSource.MOEX, DataType.BAR_D, sber
+    )
+    dt_1m_moex = await Data.firstDateTime(
+        DataSource.MOEX, DataType.BAR_1M, sber
+    )
     assert dt_1m_moex > dt_d_moex
 
     dt_d_tinkoff = await Data.firstDateTime(
-        Source.TINKOFF, DataType.BAR_D, sber
+        DataSource.TINKOFF, DataType.BAR_D, sber
     )
     dt_1m_tinkoff = await Data.firstDateTime(
-        Source.TINKOFF, DataType.BAR_1M, sber
+        DataSource.TINKOFF, DataType.BAR_1M, sber
     )
     assert dt_1m_tinkoff > dt_d_tinkoff
 
@@ -163,7 +167,7 @@ async def test_Data_download():
     abrd = id_list[0]
 
     # Download one asset, one year, timeframe D, from MOEX
-    await Data.download(Source.MOEX, DataType.BAR_D, abrd, 2023)
+    await Data.download(DataSource.MOEX, DataType.BAR_D, abrd, 2023)
 
 
 # }}}
