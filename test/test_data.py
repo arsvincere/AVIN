@@ -12,22 +12,14 @@ import pytest
 
 from avin.const import *
 from avin.data import *
-from avin.utils import Cmd
 
 
 def test_DataSource():  # {{{
     src = DataSource.TINKOFF
     assert src.name == "TINKOFF"
 
-    file_path = Cmd.path(Dir.TMP, "source")
-    DataSource.save(src, file_path)
-    assert Cmd.isExist(file_path)
-
-    loaded_src = DataSource.load(file_path)
-    assert loaded_src == src
-    assert loaded_src.name == "TINKOFF"
-
-    Cmd.delete(file_path)
+    from_str = DataSource.fromStr("MOEX")
+    assert from_str == DataSource.MOEX
 
 
 # }}}
@@ -36,19 +28,9 @@ def test_DataType():  # {{{
     assert data_type.value == "D"
     assert data_type.toTimedelta() == timedelta(days=1)
 
-    file_path = Cmd.path(Dir.TMP, "data_type")
-    DataType.save(data_type, file_path)
-    assert Cmd.isExist(file_path)
-
-    loaded_data_type = DataType.load(file_path)
-    assert loaded_data_type == data_type
-    assert loaded_data_type.value == "D"
-
     from_str_data_type = DataType.fromStr("1M")
     assert from_str_data_type.name == "BAR_1M"
     assert from_str_data_type.value == "1M"
-
-    Cmd.delete(file_path)
 
 
 # }}}
@@ -71,7 +53,10 @@ def test_AssetType():  # {{{
 
 
 # }}}
-def test_InstrumentId():  # {{{
+
+
+@pytest.mark.asyncio  # test_InstrumentId  # {{{
+async def test_InstrumentId():
     sber = InstrumentId(
         asset_type=AssetType.SHARE,
         exchange=Exchange.MOEX,
@@ -80,18 +65,17 @@ def test_InstrumentId():  # {{{
         name="Сбер Банк",
     )
 
-    file_path = Cmd.path(Dir.TMP, "id")
-    InstrumentId.save(sber, file_path)
-    assert Cmd.isExist(file_path)
+    assert sber.type == AssetType.SHARE
+    assert sber.exchange == Exchange.MOEX
+    assert sber.ticker == "SBER"
+    assert sber.figi == "BBG004730N88"
+    assert sber.name == "Сбер Банк"
 
-    loaded_id = InstrumentId.load(file_path)
-    assert sber == loaded_id
-    Cmd.delete(file_path)
+    by_figi = await InstrumentId.byFigi("BBG004730N88")
+    assert by_figi.name == sber.name
 
 
 # }}}
-
-
 @pytest.mark.asyncio  # test_Data_cache  # {{{
 async def test_Data_cache(event_loop):
     await Data.cache()
