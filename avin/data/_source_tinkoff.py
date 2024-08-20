@@ -198,11 +198,11 @@ class _TinkoffData(_AbstractSource):  # {{{
                     figi=ID.figi,
                     from_=begin,
                     to=end,
-                    interval=_TinkoffData.__CandleIntervalFrom(data_type),
+                    interval=cls.__CandleIntervalFrom(data_type),
                 )
                 for candle in candles:
                     if candle.is_complete:
-                        bar = _TinkoffData.__toBar(candle)
+                        bar = cls.__toBar(candle)
                         new_bars.append(bar)
             except ti.exceptions.RequestError as err:
                 logger.exception(err)
@@ -233,7 +233,7 @@ class _TinkoffData(_AbstractSource):  # {{{
             with ti.Client(token) as client:
                 response = client.users.get_accounts()
                 if response:
-                    _TinkoffData._TOKEN = token
+                    cls._TOKEN = token
                     logger.info("Tinkoff Authorization successful")
                     return True
         except ti.exceptions.UnauthenticatedError as err:

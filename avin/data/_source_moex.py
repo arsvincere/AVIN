@@ -13,8 +13,8 @@ from datetime import UTC, date, datetime, time, timedelta
 import moexalgo
 
 from avin.const import ONE_DAY, ONE_WEEK, Usr
+from avin.data._bar import _Bar, _BarsData
 from avin.data._cache import _InstrumentInfoCache
-from avin.data._data_bar import _Bar, _BarsData
 from avin.data.asset_type import AssetType
 from avin.data.data_source import DataSource, _AbstractSource
 from avin.data.data_type import DataType

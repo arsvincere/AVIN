@@ -14,7 +14,7 @@ import enum
 from datetime import datetime
 
 from avin.core.range import Range
-from avin.data._data_bar import _Bar
+from avin.data._bar import _Bar
 
 
 class Bar(_Bar):  # {{{

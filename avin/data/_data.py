@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from avin.const import DAY_BEGIN, DAY_END, Res, Usr, WeekDays
-from avin.data._data_bar import _Bar, _BarsData
+from avin.data._bar import _Bar, _BarsData
 from avin.data._source_moex import _MoexData
 from avin.data._source_tinkoff import _TinkoffData
 from avin.data.asset_type import AssetType
@@ -65,10 +65,8 @@ class Data:  # {{{
             class_ = _MoexData
         elif source == DataSource.TINKOFF:
             class_ = _TinkoffData
-
         # if source is None,
-        # uses _MoexData for indexes,
-        # and _TinkoffData otherwise
+        # uses _MoexData for indexes, and _TinkoffData otherwise
         elif asset_type == AssetType.INDEX:
             class_ = _MoexData
         else:

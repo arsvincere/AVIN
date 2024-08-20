@@ -48,12 +48,17 @@ class _InstrumentInfoCache:  # {{{
     # }}}
     @classmethod  # checkCachingDate# {{{
     def checkCachingDate(cls, source: Source):
+        # ckeck file with last update datetime
         file_path = Cmd.path(Res.CACHE, source.name.lower(), "last_update")
-        if Cmd.isExist(file_path):
-            string = Cmd.read(file_path)
-            last_update = datetime.fromisoformat(string)
-            if now().date() == last_update.date():
-                return True
+        if not Cmd.isExist(file_path):
+            return False
+
+        # read file, return True if last update == today
+        string = Cmd.read(file_path)
+        last_update = datetime.fromisoformat(string)
+        if now().date() == last_update.date():
+            return True
+
         return False
 
     # }}}
