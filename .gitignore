@@ -33,10 +33,10 @@ avin/trader
 avin/company.py.bak
 
 res/cache
-res/market_data
+res/data
+res/download
 res/icon
 res/sound
-res/uid
 res/voice
 
 install.sh
