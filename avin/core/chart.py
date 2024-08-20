@@ -6,39 +6,50 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-""" doc """
+"""doc"""
 
 from __future__ import annotations
-import csv
-from datetime import datetime
-from avin.data import Data, DataType
-from avin.core.bar import Bar
-from avin.utils import findLeft, Signal
-from avin.logger import logger
 
-class Chart():# {{{
-    """ Const """# {{{
+from datetime import UTC, datetime
+
+from avin.core.bar import Bar
+from avin.core.timeframe import TimeFrame
+from avin.keeper import Keeper
+from avin.logger import logger
+from avin.utils import Signal, findLeft
+
+
+class Chart:  # {{{
+    """Const"""  # {{{
+
     DEFAULT_BARS_COUNT = 5000
+
     # }}}
-    """ Signal """# {{{
-    updated = Signal(object)
-    # }}}
-    def __init__(# {{{
+    def __init__(  # {{{
         self,
         asset: Asset,
         timeframe: TimeFrame,
-        begin: datetime,
-        end: datetime
-        ):
+        bars: list[Bar],
+    ):
+        check = self.__checkArgs(asset, timeframe, bars)
+        if not check:
+            return
 
-        self._asset = asset
-        self._timeframe = timeframe
-        self._bars = self.__loadBars(asset, timeframe, begin, end)
-        self.__head = len(self._bars)  # индекс HEAD бара
-        self.__now = None  # хранит реал-тайм бар
+        self.__asset = asset
+        self.__timeframe = timeframe
+
+        for i in bars:
+            i.setChart(self)
+        self.__bars = bars
+
+        self.__head = len(self.__bars)  # index of HEAD bar
+        self.__now = None  # realtime bar
+
+        self.updated = Signal(object)
+
     # }}}
-    def __getitem__(self, index):# {{{
-        """ Доступ к барам графика по индексу
+    def __getitem__(self, index):  # {{{
+        """Доступ к барам графика по индексу
         ----------------------------------------------------------------------
         [0, 1, 2, 3] (real_time_bar)  - так данные лежат физически
          4  3  2  1        0          - так через getitem [i]
@@ -59,128 +70,220 @@ class Chart():# {{{
         index = self.__head - index
         if index < 0:
             return None
-        if index >= len(self._bars):
+        if index >= len(self.__bars):
             return None
-        return self._bars[index]
+        return self.__bars[index]
+
     # }}}
-    def __iter__(self):# {{{
-        return iter(self._bars)
+    def __iter__(self):  # {{{
+        return iter(self.__bars)
+
     # }}}
-    @property  #asset# {{{
+    @property  # asset# {{{
     def asset(self):
-        return self._asset
+        return self.__asset
+
     # }}}
-    @property  #timeframe# {{{
+    @property  # timeframe# {{{
     def timeframe(self):
-        return self._timeframe
+        return self.__timeframe
+
     # }}}
-    @property  #first# {{{
+    @property  # first# {{{
     def first(self):
-        """ Возвращает самый старый исторический бар в графике """
-        return self._bars[0]
+        """Возвращает самый старый исторический бар в графике"""
+        return self.__bars[0]
+
     # }}}
-    @property  #last# {{{
+    @property  # last# {{{
     def last(self):
         """
         Возвращает самый новый исторический бар (относительно head!!!)
         """
         index = self.__head - 1
-        if 0 < index < len(self._bars):
-            return self._bars[index]
+        if 0 < index < len(self.__bars):
+            return self.__bars[index]
         else:
             return None
+
     # }}}
-    @property  #now# {{{
+    @property  # now# {{{
     def now(self):
         """
         Возвращает реал тайм бар, тоже что chart[0]
         """
         return self.__now
+
     # }}}
-    def update(self, new_bars: list[Bar]):# {{{
+    def update(self, new_bars: list[Bar]):  # {{{
         for bar in new_bars:
             bar.setChart(self)
-            self._bars.append(bar)
-        self.__head = len(self._bars)  # индекс HEAD бара перемещаем
+            self.__bars.append(bar)
+        self.__head = len(self.__bars)  # индекс HEAD бара перемещаем
         self.__now = None
         self.updated.emit(self)
+
     # }}}
-    def getBars(self) -> list[Bar]:# {{{
-        return self._bars[0:self.__head]
+    def getBars(self) -> list[Bar]:  # {{{
+        return self.__bars[0 : self.__head]
+
     # }}}
-    def getTodayBars(self):# {{{
+    def getTodayBars(self):  # {{{
         if self.__now is None:
             return list()
         today = self.__now.dt.date()
         i = self.__head
-        while i - 1 > 0 and self._bars[i - 1].dt.date() == today:
+        while i - 1 > 0 and self.__bars[i - 1].dt.date() == today:
             i -= 1
-        return self._bars[i: self.__head]
+        return self.__bars[i : self.__head]
+
     # }}}
-    def _setHeadIndex(self, index):# {{{
-        assert False
+    def setHeadIndex(self, index) -> bool:  # {{{
         assert isinstance(index, int)
         if index < 0:
             return False
-        if index > len(self._bars):
+        if index > len(self.__bars):
             return False
         self.__head = index
-        self.__now = self._bars[self.__head]
+        self.__now = self.__bars[self.__head]
         return True
+
     # }}}
-    def _getHeadIndex(self):# {{{
-        assert False
+    def getHeadIndex(self):  # {{{
         return self.__head
+
     # }}}
-    def _setHeadDatetime(self, dt: datetime):# {{{
-        assert False
+    def setHeadDatetime(self, dt: datetime) -> bool:  # {{{
         assert isinstance(dt, datetime)
-        index = findLeft(self._bars, dt, lambda x: x.dt)
+
+        index = findLeft(self.__bars, dt, lambda x: x.dt)
         if index is not None:
             self.__head = index
-            self.__now = self._bars[index]
+            self.__now = self.__bars[index]
             return True
         else:
             assert False
+
     # }}}
-    def _resetHead(self):# {{{
-        assert False
-        self.__head = len(self._bars)
+    def resetHead(self):  # {{{
+        self.__head = len(self.__bars)
         self.__now = None
+
     # }}}
-    def _nextHead(self):# {{{
-        assert False
-        if self.__head < len(self._bars) - 1:
+    def nextHead(self):  # {{{
+        if self.__head < len(self.__bars) - 1:
             self.__head += 1
-            self.__now = self._bars[self.__head]
+            self.__now = self.__bars[self.__head]
             return self.__now
         else:
             return None
-    # }}}
-    def __loadBars(self, asset, timeframe, begin, end):# {{{
-        logger.debug(f"Chart.__loadBars()")
-        files = Data.request(
-            asset.ID,
-            timeframe.toDataType(),
-            begin.year,
-            end.year
-            )
 
-        all_bars = list()
-        for file_path in files:
-            with open(file_path, "r", encoding="utf-8", newline='') as file:
-                reader = csv.reader(file, delimiter=";")
-                for row in reader:
-                    bar = Bar.fromCSV(row, chart=self)
-                    if begin <= bar.dt < end:
-                        all_bars.append(bar)
-
-        assert len(all_bars) > 0
-        return all_bars
     # }}}
+    @classmethod  # async load# {{{
+    async def load(cls, asset, timeframe, begin, end) -> Chart:
+        # check args, may be raise TypeError, ValueError
+        cls.__checkArgs(
+            asset=asset,
+            timeframe=timeframe,
+            begin=begin,
+            end=end,
+        )
+
+        # request bars
+        bars = await Keeper.get(
+            Bar,
+            ID=asset.ID,
+            timeframe=timeframe,
+            begin=begin,
+            end=end,
+        )
+
+        # create and return chart
+        chart = Chart(asset, timeframe, bars)
+        return chart
+
+    # }}}
+    @classmethod  # __checkArgs  # {{{
+    def __checkArgs(
+        cls,
+        asset=None,
+        timeframe=None,
+        bars=None,
+        begin=None,
+        end=None,
+    ):
+        if asset:
+            cls.__checkAsset(asset)
+
+        if timeframe:
+            cls.__checkTimeFrame(timeframe)
+
+        if bars:
+            cls.__checkBars(bars)
+
+        if begin:
+            cls.__checkBegin(begin)
+
+        if end:
+            cls.__checkEnd(end)
+
+        return True
+
+    # }}}
+    @classmethod  # __checkAsset  # {{{
+    def __checkAsset(cls, asset):
+        if not hasattr(asset, "figi"):
+            logger.critical(f"Invalid asset={asset}")
+            raise TypeError(asset)
+
+    # }}}
+    @classmethod  # __checkTimeFrame  # {{{
+    def __checkTimeFrame(cls, timeframe):
+        if not isinstance(timeframe, TimeFrame):
+            logger.critical(f"Invalid timeframe={timeframe}")
+            raise TypeError(timeframe)
+
+    # }}}
+    @classmethod  # __checkBars  # {{{
+    def __checkBars(cls, bars):
+        if not isinstance(bars, list):
+            logger.critical(f"Invalid bars={bars}")
+            raise TypeError(bars)
+        if len(bars) == 0:
+            logger.critical("Impossible create chart from 0 bars")
+            raise ValueError(bars)
+        bar = bars[0]
+        if not isinstance(bar, Bar):
+            logger.critical(f"Invalid bar={bar}")
+            raise TypeError(bar)
+
+    # }}}
+    @classmethod  # __checkBegin  # {{{
+    def __checkBegin(cls, begin: datetime):
+        if not isinstance(begin, datetime):
+            logger.critical(f"Invalid begin={begin}")
+            raise TypeError(begin)
+
+        if begin.tzinfo != UTC:
+            logger.critical("Invalid begin timezone='{begin.tzinfo}")
+            raise ValueError(begin)
+
+    # }}}
+    @classmethod  # __checkEnd  # {{{
+    def __checkEnd(cls, end: datetime):
+        if not isinstance(end, datetime):
+            logger.critical(f"Invalid end={end}")
+            raise TypeError(end)
+
+        if end.tzinfo != UTC:
+            logger.critical("Invalid end timezone='{end.tzinfo}")
+            raise ValueError(end)
+
+    # }}}
+
 
 # }}}
 
+
 if __name__ == "__main__":
     ...
-

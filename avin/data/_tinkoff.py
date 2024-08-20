@@ -148,7 +148,7 @@ class _TinkoffData(_AbstractSource):  # {{{
         logger.debug(f"{cls.__name__}.export()")
         assert False, "переписать на postgres, пока качаю только с МОЕКС"
 
-        # TODO fix - not exclude holidays files
+        # FIX: - not exclude holidays files
         logger.info(":: Tinkoff exporting data in standart format")
         files = Cmd.getFiles(
             cls._DOWNLOAD, full_path=True, include_sub_dir=True
@@ -288,27 +288,27 @@ class _TinkoffData(_AbstractSource):  # {{{
         # set simple exchange name, original exchange name
         # will saved after in the key 'exchange_specific'
         if "MOEX" in instr.exchange.upper():
-            # NOTE
+            # NOTE:
             # "instr.exchange" contain values as "MOEX_PLUS", "MOEX_WEEKEND"..
             # set "echange"="MOEX"
             exchange = "MOEX"
         elif "SPB" in instr.exchange.upper():
-            # NOTE
+            # NOTE:
             # "instr.exchange" contain values as "SPB_RU_MORNING"...
             # set "echange"="SPB"
             exchange = "SPB"
         elif "FORTS" in instr.exchange.upper():
-            # NOTE
+            # NOTE:
             # FUTURE - у них биржа указана FORTS_EVENING, но похеру
             # пока для простоты ставлю им тоже биржу MOEX
             exchange = "MOEX"
         elif instr.exchange == "FX":
-            # NOTE
+            # NOTE:
             # CURRENCY - у них биржа указана FX, но похеру
             # пока для простоты ставлю им тоже биржу MOEX
             exchange = "MOEX"
         else:
-            # NOTE
+            # NOTE:
             # там всякая странная хуйня еще есть в биржах
             # "otc_ncc", "LSE_MORNING", "moex_close", "Issuance",
             # "unknown"...
@@ -322,7 +322,7 @@ class _TinkoffData(_AbstractSource):  # {{{
         # define short function name
         to_decimal = ti.utils.quotation_to_decimal
         info = {
-            # NOTE
+            # NOTE:
             # "name": "O'Key Group SA", и другие подобные
             # одинарная кавчка потом мешается при преобразовании
             # в postgres jsonb

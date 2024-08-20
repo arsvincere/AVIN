@@ -11,7 +11,7 @@ from __future__ import annotations
 import abc
 import enum
 
-from avin.core.gid import GId
+from avin.core.id import Id
 from avin.utils import Signal
 
 
@@ -49,9 +49,10 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         PARTIAL = 5  # частично исполнен
         EXECUTED = 6  # исполнен
 
-        # TODO: тест можно ли выставить на тинькоф ордер
+        # TEST: тест можно ли выставить на тинькоф ордер
         # с тем же ключом идемпотентности после того как ордер
         # отменен на вечерку / ночь / выходные
+
         OFF = 7  # для убранных на вечерку или выходные стопы
 
         CANCEL = 8  # отменен
@@ -109,7 +110,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
 
             self.account_name = account_name
             self.status = status if status else Order.Status.NEW
-            self.order_id = order_id if order_id else GId.newGId(self)
+            self.order_id = order_id if order_id else Id.newId(self)
             self.trade_id = trade_id
             self.meta = meta
 
@@ -124,15 +125,19 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         # }}}
         def __str__(self):  # {{{
             string = (
-                f"Order.{self.type.name} {self.direction.name} {self.asset.ticker} "
+                f"Order.{self.type.name} "
+                f"{self.direction.name} "
+                f"{self.asset.ticker} "
                 f"{self.lots} lot"
             )
+
             if self.type == Order.Type.MARKET:
                 pass
             elif self.type == Order.Type.LIMIT:
                 string += f", {self.quantity}x{self.price}"
             elif self.type == Order.Type.STOP:
-                string += f" stop={self.stop_price}, exec={self.exec_price}"
+                string += f", stop={self.stop_price}, exec={self.exec_price}"
+
             return string
 
         # }}}
@@ -144,7 +149,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
 
         # }}}
         @classmethod  # load{{{
-        def load(cls, ID: GId):
+        def load(cls, ID: Id):
             assert False, "не написана функция"
             # подумать ордер от сюда отправляет свой запрос?
             # или запрос к киперу идет только по части трейда?
@@ -193,8 +198,8 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             quantity: int,
             account_name: str = None,
             status: Order.Status = None,
-            order_id: GId = None,
-            trade_id: GId = None,
+            order_id: Id = None,
+            trade_id: Id = None,
             meta=None,
         ):
             super().__init__(
@@ -221,8 +226,8 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             price: float,
             account_name: str = None,
             status: Order.Status = None,
-            order_id: GId = None,
-            trade_id: GId = None,
+            order_id: Id = None,
+            trade_id: Id = None,
             meta=None,
         ):
             super().__init__(
@@ -251,8 +256,8 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             exec_price: float,
             account_name: str = None,
             status: Order.Status = None,
-            order_id: GId = None,
-            trade_id: GId = None,
+            order_id: Id = None,
+            trade_id: Id = None,
             meta=None,
         ):
             super().__init__(
@@ -274,10 +279,10 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     class StopLoss(_BaseOrder):  # {{{
         def __init__(
             self,
-            position: Position,  # ??? NOTE подумай еще раз
+            position: Position,  # ??? NOTE: подумай еще раз
             stop_price: float,
             exec_price: float,
-            trade_id: GId = None,
+            trade_id: Id = None,
             status: Order.Status = None,
         ):
             assert False
@@ -286,10 +291,10 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     class TakeProfit(_BaseOrder):  # {{{
         def __init__(
             self,
-            position: Position,  # ??? NOTE подумай еще раз
+            position: Position,  # ??? NOTE: подумай еще раз
             stop_price: float,
             exec_price: float,
-            trade_id: GId = None,
+            trade_id: Id = None,
             status: Order.Status = None,
         ):
             assert False

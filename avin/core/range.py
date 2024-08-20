@@ -6,13 +6,15 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-""" Doc """
+"""Doc"""
 
 from __future__ import annotations
+
 import enum
 
-class Range():# {{{
-    """ doc# {{{
+
+class Range:  # {{{
+    """doc# {{{
     Закрытый диапазон [min, max]
     Представляет части бара - тело, тени или весь диапазон бара.
     --
@@ -27,46 +29,46 @@ class Range():# {{{
     body = bar.body  # Range(10, 11)
     print(10.9 in body)  # True
     """
+
     # }}}
-    class Type(enum.Enum):# {{{
-        UNDEFINE =  0
-        RANGE =     1
-        BODY =      2
-        UPPER =     3
-        LOWER =     4
+    class Type(enum.Enum):  # {{{
+        UNDEFINE = 0
+        RANGE = 1
+        BODY = 2
+        UPPER = 3
+        LOWER = 4
+
     # }}}
-    class Size(enum.Enum):# {{{
-        UNDEFINE =          None
-        BLACKSWAN_SMALL =   -7
-        ANOMAL_SMALL =      -6
-        EXTRA_SMALL =       -5
-        VERY_SMALL =        -4
-        SMALLEST =          -3
-        SMALLER =           -2
-        SMALL =             -1
-        NORMAL =            0
-        BIG =               1
-        BIGGER =            2
-        BIGGEST =           3
-        VERY_BIG =          4
-        EXTRA_BIG =         5
-        ANOMAL_BIG =        6
-        BLACKSWAN_BIG =     7
+    class Size(enum.Enum):  # {{{
+        UNDEFINE = None
+        BLACKSWAN_SMALL = -7
+        ANOMAL_SMALL = -6
+        EXTRA_SMALL = -5
+        VERY_SMALL = -4
+        SMALLEST = -3
+        SMALLER = -2
+        SMALL = -1
+        NORMAL = 0
+        BIG = 1
+        BIGGER = 2
+        BIGGEST = 3
+        VERY_BIG = 4
+        EXTRA_BIG = 5
+        ANOMAL_BIG = 6
+        BLACKSWAN_BIG = 7
+
     # }}}
-    def __init__(# {{{
-            self,
-            min_: float,
-            max_: float,
-            type_ = Type.UNDEFINE,
-            bar = None
-            ):
+    def __init__(  # {{{
+        self, min_: float, max_: float, type_=Type.UNDEFINE, bar=None
+    ):
         self.__min = min_
         self.__max = max_
         self.__type = type_
         self.__bar = bar
+
     # }}}
-    def __getitem__(self, slice_):# {{{
-        """ doc
+    def __getitem__(self, slice_):  # {{{
+        """doc
         Возвращает диапазон
         [0, 10] - от 0 до 10% исходного диапазона
         [40, 100] - от 40% до 100% исходного диапазона
@@ -91,54 +93,64 @@ class Range():# {{{
             tmp = (self.__max - self.__min) * slice_.stop / 100
             stop = self.__min + tmp
         return Range(start, stop)
+
     # }}}
-    def __contains__(self, price: float) -> bool:# {{{
+    def __contains__(self, price: float) -> bool:  # {{{
         return self.__min <= price <= self.__max
+
     # }}}
-    def __repr__(self):# {{{
+    def __repr__(self):  # {{{
         return f"Range({self.min}, {self.max})"
+
     # }}}
-    @property  #min# {{{
+    @property  # min# {{{
     def min(self):
         return self.__min
+
     # }}}
-    @property  #max# {{{
+    @property  # max# {{{
     def max(self):
         return self.__max
+
     # }}}
-    @property  #type# {{{
+    @property  # type# {{{
     def type(self):
         return self.__type
+
     # }}}
-    @property  #bar# {{{
+    @property  # bar# {{{
     def bar(self):
-        """ doc
+        """doc
         Return parent Bar
         """
         return self.__bar
+
     # }}}
-    def percent(self) -> float:# {{{
-        """ doc
+    def percent(self) -> float:  # {{{
+        """doc
         Return percent of range
         """
         percent = (self.__max - self.__min) / self.__max * 100
         return round(percent, 2)
+
     # }}}
-    def abs(self) -> float:# {{{
-        """ doc
+    def abs(self) -> float:  # {{{
+        """doc
         Return abs of range
         """
         return self.__max - self.__min
+
     # }}}
-    def mid(self) -> float:# {{{
-        """ doc
+    def mid(self) -> float:  # {{{
+        """doc
         Return middle of range
         """
         half = (self.__max - self.__min) / 2
         return self.__min + half
+
     # }}}
-    def half(self, n) -> Range:# {{{
-        """ doc
+    def half(self, n) -> Range:  # {{{
+        """doc
         Возвращает диапазон n-ой половины бара -> Range
                #
                ###
@@ -156,9 +168,10 @@ class Range():# {{{
             return Range(self.__min, self.__min + half)
         elif n == 2:
             return Range(self.__min + half, self.__max)
+
     # }}}
-    def third(self, n) -> Range:# {{{
-        """ doc
+    def third(self, n) -> Range:  # {{{
+        """doc
         Возвращает диапазон n-ой трети бара -> Range
                #
                ###      Это 3 треть
@@ -177,9 +190,10 @@ class Range():# {{{
             return Range(self.__min + third, self.__min + 2 * third)
         elif n == 3:
             return Range(self.__min + 2 * third, self.__max)
+
     # }}}
-    def quarter(self, n) -> Range:# {{{
-        """ doc
+    def quarter(self, n) -> Range:  # {{{
+        """doc
         Возвращает диапазон n-ой четверти бара -> Range
                #
                ###      Это 4 четверть
@@ -201,5 +215,8 @@ class Range():# {{{
             return Range(self.__min + 2 * quarter, self.__min + 3 * quarter)
         elif n == 4:
             return Range(self.__min + 3 * quarter, self.__max)
+
     # }}}
+
+
 # }}}

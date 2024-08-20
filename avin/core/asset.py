@@ -14,18 +14,10 @@ from datetime import UTC, date, datetime
 from avin.const import DAY_BEGIN, Usr
 from avin.core.chart import Chart
 from avin.core.timeframe import TimeFrame
-from avin.data import AssetType, Data, Exchange, InstrumentId
+from avin.data import AssetType, DataSource, Exchange, InstrumentId
+from avin.keeper import Keeper
 from avin.logger import logger
 from avin.utils import Cmd, now
-
-# TODO
-# Share запрос количества лотов и любой другой информации -
-# проверяется наличие словаря info, если он None, запрашиваем
-# у БД и кэшируем его.
-# Таким образом в памяти будут валяться только словари
-# для активов по которым ведется работа в тестере например.
-# и не будет грузиться просто для активов из АссетЛиста
-# какого нибудь
 
 
 class Asset(metaclass=abc.ABCMeta):  # {{{
@@ -34,6 +26,7 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         self.__ID = ID
         self.__charts = dict()
         self.__parent = parent
+        self.__info = None
 
     # }}}
     def __str__(self):  # {{{
@@ -64,65 +57,72 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         return self.__ID.ticker
 
     # }}}
-    @property  # name# {{{
-    def name(self):
-        return self.__ID.name
-
-    # }}}
     @property  # figi# {{{
     def figi(self):
         return self.__ID.figi
 
     # }}}
-    @property  # dir_path# {{{
-    def dir_path(self):
-        return self.__ID.dir_path
-        # }}}
-
-    @property  # analytic_dir# {{{
-    def analytic_dir(self):
-        return Cmd.path(self.__ID.dir_path, "analytic")
+    @property  # name# {{{
+    def name(self):
+        return self.__ID.name
 
     # }}}
-    @property  # broker_info# {{{
-    def brocker_info(self):
-        return Data.info(self.__ID)
+    @property  # info# {{{
+    def info(self):
+        if not self.__info:
+            logger.error(f"Info not loaded, asset={self}")
+            return None
+
+        return self.__info
 
     # }}}
     def chart(self, timeframe: TimeFrame | str) -> Chart:  # {{{
         if isinstance(timeframe, str):
             timeframe = TimeFrame(timeframe)
+
         return self.__charts.get(timeframe, None)
 
     # }}}
-    def cacheChart(  # {{{
+    async def cacheChart(  # {{{
         self,
         timeframe: TimeFrame | str,
         begin: date | str = None,
         end: date | str = None,
-    ):
+    ) -> None:
+        logger.debug(f"{self.__class__.__name__}.cacheChart()")
+
+        # check args
         timeframe, begin, end = self.__checkArgs(timeframe, begin, end)
-        chart = Chart(self, timeframe, begin, end)
+
+        # load chart and keep it
+        chart = await Chart.load(self, timeframe, begin, end)
         self.__charts[timeframe] = chart
-        return True
 
     # }}}
-    def clearCache(self):  # {{{
-        self.__charts.clear()
-
-    # }}}
-    def loadChart(  # {{{
+    async def loadChart(  # {{{
         self,
         timeframe: Timeframe | str,
         begin: datetime | str = None,
         end: datetime | str = None,
-    ):
-        logger.debug(
-            f"{self.__class__.__name__}.loadChart "
-            "{self.ticker}-{timeframe}"
-        )
+    ) -> Chart:
+        logger.debug(f"{self.__class__.__name__}.loadChart()")
+
+        # check args
         timeframe, begin, end = self.__checkArgs(timeframe, begin, end)
-        return Chart(self, timeframe, begin, end)
+
+        # load chart and return it
+        chart = await Chart.load(self, timeframe, begin, end)
+        return chart
+
+    # }}}
+    async def loadInfo(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.loadInfo()")
+
+        info = await Keeper.info(
+            DataSource.TINKOFF, self.type, figi=self.figi
+        )
+        assert len(info) == 1
+        self.__info = info[0]
 
     # }}}
     def parent(self):  # {{{
@@ -134,19 +134,23 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
     def data(  # {{{
-        self, timeframe: TimeFrame | str, begin: datetime, end: datetime
+        self,
+        timeframe: TimeFrame | str,
+        begin: datetime,
+        end: datetime,
     ) -> DataFrame:
-        """Return DataFrame"""
+        # TODO: return dataframe
         assert False
 
     # }}}
-    @classmethod  # load# {{{
-    def load(cls, file_path: str):
-        ID = Id.load(file_path)
+    def clearCache(self):  # {{{
+        self.__charts.clear()
 
     # }}}
     @classmethod  # byId #{{{
-    def byId(cls, ID: Id):
+    def byId(cls, ID: Id) -> Asset:
+        logger.debug(f"{cls.__name__}.byId()")
+
         asset = cls.__getCertainTypeAsset(ID)
         return asset
 
@@ -154,50 +158,20 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
     @classmethod  # byTicker# {{{
     async def byTicker(
         cls, asset_type: AssetType, exchange: Exchange, ticker: str
-    ):
-        # TODO
-        # подумать. А может вообще здесь не через дату запрашивать...
-        # а напрямую через кипера... и запрашивать конкретно ассет.
-        # тогда можно будет получать только активы для которых
-        # уже есть биржевые данные, ну типо мои активы. Это логично.
-        ID = await Data.find(asset_type, exchange, ticker)
-        assert len(ID) == 1
-        ID = ID[0]
-        return Asset.__getCertainTypeAsset(ID)
+    ) -> Asset:
+        logger.debug(f"{cls.__name__}.byTicker()")
+
+        asset = await Keeper.get(
+            Asset, asset_type=asset_type, exchange=exchange, ticker=ticker
+        )
+        return asset
 
     # }}}
     @classmethod  # byFigi# {{{
-    async def byFigi(
-        cls, exchange: Exchange, asset_type: AssetType, figi: str
-    ):
-        ID = await Data.find(asset_type, exchange, figi=figi)
-        assert len(ID) == 1
-        ID = ID[0]
-        return Asset.__getCertainTypeAsset(ID)
+    async def byFigi(cls, figi: str) -> Asset:
+        logger.debug(f"{cls.__name__}.byFigi()")
 
-    # }}}
-    @classmethod  # byUid# {{{
-    def byUid(cls, exchange: Exchange, asset_type: AssetType, uid: str):
-        # DEPRICATE
-        # не надо залипать на эту чисто тиньковскую хрень,
-        # если и использовать ее, то только в пределах класса ТинькоБрокер
-        # в общий код системы это не должно лазить
-        # выпили ее, не знаю используется ли она еще где то, пока
-        # с ассертом пусть постоит
-        assert False
-        ID = Data.find(exchange, asset_type, uid)
-        return Asset.__getCertainTypeAsset(ID)
-
-    # }}}
-    @classmethod  # toJson# {{{
-    def toJson(cls, asset):
-        return Id.toJson(asset.ID)
-
-    # }}}
-    @classmethod  # fromJson# {{{
-    def fromJson(cls, obj):
-        ID = Id.fromJson(obj)
-        asset = Asset.byId(ID)
+        asset = await Keeper.get(Asset, figi=figi)
         return asset
 
     # }}}
@@ -215,8 +189,7 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
     # }}}
     @classmethod  # __checkArgs# {{{
     def __checkArgs(cls, timeframe, begin, end):
-        # TODO сделать реальную проверку аргументов, а не только
-        # форматирование
+        # check timeframe
         if isinstance(timeframe, TimeFrame):
             pass
         elif isinstance(timeframe, str):
@@ -226,21 +199,36 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
                 f"Wrong timeframe='{timeframe}', use valid 'str' "
                 "or class TimeFrame"
             )
-            exit(1)
+            raise TypeError(timeframe)
+
+        # check begin
         if isinstance(begin, str):
             begin = datetime.combine(
                 date.fromisoformat(begin),
                 Exchange.MOEX.SESSION_BEGIN,
                 tzinfo=UTC,
             )
+
+        # check end
         if isinstance(end, str):
             end = datetime.combine(
-                date.fromisoformat(end), DAY_BEGIN, tzinfo=UTC
+                date.fromisoformat(end),
+                DAY_BEGIN,
+                tzinfo=UTC,
             )
+
+        # when begin & end == None, load DEFAULT_BARS_COUNT
         if begin is None and end is None:
             period = timeframe * Chart.DEFAULT_BARS_COUNT
-            begin = now() - period
+            begin = now().replace(microsecond=0) - period
             end = now()
+
+        if not isinstance(begin, datetime):
+            logger.critical(f"Invalid begin='{begin}'")
+            raise TypeError(begin)
+        if not isinstance(end, datetime):
+            logger.critical(f"Invalid end='{end}'")
+            raise TypeError(end)
 
         return timeframe, begin, end
 
@@ -253,8 +241,9 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         elif ID.type == AssetType.SHARE:
             share = Share(ID)
             return share
-        else:
-            assert False
+
+        logger.critical(f"Unknown asset type={ID.type}")
+        assert False
 
     # }}}
 
@@ -271,11 +260,11 @@ class Index(Asset):  # {{{
 
 # }}}
 class Share(Asset):  # {{{
-    """doc# {{{
-    ...
-    """
+    # {{{-- doc
+    """ """
 
     # }}}
+
     def __init__(self, ID: Id, parent=None):  # {{{
         assert ID.type == AssetType.SHARE
         super().__init__(ID, parent)
@@ -285,17 +274,17 @@ class Share(Asset):  # {{{
     # }}}
     @property  # uid{{{
     def uid(self):
-        return self.brocker_info["uid"]
+        return self.info["uid"]
 
     # }}}
     @property  # lot{{{
     def lot(self):
-        return int(self.brocker_info["lot"])
+        return int(self.info["lot"])
 
     # }}}
     @property  # min_price_step{{{
     def min_price_step(self):
-        return float(self.brocker_info["min_price_increment"])
+        return float(self.info["min_price_increment"])
 
     # }}}
 
@@ -304,14 +293,14 @@ class Share(Asset):  # {{{
 
 
 class AssetList:  # {{{
-    def __init__(self, name="unnamed", parent=None):  # {{{
+    def __init__(self, name: str = "unnamed", parent=None):  # {{{
         logger.debug(f"AssetList.__init__({name})")
         self.__name = name
         self.__assets = list()
         self.__parent = parent
 
     # }}}
-    def __getitem__(self, index) -> Asset:  # {{{
+    def __getitem__(self, index: int) -> Asset:  # {{{
         assert index < len(self.__assets)
         return self.__assets[index]
 
@@ -321,10 +310,7 @@ class AssetList:  # {{{
 
     # }}}
     def __contains__(self, asset: Asset) -> bool:  # {{{
-        for i in self.__assets:
-            if i.ID == asset.ID:
-                return True
-        return False
+        return any(i.ID == asset.ID for i in self.__assets)
 
     # }}}
     @property  # name{{{
@@ -332,7 +318,7 @@ class AssetList:  # {{{
         return self.__name
 
     @name.setter
-    def name(self, name):
+    def name(self, name: str):
         assert isinstance(name, str)
         self.__name = name
 

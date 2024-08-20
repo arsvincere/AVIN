@@ -11,16 +11,14 @@
 from __future__ import annotations
 
 import enum
-from datetime import datetime
 
 from avin.core.range import Range
 from avin.data._bar import _Bar
 
 
 class Bar(_Bar):  # {{{
-    """doc# {{{"""
+    """doc"""
 
-    # }}}
     class Type(enum.Flag):  # {{{
         UNDEFINE = 0
         BEAR = 1
@@ -31,8 +29,8 @@ class Bar(_Bar):  # {{{
         EXTREMUM = 32
 
     # }}}
-    def __init__(self, dt, o, h, l, c, v, chart=None):  # {{{
-        _Bar.__init__(self, dt, o, h, l, c, v)
+    def __init__(self, dt, opn, hgh, low, cls, vol, chart=None):  # {{{
+        _Bar.__init__(self, dt, opn, hgh, low, cls, vol)
         self.__chart = chart
         self.__analyse()
 
@@ -62,7 +60,7 @@ class Bar(_Bar):  # {{{
             return Range(self.low, self.close, Range.Type.LOWER, self)
 
     # }}}
-    @property  # ushadow# {{{
+    @property  # upper# {{{
     def upper(self):
         if self.isBull():
             return Range(self.close, self.high, Range.Type.UPPER, self)
@@ -76,8 +74,7 @@ class Bar(_Bar):  # {{{
 
     # }}}
     def setChart(self, chart) -> None:  # {{{
-        self.__parent = chart
-        self.__analyse()
+        self.__chart = chart
 
     # }}}
     def addFlag(self, flag) -> None:  # {{{
@@ -91,12 +88,10 @@ class Bar(_Bar):  # {{{
 
     # }}}
     def isBull(self) -> bool:  # {{{
-        # return self.close > self.open
         return self.__flags & Bar.Type.BULL == Bar.Type.BULL
 
     # }}}
     def isBear(self) -> bool:  # {{{
-        # return self.close < self.open
         return self.__flags & Bar.Type.BEAR == Bar.Type.BEAR
 
     # }}}
@@ -116,16 +111,17 @@ class Bar(_Bar):  # {{{
         return self.__flags & Bar.Type.EXTREMUM == Bar.Type.EXTREMUM
 
     # }}}
-    @classmethod  # fromCSV# {{{
-    def fromCSV(cls, bar_line: list[str], chart):
-        dt, opn, hgh, low, cls, vol = bar_line
-        dt = datetime.fromisoformat(dt)
-        opn = float(opn)
-        hgh = float(hgh)
-        low = float(low)
-        cls = float(cls)
-        vol = int(vol)
-        bar = Bar(dt, opn, hgh, low, cls, vol, chart)
+    @classmethod  # fromRecord# {{{
+    def fromRecord(cls, record, chart=None):
+        bar = cls(
+            record["dt"],
+            record["open"],
+            record["high"],
+            record["low"],
+            record["close"],
+            record["volume"],
+            chart,
+        )
         return bar
 
     # }}}

@@ -11,7 +11,7 @@ from __future__ import annotations
 import enum
 
 from avin.const import ONE_DAY, Usr
-from avin.core.gid import GId
+from avin.core.id import Id
 from avin.core.operation import Operation
 from avin.core.order import Order
 from avin.keeper import Keeper
@@ -67,14 +67,14 @@ class Trade:  # {{{
         trade_type: Trade.Type,
         figi: str,
         status: Trade.Status = None,
-        trade_id: GId = None,
+        trade_id: Id = None,
         orders: list = None,
         operations: list = None,
     ):
         if status is None:
             status = Trade.Status.INITIAL
         if trade_id is None:
-            trade_id = GId.newGId(self)
+            trade_id = Id.newId(self)
         if orders is None:
             orders = list()
         if operations is None:
@@ -371,7 +371,7 @@ class Trade:  # {{{
 
     # }}}
     # def stop_price(self):# {{{
-    #   # NOTE может быть стоит сделать отдельное добавление стопа и тейка
+    #   # NOTE: может быть стоит сделать отдельное добавление стопа и тейка
     #   # не через общее addOrder, а через addStopLoss addTakeProfit
     #   # тогда там и можно будет легко выцепить цену стопа тейка...
     #   # и вообще нужы ли эти параметры в трейде?

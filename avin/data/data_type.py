@@ -27,11 +27,15 @@ class DataType(enum.Enum):  # {{{
     BOOK = "book"
     ANALYSE = "analyse"
 
+    def __str__(self):  # {{{
+        return self.value
+
+    # }}}
     def __hash__(self):  # {{{
         return hash(self.name)
 
     # }}}
-    def toTimedelta(self):  # {{{
+    def toTimeDelta(self):  # {{{
         periods = {
             "1M": timedelta(minutes=1),
             "5M": timedelta(minutes=5),

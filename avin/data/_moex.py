@@ -131,7 +131,7 @@ class _MoexData(_AbstractSource):  # {{{
                 ID = InstrumentId(asset_type, exchange, ticker, figi, name)
                 id_list.append(ID)
             else:
-                # NOTE
+                # NOTE:
                 # если у Тинька нет информации по активу, поторговать
                 # им все равно пока не получится, так что просто
                 # пропускаем этот актив
@@ -264,7 +264,7 @@ class _MoexData(_AbstractSource):  # {{{
             i["EXCHANGE"] = "MOEX"
             if i["BOARDID"] == "SNDX":
                 i["TYPE"] = AssetType.INDEX.name
-                # NOTE
+                # NOTE:
                 # Indexes not have 'figi', but I'm use figi in
                 # InstrumentId - unified identificator for all assets
                 # for use search by figi, I'm add in to indices
@@ -273,7 +273,7 @@ class _MoexData(_AbstractSource):  # {{{
                 i["FIGI"] = f"_MOEX_{i['SECID']}"
             elif i["BOARDID"] == "TQBR":
                 i["TYPE"] = AssetType.SHARE.name
-                # NOTE
+                # NOTE:
                 # "Latname": "Perm 'Energosbyt", and other similar ones ..
                 # a single roll then interferes when transforming
                 # in postgres jsonb, delete thats fucked symbol '
@@ -352,14 +352,14 @@ class _MoexData(_AbstractSource):  # {{{
     ) -> list[Candles]:
         logger.debug(f"{cls.__name__}.__requestCandles()")
 
-        # TODO
+        # TODO:
         # можно же сделать запрос по 10.000 баров.
         # начиная с бегин, и до тех пор пока меньше энд..
         # и не нужен будет этот геморой с small / big timeframe
         # и выкачивать быстрее будет
 
         # select method
-        period = data_type.toTimedelta()
+        period = data_type.toTimeDelta()
         if period < ONE_DAY:
             method = cls.__requestCandlesSmallTimeFrame
         else:
@@ -459,7 +459,7 @@ class _MoexData(_AbstractSource):  # {{{
             return candles
 
         # skip uncomplete candle other timeframes
-        period = data_type.toTimedelta()
+        period = data_type.toTimeDelta()
         if period <= ONE_WEEK:
             last_candle_begin = candles[-1].begin
             last_candle_end = candles[-1].end

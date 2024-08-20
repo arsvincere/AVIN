@@ -10,8 +10,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from avin.const import *
-from avin.data import *
+from avin import *
 
 
 def test_DataSource():  # {{{
@@ -26,7 +25,7 @@ def test_DataSource():  # {{{
 def test_DataType():  # {{{
     data_type = DataType.BAR_D
     assert data_type.value == "D"
-    assert data_type.toTimedelta() == timedelta(days=1)
+    assert data_type.toTimeDelta() == timedelta(days=1)
 
     from_str_data_type = DataType.fromStr("1M")
     assert from_str_data_type.name == "BAR_1M"
@@ -181,7 +180,7 @@ async def test_Data_request():
     begin = datetime(2023, 1, 1, tzinfo=UTC)
     end = datetime(2024, 1, 1, tzinfo=UTC)
     records = await Data.request(abrd, DataType.BAR_M, begin, end)
-    assert len(records) == 12
+    assert len(records) == 12  # 12 mounth in year
 
 
 # }}}

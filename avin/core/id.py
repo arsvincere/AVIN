@@ -11,21 +11,19 @@ from __future__ import annotations
 import enum
 import time as timer
 
-# TODO rename GId -> Id
 
-
-class GId:  # {{{
+class Id:  # {{{
     # {{{-- doc
-    """GId - Globa Identifier for trades, orders, operations, positions.
+    """Id - Identifier for trades, orders, operations, positions.
 
     Note
     ----
     Don't use class constructor. Create new class object by call member
-    newGId()
+    newId()
 
     Attributes
     ----------
-    type: GId.Type
+    type: Id.Type
     time: float
         Value returned by call time.time(), current time in seconds since
         the Epoch.
@@ -58,34 +56,8 @@ class GId:  # {{{
         return self.__val == other.__val
 
     # }}}
-    @classmethod  # fromStr# {{{
-    def fromStr(cls, string: str) -> GId:
-        """Create GId from string
-
-        Valid string looks like '2-1720197988.3066797'
-        Consist of two parts, splited by symbol '-'.
-        Firts part - type of global identifier (from enum GId.Type)
-        Second part - current time in seconds since the Epoch.
-
-        Parameters
-        ----------
-        object : Order
-            Any core object like trade, order, operation, position.
-            Any core object like trade, order, operation, position.
-
-        Returns
-        -------
-        GId
-            New global identifier
-
-        """
-
-        gid = GId(float(string))
-        return gid
-
-    # }}}
-    @classmethod  # newGId# {{{
-    def newGId(cls, obj: Trade | Order | Operation | Position) -> GId:
+    @classmethod  # newId# {{{
+    def newId(cls, obj: Trade | Order | Operation | Position) -> Id:
         """Generate new global identifier
 
         Parameters
@@ -95,15 +67,13 @@ class GId:  # {{{
 
         Returns
         -------
-        GId
+        Id
             New global identifier
 
         """
 
-        gid = GId(timer.time())
-        return gid
+        ID = Id(timer.time())
+        return ID
 
     # }}}
-
-
-# }}}
+    # }}}

@@ -56,10 +56,7 @@ class _InstrumentInfoCache:  # {{{
         # read file, return True if last update == today
         string = Cmd.read(file_path)
         last_update = datetime.fromisoformat(string)
-        if now().date() == last_update.date():
-            return True
-
-        return False
+        return now().date() == last_update.date()
 
     # }}}
     @classmethod  # updateCachingDate# {{{
@@ -77,7 +74,7 @@ class _InstrumentInfoCache:  # {{{
     # }}}
     @staticmethod  # decoderJson# {{{
     def decoderJson(obj):
-        # NOTE:
+        # NOTE::
         # см формат файлов кэша, там слишком много деталей спецефичных
         # сейчас в MOEX файлах после чтения остаются строками разные даты:
         # "SETTLEDATE": "2024-05-31"

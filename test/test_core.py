@@ -6,27 +6,30 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-from avin.const import *
-from avin.core import *
-from avin.data import *
-from avin.utils import *
+import pytest
+
+from avin import *
 
 
 def test_Range():  # {{{
     r = Range(5, 10)
-    assert 6 in r
-    assert 11 not in r
-    assert 8 in r[50:100]
+
     assert r.min == 5
     assert r.max == 10
     assert r.type == Range.Type.UNDEFINE
     assert r.bar is None
+
     assert r.percent() == 50.0
     assert r.abs() == 5.0
     assert r.mid() == 7.5
+
+    assert 6 in r
     assert 6 in r.half(1)
     assert 6 in r.third(1)
     assert 6 in r.quarter(1)
+    assert 8 in r[50:100]
+    assert 11 not in r
+
     bar = Bar(now(), 10, 12, 9, 11, 1000)
     body = bar.body
     assert isinstance(body, Range)
@@ -35,9 +38,20 @@ def test_Range():  # {{{
     assert 11.0 in bar.body
     assert 11.1 not in bar.body
 
-    # }}}
+    assert 10.9 not in bar.body.quarter(1)
+    assert 10.9 not in bar.body.quarter(2)
+    assert 10.9 not in bar.body.quarter(3)
+    assert 10.9 in bar.body.quarter(4)
+
+    assert 11.9 not in bar.upper.third(1)
+    assert 11.9 not in bar.upper.third(2)
+    assert 11.9 in bar.upper.third(3)
+
+    assert 9.9 not in bar.lower.half(1)
+    assert 9.9 in bar.lower.half(2)
 
 
+# }}}
 def test_Bar():  # {{{
     bar = Bar("2023-01-01", 10, 12, 9, 11, 1000, chart=None)
     assert bar.dt == datetime.fromisoformat("2023-01-01")
@@ -46,106 +60,209 @@ def test_Bar():  # {{{
     assert bar.low == 9
     assert bar.close == 11
     assert bar.vol == 1000
+
     assert isinstance(bar.range, Range)
     assert isinstance(bar.body, Range)
     assert isinstance(bar.upper, Range)
     assert isinstance(bar.lower, Range)
+
     assert 12.01 not in bar
     assert 11.99 in bar
     assert 9.01 in bar
     assert 8.99 not in bar
-    assert bar.isBull()
-    assert not bar.isBear()
+
     assert 11.9 in bar.upper
     assert 10.9 not in bar.upper
-    line = Bar.toCSV(bar)
-    fields = line.split(";")
-    decode_bar = Bar.fromCSV(fields, chart=None)
-    assert bar == decode_bar
 
-    # }}}
+    assert 9.0 in bar.lower
+    assert 8.9 not in bar.lower
+
+    assert 10.5 in bar.body
+    assert 11.5 not in bar.body
+
+    assert bar.isBull()
+    assert not bar.isBear()
+
+    bar.addFlag(Bar.Type.INSIDE)
+    assert bar.isInside()
+    assert not bar.isOutside()
+    assert not bar.isOverflow()
+    assert not bar.isExtremum()
+
+    bar.removeFlag(Bar.Type.INSIDE)
+    assert not bar.isInside()
+    assert not bar.isOutside()
+    assert not bar.isOverflow()
+    assert not bar.isExtremum()
+
+    bar.addFlag(Bar.Type.OVERFLOW)
+    bar.addFlag(Bar.Type.EXTREMUM)
+    assert not bar.isInside()
+    assert not bar.isOutside()
+    assert bar.isOverflow()
+    assert bar.isExtremum()
 
 
+# }}}
 def test_TimeFrame():  # {{{
     D = TimeFrame("D")
-    H = TimeFrame("1H")
+    h1 = TimeFrame("1H")
     m5 = TimeFrame("5M")
-    assert D > m5
-    assert H == m5 * 12
-    assert H < "D"
+
+    assert m5 < D
+    assert m5 * 12 == h1
+    assert h1 < "D"
     assert m5 > "1M"
-    assert H.minutes() == 60
+    assert h1.minutes() == 60
     assert m5.minutes() == 5
-    assert repr(H) == "TimeFrame('1H')"
-    assert str(H) == "1H"
-    # }}}
+
+    assert repr(h1) == "TimeFrame('1H')"
+    assert str(h1) == "1H"
+
+    assert m5.toDataType() == DataType.BAR_5M
+    assert h1.toDataType() == DataType.BAR_1H
+    assert D.toDataType() == DataType.BAR_D
+
+    assert m5.toTimeDelta() == FIVE_MINUTE
+    assert h1.toTimeDelta() == ONE_HOUR
+    assert D.toTimeDelta() == ONE_DAY
 
 
-def test_Chart():  # {{{
-    afks_id = Data.find(Exchange.MOEX, AssetType.SHARE, "AFKS")
-    share = Share(afks_id)
+# }}}
+
+
+@pytest.mark.asyncio  # test_Chart  # {{{
+async def test_Chart(event_loop):
+    sber = await Asset.byTicker(AssetType.SHARE, Exchange.MOEX, "SBER")
     tf = TimeFrame("1M")
     begin = datetime(2023, 8, 1, 0, 0, tzinfo=UTC)
     end = datetime(2023, 9, 1, 0, 0, tzinfo=UTC)
-    chart = Chart(share, tf, begin, end)
-    assert chart.asset.ticker == "AFKS"
+    bars = await Keeper.get(Bar, ID=sber, timeframe=tf, begin=begin, end=end)
+
+    # create chart
+    chart = Chart(sber, tf, bars)
+    assert chart.asset == sber
+    assert chart.asset.ticker == "SBER"
     assert chart.timeframe == tf
+
     assert chart.first.dt == datetime(2023, 8, 1, 6, 59, tzinfo=UTC)
     assert chart.last.dt == datetime(2023, 8, 31, 20, 49, tzinfo=UTC)
+
     assert chart[1].dt == datetime(2023, 8, 31, 20, 49, tzinfo=UTC)
     assert chart.now is None
     assert chart[0] is None
-    assert chart.asset == share
-    bar = Bar(1, 1, 5000, 1, 1, now())
+
+    # manipulation with head
+    chart.setHeadIndex(15)
+    assert chart.getHeadIndex() == 15
+    assert chart.now.dt == datetime(2023, 8, 1, 7, 14, tzinfo=UTC)
+
+    chart.setHeadDatetime(datetime(2023, 8, 3, 10, 0, tzinfo=UTC))
+    assert chart.now.dt == datetime(2023, 8, 3, 10, 0, tzinfo=UTC)
+    assert chart.last.dt == datetime(2023, 8, 3, 9, 59, tzinfo=UTC)
+
+    bars = chart.getTodayBars()
+    assert bars[0].dt == datetime(2023, 8, 3, 6, 59, tzinfo=UTC)
+    assert bars[-1].dt == datetime(2023, 8, 3, 9, 59, tzinfo=UTC)
+    assert len(bars) == 181
+
+    chart.nextHead()
+    assert chart.now.dt == datetime(2023, 8, 3, 10, 1, tzinfo=UTC)
+    assert chart.last.dt == datetime(2023, 8, 3, 10, 0, tzinfo=UTC)
+
+    chart.resetHead()
+    assert chart.first.dt == datetime(2023, 8, 1, 6, 59, tzinfo=UTC)
+    assert chart.last.dt == datetime(2023, 8, 31, 20, 49, tzinfo=UTC)
+    assert chart.now is None
+    assert chart[0] is None
+    assert chart[1].dt == datetime(2023, 8, 31, 20, 49, tzinfo=UTC)
+    assert chart.getHeadIndex() == len(chart.getBars())
+
+    # add new bars in chart
+    bar = Bar(now(), 1, 1, 1, 1, 5000)
     chart.update([bar, bar])
     bars = chart.getBars()
     assert bars[-1] == bar
     assert bars[-2] == bar
-    # chart._setHeadIndex(15)
-    # assert chart.now.dt == datetime(2023, 8, 1, 7, 14, tzinfo=UTC)
-    # chart._setHeadDatetime(datetime(2023, 8, 3, 10, 0, tzinfo=UTC))
-    # assert chart.now.dt == datetime(2023, 8, 3, 10, 0, tzinfo=UTC)
-    # assert chart.last.dt == datetime(2023, 8, 3, 9, 59, tzinfo=UTC)
-    # bars = chart.getTodayBars()
-    # assert bars[0].dt == datetime(2023, 8, 3, 6, 59, tzinfo=UTC)
-    # assert bars[-1].dt == datetime(2023, 8, 3, 9, 59, tzinfo=UTC)
-    # assert len(bars) == 181
+    assert bars[-2].vol == 5000
 
 
 # }}}
-def test_Share():  # {{{
+@pytest.mark.asyncio  # test_Asset  # {{{
+async def test_Asset():
     exchange = Exchange.MOEX
     asset_type = AssetType.SHARE
-    ID = Data.find(exchange, asset_type, "AFKS")
-    afks = Share(ID)
-    assert afks.exchange == exchange
-    assert afks.type == asset_type
-    assert afks.ticker == "AFKS"
-    assert afks.name == "АФК Система"
-    assert afks.figi == "BBG004S68614"
-    assert afks.uid == "53b67587-96eb-4b41-8e0c-d2e3c0bdd234"
-    assert afks.min_price_step == 0.001
-    assert afks.lot == 100
-    assert afks.dir_path == Cmd.path(Usr.DATA, exchange.name, asset_type.name, "AFKS")
-    assert afks.analytic_dir == Cmd.path(
-        Usr.DATA, exchange.name, asset_type.name, "AFKS", "analytic"
-    )
+    ticker = "SBER"
+    figi = "BBG004730N88"
+    name = "Сбер Банк"
+    ID = InstrumentId(asset_type, exchange, ticker, figi, name)
 
-    afks.cacheChart("D")
-    assert afks.chart("D").timeframe == TimeFrame("D")
-    assert afks.chart("1H") is None
-    afks.cacheChart("1H")
-    assert afks.chart("1H").timeframe == TimeFrame("1H")
-    afks.clearCache()
-    assert afks.chart("1H") is None
-    assert afks.chart("D") is None
+    asset = Asset.byId(ID)
+    assert asset.exchange == exchange
+    assert asset.type == asset_type
+    assert asset.ticker == ticker
+    assert asset.figi == figi
+    assert asset.name == name
 
-    chart = afks.loadChart("1M")
-    assert afks.chart("1M") is None  # loading not caching
+    asset = await Asset.byFigi(figi)
+    assert asset.exchange == exchange
+    assert asset.type == asset_type
+    assert asset.ticker == ticker
+    assert asset.figi == figi
+    assert asset.name == name
+
+    asset = await Asset.byTicker(asset_type, exchange, ticker)
+    assert asset.exchange == exchange
+    assert asset.type == asset_type
+    assert asset.ticker == ticker
+    assert asset.figi == figi
+    assert asset.name == name
+
+    assert asset.parent() is None
+
+
+# }}}
+@pytest.mark.asyncio  # test_Share  # {{{
+async def test_Share():
+    exchange = Exchange.MOEX
+    asset_type = AssetType.SHARE
+    id_list = await Data.find(asset_type, exchange, "SBER")
+    assert len(id_list) == 1
+    sber = Share(id_list[0])
+
+    assert sber.exchange == exchange
+    assert sber.type == asset_type
+    assert sber.ticker == "SBER"
+    assert sber.name == "Сбер Банк"
+    assert sber.figi == "BBG004730N88"
+
+    # info
+    assert sber.info is None
+    await sber.loadInfo()
+    assert sber.info
+    assert sber.uid == "e6123145-9665-43e0-8413-cd61b8aa9b13"
+    assert sber.min_price_step == 0.01
+    assert sber.lot == 10
+
+    await sber.cacheChart("D")
+    assert sber.chart("D").timeframe == TimeFrame("D")
+    assert sber.chart("1H") is None
+
+    await sber.cacheChart("1H")
+    assert sber.chart("1H").timeframe == TimeFrame("1H")
+
+    sber.clearCache()
+    assert sber.chart("1H") is None
+    assert sber.chart("D") is None
+
+    chart = await sber.loadChart("1M")
+    assert sber.chart("1M") is None  # loading not caching
     assert chart.timeframe == TimeFrame("1M")
 
 
 # }}}
+
+
 def test_AssetList():  # {{{
     tmp_file = Cmd.path(Usr.ASSET, "example.al")
     if Cmd.isExist(tmp_file):
@@ -243,7 +360,7 @@ def test_Operation():  # {{{
 
 # }}}
 # def test_Position():  # {{{
-# TODO
+# TODO:
 # позиция это чисто позиция в портфолио, как от брокера приходит
 #     ID = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
 #     share = Share(ID)
@@ -385,7 +502,9 @@ def test_Trade():  # {{{
     trade = Trade(dt, strategy, trade_type, asset)
     assert trade.status == Trade.Status.INITIAL
 
-    order = Order.Limit(Order.Direction.BUY, asset, lots=1, quantity=10, price=100)
+    order = Order.Limit(
+        Order.Direction.BUY, asset, lots=1, quantity=10, price=100
+    )
     trade.addOrder(order)  # signals of order connect automaticaly
 
     op = Operation(

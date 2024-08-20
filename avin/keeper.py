@@ -227,17 +227,18 @@ class Keeper:
         # Get class_name & choose method
         class_name = cls.__getClassName(Class)
         methods = {
-            "DataSource": cls.__getDataSource,
             "InstrumentId": cls.__getInstrumentId,
+            "Data": cls.__getData,
+            "DataSource": cls.__getDataSource,
             "DataType": cls.__getDataType,
-            "Data": cls.__getDataInfo,
             "datetime": cls.__getDateTime,
+            "_Bar": cls.__getBarsRecords,
+            "Bar": cls.__getBars,
             "Asset": cls.__getAsset,
             "Account": cls.__getAccount,
             "Trade": cls.__getTrades,
             "Operation": cls.__getOperations,
             "Order": cls.__getOrders,
-            "_Bar": cls.__getBars,
         }
         get_method = methods[class_name]
 
@@ -625,13 +626,13 @@ class Keeper:
             await cls.transaction(request)
 
         # Delete asset if its not have market data?
-        # NOTE
+        # NOTE:
         # если у этого ассета уже есть трейды, его не получится удалить.
         # Получается тогда удалять ассет из таблицы ассетов вообще
         # не имеет смысла, один раз добавили сюда актив - и все, он тут
         # навсегда. Хотя попытаться удалить его можно, но он удалится
         # только если по нему нет трейдов нигде в базе. Ок.
-        # NOTE
+        # NOTE:
         # тут программа будет падать, когда до этого дойдет, когда
         # в гуи буду делать виджет, где будет удаление, там и посмотрю
         # стоит ли вообще этот кусок кода оставлять
@@ -787,7 +788,7 @@ class Keeper:
         """
         await cls.transaction(request)
 
-        # NOTE
+        # NOTE:
         # update "last_update" datetime....
         # Сейчас это хранится в файле ./res/cache/moex/last_update
         # хотя потом можно будет создать отдельную таблицу и в нее свести
@@ -814,38 +815,19 @@ class Keeper:
 
     # }}}
     @classmethod  # __getTableName  # {{{
-    def __getTableName(cls, ID: InstrumentId, data_type: DataType) -> str:
+    def __getTableName(
+        cls,
+        ID: InstrumentId,
+        data_type: DataType,
+    ) -> str:
+        # table name looks like: "data.MOEX_SHARE_SBER_1M"
         logger.debug(f"{cls.__name__}.__getTableName()")
 
-        # looks like: data."MOEX_SHARE_SBER_1M"
         bars_table_name = (
-            'data."'
-            f"{ID.exchange.name}_{ID.type.name}_{ID.ticker}_{data_type.value}"
-            '"'
+            f'"data.{ID.exchange.name}_{ID.type.name}_{ID.ticker}_'
+            f'{data_type}"'
         )
         return bars_table_name
-
-    # }}}
-    @classmethod  # __getDataSource  # {{{
-    async def __getDataSource(
-        cls, DataSource, kwargs: dict
-    ) -> list[DataType]:
-        logger.debug(f"{cls.__name__}.__getDataType()")
-
-        ID = kwargs["ID"]
-        data_type = kwargs["data_type"]
-
-        request = f"""
-            SELECT (source) FROM "Data"
-            WHERE
-                figi = '{ID.figi}' AND type = '{data_type.name}'
-                ;
-            """
-        records = await cls.transaction(request)
-        assert len(records) == 1
-
-        source = DataSource.fromRecord(records[0])
-        return source
 
     # }}}
     @classmethod  # __getInstrumentId  # {{{
@@ -904,6 +886,51 @@ class Keeper:
         return id_list
 
     # }}}
+    @classmethod  # __getData  # {{{
+    async def __getData(cls, Data, kwargs: dict) -> list[Record]:
+        logger.debug(f"{cls.__name__}.__getData()")
+
+        ID = kwargs.get("ID")
+        data_type = kwargs.get("data_type")
+
+        # Create figi condition
+        pg_id = f"figi = '{ID.figi}'" if ID else "TRUE"
+
+        # Create figi condition
+        pg_data_type = f"type = '{data_type.name}'" if data_type else "TRUE"
+
+        # Request data info
+        request = f"""
+            SELECT * FROM "Data"
+            WHERE
+                {pg_id} AND {pg_data_type};
+            """
+        records = await cls.transaction(request)
+        return records
+
+    # }}}
+    @classmethod  # __getDataSource  # {{{
+    async def __getDataSource(
+        cls, DataSource, kwargs: dict
+    ) -> list[DataType]:
+        logger.debug(f"{cls.__name__}.__getDataType()")
+
+        ID = kwargs["ID"]
+        data_type = kwargs["data_type"]
+
+        request = f"""
+            SELECT (source) FROM "Data"
+            WHERE
+                figi = '{ID.figi}' AND type = '{data_type.name}'
+                ;
+            """
+        records = await cls.transaction(request)
+        assert len(records) == 1
+
+        source = DataSource.fromRecord(records[0])
+        return source
+
+    # }}}
     @classmethod  # __getDataType  # {{{
     async def __getDataType(cls, DataType, kwargs: dict) -> list[DataType]:
         logger.debug(f"{cls.__name__}.__getDataType()")
@@ -925,32 +952,9 @@ class Keeper:
         return data_types
 
     # }}}
-    @classmethod  # __getDataInfo  # {{{
-    async def __getDataInfo(cls, Data, kwargs: dict) -> list[Record]:
-        logger.debug(f"{cls.__name__}.__getDataInfo()")
-
-        ID = kwargs.get("ID")
-        data_type = kwargs.get("data_type")
-
-        # Create figi condition
-        pg_id = f"figi = '{ID.figi}'" if ID else "TRUE"
-
-        # Create figi condition
-        pg_data_type = f"type = '{data_type.name}'" if data_type else "TRUE"
-
-        # Request data info
-        request = f"""
-            SELECT * FROM "Data"
-            WHERE
-                {pg_id} AND {pg_data_type};
-            """
-        records = await cls.transaction(request)
-        return records
-
-    # }}}
     @classmethod  # __getDateTime  # {{{
     async def __getDateTime(cls, datetime, kwargs: dict) -> list[Record]:
-        logger.debug(f"{cls.__name__}.__getDataInfo()")
+        logger.debug(f"{cls.__name__}.__getData()")
 
         ID = kwargs["ID"]
         data_type = kwargs["data_type"]
@@ -973,14 +977,17 @@ class Keeper:
         return record["first_dt"], record["last_dt"]
 
     # }}}
-    @classmethod  # __getBars  # {{{
-    async def __getBars(cls, Bar, kwargs: dict) -> list[Bar | _Bar]:
+    @classmethod  # __getBarsRecords  # {{{
+    async def __getBarsRecords(cls, _Bar, kwargs: dict) -> list[Record]:
         logger.debug(f"{cls.__name__}.__getBars()")
 
         ID = kwargs["ID"]
-        data_type = kwargs["data_type"]
+        data_type = kwargs.get("data_type")
         begin: datatime = kwargs.get("begin")
         end: datetime = kwargs.get("end")
+
+        # create table name
+        bars_table_name = cls.__getTableName(ID, data_type=data_type)
 
         # create condition for begin-end:
         if begin is None and end is None:
@@ -988,8 +995,7 @@ class Keeper:
         else:
             pg_period = f"'{begin}' <= dt AND dt < '{end}'"
 
-        # request bars
-        bars_table_name = cls.__getTableName(ID, data_type)
+        # request bars records
         request = f"""
             SELECT dt, open, high, low, close, volume
             FROM {bars_table_name}
@@ -999,7 +1005,27 @@ class Keeper:
             ;
             """
         records = await cls.transaction(request)
+
         return records
+
+    # }}}
+    @classmethod  # __getBars  # {{{
+    async def __getBars(cls, Bar, kwargs: dict) -> list[Bar]:
+        logger.debug(f"{cls.__name__}.__getBars()")
+
+        # timeframe -> data_type, and add it to kwargs
+        kwargs.setdefault("data_type", kwargs["timeframe"].toDataType())
+
+        # request bars records
+        records = await cls.__getBarsRecords(Bar, kwargs)
+
+        # create bars
+        bars = list()
+        for record in records:
+            bar = Bar.fromRecord(record)
+            bars.append(bar)
+
+        return bars
 
     # }}}
     @classmethod  # __getAsset  # {{{
@@ -1027,10 +1053,22 @@ class Keeper:
 
         logger.debug(f"{cls.__name__}.__getAsset()")
 
-        # TODO добавить поиск по тикеру типу и бирже
-        # давай этим займемя когда core будешь снова рефакторить
-        # когда там Asset.by____ методы тестировать буду
+        asset_type = kwargs.get("asset_type")
+        exchange = kwargs.get("exchange")
+        ticker = kwargs.get("ticker")
         figi = kwargs.get("figi")
+
+        # create condition
+        if figi:
+            pg_condition = f"figi = '{figi}'"
+        elif asset_type and exchange and ticker:
+            pg_condition = (
+                f"type = '{asset_type.name}' AND "
+                f"exchange = '{exchange.name}' AND "
+                f"ticker = '{ticker}'"
+            )
+        else:
+            assert False
 
         request = f"""
             SELECT
@@ -1040,7 +1078,8 @@ class Keeper:
                 name,
                 figi
             FROM "Asset"
-            WHERE figi = '{figi}'
+            WHERE
+                {pg_condition}
             ;
             """
         asset_records = await cls.transaction(request)
@@ -1050,7 +1089,6 @@ class Keeper:
         return asset
 
     # }}}
-
     @classmethod  # __getAccount  # {{{
     async def __getAccount(cls, Account, kwargs: dict) -> list[Account]:
         logger.debug(f"{cls.__name__}.__getAccount()")
@@ -1500,7 +1538,7 @@ class Keeper:
     async def __createOrderTable(cls) -> None:
         logger.debug(f"{cls.__name__}.__createOrderTable()")
 
-        # TODO добавить частично исполненный - сколько там уже исполнено
+        # TODO: добавить частично исполненный - сколько там уже исполнено
         request = """
         CREATE TABLE IF NOT EXISTS "Order" (
             order_id        float PRIMARY KEY,

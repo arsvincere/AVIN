@@ -13,7 +13,7 @@ from datetime import datetime
 
 from avin.const import Usr
 from avin.core.asset import Asset
-from avin.core.gid import GId
+from avin.core.id import Id
 
 
 class Operation:  # {{{
@@ -46,9 +46,9 @@ class Operation:  # {{{
         price: float,
         amount: float,
         commission: float,
-        operation_id: GId = None,
-        order_id: GId = None,
-        trade_id: GId = None,
+        operation_id: Id = None,
+        order_id: Id = None,
+        trade_id: Id = None,
         meta: object = None,
     ):
         self.account_name = account_name
@@ -60,7 +60,7 @@ class Operation:  # {{{
         self.quantity = quantity
         self.amount = amount
         self.commission = commission
-        self.operation_id = operation_id if operation_id else GId.newGId(self)
+        self.operation_id = operation_id if operation_id else Id.newId(self)
         self.order_id = order_id
         self.trade_id = trade_id
         self.meta = meta

@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from avin.data.data_source import DataSource
 from avin.keeper import Keeper
@@ -38,30 +39,6 @@ class _Bar:
             record["low"],
             record["close"],
             record["volume"],
-        )
-
-        return bar
-
-    # }}}
-    @classmethod  # toCSV# {{{
-    def toCSV(cls, bar):
-        dt = bar.dt.isoformat()
-        s = f"{dt};{bar.open};{bar.high};{bar.low};{bar.close};{bar.vol}"
-
-        return s
-
-    # }}}
-    @classmethod  # fromCSV# {{{
-    def fromCSV(cls, string, requester=None):
-        DT, OPEN, HIGH, LOW, CLOSE, VOLUME = range(6)
-        fields = string.split(";")
-        bar = _Bar(
-            dt=datetime.fromisoformat(fields[DT]),
-            open=float(fields[OPEN]),
-            high=float(fields[HIGH]),
-            low=float(fields[LOW]),
-            close=float(fields[CLOSE]),
-            vol=int(fields[VOLUME]),
         )
 
         return bar

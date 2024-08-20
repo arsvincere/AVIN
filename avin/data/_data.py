@@ -144,7 +144,7 @@ class Data:  # {{{
         if not check:
             return False
 
-        if in_type.toTimedelta() > out_type.toTimedelta():
+        if in_type.toTimeDelta() > out_type.toTimeDelta():
             logger.error(
                 f"You're still a stupid monkey, how the fuck do you convert "
                 f"'{in_type}' to '{out_type}'?"
@@ -424,7 +424,7 @@ class _Manager:  # {{{
     @classmethod  # download{{{
     async def download(cls, ID, data_type, year) -> None:
         logger.debug(f"{cls.__name__}.download()")
-        # NOTE
+        # NOTE:
         # пока грузим все исторические данные только с MOEX
         # независимо ни от чего
         await _MoexData.download(ID, data_type, year)
@@ -554,7 +554,7 @@ class _Manager:  # {{{
 
         time = datetime.combine(bars[0].dt.date(), DAY_BEGIN)
         end = datetime.combine(bars[-1].dt.date(), DAY_END)
-        step = data_type.toTimedelta()
+        step = data_type.toTimeDelta()
 
         i = 0
         filled = list()
@@ -587,7 +587,7 @@ class _Manager:  # {{{
     def __choseConverter(cls, out_type: DataType) -> Callable:
         logger.debug(f"{cls.__name__}.__choseConverter()")
 
-        if out_type.toTimedelta() <= timedelta(days=1):
+        if out_type.toTimeDelta() <= timedelta(days=1):
             conv = cls.__convertSmallTimeFrame
         elif out_type.value == "W":
             conv = cls.__convertWeekTimeFrame
@@ -602,7 +602,7 @@ class _Manager:  # {{{
         logger.debug(f"{cls.__name__}.__convertSmallTimeFrame()")
 
         bars = cls.__fillVoid(bars, in_type)
-        period = out_type.toTimedelta()
+        period = out_type.toTimeDelta()
 
         i = 0
         converted = list()
@@ -626,7 +626,7 @@ class _Manager:  # {{{
     @classmethod  # __convertWeekTimeFrame# {{{
     def __convertWeekTimeFrame(cls, bars, in_type, out_type):
         logger.debug(f"{cls.__name__}.__convertWeekTimeFrame()")
-        assert in_type.toTimedelta() == timedelta(days=1)
+        assert in_type.toTimeDelta() == timedelta(days=1)
 
         bars = cls.__fillVoid(bars, in_type)
         first = 0
@@ -650,7 +650,7 @@ class _Manager:  # {{{
     @classmethod  # __convertMonthTimeFrame# {{{
     def __convertMonthTimeFrame(cls, bars, in_type, out_type):
         logger.debug(f"{cls.__name__}.__convertMonthTimeFrame()")
-        assert in_type.toTimedelta() == timedelta(days=1)
+        assert in_type.toTimeDelta() == timedelta(days=1)
 
         bars = cls.__fillVoid(bars, in_type)
         first = 0
@@ -710,7 +710,7 @@ class _Manager:  # {{{
         logger.info(f"Updating {ID.ticker}-{data_type.value}")
 
         # request new bars
-        begin = last_dt + data_type.toTimedelta()
+        begin = last_dt + data_type.toTimeDelta()
         end = now().replace(microsecond=0)
         new_bars = await source_class.getHistoricalBars(
             ID, data_type, begin, end
