@@ -8,11 +8,9 @@
 
 from __future__ import annotations
 
-from avin.const import Usr
 from avin.data.asset_type import AssetType
 from avin.data.exchange import Exchange
 from avin.keeper import Keeper
-from avin.utils import Cmd
 
 
 class InstrumentId:  # {{{
@@ -46,7 +44,7 @@ class InstrumentId:  # {{{
         return s
 
     # }}}
-    def __eq__(self, other):  # {{{
+    def __eq__(self, other: InstrumentId):  # {{{
         return self.__info == other.__info
 
     # }}}
@@ -73,51 +71,6 @@ class InstrumentId:  # {{{
     @property  # name# {{{
     def name(self):
         return self.__info["name"]
-
-    # }}}
-    @property  # dir_path# {{{
-    def dir_path(self):
-        path = Cmd.path(
-            Usr.DATA, self.exchange.name, self.type.name, self.ticker
-        )
-        return path
-
-    # }}}
-    @classmethod  # save# {{{
-    def save(cls, ID: InstrumentId, file_path: str) -> None:
-        obj = cls.toJson(ID)
-        Cmd.saveJson(obj, file_path)
-
-    # }}}
-    @classmethod  # load# {{{
-    def load(cls, file_path) -> InstrumentId:
-        obj = Cmd.loadJson(file_path)
-        ID = cls.fromJson(obj)
-        return ID
-
-    # }}}
-    @classmethod  # toJson# {{{
-    def toJson(cls, ID: InstrumentId) -> object:
-        obj = {
-            "exchange": ID.exchange.name,
-            "type": ID.type.name,
-            "ticker": ID.ticker,
-            "figi": ID.figi,
-            "name": ID.name,
-        }
-        return obj
-
-    # }}}
-    @classmethod  # fromJson# {{{
-    def fromJson(cls, obj) -> InstrumentId:
-        ID = InstrumentId(
-            exchange=Exchange.fromStr(obj["exchange"]),
-            asset_type=AssetType.fromStr(obj["type"]),
-            name=obj["name"],
-            ticker=obj["ticker"],
-            figi=obj["figi"],
-        )
-        return ID
 
     # }}}
     @classmethod  # fromRecord# {{{
