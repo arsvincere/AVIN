@@ -18,9 +18,9 @@ from avin.utils import Cmd, now
 class _InstrumentInfoCache:  # {{{
     def __init__(  # {{{
         self,
-        source: Source,
+        source: DataSource,
         asset_type: AssetType,
-        assets_info: list,
+        assets_info: list[dict],
     ):
         self.source = source
         self.asset_type = asset_type
@@ -82,6 +82,7 @@ class _InstrumentInfoCache:  # {{{
         # Пока они нигде не используются, так что пусть так и лежат.
         # На будущее возможное решение - при сохранении все эти поля
         # проверять и переводить в UTC datetime сразу при кэшировании
+        # а сейчас они после загрузки как строки идут
         for k, v in obj.items():
             if isinstance(v, str) and "+00:00" in v:
                 obj[k] = datetime.fromisoformat(obj[k])
