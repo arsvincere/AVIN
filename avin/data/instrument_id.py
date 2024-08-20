@@ -82,6 +82,7 @@ class InstrumentId:  # {{{
             ticker=record["ticker"],
             figi=record["figi"],
         )
+
         return ID
 
     # }}}
@@ -90,6 +91,7 @@ class InstrumentId:  # {{{
         id_list = await Keeper.get(InstrumentId, figi=figi)
         assert len(id_list) == 1
         ID = id_list[0]
+
         return ID
 
     # }}}

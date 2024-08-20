@@ -39,6 +39,7 @@ class _Bar:
             record["close"],
             record["volume"],
         )
+
         return bar
 
     # }}}
@@ -46,6 +47,7 @@ class _Bar:
     def toCSV(cls, bar):
         dt = bar.dt.isoformat()
         s = f"{dt};{bar.open};{bar.high};{bar.low};{bar.close};{bar.vol}"
+
         return s
 
     # }}}
@@ -61,6 +63,7 @@ class _Bar:
             close=float(fields[CLOSE]),
             vol=int(fields[VOLUME]),
         )
+
         return bar
 
     # }}}
@@ -144,6 +147,7 @@ class _BarsData:  # {{{
             bars.append(bar)
 
         data = _BarsData(ID, data_type, bars, source)
+
         return data
 
     # }}}

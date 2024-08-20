@@ -22,7 +22,6 @@ from avin.logger import logger
 from avin.utils import Cmd
 
 
-# TODO rename -> TinkoffSource
 class _TinkoffData(_AbstractSource):  # {{{
     """const"""  # {{{
 
@@ -48,7 +47,9 @@ class _TinkoffData(_AbstractSource):  # {{{
 
     # }}}
     @classmethod  # cacheAssetsInfo# {{{
-    async def cacheAssetsInfo(cls):
+    async def cacheAssetsInfo(cls) -> None:
+        logger.debug(f"{cls.__name__}.cacheAssetsInfo()")
+
         if _InstrumentInfoCache.checkCachingDate(cls.source):
             return
 
@@ -61,7 +62,7 @@ class _TinkoffData(_AbstractSource):  # {{{
         for type_ in types:
             logger.info(f"  - caching {type_}")
             assets_info = cls.__requestAvailibleAssets(type_)
-            asset_type = cls._getStandartAssetType(type_)
+            asset_type = cls.__getStandartAssetType(type_)
             cache = _InstrumentInfoCache(cls.source, asset_type, assets_info)
             await _InstrumentInfoCache.save(cache)
 
@@ -77,6 +78,8 @@ class _TinkoffData(_AbstractSource):  # {{{
         figi: str,
         name: str,
     ) -> InstrumentId:
+        logger.debug(f"{cls.__name__}.find()")
+
         if cls._AUTO_UPDATE:
             await cls.cacheAssetsInfo()
 
@@ -104,6 +107,8 @@ class _TinkoffData(_AbstractSource):  # {{{
     # }}}
     @classmethod  # info  # {{{
     async def info(cls, ID: InstrumentId) -> dict:
+        logger.debug(f"{cls.__name__}.info()")
+
         info = await Keeper.info(cls.source, ID.type, figi=ID.figi)
         assert len(info) == 1
         return info[0]
@@ -113,6 +118,8 @@ class _TinkoffData(_AbstractSource):  # {{{
     async def firstDateTime(
         cls, ID: InstrumentId, data_type: DataType
     ) -> datetime:
+        logger.debug(f"{cls.__name__}.firstDateTime()")
+
         info = await cls.info(ID)
         if data_type.value == "1M":
             return info["first_1min_candle_date"]
@@ -124,6 +131,7 @@ class _TinkoffData(_AbstractSource):  # {{{
     async def download(
         cls, ID: InstrumentId, data_type: DataType, year: int
     ) -> None:
+        logger.debug(f"{cls.__name__}.download()")
         assert False, "переписать на postgres, пока качаю только с МОЕКС"
 
         assert data_type.value == "1M"
@@ -137,6 +145,7 @@ class _TinkoffData(_AbstractSource):  # {{{
     # }}}
     @classmethod  # export  # {{{
     async def export(cls) -> None:
+        logger.debug(f"{cls.__name__}.export()")
         assert False, "переписать на postgres, пока качаю только с МОЕКС"
 
         # TODO fix - not exclude holidays files
@@ -152,7 +161,7 @@ class _TinkoffData(_AbstractSource):  # {{{
             Cmd.extract(archive, tmp_dir)
 
             bars = cls.__loadDataDir(tmp_dir)
-            ID, data_type = cls._parseFileName(Cmd.name(archive))
+            ID, data_type = cls.__parseFileName(Cmd.name(archive))
 
             data = _BarsData(ID, data_type, bars, Source.TINKOFF)
             _BarsData.save(data)
@@ -164,6 +173,7 @@ class _TinkoffData(_AbstractSource):  # {{{
     # }}}
     @classmethod  # clear  # {{{
     async def clear(cls) -> None:
+        logger.debug(f"{cls.__name__}.clear()")
         assert False, "переписать на postgres, пока качаю только с МОЕКС"
 
         logger.info(":: Clear Tinkoff files")
@@ -183,6 +193,7 @@ class _TinkoffData(_AbstractSource):  # {{{
         begin: datetime,
         end: datetime,
     ) -> list[_Bar]:
+        logger.debug(f"{cls.__name__}.getHistoricalBars()")
         assert False, "переписать на postgres, пока качаю только с МОЕКС"
         logger.info(
             f"  - request {ID.ticker}-{data_type.value} from {begin.date()}"
@@ -198,7 +209,7 @@ class _TinkoffData(_AbstractSource):  # {{{
                     figi=ID.figi,
                     from_=begin,
                     to=end,
-                    interval=cls.__CandleIntervalFrom(data_type),
+                    interval=cls.__CandleIntervalFromTimeFrame(data_type),
                 )
                 for candle in candles:
                     if candle.is_complete:
@@ -212,6 +223,8 @@ class _TinkoffData(_AbstractSource):  # {{{
     # }}}
     @classmethod  # __authorizate# {{{
     async def __authorizate(cls) -> bool:
+        logger.debug(f"{cls.__name__}.__authorizate()")
+
         # if cls._TOKEN is not None, then it's valid token
         if cls._TOKEN is not None:
             return True
@@ -248,6 +261,8 @@ class _TinkoffData(_AbstractSource):  # {{{
     # }}}
     @classmethod  # __requestAvailibleAssets# {{{
     def __requestAvailibleAssets(cls, asset_type: str):
+        logger.debug(f"{cls.__name__}.__requestAvailibleAssets()")
+
         # asset_type must be availible for tinkoff invest API
         # for example: "shares", "bonds", "futures", "currencies"...
         with ti.Client(cls._TOKEN) as client:
@@ -256,16 +271,20 @@ class _TinkoffData(_AbstractSource):  # {{{
                 client.instruments, asset_type
             )().instruments
             for item in response:
-                item_info = cls.__extractBrokerInfo(item)
+                item_info = cls.__formatAssetsInfo(item)
                 if item_info["exchange"] is None:
                     continue
-                item_info["type"] = cls._getStandartAssetType(asset_type).name
+                item_info["type"] = cls.__getStandartAssetType(
+                    asset_type
+                ).name
                 all_info.append(item_info)
             return all_info
 
     # }}}
-    @classmethod  # __extractBrokerInfo# {{{
-    def __extractBrokerInfo(cls, instr: ti.Instrument) -> dict:
+    @classmethod  # __formatAssetsInfo# {{{
+    def __formatAssetsInfo(cls, instr: ti.Instrument) -> dict:
+        logger.debug(f"{cls.__name__}.__formatAssetsInfo()")
+
         # set simple exchange name, original exchange name
         # will saved after in the key 'exchange_specific'
         if "MOEX" in instr.exchange.upper():
@@ -343,46 +362,10 @@ class _TinkoffData(_AbstractSource):  # {{{
         return info
 
     # }}}
-    @classmethod  # __getId# {{{
-    def __getId(cls, info: dict) -> InstrumentId:
-        # In dictionaries received from the broker, the moex exchange is
-        # designated in several ways:
-        # MOEX, MOEX_PLUS, MOEX_EVENING_WEEKEND, moex_extended...
-        if (
-            "MOEX" in info["exchange"].upper()
-            or info["exchange"] == "FORTS_EVENING"
-        ):
-            exchange = Exchange.MOEX
-        # Similar to SPB exchange: spb_close, SPB_RU_MORNING..
-        elif "SPB" in info["exchange"].upper():
-            exchange = Exchange.SPB
-        else:
-            logger.critical(
-                f"_TinkoffData.__getId: unknown exchange={info['exchange']}"
-            )
-            exit(1)
-
-        ID = InstrumentId(
-            exchange=exchange,
-            asset_type=AssetType.fromStr(info["type"]),
-            name=info["name"],
-            ticker=info["ticker"],
-            figi=info["figi"],
-        )
-        return ID
-
-    # }}}
-    @classmethod  # __getAllId# {{{
-    def __getAllId(cls, cache: list[dict]) -> list(InstrumentId):
-        all_id = list()
-        for asset in cache:
-            ID = cls.__getId(asset)
-            all_id.append(ID)
-        return all_id
-
-    # }}}
     @classmethod  # __requestHistoricalData# {{{
     def __requestHistoricalData(cls, ID: InstrumentId, year: int):
+        logger.debug(f"{cls.__name__}.__requestHistoricalData()")
+
         exchange = ID.exchange.name
         type_ = ID.type.name
         figi = ID.figi
@@ -405,6 +388,8 @@ class _TinkoffData(_AbstractSource):  # {{{
     # }}}
     @classmethod  # __loadDataDir# {{{
     def __loadDataDir(cls, dir_path):
+        logger.debug(f"{cls.__name__}.__loadDataDir()")
+
         files = sorted(Cmd.getFiles(dir_path, full_path=True))
         if cls.EXCLUDE_HOLIDAYS:
             files = cls.__excludeHolidaysFiles(files)
@@ -417,6 +402,8 @@ class _TinkoffData(_AbstractSource):  # {{{
     # }}}
     @classmethod  # __excludeHolidaysFiles# {{{
     def __excludeHolidaysFiles(cls, files):
+        logger.debug(f"{cls.__name__}.__excludeHolidaysFiles()")
+
         # file name like: '53b67587-96eb-4b41-8e0c-d2e3c0bdd234_20190103.csv'
         # consist of 'uid_date.csv'
         i = 0
@@ -434,6 +421,8 @@ class _TinkoffData(_AbstractSource):  # {{{
     # }}}
     @classmethod  # __excludeHolidaysBars# {{{
     def __excludeHolidaysBars(cls, bars: list[Bar]) -> list[Bar]:
+        logger.debug(f"{cls.__name__}.__excludeHolidaysBars()")
+
         i = 0
         while i < len(bars):
             week_day = bars[i].dt.weekday()
@@ -446,6 +435,8 @@ class _TinkoffData(_AbstractSource):  # {{{
     # }}}
     @classmethod  # __readTinkoffFile# {{{
     def __readTinkoffFile(cls, file_path):
+        logger.debug(f"{cls.__name__}.__readTinkoffFile()")
+
         tinkoff_bars = list()
         text = Cmd.loadText(file_path)
         for line in text:
@@ -456,6 +447,8 @@ class _TinkoffData(_AbstractSource):  # {{{
     # }}}
     @classmethod  # __parseLineTinkoff# {{{
     def __parseLineTinkoff(cls, line):
+        logger.debug(f"{cls.__name__}.__parseLineTinkoff()")
+
         fields = line.split(";")
         UID, DATETIME, OPEN, CLOSE, HIGH, LOW, VOLUME = range(7)
         opn = float(fields[OPEN])
@@ -468,8 +461,12 @@ class _TinkoffData(_AbstractSource):  # {{{
         return bar
 
     # }}}
-    @classmethod  # __CandleIntervalFrom# {{{
-    def __CandleIntervalFrom(cls, data_type: DataType) -> ti.CandleInterval:
+    @classmethod  # __CandleIntervalFromTimeFrame# {{{
+    def __CandleIntervalFromTimeFrame(
+        cls, data_type: DataType
+    ) -> ti.CandleInterval:
+        logger.debug(f"{cls.__name__}.__CandleIntervalFromTimeFrame()")
+
         intervals = {
             "1M": ti.CandleInterval.CANDLE_INTERVAL_1_MIN,
             "10M": ti.CandleInterval.CANDLE_INTERVAL_10_MIN,
@@ -484,6 +481,8 @@ class _TinkoffData(_AbstractSource):  # {{{
     # }}}
     @classmethod  # __toBar# {{{
     def __toBar(cls, candle) -> _Bar:
+        logger.debug(f"{cls.__name__}.__toBar()")
+
         opn = float(ti.utils.quotation_to_decimal(candle.open))
         cls = float(ti.utils.quotation_to_decimal(candle.close))
         hgh = float(ti.utils.quotation_to_decimal(candle.high))
@@ -492,6 +491,37 @@ class _TinkoffData(_AbstractSource):  # {{{
         dt = candle.time
         bar = _Bar(dt, opn, hgh, low, cls, vol)
         return bar
+
+    # }}}
+    @classmethod  # __getStandartAssetType# {{{
+    def __getStandartAssetType(cls, name):
+        logger.debug(f"{cls.__name__}.__getStandartAssetType()")
+
+        names = {
+            "shares": AssetType.SHARE,
+            "bonds": AssetType.BOND,
+            "futures": AssetType.FUTURE,
+            "currencies": AssetType.CURRENCY,
+        }
+        standart_asset_type = names[name]
+        return standart_asset_type
+
+    # }}}
+    @classmethod  # __parseFileName# {{{
+    def __parseFileName(cls, file_name):
+        logger.debug(f"{cls.__name__}.__getStandartAssetType()")
+
+        exchange, asset_type, ticker, data_type, _ = file_name.split("-")
+
+        exchange = Exchange.fromStr(exchange)
+        asset_type = AssetType.fromStr(asset_type)
+        data_type = DataType.fromStr(data_type)
+
+        # FIXME выпилить вызов фасадного класса..
+        # заменить вызовом кипера
+        ID = Data.find(exchange, asset_type, ticker)
+
+        return ID, data_type
 
     # }}}
 

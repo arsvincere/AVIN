@@ -11,8 +11,6 @@ from __future__ import annotations
 import abc
 import enum
 
-from avin.data.asset_type import AssetType
-
 
 class DataSource(enum.Enum):  # {{{
     MOEX = 1
@@ -42,81 +40,40 @@ class _AbstractSource(metaclass=abc.ABCMeta):  # {{{
     def __init__(self): ...
 
     # }}}
-    @abc.abstractmethod  # assets# {{{
-    def assets(self, asset_type=None) -> list: ...
+    @abc.abstractclassmethod  # cacheAssetsInfo# {{{
+    def cacheAssetsInfofind(cls) -> None: ...
 
     # }}}
-    @abc.abstractmethod  # find# {{{
+    @abc.abstractclassmethod  # find# {{{
     def find(
-        self, exchange: str, asset_type: str, querry: str
+        cls, exchange: str, asset_type: str, querry: str
     ) -> InstrumentId: ...
 
     # }}}
-    @abc.abstractmethod  # info# {{{
-    def info(self, ID: InstrumentId) -> dict: ...
+    @abc.abstractclassmethod  # info# {{{
+    def info(cls, ID: InstrumentId) -> dict: ...
 
     # }}}
-    @abc.abstractmethod  # firstDateTime# {{{
+    @abc.abstractclassmethod  # firstDateTime# {{{
     def firstDateTime(
-        self, ID: InstrumentId, data_type: DataType
+        cls, ID: InstrumentId, data_type: DataType
     ) -> datetime: ...
 
     # }}}
-    @abc.abstractmethod  # download# {{{
+    @abc.abstractclassmethod  # download# {{{
     def download(
-        self, ID: InstrumentId, data_type: DataType, year: int
+        cls, ID: InstrumentId, data_type: DataType, year: int
     ) -> bool: ...
 
     # }}}
-    @abc.abstractmethod  # export# {{{
-    def export(self) -> bool: ...
-
-    # }}}
-    @abc.abstractmethod  # clear# {{{
-    def clear(self) -> bool: ...
-
-    # }}}
-    @abc.abstractmethod  # getHistoricalBars# {{{
+    @abc.abstractclassmethod  # getHistoricalBars# {{{
     def getHistoricalBars(
-        self,
+        cls,
         ID: InstrumentId,
         data_type: DataType,
         begin: datetime,
         end: datetime,
     ) -> list[_Bar]: ...
-
-    # }}}
-    @classmethod  # _getStandartAssetType# {{{
-    def _getStandartAssetType(cls, name):
-        # TODO вот этот метод явно не тут должен быть.
-        # или в классе конкретного источника данных, его заморочки с именами
-        # или общий в классе AssetType
-        names = {
-            "index": AssetType.INDEX,
-            "shares": AssetType.SHARE,
-            "bonds": AssetType.BOND,
-            "futures": AssetType.FUTURE,
-            "currency": AssetType.CURRENCY,
-            "currencies": AssetType.CURRENCY,
-            "etfs": AssetType.ETF,
-        }
-        standart_asset_type = names[name]
-        return standart_asset_type
-
-    # }}}
-    @classmethod  # _parseFileName# {{{
-    def _parseFileName(cls, file_name):
-        exchange, asset_type, ticker, data_type, year = file_name.split("-")
-
-        exchange = Exchange.fromStr(exchange)
-        asset_type = AssetType.fromStr(asset_type)
-        # FIXME а как бы от сюда выпилить вызов фасадного класса..
-        # и убрать все эти классы в другие файлы
-        ID = Data.find(exchange, asset_type, ticker)
-
-        data_type = DataType.fromStr(data_type)
-
-        return ID, data_type
 
     # }}}
 

@@ -12,8 +12,8 @@ from datetime import UTC, datetime, timedelta
 
 from avin.const import DAY_BEGIN, DAY_END, Res, Usr, WeekDays
 from avin.data._bar import _Bar, _BarsData
-from avin.data._source_moex import _MoexData
-from avin.data._source_tinkoff import _TinkoffData
+from avin.data._moex import _MoexData
+from avin.data._tinkoff import _TinkoffData
 from avin.data.asset_type import AssetType
 from avin.data.data_source import DataSource
 from avin.data.data_type import DataType
@@ -48,8 +48,9 @@ class Data:  # {{{
         Args:
             asset_type - ...
         """
-
         logger.debug(f"{cls.__name__}.find()")
+
+        # check args
         check = cls.__checkArgs(
             asset_type=asset_type,
             exchange=exchange,
@@ -61,6 +62,7 @@ class Data:  # {{{
         if not check:
             return None
 
+        # select data source
         if source == DataSource.MOEX:
             class_ = _MoexData
         elif source == DataSource.TINKOFF:
@@ -72,6 +74,7 @@ class Data:  # {{{
         else:
             class_ = _TinkoffData
 
+        # find instrument IDs
         id_list = await class_.find(asset_type, exchange, ticker, figi, name)
         return id_list
 
@@ -118,8 +121,12 @@ class Data:  # {{{
         year: int,
     ) -> None:
         logger.debug(f"{cls.__name__}.download()")
+
         check = cls.__checkArgs(
-            source=source, ID=ID, data_type=data_type, year=year
+            source=source,
+            ID=ID,
+            data_type=data_type,
+            year=year,
         )
         if not check:
             return
@@ -132,6 +139,7 @@ class Data:  # {{{
         cls, ID: InstrumentId, in_type: DataType, out_type: DataType
     ) -> None:
         logger.debug(f"{cls.__name__}.convert()")
+
         check = cls.__checkArgs(ID=ID, in_type=in_type, out_type=out_type)
         if not check:
             return False
@@ -153,10 +161,8 @@ class Data:  # {{{
         data_type: DataType,
     ) -> None:
         logger.debug(f"{cls.__name__}.delete()")
-        check = cls.__checkArgs(
-            ID=ID,
-            data_type=data_type,
-        )
+
+        check = cls.__checkArgs(ID=ID, data_type=data_type)
         if not check:
             return
 
@@ -174,10 +180,8 @@ class Data:  # {{{
         assert ID.exchange == Exchange.MOEX
         assert data_type != DataType.TIC
         assert data_type != DataType.BOOK
-        check = cls.__checkArgs(
-            ID=ID,
-            data_type=data_type,
-        )
+
+        check = cls.__checkArgs(ID=ID, data_type=data_type)
         if not check:
             return
 
@@ -400,15 +404,18 @@ class _Manager:  # {{{
     @classmethod  # cacheAssetsInfo  # {{{
     async def cacheAssetsInfo(cls) -> None:
         logger.info(":: Start caching assets info")
+
         for i in DataSource:
             class_ = cls.__getDataSourceClass(i)
             await class_.cacheAssetsInfo()
+
         logger.info("Cache is up to date")
 
     # }}}
     @classmethod  # firstDateTime{{{
     async def firstDateTime(cls, source, ID, data_type) -> datetime:
         logger.debug(f"{cls.__name__}.firstDateTime()")
+
         class_ = cls.__getDataSourceClass(source)
         dt = await class_.firstDateTime(ID, data_type)
         return dt
@@ -430,6 +437,7 @@ class _Manager:  # {{{
         logger.info(
             f":: Convert {ID.ticker}-{in_type.value} -> {out_type.value}"
         )
+
         converter = cls.__choseConverter(out_type)
 
         # load 'in' data
@@ -438,6 +446,9 @@ class _Manager:  # {{{
         # сконвертированы и есть ли они
         # и доставать не все пачкой а по годам
         # пока сделаю закладку begin end на будущее
+        # или
+        # можно на уровне БД сделать запрос баров которых нет в таблице
+        # аут таймфрейм, и сконверить эту выборку... подумать
         in_data = await _BarsData.load(ID, in_type, begin=None, end=None)
 
         # convert bars
@@ -455,6 +466,7 @@ class _Manager:  # {{{
         data_type: DataType,
     ) -> None:
         logger.info(f":: Delete {ID.ticker}-{data_type.value}")
+
         await _BarsData.delete(ID, data_type)
         logger.info("  - complete")
 
@@ -462,10 +474,12 @@ class _Manager:  # {{{
     @classmethod  # update{{{
     async def update(cls, ID: InstrumentId, data_type: DataType) -> None:
         logger.debug(f"{cls.__name__}.update()")
+
         # request info about availible data
         records = await Keeper.get(Data, ID=ID, data_type=data_type)
         assert len(records) == 1
         record = records[0]
+
         await cls.__update(record)
 
     # }}}
@@ -487,29 +501,34 @@ class _Manager:  # {{{
         end: datetime,
     ) -> list:
         logger.debug(f"{cls.__name__}.request()")
+
         if cls._AUTO_UPDATE and not cls._DATA_IS_UP_TO_DATE:
             await cls.__checkUpdate()
 
         records = await Keeper.get(
             _Bar, ID=ID, data_type=data_type, begin=begin, end=end
         )
+
         return records
 
     # }}}
     @classmethod  # __getDataSourceClass# {{{
     def __getDataSourceClass(cls, source: DataSource) -> object:
         logger.debug(f"{cls.__name__}.__getDataSourceClass()")
+
         classes = {
             DataSource.MOEX: _MoexData,
             DataSource.TINKOFF: _TinkoffData,
         }
         class_ = classes.get(source)
+
         return class_
 
     # }}}
     @classmethod  # __checkUpdate# {{{
     async def __checkUpdate(cls):
         logger.debug(f"{cls.__name__}.__checkUpdate()")
+
         # Check the file with the date of the last update of the market data
         if Cmd.isExist(cls._LAST_UPDATE_FILE):
             string = Cmd.read(cls._LAST_UPDATE_FILE)
@@ -532,11 +551,13 @@ class _Manager:  # {{{
     @classmethod  # __fillVoid# {{{
     def __fillVoid(cls, bars: list[_Bar], data_type: DataType) -> list[_Bar]:
         logger.debug(f"{cls.__name__}.__fillVoid()")
+
         time = datetime.combine(bars[0].dt.date(), DAY_BEGIN)
         end = datetime.combine(bars[-1].dt.date(), DAY_END)
         step = data_type.toTimedelta()
-        filled = list()
+
         i = 0
+        filled = list()
         while time <= end:
             if i < len(bars) and time == bars[i].dt:
                 filled.append(bars[i])
@@ -544,38 +565,45 @@ class _Manager:  # {{{
             else:
                 filled.append(_Manager.VoidBar(time))
             time += step
+
         return filled
 
     # }}}
     @classmethod  # __removeVoid# {{{
     def __removeVoid(cls, bars: list) -> list:
         logger.debug(f"{cls.__name__}.__removeVoid()")
+
         i = 0
         while i < len(bars):
             if isinstance(bars[i], _Manager.VoidBar):
                 bars.pop(i)
             else:
                 i += 1
+
         return bars
 
     # }}}
     @classmethod  # __choseConverter# {{{
     def __choseConverter(cls, out_type: DataType) -> Callable:
         logger.debug(f"{cls.__name__}.__choseConverter()")
+
         if out_type.toTimedelta() <= timedelta(days=1):
             conv = cls.__convertSmallTimeFrame
         elif out_type.value == "W":
             conv = cls.__convertWeekTimeFrame
         elif out_type.value == "M":
             conv = cls.__convertMonthTimeFrame
+
         return conv
 
     # }}}
     @classmethod  # __convertSmallTimeFrame# {{{
     def __convertSmallTimeFrame(cls, bars, in_type, out_type):
         logger.debug(f"{cls.__name__}.__convertSmallTimeFrame()")
+
         bars = cls.__fillVoid(bars, in_type)
         period = out_type.toTimedelta()
+
         i = 0
         converted = list()
         while i < len(bars):
@@ -591,6 +619,7 @@ class _Manager:  # {{{
             if new_bar is not None:
                 converted.append(new_bar)
             i = last
+
         return converted
 
     # }}}
@@ -598,6 +627,7 @@ class _Manager:  # {{{
     def __convertWeekTimeFrame(cls, bars, in_type, out_type):
         logger.debug(f"{cls.__name__}.__convertWeekTimeFrame()")
         assert in_type.toTimedelta() == timedelta(days=1)
+
         bars = cls.__fillVoid(bars, in_type)
         first = 0
         last = 0
@@ -613,6 +643,7 @@ class _Manager:  # {{{
                 converted.append(new_bar)
             first = last
             last += 1
+
         return converted
 
     # }}}
@@ -620,6 +651,7 @@ class _Manager:  # {{{
     def __convertMonthTimeFrame(cls, bars, in_type, out_type):
         logger.debug(f"{cls.__name__}.__convertMonthTimeFrame()")
         assert in_type.toTimedelta() == timedelta(days=1)
+
         bars = cls.__fillVoid(bars, in_type)
         first = 0
         last = 0
@@ -634,6 +666,7 @@ class _Manager:  # {{{
                 converted.append(new_bar)
             first = last
             last += 1
+
         return converted
 
     # }}}

@@ -25,7 +25,6 @@ from avin.logger import logger
 from avin.utils import Cmd
 
 
-# TODO rename -> MoexSource
 class _MoexData(_AbstractSource):  # {{{
     """const"""  # {{{
 
@@ -49,7 +48,9 @@ class _MoexData(_AbstractSource):  # {{{
 
     # }}}
     @classmethod  # cacheAssetsInfo  # {{{
-    async def cacheAssetsInfo(cls):
+    async def cacheAssetsInfo(cls) -> None:
+        logger.debug(f"{cls.__name__}.cacheAssetsInfo()")
+
         if _InstrumentInfoCache.checkCachingDate(cls.source):
             return
 
@@ -63,10 +64,8 @@ class _MoexData(_AbstractSource):  # {{{
             logger.info(f"  - caching {type_}")
             assets_info = moexalgo.Market(type_).tickers(use_dataframe=False)
             assets_info = cls.__formatAssetsInfo(assets_info)
-            asset_type = cls._getStandartAssetType(type_)
-            cache = _InstrumentInfoCache(
-                DataSource.MOEX, asset_type, assets_info
-            )
+            asset_type = cls.__getStandartAssetType(type_)
+            cache = _InstrumentInfoCache(cls.source, asset_type, assets_info)
             await _InstrumentInfoCache.save(cache)
 
         _InstrumentInfoCache.updateCachingDate(cls.source)
@@ -81,10 +80,14 @@ class _MoexData(_AbstractSource):  # {{{
         figi: str,
         name: str,
     ) -> InstrumentId:
+        logger.debug(f"{cls.__name__}.find()")
+
+        # check cache
         if cls._AUTO_UPDATE:
             await _MoexData.cacheAssetsInfo()
             ...
 
+        # request info
         assets_info = await Keeper.info(
             cls.source,
             asset_type,
@@ -139,9 +142,12 @@ class _MoexData(_AbstractSource):  # {{{
     # }}}
     @classmethod  # info  # {{{
     async def info(cls, ID: InstrumentId) -> dict:
+        logger.debug(f"{cls.__name__}.info()")
         assert ID.type == AssetType.INDEX
+
         info = await Keeper.info(cls.source, ID.type, FIGI=ID.figi)
         assert len(info) == 1
+
         return info[0]
 
     # }}}
@@ -149,6 +155,8 @@ class _MoexData(_AbstractSource):  # {{{
     async def firstDateTime(
         cls, ID: InstrumentId, data_type: DataType
     ) -> datetime:
+        logger.debug(f"{cls.__name__}.firstDateTime()")
+
         date_start = date(1990, 1, 1)
         try:
             asset = moexalgo.Ticker(ID.ticker)
@@ -161,16 +169,22 @@ class _MoexData(_AbstractSource):  # {{{
         except LookupError:
             logger.warning(f"_MoexData: no market data for {ID.ticker}")
             return None
+
         candle = candles.send(None)
         dt = candle.begin
+
         return cls.__toUTC(dt)
 
     # }}}
     @classmethod  # download  # {{{
     async def download(
         cls, ID: InstrumentId, data_type: DataType, year: int
-    ) -> bool:
+    ) -> None:
+        logger.debug(f"{cls.__name__}.download()")
         assert data_type in cls.AVAILIBLE_DATA
+
+        # Without authorization - delay is more than 15min
+        # for authorized users delay is 2-5 min
         await cls.__authorizate()
 
         logger.info(f":: Download {ID.ticker}-{data_type.value} from {year}")
@@ -195,8 +209,10 @@ class _MoexData(_AbstractSource):  # {{{
         begin: datetime,
         end: datetime,
     ) -> list[_Bar]:
+        logger.debug(f"{cls.__name__}.getHistoricalBars()")
+
         # Without authorization - delay is more than 15min
-        # for authorized users delay is 2-4 min
+        # for authorized users delay is 2-5 min
         await cls.__authorizate()
 
         begin = cls.__toMSK(begin)
@@ -208,7 +224,9 @@ class _MoexData(_AbstractSource):  # {{{
 
     # }}}
     @classmethod  # __authorizate  # {{{
-    async def __authorizate(cls):
+    async def __authorizate(cls) -> None:
+        logger.debug(f"{cls.__name__}.__authorizate()")
+
         if cls._AUTHORIZATION:
             return
 
@@ -239,7 +257,9 @@ class _MoexData(_AbstractSource):  # {{{
 
     # }}}
     @classmethod  # __formatAssetsInfo# {{{
-    def __formatAssetsInfo(cls, assets_info: list[dict]):
+    def __formatAssetsInfo(cls, assets_info: list[dict]) -> list[dict]:
+        logger.debug(f"{cls.__name__}.__formatAssetsInfo()")
+
         for i in assets_info:
             i["EXCHANGE"] = "MOEX"
             if i["BOARDID"] == "SNDX":
@@ -267,7 +287,9 @@ class _MoexData(_AbstractSource):  # {{{
 
     # }}}
     @classmethod  # __convert# {{{
-    def __convert(cls, obj: object):
+    def __convert(cls, obj: object) -> Any:
+        logger.debug(f"{cls.__name__}.__convert()")
+
         if isinstance(obj, DataType):
             return cls.__convertDataTypeToMoexPeriod(obj)
         elif isinstance(obj, list):
@@ -277,7 +299,9 @@ class _MoexData(_AbstractSource):  # {{{
 
     # }}}
     @classmethod  # __convertDataTypeToMoexPeriod# {{{
-    def __convertDataTypeToMoexPeriod(cls, data_type: DataType):
+    def __convertDataTypeToMoexPeriod(cls, data_type: DataType) -> str:
+        logger.debug(f"{cls.__name__}.__convertDataTypeToMoexPeriod()")
+
         moex_period = {
             "1M": "1min",
             "10M": "10min",
@@ -290,7 +314,9 @@ class _MoexData(_AbstractSource):  # {{{
 
     # }}}
     @classmethod  # __convertCandlesToBars# {{{
-    def __convertCandlesToBars(cls, candles):
+    def __convertCandlesToBars(cls, candles) -> list[_Bar]:
+        logger.debug(f"{cls.__name__}.__convertCandlesToBars()")
+
         bars = list()
         for i in candles:
             bar = _Bar(
@@ -307,6 +333,8 @@ class _MoexData(_AbstractSource):  # {{{
     # }}}
     @classmethod  # __getPeriod# {{{
     def __getPeriod(cls, year: int) -> (datetime, datetime):
+        logger.debug(f"{cls.__name__}.__getPeriod()")
+
         begin = datetime(year, 1, 1)
         end = datetime(year + 1, 1, 1)
         if end >= datetime.now():
@@ -321,19 +349,23 @@ class _MoexData(_AbstractSource):  # {{{
         data_type: DataType,
         begin: datetime,
         end: datetime,
-    ):
+    ) -> list[Candles]:
+        logger.debug(f"{cls.__name__}.__requestCandles()")
+
         # TODO
         # можно же сделать запрос по 10.000 баров.
         # начиная с бегин, и до тех пор пока меньше энд..
         # и не нужен будет этот геморой с small / big timeframe
         # и выкачивать быстрее будет
+
+        # select method
         period = data_type.toTimedelta()
         if period < ONE_DAY:
-            return cls.__requestCandlesSmallTimeFrame(
-                ID, data_type, begin, end
-            )
+            method = cls.__requestCandlesSmallTimeFrame
         else:
-            return cls.__requestCandlesBigTimeFrame(ID, data_type, begin, end)
+            method = cls.__requestCandlesBigTimeFrame
+
+        return method(ID, data_type, begin, end)
 
     # }}}
     @classmethod  # __requestCandlesBigTimeFrame# {{{
@@ -343,7 +375,9 @@ class _MoexData(_AbstractSource):  # {{{
         data_type: DataType,
         begin: datetime,
         end: datetime,
-    ):
+    ) -> list[Candles]:
+        logger.debug(f"{cls.__name__}.__requestCandlesBigTimeFrame()")
+
         all_candles = list()
         asset = moexalgo.Ticker(ID.ticker)
         period = cls.__convert(data_type)
@@ -372,7 +406,15 @@ class _MoexData(_AbstractSource):  # {{{
 
     # }}}
     @classmethod  # __requestCandlesSmallTimeFrame# {{{
-    def __requestCandlesSmallTimeFrame(cls, ID, data_type, begin, end):
+    def __requestCandlesSmallTimeFrame(
+        cls,
+        ID: InstrumentId,
+        data_type: DataType,
+        begin: datetime,
+        end: datetime,
+    ) -> list[Candles]:
+        logger.debug(f"{cls.__name__}.__requestCandlesSmallTimeFrame()")
+
         all_candles = list()
         asset = moexalgo.Ticker(ID.ticker)
         period = cls.__convert(data_type)
@@ -401,7 +443,9 @@ class _MoexData(_AbstractSource):  # {{{
         data_type: DataType,
         begin: datetime,
         end: datetime,
-    ):
+    ) -> list[Candles]:
+        logger.debug(f"{cls.__name__}.__getHistoricalCandles()")
+
         candles = cls.__requestCandles(ID, data_type, begin, end)
         if not candles:
             return list()
@@ -428,6 +472,8 @@ class _MoexData(_AbstractSource):  # {{{
     # }}}
     @classmethod  # __toUTC# {{{
     def __toUTC(cls, moex_dt: datetime) -> datetime:
+        logger.debug(f"{cls.__name__}.__toUTC()")
+
         # Для таймфреймов 1M, 10M, 1H у MOEX поле с датой открытия
         # бара имеет и дату и время. Время московское, приводим его в UTC+0
         if moex_dt.hour != 0:
@@ -442,12 +488,28 @@ class _MoexData(_AbstractSource):  # {{{
     # }}}
     @classmethod  # __toMSK# {{{
     def __toMSK(cls, utc_dt: datetime) -> datetime:
+        logger.debug(f"{cls.__name__}.__toMSK()")
+
         # MOEX work with Moscow time, UTC+3, and use offset-naive datetime
         if utc_dt.hour != 0:
             return (utc_dt + cls.MSK_TIME_DIF).replace(tzinfo=None)
         else:
             # timeframe >= D, msk time = 00:00, only change timezone
             return utc_dt.replace(tzinfo=None)
+
+    # }}}
+    @classmethod  # __getStandartAssetType# {{{
+    def __getStandartAssetType(cls, name: str):
+        logger.debug(f"{cls.__name__}.__getStandartAssetType()")
+
+        names = {
+            "index": AssetType.INDEX,
+            "shares": AssetType.SHARE,
+            "currency": AssetType.CURRENCY,
+            "futures": AssetType.FUTURE,
+        }
+        standart_asset_type = names[name]
+        return standart_asset_type
 
     # }}}
 
