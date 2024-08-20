@@ -58,7 +58,8 @@ class Res:  # {{{
     """Resource subdirectories"""
 
     CACHE = os.path.join(Dir.RES, "cache")
-    MARKET_DATA = os.path.join(Dir.RES, "market_data")
+    DATA = os.path.join(Dir.RES, "data")
+    DOWNLOAD = os.path.join(Dir.RES, "download")
     ICON = os.path.join(Dir.RES, "icon")
     PALETTE = os.path.join(Dir.RES, "palette")
     SOUND = os.path.join(Dir.RES, "sound")
@@ -73,8 +74,6 @@ class Usr:  # {{{
     ASSET = os.path.join(Dir.USR, "asset")
     CONDITION = os.path.join(Dir.USR, "broker")
     CONNECT = os.path.join(Dir.USR, "connect")
-    DATA = "/home/alex/.market_data/"
-    DOWNLOAD = "/home/alex/Downloads/market_data_download/"
     FILTER = os.path.join(Dir.USR, "filter")
     GENERAL = os.path.join(Dir.USR, "general")
     MARKER = os.path.join(Dir.USR, "marker")
