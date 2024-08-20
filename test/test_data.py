@@ -106,7 +106,7 @@ async def test_Data_info(event_loop):
 
     full_info = await Data.info(gazp_id)
     assert full_info["uid"] == "962e2a95-02a9-4171-abd7-aa198dbe643a"
-    assert full_info["short_enabled_flag"] == True
+    assert full_info["short_enabled_flag"]
     assert full_info["lot"] == 10
     # and more other keys...
 
@@ -186,7 +186,7 @@ async def test_Data_request():
 
 # }}}
 @pytest.mark.asyncio  # test_Data_delete  # {{{
-async def test_Data_request():
+async def test_Data_delete():
     id_list = await Data.find(AssetType.SHARE, Exchange.MOEX, "ABRD")
     abrd = id_list[0]
 
