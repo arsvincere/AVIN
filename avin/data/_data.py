@@ -60,7 +60,7 @@ class Data:  # {{{
             source=source,
         )
         if not check:
-            return None
+            return
 
         # select data source
         if source == DataSource.MOEX:
@@ -142,14 +142,14 @@ class Data:  # {{{
 
         check = cls.__checkArgs(ID=ID, in_type=in_type, out_type=out_type)
         if not check:
-            return False
+            return
 
         if in_type.toTimeDelta() > out_type.toTimeDelta():
             logger.error(
                 f"You're still a stupid monkey, how the fuck do you convert "
                 f"'{in_type}' to '{out_type}'?"
             )
-            return False
+            return
 
         await _Manager.convert(ID, in_type, out_type)
 
@@ -381,8 +381,6 @@ class Data:  # {{{
 
 
 # }}}
-
-
 class _Manager:  # {{{
     _AUTO_UPDATE = Usr.AUTO_UPDATE_MARKET_DATA
     _LAST_UPDATE_FILE = Cmd.path(Res.DATA, "last_update")
@@ -422,7 +420,7 @@ class _Manager:  # {{{
 
     # }}}
     @classmethod  # download{{{
-    async def download(cls, ID, data_type, year) -> None:
+    async def download(cls, ID: InstrumentId, data_type, year) -> None:
         logger.debug(f"{cls.__name__}.download()")
         # NOTE:
         # пока грузим все исторические данные только с MOEX
