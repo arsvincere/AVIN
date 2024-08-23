@@ -460,6 +460,10 @@ class AssetList:  # {{{
         return obj
 
     # }}}
+    @classmethod  # __checkArgs
+    def __checkArgs(cls, name=None, assets=None, parent=None):
+        # TODO: check args
+        ...
 
 
 # }}}
