@@ -66,6 +66,7 @@ class Keeper:
         await cls.__createCacheTable()
         await cls.__createExchangeTable()
         await cls.__createAssetTable()
+        await cls.__createAssetListTable()
         await cls.__createDataTable()
         await cls.__createAccountTable()
         await cls.__createStrategyTable()
@@ -155,6 +156,7 @@ class Keeper:
             "Asset": cls.__addAsset,
             "Share": cls.__addAsset,
             "Index": cls.__addAsset,
+            "AssetList": cls.__addAssetList,
             "Account": cls.__addAccount,
             "Strategy": cls.__addStrategy,
             "Trade": cls.__addTrade,
@@ -290,6 +292,40 @@ class Keeper:
             await cls.transaction(request)
         except asyncpg.UniqueViolationError:
             logger.warning(f"Asset '{asset}' already exist in database")
+
+    # }}}
+    @classmethod  # __addAssetList  # {{{
+    async def __addAssetList(cls, alist: AssetList) -> None:
+        logger.debug(f"{cls.__name__}.__addAssetList()")
+
+        # Format assets in postges value - ARRAY[figi]
+        pg_array = "ARRAY["
+        for asset in alist:
+            figi = f"'{asset.figi}', "
+            pg_array += figi
+        pg_array = pg_array[0:-2]  # remove ", " after last value
+        pg_array += "]"
+
+        # If alist.name is exist - delete
+        request = f"""
+            DELETE FROM "AssetList"
+            WHERE
+                name = '{alist.name}';
+            """
+        await cls.transaction(request)
+
+        # Add asset list
+        request = f"""
+        INSERT INTO "AssetList" (
+            name,
+            assets
+            )
+        VALUES (
+            '{alist.name}',
+            {pg_array}
+        );
+        """
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __addBarsData  # {{{
@@ -747,7 +783,7 @@ class Keeper:
     async def __updateCache(cls, cache: _InstrumentInfoCache) -> None:
         logger.debug(f"{cls.__name__}.__updateCache()")
 
-        # delete old cache
+        # Delete old cache
         request = f"""
             DELETE FROM "Cache"
             WHERE
@@ -757,7 +793,7 @@ class Keeper:
             """
         await cls.transaction(request)
 
-        # format cache into postgres values
+        # Format cache into postgres values
         def formatCache(cache: _InstrumentInfoCache) -> str:
             values = ""
             for i in cache.assets_info:
@@ -820,11 +856,11 @@ class Keeper:
         ID: InstrumentId,
         data_type: DataType,
     ) -> str:
-        # table name looks like: "data.MOEX_SHARE_SBER_1M"
+        # table name looks like: data."MOEX_SHARE_SBER_1M"
         logger.debug(f"{cls.__name__}.__getTableName()")
 
         bars_table_name = (
-            f'"data.{ID.exchange.name}_{ID.type.name}_{ID.ticker}_'
+            f'data."{ID.exchange.name}_{ID.type.name}_{ID.ticker}_'
             f'{data_type}"'
         )
         return bars_table_name
@@ -1402,6 +1438,20 @@ class Keeper:
                 END IF;
             END;
         $$;
+        """
+        await cls.transaction(request)
+
+    # }}}
+    @classmethod  # __createAssetListTable  # {{{
+    async def __createAssetListTable(cls) -> None:
+        logger.debug(f"{cls.__name__}.__createAssetListTable()")
+
+        # Create asset table
+        request = """
+        CREATE TABLE IF NOT EXISTS "AssetList" (
+            name text PRIMARY KEY,
+            assets text ARRAY
+            );
         """
         await cls.transaction(request)
 
