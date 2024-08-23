@@ -279,7 +279,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     class StopLoss(_BaseOrder):  # {{{
         def __init__(
             self,
-            position: Position,  # ??? NOTE: подумай еще раз
+            position: Position,  # ??? XXX: подумай еще раз
             stop_price: float,
             exec_price: float,
             trade_id: Id = None,
@@ -291,7 +291,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     class TakeProfit(_BaseOrder):  # {{{
         def __init__(
             self,
-            position: Position,  # ??? NOTE: подумай еще раз
+            position: Position,  # ??? XXX: подумай еще раз
             stop_price: float,
             exec_price: float,
             trade_id: Id = None,
