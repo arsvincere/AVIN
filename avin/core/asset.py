@@ -388,6 +388,19 @@ class AssetList:  # {{{
         return None
 
     # }}}
+    @classmethod  # fromRecord# {{{
+    async def fromRecord(cls, record, parent=None) -> AssetList:
+        name = record["name"]
+        figi_list = record["assets"]
+
+        alist = cls(name, parent)
+        for figi in figi_list:
+            asset = await Asset.byFigi(figi)
+            alist.add(asset)
+
+        return alist
+
+    # }}}
     @classmethod  # save# {{{
     def save(cls, asset_list) -> None:
         assert False

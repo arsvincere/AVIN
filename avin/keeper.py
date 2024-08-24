@@ -186,6 +186,7 @@ class Keeper:
             "Asset": cls.__deleteAsset,
             "Share": cls.__deleteAsset,
             "Index": cls.__deleteAsset,
+            "AssetList": cls.__deleteAssetList,
             "Account": cls.__deleteAccount,
             "Strategy": cls.__deleteStrategy,
             "Trade": cls.__deleteTrade,
@@ -237,6 +238,7 @@ class Keeper:
             "_Bar": cls.__getBarsRecords,
             "Bar": cls.__getBars,
             "Asset": cls.__getAsset,
+            "AssetList": cls.__getAssetList,
             "Account": cls.__getAccount,
             "Trade": cls.__getTrades,
             "Operation": cls.__getOperations,
@@ -603,6 +605,17 @@ class Keeper:
         request = f"""
         DELETE FROM "Asset" WHERE figi = '{asset.figi}';
         """
+        await cls.transaction(request)
+
+    # }}}
+    @classmethod  # __deleteAssetList  # {{{
+    async def __deleteAssetList(cls, alist: AssetList, kwargs: dict) -> None:
+        logger.debug(f"{cls.__name__}.__deleteAssetList()")
+
+        request = f"""
+        DELETE FROM "AssetList" WHERE name = '{alist.name}';
+        """
+        print(request)
         await cls.transaction(request)
 
     # }}}
@@ -1123,6 +1136,43 @@ class Keeper:
         assert len(asset_records) == 1
         asset = Asset.fromRecord(asset_records[0])
         return asset
+
+    # }}}
+    @classmethod  # __getAssetList  # {{{
+    async def __getAssetList(cls, AssetList, kwargs: dict) -> Asset:
+        logger.debug(f"{cls.__name__}.__getAssetList()")
+
+        name = kwargs.get("name")
+
+        # create condition
+        if name:
+            pg_condition = f"name = '{name}'"
+        else:
+            pg_condition = "TRUE"
+
+        request = f"""
+            SELECT
+                name,
+                assets
+            FROM "AssetList"
+            WHERE
+                {pg_condition}
+            ;
+            """
+        records = await cls.transaction(request)
+
+        # return AssetList if it is one
+        if len(records) == 1:
+            alist = await AssetList.fromRecord(records[0])
+            return alist
+
+        # return list[AssetList] if more records
+        all_list = list()
+        for record in records:
+            alist = await AssetList.fromRecord(record)
+            all_list.append(alist)
+
+        return all_list
 
     # }}}
     @classmethod  # __getAccount  # {{{
