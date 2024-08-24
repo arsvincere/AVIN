@@ -389,75 +389,61 @@ class AssetList:  # {{{
 
     # }}}
     @classmethod  # save# {{{
-    def save(cls, asset_list, path=None) -> None:
-        if path is None:
-            path = asset_list.path
-        obj = AssetList.toJson(asset_list)
-        Cmd.saveJson(obj, path)
+    def save(cls, asset_list) -> None:
+        assert False
 
     # }}}
     @classmethod  # load# {{{
-    def load(cls, file_path, parent=None) -> AssetList:
-        name = Cmd.name(file_path)
-        alist = AssetList(name, parent=parent)
-        list_obj = Cmd.loadJson(file_path)
-        for id_obj in list_obj:
-            ID = Id.fromJson(id_obj)
-            asset = Asset.byId(ID)
-            alist.add(asset)
-        return alist
+    def load(cls, name, parent=None) -> AssetList:
+        assert False
 
     # }}}
     @classmethod  # rename# {{{
     def rename(cls, asset_list, new_name) -> None:
-        if Cmd.isExist(asset_list.path):
-            new_path = Cmd.path(asset_list.dir_path, f"{new_name}.al")
-            Cmd.replace(asset_list.path, new_path)
-        asset_list.__name = new_name
+        assert False
+        # if Cmd.isExist(asset_list.path):
+        #     new_path = Cmd.path(asset_list.dir_path, f"{new_name}.al")
+        #     Cmd.replace(asset_list.path, new_path)
+        # asset_list.__name = new_name
 
     # }}}
     @classmethod  # copy# {{{
     def copy(cls, asset_list: AssetList, new_name: str) -> None:
-        new_list = AssetList(new_name)
-        new_list.assets = asset_list.assets
-        new_path = Cmd.path(asset_list.dir_path, f"{new_name}.al")
-        AssetList.save(new_list, new_path)
+        assert False
+        # new_list = AssetList(new_name)
+        # new_list.assets = asset_list.assets
+        # new_path = Cmd.path(asset_list.dir_path, f"{new_name}.al")
+        # AssetList.save(new_list, new_path)
 
     # }}}
     @classmethod  # delete# {{{
     def delete(cls, asset_list) -> None:
-        file_path = asset_list.path
-        if not Cmd.isExist(file_path):
-            logger.error(
-                f"Fail delete asset list, file not exist '{file_path}'"
-            )
-        Cmd.delete(file_path)
+        assert False
+        # file_path = asset_list.path
+        # if not Cmd.isExist(file_path):
+        #     logger.error(
+        #         f"Fail delete asset list, file not exist '{file_path}'"
+        #     )
+        # Cmd.delete(file_path)
 
     # }}}
     @classmethod  # request# {{{
     def request(cls, name) -> str:
-        """If AssetList with name='{name}' exist, return his file_path"""
-        path = Cmd.path(Usr.ASSET, f"{name}.al")
-        if Cmd.isExist(path):
-            return path
-        else:
-            return None
+        assert False
+        # """If AssetList with name='{name}' exist, return his file_path"""
+        # path = Cmd.path(Usr.ASSET, f"{name}.al")
+        # if Cmd.isExist(path):
+        #     return path
+        # else:
+        #     return None
 
     # }}}
     @classmethod  # requestAll# {{{
     def requestAll(cls) -> list[str]:
-        """Return list[file_path] all exist AssetList"""
-        files = Cmd.getFiles(Usr.ASSET, full_path=True)
-        return files
-
-    # }}}
-    @classmethod  # toJson# {{{
-    def toJson(cls, asset_list):
-        obj = list()
-        for asset in asset_list:
-            json_id = Id.toJson(asset.ID)
-            obj.append(json_id)
-        return obj
+        assert False
+        # """Return list[file_path] all exist AssetList"""
+        # files = Cmd.getFiles(Usr.ASSET, full_path=True)
+        # return files
 
     # }}}
     @classmethod  # __checkArgs
