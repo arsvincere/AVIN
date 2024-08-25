@@ -378,8 +378,19 @@ async def test_Order(event_loop):
     await o.setStatus(Order.Status.POST)
     assert o.status == Order.Status.POST
     loaded = await Order.load(o.order_id)
-    assert o.status == loaded.status
+    assert loaded.status == o.status
 
+    # change exec_lots
+    o.exec_lots = 5
+    o.exec_quantity = 50
+
+    # update db record
+    await Order.update(o)
+    loaded = await Order.load(o.order_id)
+    assert loaded.exec_lots == o.exec_lots
+    assert loaded.exec_quantity == o.exec_quantity
+
+    # delete from db
     await Order.delete(o)
 
 

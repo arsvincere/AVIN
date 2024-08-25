@@ -155,7 +155,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         # }}}
         async def setStatus(self, new_status: Order.Status):  # {{{
             self.__status = new_status
-            await Keeper.update(self)
+            await Order.update(self)
 
         # }}}
 
@@ -339,6 +339,8 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             status=Order.Status.fromStr(record["status"]),
             order_id=record["order_id"],
             trade_id=record["trade_id"],
+            exec_lots=record["exec_lots"],
+            exec_quantity=record["exec_quantity"],
             meta=None,
         )
         return order
@@ -357,6 +359,8 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             status=Order.Status.fromStr(record["status"]),
             order_id=record["order_id"],
             trade_id=record["trade_id"],
+            exec_lots=record["exec_lots"],
+            exec_quantity=record["exec_quantity"],
             meta=None,
         )
         return order
@@ -376,6 +380,8 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             status=Order.Status.fromStr(record["status"]),
             order_id=record["order_id"],
             trade_id=record["trade_id"],
+            exec_lots=record["exec_lots"],
+            exec_quantity=record["exec_quantity"],
             meta=None,
         )
         return order

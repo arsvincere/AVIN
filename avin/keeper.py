@@ -473,21 +473,15 @@ class Keeper:
     async def __addOrder(cls, o: Order) -> None:
         logger.debug(f"{cls.__name__}.__addOrder()")
 
-        # Используется проверка типа ордера через строки...
-        # логично было бы использовать enum Order.Type, например:
-        # if order.type == Order.Type.LIMIT
-        # но для этого нужно импортировать модуль order, а тогда модуль order
-        # не сможет импортировать модуль keeper (circular import)
-        # хз как лучше, пока пусть типо по имени проверяет
         # format prices
         if o.type.name == "MARKET":
-            price, stop_price, exec_price = "NULL", "NULL", "NULL"
+            price, s_price, e_price = "NULL", "NULL", "NULL"
         elif o.type.name == "LIMIT":
-            price, stop_price, exec_price = o.price, "NULL", "NULL"
+            price, s_price, e_price = o.price, "NULL", "NULL"
         elif o.type.name == "STOP":
             price, s_price, e_price = "NULL", o.stop_price, o.exec_price
         else:
-            assert False, f"Что за новый тип ордера='{o.type}'"
+            assert False, f"WTF??? Order type='{o.type}'"
 
         # format meta
         if o.meta is None:
@@ -515,6 +509,8 @@ class Keeper:
                 stop_price,
                 exec_price,
                 trade_id,
+                exec_lots,
+                exec_quantity,
                 meta
                 )
             VALUES (
@@ -527,9 +523,11 @@ class Keeper:
                 {o.lots},
                 {o.quantity},
                 {price},
-                {stop_price},
-                {exec_price},
+                {s_price},
+                {e_price},
                 {trade_id},
+                {o.exec_lots},
+                {o.exec_quantity},
                 {meta}
                 );
             """
@@ -779,11 +777,12 @@ class Keeper:
     @classmethod  # __updateOrder  # {{{
     async def __updateOrder(cls, order: Order) -> None:
         logger.debug(f"{cls.__name__}.__updateOrder()")
-
         request = f"""
             UPDATE "Order"
             SET
-                status = '{order.status.name}'
+                status = '{order.status.name}',
+                exec_lots = {order.exec_lots},
+                exec_quantity = {order.exec_quantity}
             WHERE
                 order_id = '{order.order_id}';
             """
@@ -1339,6 +1338,8 @@ class Keeper:
                 stop_price,
                 exec_price,
                 trade_id,
+                exec_lots,
+                exec_quantity,
                 meta
             FROM "Order"
             WHERE {pg_condition}
@@ -1664,7 +1665,6 @@ class Keeper:
     async def __createOrderTable(cls) -> None:
         logger.debug(f"{cls.__name__}.__createOrderTable()")
 
-        # TODO: добавить частично исполненный - сколько там уже исполнено
         request = """
         CREATE TABLE IF NOT EXISTS "Order" (
             order_id        float PRIMARY KEY,
@@ -1680,6 +1680,8 @@ class Keeper:
             exec_price      float,
 
             trade_id        float REFERENCES "Trade"(trade_id),
+            exec_lots       integer,
+            exec_quantity   integer,
 			meta            text
 			);
             """

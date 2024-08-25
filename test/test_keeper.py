@@ -13,6 +13,66 @@ from avin import *
 from avin.data._data import _Bar, _BarsData
 from avin.trader.account import Account
 
+# TEST VARS{{{
+
+exchange = Exchange._TEST_EXCHANGE
+
+asset_id = InstrumentId(
+    AssetType.SHARE,
+    exchange,
+    ticker="ORIK",
+    figi="bbyby",
+    name="ООО Рога и Копыта",
+)
+
+data_type = DataType.BAR_D
+
+share = Share(asset_id)
+
+acc = Account("_pytest", "Tinkoff", None)
+
+strategy = Strategy("pytest", "v0")
+
+dt = datetime(2024, 8, 15, 15, 37, tzinfo=UTC)
+trade_id = 111
+trade = Trade(
+    dt=dt,
+    strategy=strategy.name,
+    version=strategy.version,
+    trade_type=Trade.Type.LONG,
+    figi=asset_id.figi,
+    trade_id=trade_id,
+)
+
+order_id = 222
+order = Order.Limit(
+    account_name="_unittest",
+    direction=Order.Direction.BUY,
+    asset_id=asset_id,
+    lots=1,
+    quantity=10,
+    price=303.33,
+    order_id=order_id,
+    trade_id=trade_id,
+)
+
+operation_id = 333
+operation = Operation(
+    account_name="_unittest",
+    dt=now(),
+    direction=Operation.Direction.BUY,
+    figi=asset_id.figi,
+    lots=1,
+    quantity=10,
+    price=303.33,
+    amount=10 * 303.33,
+    commission=0.05,
+    operation_id=operation_id,
+    trade_id=trade_id,
+    order_id=order_id,
+)
+# }}}
+
 
 @pytest.mark.asyncio  # test_info  # {{{
 async def test_info(event_loop):
@@ -45,10 +105,6 @@ async def test_info(event_loop):
 # }}}
 @pytest.mark.asyncio  # test_exchange  # {{{
 async def test_exchange(event_loop):
-    # Exchange._TEST_EXCHANGE with name '_TEST_EXCHANGE'
-    # created special for pytest
-    assert Exchange._TEST_EXCHANGE.name == "_TEST_EXCHANGE"
-
     # _TEST_EXCHANGE not in db
     request = """
         SELECT name FROM "Exchange"
@@ -66,53 +122,23 @@ async def test_exchange(event_loop):
     records = await Keeper.transaction(request)
     assert records[0]["name"] == "_TEST_EXCHANGE"
 
-    # delete _TEST_EXCHANGE from db
-    await Keeper.delete(Exchange._TEST_EXCHANGE)
-    request = """
-        SELECT name FROM "Exchange"
-        WHERE name = '_TEST_EXCHANGE'
-        """
-    records = await Keeper.transaction(request)
-    assert len(records) == 0
-
 
 # }}}
 @pytest.mark.asyncio  # test_instrument_id  # {{{
 async def test_instrument_id(event_loop):
-    # create fake share
-    share_id = InstrumentId(
-        AssetType.SHARE,
-        Exchange._TEST_EXCHANGE,
-        ticker="ORIK",
-        figi="bbyby",
-        name="ООО Рога и Копыта",
-    )
     # add instrument id into db
-    await Keeper.add(Exchange._TEST_EXCHANGE)
-    await Keeper.add(share_id)
+    await Keeper.add(asset_id)
 
     # get instrument id
     ids = await Keeper.get(InstrumentId, figi="bbyby")
     assert len(ids) == 1
-    assert share_id == ids[0]
-
-    # clear all
-    await Keeper.delete(share_id)
-    await Keeper.delete(Exchange._TEST_EXCHANGE)
+    assert asset_id == ids[0]
 
 
 # }}}
 @pytest.mark.asyncio  # test_bars_data  # {{{
 async def test_bars_data(event_loop):
-    # create fake share and bars data
-    share_id = InstrumentId(
-        AssetType.SHARE,
-        Exchange._TEST_EXCHANGE,
-        ticker="ORIK",
-        figi="bbyby",
-        name="ООО Рога и Копыта",
-    )
-    data_type = DataType.BAR_D
+    # create bars data
     b1 = _Bar(datetime(2024, 8, 15, 0, 0, tzinfo=UTC), 10, 12, 9, 11, 100)
     b2 = _Bar(datetime(2024, 8, 16, 0, 0, tzinfo=UTC), 11, 13, 10, 12, 200)
     b3 = _Bar(datetime(2024, 8, 17, 0, 0, tzinfo=UTC), 12, 14, 11, 13, 300)
@@ -120,40 +146,39 @@ async def test_bars_data(event_loop):
     b5 = _Bar(datetime(2024, 8, 19, 0, 0, tzinfo=UTC), 14, 16, 13, 15, 500)
     bars = [b1, b2, b3, b4, b5]
     source = DataSource.MOEX
-    data = _BarsData(share_id, data_type, bars, source)
+    data = _BarsData(asset_id, data_type, bars, source)
 
     # add data in db
-    await Keeper.add(Exchange._TEST_EXCHANGE)
     await Keeper.add(data)
 
     # side effect - added Instrument
     ids = await Keeper.get(InstrumentId, figi="bbyby")
     assert len(ids) == 1
-    assert share_id == ids[0]
+    assert asset_id == ids[0]
 
     # side effect - added Asset
     asset = await Keeper.get(Asset, figi="bbyby")
-    assert asset.name == share_id.name
-    assert asset.figi == share_id.figi
+    assert asset.name == asset_id.name
+    assert asset.figi == asset_id.figi
 
     # side effect - added information about availible data types
-    received_data_type_list = await Keeper.get(DataType, ID=share_id)
+    received_data_type_list = await Keeper.get(DataType, ID=asset_id)
     assert len(received_data_type_list) == 1
     assert received_data_type_list[0] == data_type
 
     # side effect - added information about availible data
     # table with figi, data_type, source, first_dt, last_dt
-    data_info_list = await Keeper.get(Data, ID=share_id)
+    data_info_list = await Keeper.get(Data, ID=asset_id)
     assert len(data_info_list) == 1
     data_info = data_info_list[0]
-    assert data_info["figi"] == share_id.figi
+    assert data_info["figi"] == asset_id.figi
     assert data_info["type"] == "BAR_D"
     assert data_info["source"] == "MOEX"
     assert data_info["first_dt"] == datetime(2024, 8, 15, 0, 0, tzinfo=UTC)
     assert data_info["last_dt"] == datetime(2024, 8, 19, 0, 0, tzinfo=UTC)
 
     # get bars data from db
-    bars_records = await Keeper.get(_Bar, ID=share_id, data_type=data_type)
+    bars_records = await Keeper.get(_Bar, ID=asset_id, data_type=data_type)
 
     # Compare the data
     assert bars_records[0]["volume"] == 100
@@ -166,7 +191,7 @@ async def test_bars_data(event_loop):
     begin = datetime(2024, 8, 16)
     end = datetime(2024, 8, 18)
     bars_records = await Keeper.get(
-        _Bar, ID=share_id, data_type=data_type, begin=begin, end=end
+        _Bar, ID=asset_id, data_type=data_type, begin=begin, end=end
     )
     assert len(bars_records) == 2
     assert bars_records[0]["open"] == b2.open
@@ -176,38 +201,14 @@ async def test_bars_data(event_loop):
     begin = datetime(2024, 1, 1)
     end = datetime(2024, 2, 1)
     bars_records = await Keeper.get(
-        _Bar, ID=share_id, data_type=data_type, begin=begin, end=end
+        _Bar, ID=asset_id, data_type=data_type, begin=begin, end=end
     )
     assert len(bars_records) == 0
-
-    # clear all
-    await Keeper.delete(_Bar, ID=share_id, data_type=data_type)
-    await Keeper.delete(share_id)
-    await Keeper.delete(Exchange._TEST_EXCHANGE)
 
 
 # }}}
 @pytest.mark.asyncio  # test_asset  # {{{
 async def test_asset(event_loop):
-    # create fake share and exchange
-    await Keeper.add(Exchange._TEST_EXCHANGE)
-    share_id = InstrumentId(
-        AssetType.SHARE,
-        Exchange._TEST_EXCHANGE,
-        ticker="ORIK",
-        figi="bbyby",
-        name="ООО Рога и Копыта",
-    )
-    share = Share(share_id)
-
-    # share not in db
-    request = """
-        SELECT exchange, type, ticker, figi, name FROM "Asset"
-        WHERE figi = 'bbyby'
-        """
-    records = await Keeper.transaction(request)
-    # assert len(records) == 0
-
     # Add share in db
     await Keeper.add(share)
     request = """
@@ -225,17 +226,6 @@ async def test_asset(event_loop):
     assert share.type == received_share.type
     assert share.exchange == received_share.exchange
 
-    # delete share from db
-    await Keeper.delete(share)
-    request = """
-        SELECT exchange, type, ticker, figi, name FROM "Asset"
-        WHERE figi = 'bbyby'
-        """
-    records = await Keeper.transaction(request)
-    assert len(records) == 0
-
-    await Keeper.delete(Exchange._TEST_EXCHANGE)
-
 
 # }}}
 @pytest.mark.asyncio  # test_account  # {{{
@@ -249,73 +239,19 @@ async def test_account(event_loop):
     assert acc.name == received_acc.name
     assert acc.broker == received_acc.broker
 
-    await Keeper.delete(acc)
-
 
 # }}}
 @pytest.mark.asyncio  # test_strategy  # {{{
 async def test_strategy(event_loop):
     strategy = Strategy("pytest", "v0")
     await Keeper.add(strategy)
-    await Keeper.delete(strategy)
 
 
 # }}}
 @pytest.mark.asyncio  # test_trade  # {{{
 async def test_trade(event_loop):
-    asset = InstrumentId(
-        AssetType.SHARE,
-        Exchange._TEST_EXCHANGE,
-        ticker="ORIK",
-        figi="bbyby",
-        name="ООО Рога и Копыта",
-    )
-
-    await Keeper.add(Exchange._TEST_EXCHANGE)
-    await Keeper.add(asset)
-    strategy = Strategy("Example", "ver")
-    await Keeper.add(strategy)
-
-    dt = datetime(2024, 8, 15, 15, 37, tzinfo=UTC)
-    trade_id = 111
-    trade = Trade(
-        dt=dt,
-        strategy=strategy.name,
-        version=strategy.version,
-        trade_type=Trade.Type.LONG,
-        figi=asset.figi,
-        trade_id=trade_id,
-    )
     await Keeper.add(trade)
-
-    order_id = 222
-    order = Order.Limit(
-        direction=Order.Direction.BUY,
-        figi=asset.figi,
-        lots=1,
-        quantity=10,
-        price=303.33,
-        account_name="_unittest",
-        order_id=order_id,
-        trade_id=trade_id,
-    )
     await trade.addOrder(order)
-
-    operation_id = 333
-    operation = Operation(
-        account_name="_unittest",
-        dt=now(),
-        direction=Operation.Direction.BUY,
-        figi=asset.figi,
-        lots=1,
-        quantity=10,
-        price=303.33,
-        amount=10 * 303.33,
-        commission=0.05,
-        operation_id=operation_id,
-        trade_id=trade_id,
-        order_id=order_id,
-    )
     await trade.addOperation(operation)
 
     trades = await Keeper.get(
@@ -328,17 +264,41 @@ async def test_trade(event_loop):
         ],
     )
     t = trades[0]
-    assert str(t) == "=> Trade 2024-08-15 18:37 Example-ver bbyby long"
+    assert str(t) == "=> Trade 2024-08-15 18:37 pytest-v0 bbyby long"
     assert t.orders[0].order_id == order_id
     assert t.operations[0].operation_id == operation_id
 
-    # clear all
+
+# }}}
+@pytest.mark.asyncio  # test_clear_all_test_records  # {{{
+async def test_clear_all_test_records(event_loop):
     await Keeper.delete(operation)
     await Keeper.delete(order)
     await Keeper.delete(trade)
-    await Keeper.delete(asset)
+
+    # delete strategy
     await Keeper.delete(strategy)
+
+    # delete account
+    await Keeper.delete(acc)
+
+    # delete bars data
+    await Keeper.delete(_Bar, ID=asset_id, data_type=data_type)
+
+    # delete share from db
+    await Keeper.delete(share)
+    request = """
+        SELECT exchange, type, ticker, figi, name FROM "Asset"
+        WHERE figi = 'bbyby'
+        """
+    records = await Keeper.transaction(request)
+    assert len(records) == 0
+
+    # delete _TEST_EXCHANGE
     await Keeper.delete(Exchange._TEST_EXCHANGE)
-
-
-# }}}
+    request = """
+        SELECT name FROM "Exchange"
+        WHERE name = '_TEST_EXCHANGE'
+        """
+    records = await Keeper.transaction(request)
+    assert len(records) == 0
