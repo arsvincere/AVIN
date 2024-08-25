@@ -570,7 +570,7 @@ class Keeper:
                 '{operation.account_name}',
                 '{operation.dt}',
                 '{operation.direction.name}',
-                '{operation.figi}',
+                '{operation.asset_id.figi}',
                 {operation.lots},
                 {operation.quantity},
                 {operation.price},
@@ -1303,7 +1303,7 @@ class Keeper:
         # Create 'list' of 'Operation' objects from 'Records'
         op_list = list()
         for i in op_records:
-            op = Operation.fromRecord(i)
+            op = await Operation.fromRecord(i)
             op_list.append(op)
 
         return op_list

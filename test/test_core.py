@@ -393,53 +393,83 @@ async def test_Order(event_loop):
     # delete from db
     await Order.delete(o)
 
+    # Limit order
+    o_limit = Order.Limit(
+        "_unittest",
+        Order.Direction.BUY,
+        sber_id,
+        lots=15,
+        quantity=150,
+        price=300,
+    )
+    assert o_limit.account_name == "_unittest"
+    assert o_limit.direction == Order.Direction.BUY
+    assert o_limit.asset_id == sber_id
+    assert o_limit.lots == 15
+    assert o_limit.quantity == 150
+    assert o_limit.price == 300
+    assert o_limit.order_id is not None
+    assert o_limit.trade_id is None
+    assert o_limit.exec_lots == 0
+    assert o_limit.exec_quantity == 0
+    assert o_limit.status == Order.Status.NEW
+
+    # Stop order
+    o_stop = Order.Stop(
+        "_unittest",
+        Order.Direction.BUY,
+        sber_id,
+        lots=15,
+        quantity=150,
+        stop_price=301,
+        exec_price=302,
+    )
+    assert o_stop.account_name == "_unittest"
+    assert o_stop.direction == Order.Direction.BUY
+    assert o_stop.asset_id == sber_id
+    assert o_stop.lots == 15
+    assert o_stop.quantity == 150
+    assert o_stop.stop_price == 301
+    assert o_stop.exec_price == 302
+    assert o_stop.order_id is not None
+    assert o_stop.trade_id is None
+    assert o_stop.exec_lots == 0
+    assert o_stop.exec_quantity == 0
+    assert o_stop.status == Order.Status.NEW
+
 
 # }}}
-# def test_Operation():  # {{{
-#     ID = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
-#     share = Share(ID)
-#     dt = now()
-#     op = Operation(
-#         account_name="_unittest",
-#         dt=dt,
-#         direction=Operation.Direction.SELL,
-#         asset=share,
-#         lots=1,
-#         quantity=50,
-#         price=100,
-#         amount=100 * 50,
-#         commission=10,
-#         trade_ID=None,
-#         meta=None,
-#     )
-#
-#     assert op.dt == dt
-#     assert op.direction == Operation.Direction.SELL
-#     assert op.asset == share
-#     assert op.price == 100
-#     assert op.lots == 1
-#     assert op.quantity == 50
-#     assert op.amount == 5000
-#     assert op.commission == 10
-#     assert op.meta is None
-#
-#     obj = Operation.toJson(op)
-#     assert isinstance(obj, dict)
-#     fromjson_op = Operation.fromJson(obj)
-#     assert str(op) == str(fromjson_op)
-#
-#     assert op.dt == fromjson_op.dt
-#     assert op.direction == fromjson_op.direction
-#     assert op.asset == fromjson_op.asset
-#     assert op.price == fromjson_op.price
-#     assert op.lots == fromjson_op.lots
-#     assert op.quantity == fromjson_op.quantity
-#     assert op.amount == fromjson_op.amount
-#     assert op.commission == fromjson_op.commission
-#     assert op.meta == fromjson_op.meta
-#
-#
-# # }}}
+@pytest.mark.asyncio  # test_Operation  # {{{
+async def test_Operation():
+    ID = await InstrumentId.byTicker(AssetType.SHARE, Exchange.MOEX, "SBER")
+    share = Share(ID)
+    dt = now()
+    op = Operation(
+        account_name="_unittest",
+        dt=dt,
+        direction=Operation.Direction.SELL,
+        asset_id=share.ID,
+        lots=1,
+        quantity=50,
+        price=100,
+        amount=100 * 50,
+        commission=10,
+        trade_id=None,
+        meta=None,
+    )
+
+    assert op.dt == dt
+    assert op.direction == Operation.Direction.SELL
+    assert op.asset_id == ID
+    assert op.price == 100
+    assert op.lots == 1
+    assert op.quantity == 50
+    assert op.amount == 5000
+    assert op.commission == 10
+    assert op.meta is None
+
+
+# }}}
 # def test_Position():  # {{{
 # TODO:
 # позиция это чисто позиция в портфолио, как от брокера приходит
