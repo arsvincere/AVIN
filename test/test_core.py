@@ -140,9 +140,9 @@ async def test_Chart(event_loop):
     bars = await Keeper.get(Bar, ID=sber, timeframe=tf, begin=begin, end=end)
 
     # create chart
-    chart = Chart(sber, tf, bars)
-    assert chart.asset == sber
-    assert chart.asset.ticker == "SBER"
+    chart = Chart(sber.ID, tf, bars)
+    assert chart.ID == sber.ID
+    assert chart.ID.ticker == "SBER"
     assert chart.timeframe == tf
 
     assert chart.first.dt == datetime(2023, 8, 1, 6, 59, tzinfo=UTC)
