@@ -242,11 +242,11 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             meta=None,
         ):
             super().__init__(
+                account_name,
                 direction,
-                asset,
+                asset_id,
                 lots,
                 quantity,
-                account_name,
                 status,
                 order_id,
                 trade_id,
