@@ -11,6 +11,7 @@ from __future__ import annotations
 from avin.data.asset_type import AssetType
 from avin.data.exchange import Exchange
 from avin.keeper import Keeper
+from avin.logger import logger
 
 
 class InstrumentId:  # {{{
@@ -30,13 +31,11 @@ class InstrumentId:  # {{{
         assert isinstance(asset_type, AssetType)
         assert hasattr(exchange, "name")
 
-        self.__info = {
-            "type": asset_type,
-            "exchange": exchange,
-            "ticker": ticker,
-            "figi": figi,
-            "name": name,
-        }
+        self.__type = asset_type
+        self.__exchange = exchange
+        self.__ticker = ticker
+        self.__figi = figi
+        self.__name = name
 
     # }}}
     def __str__(self):  # {{{
@@ -44,33 +43,34 @@ class InstrumentId:  # {{{
         return s
 
     # }}}
-    def __eq__(self, other: InstrumentId):  # {{{
-        return self.__info == other.__info
+    def __eq__(self, other: object) -> bool:  # {{{
+        assert hasattr(other, "__figi")
+        return self.__figi == other.__figi
 
     # }}}
     @property  # exchange# {{{
     def exchange(self):
-        return self.__info["exchange"]
+        return self.__exchange
 
     # }}}
     @property  # type# {{{
     def type(self):
-        return self.__info["type"]
+        return self.__type
 
     # }}}
     @property  # ticker# {{{
     def ticker(self):
-        return self.__info["ticker"]
+        return self.__ticker
 
     # }}}
     @property  # figi# {{{
     def figi(self):
-        return self.__info["figi"]
+        return self.__figi
 
     # }}}
     @property  # name# {{{
     def name(self):
-        return self.__info["name"]
+        return self.__name
 
     # }}}
     @classmethod  # fromRecord# {{{
@@ -87,11 +87,29 @@ class InstrumentId:  # {{{
 
     # }}}
     @classmethod  # byFigi# {{{
-    async def byFigi(cls, figi) -> InstrumentId:
+    async def byFigi(cls, figi: str) -> InstrumentId:
         id_list = await Keeper.get(InstrumentId, figi=figi)
+
         assert len(id_list) == 1
         ID = id_list[0]
+        return ID
 
+    # }}}
+    @classmethod  # byTicker# {{{
+    async def byTicker(
+        cls, asset_type: AssetType, exchange: Exchange, ticker: str
+    ) -> InstrumentId:
+        logger.debug(f"{cls.__name__}.byTicker()")
+
+        id_list = await Keeper.get(
+            InstrumentId,
+            asset_type=asset_type,
+            exchange=exchange,
+            ticker=ticker,
+        )
+
+        assert len(id_list) == 1
+        ID = id_list[0]
         return ID
 
     # }}}
