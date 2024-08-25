@@ -95,7 +95,7 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         timeframe, begin, end = self.__checkArgs(timeframe, begin, end)
 
         # load chart and keep it
-        chart = await Chart.load(self, timeframe, begin, end)
+        chart = await Chart.load(self.ID, timeframe, begin, end)
         self.__charts[timeframe] = chart
 
     # }}}
@@ -111,7 +111,7 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         timeframe, begin, end = self.__checkArgs(timeframe, begin, end)
 
         # load chart and return it
-        chart = await Chart.load(self, timeframe, begin, end)
+        chart = await Chart.load(self.ID, timeframe, begin, end)
         return chart
 
     # }}}

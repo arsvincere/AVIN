@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 
 from avin.core.bar import Bar
 from avin.core.timeframe import TimeFrame
+from avin.data import InstrumentId
 from avin.keeper import Keeper
 from avin.logger import logger
 from avin.utils import Signal, findLeft
@@ -27,15 +28,15 @@ class Chart:  # {{{
     # }}}
     def __init__(  # {{{
         self,
-        asset: Asset,
+        ID: InstrumentId,
         timeframe: TimeFrame,
         bars: list[Bar],
     ):
-        check = self.__checkArgs(asset, timeframe, bars)
+        check = self.__checkArgs(ID, timeframe, bars)
         if not check:
             return
 
-        self.__asset = asset
+        self.__ID = ID
         self.__timeframe = timeframe
 
         for i in bars:
@@ -79,9 +80,9 @@ class Chart:  # {{{
         return iter(self.__bars)
 
     # }}}
-    @property  # asset# {{{
-    def asset(self):
-        return self.__asset
+    @property  # ID# {{{
+    def ID(self):
+        return self.__ID
 
     # }}}
     @property  # timeframe# {{{
@@ -180,10 +181,16 @@ class Chart:  # {{{
 
     # }}}
     @classmethod  # async load# {{{
-    async def load(cls, asset, timeframe, begin, end) -> Chart:
+    async def load(
+        cls,
+        ID: InstrumentId,
+        timeframe: TimeFrame,
+        begin: datetime,
+        end: datetime,
+    ) -> Chart:
         # check args, may be raise TypeError, ValueError
         cls.__checkArgs(
-            asset=asset,
+            ID=ID,
             timeframe=timeframe,
             begin=begin,
             end=end,
@@ -192,28 +199,28 @@ class Chart:  # {{{
         # request bars
         bars = await Keeper.get(
             Bar,
-            ID=asset.ID,
+            ID=ID,
             timeframe=timeframe,
             begin=begin,
             end=end,
         )
 
         # create and return chart
-        chart = Chart(asset, timeframe, bars)
+        chart = Chart(ID, timeframe, bars)
         return chart
 
     # }}}
     @classmethod  # __checkArgs  # {{{
     def __checkArgs(
         cls,
-        asset=None,
+        ID=None,
         timeframe=None,
         bars=None,
         begin=None,
         end=None,
     ):
-        if asset:
-            cls.__checkAsset(asset)
+        if ID:
+            cls.__checkID(ID)
 
         if timeframe:
             cls.__checkTimeFrame(timeframe)
@@ -231,10 +238,10 @@ class Chart:  # {{{
 
     # }}}
     @classmethod  # __checkAsset  # {{{
-    def __checkAsset(cls, asset):
-        if not hasattr(asset, "figi"):
-            logger.critical(f"Invalid asset={asset}")
-            raise TypeError(asset)
+    def __checkID(cls, ID):
+        if not isinstance(ID, InstrumentId):
+            logger.critical(f"Invalid ID={ID}")
+            raise TypeError(ID)
 
     # }}}
     @classmethod  # __checkTimeFrame  # {{{
