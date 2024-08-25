@@ -12,9 +12,9 @@ import enum
 from datetime import datetime
 
 from avin.const import Usr
-from avin.core.asset import Asset
 from avin.core.id import Id
 from avin.data import InstrumentId
+from avin.keeper import Keeper
 
 
 class Operation:  # {{{
@@ -48,7 +48,7 @@ class Operation:  # {{{
         amount: float,
         commission: float,
         operation_id: Id = None,
-        order_id: Id = None,
+        order_id: Id = None,  # XXX: а что если это обязательный аргумент?
         trade_id: Id = None,
         meta: object = None,
     ):
@@ -78,38 +78,6 @@ class Operation:  # {{{
         return string
 
     # }}}
-    @classmethod  # toJson{{{
-    def toJson(cls, op: Operation) -> dict:
-        obj = {
-            "account": op.account_name,
-            "dt": str(op.dt),
-            "direction": op.direction.name,
-            "asset": Asset.toJson(op.asset),
-            "lots": op.lots,
-            "quantity": op.quantity,
-            "price": op.price,
-            "amount": op.amount,
-            "commission": op.commission,
-        }
-        return obj
-
-    # }}}
-    @classmethod  # fromJson{{{
-    def fromJson(cls, obj):
-        o = Operation(
-            account_name=obj["account"],
-            dt=datetime.fromisoformat(obj["dt"]),
-            direction=Operation.Direction.fromStr(obj["direction"]),
-            asset=Asset.fromJson(obj["asset"]),
-            lots=obj["lots"],
-            quantity=obj["quantity"],
-            price=obj["price"],
-            amount=obj["amount"],
-            commission=obj["commission"],
-        )
-        return o
-
-    # }}}
     @classmethod  # fromRecord{{{
     async def fromRecord(cls, record):
         ID = await InstrumentId.byFigi(record["figi"])
@@ -130,6 +98,24 @@ class Operation:  # {{{
             meta=record["meta"],
         )
         return op
+
+    # }}}
+    @classmethod  # save{{{
+    async def save(cls, operation):
+        # XXX: а может тут перезапись в кипере делать?
+        # сейчас будет исключение если операция уже добавлена в бд
+        await Keeper.add(operation)
+
+    # }}}
+    @classmethod  # load{{{
+    async def load(cls, operation_id):
+        op = await Keeper.get(cls, operation_id=operation_id)
+        return op
+
+    # }}}
+    @classmethod  # delete{{{
+    async def delete(cls, operation):
+        await Keeper.delete(operation)
 
     # }}}
 
