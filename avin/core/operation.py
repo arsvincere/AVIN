@@ -14,6 +14,7 @@ from datetime import datetime
 from avin.const import Usr
 from avin.core.asset import Asset
 from avin.core.id import Id
+from avin.data import InstrumentId
 
 
 class Operation:  # {{{
@@ -40,7 +41,7 @@ class Operation:  # {{{
         account_name: str,
         dt: datetime,
         direction: Direction,
-        figi: str,
+        asset_id: InstrumentId,
         lots: int,
         quantity: int,
         price: float,
@@ -54,7 +55,7 @@ class Operation:  # {{{
         self.account_name = account_name
         self.dt = dt
         self.direction = direction
-        self.figi = figi
+        self.asset_id = asset_id
         self.price = price
         self.lots = lots
         self.quantity = quantity
@@ -70,7 +71,7 @@ class Operation:  # {{{
         usr_dt = self.dt + Usr.TIME_DIF
         str_dt = usr_dt.strftime("%Y-%m-%d %H:%M")
         string = (
-            f"{str_dt} {self.direction.name} {self.figi} "
+            f"{str_dt} {self.direction.name} {self.asset_id.ticker} "
             f"{self.quantity} * {self.price} = {self.amount} "
             f"+ {self.commission}"
         )
@@ -110,12 +111,14 @@ class Operation:  # {{{
 
     # }}}
     @classmethod  # fromRecord{{{
-    def fromRecord(cls, record):
-        o = Operation(
+    async def fromRecord(cls, record):
+        ID = await InstrumentId.byFigi(record["figi"])
+
+        op = Operation(
             account_name=record["account"],
             dt=record["dt"],
             direction=Operation.Direction.fromStr(record["direction"]),
-            figi=record["figi"],
+            asset_id=ID,
             lots=record["lots"],
             quantity=record["quantity"],
             price=record["price"],
@@ -126,7 +129,7 @@ class Operation:  # {{{
             trade_id=record["trade_id"],
             meta=record["meta"],
         )
-        return o
+        return op
 
     # }}}
 
