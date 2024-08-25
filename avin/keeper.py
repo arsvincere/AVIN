@@ -470,10 +470,8 @@ class Keeper:
 
     # }}}
     @classmethod  # __addOrder  # {{{
-    async def __addOrder(cls, order: Order) -> None:
+    async def __addOrder(cls, o: Order) -> None:
         logger.debug(f"{cls.__name__}.__addOrder()")
-        assert order.trade_id is not None
-        assert order.account_name is not None
 
         # Используется проверка типа ордера через строки...
         # логично было бы использовать enum Order.Type, например:
@@ -481,28 +479,28 @@ class Keeper:
         # но для этого нужно импортировать модуль order, а тогда модуль order
         # не сможет импортировать модуль keeper (circular import)
         # хз как лучше, пока пусть типо по имени проверяет
-        if order.type.name == "MARKET":
-            price = "NULL"
-            stop_price = "NULL"
-            exec_price = "NULL"
-        elif order.type.name == "LIMIT":
-            price = order.price
-            stop_price = "NULL"
-            exec_price = "NULL"
-        elif order.type.name == "STOP":
-            price = "NULL"
-            stop_price = order.stop_price
-            exec_price = order.exec_price
+        # format prices
+        if o.type.name == "MARKET":
+            price, stop_price, exec_price = "NULL", "NULL", "NULL"
+        elif o.type.name == "LIMIT":
+            price, stop_price, exec_price = o.price, "NULL", "NULL"
+        elif o.type.name == "STOP":
+            price, s_price, e_price = "NULL", o.stop_price, o.exec_price
         else:
-            assert False, f"Что за новый тип ордера='{order.type}'"
+            assert False, f"Что за новый тип ордера='{o.type}'"
 
-        if order.meta is None:
+        # format meta
+        if o.meta is None:
             meta = "NULL"
         else:
             logger.warning("Напиши как правильно meta сохранять")
-            logger.info(order.meta)
+            logger.info(o.meta)
             assert False
 
+        # format trade_id
+        trade_id = o.trade_id if o.trade_id else "NULL"
+
+        # add
         request = f"""
             INSERT INTO "Order" (
                 order_id,
@@ -520,18 +518,18 @@ class Keeper:
                 meta
                 )
             VALUES (
-                {order.order_id},
-                '{order.account_name}',
-                '{order.type.name}',
-                '{order.status.name}',
-                '{order.direction.name}',
-                '{order.figi}',
-                {order.lots},
-                {order.quantity},
+                {o.order_id},
+                '{o.account_name}',
+                '{o.type.name}',
+                '{o.status.name}',
+                '{o.direction.name}',
+                '{o.asset_id.figi}',
+                {o.lots},
+                {o.quantity},
                 {price},
                 {stop_price},
                 {exec_price},
-                {order.trade_id},
+                {trade_id},
                 {meta}
                 );
             """
@@ -787,7 +785,7 @@ class Keeper:
             SET
                 status = '{order.status.name}'
             WHERE
-                order_id = '{order.ID}';
+                order_id = '{order.order_id}';
             """
         await cls.transaction(request)
 
@@ -907,10 +905,22 @@ class Keeper:
         """
         logger.debug(f"{cls.__name__}.__getInstrumentId()")
 
+        asset_type = kwargs.get("asset_type")
+        exchange = kwargs.get("exchange")
+        ticker = kwargs.get("ticker")
         figi = kwargs.get("figi")
 
-        # Create figi condition
-        pg_figi = f"figi = '{figi}'" if figi else "TRUE"
+        # create condition
+        if figi:
+            pg_condition = f"figi = '{figi}'"
+        elif asset_type and exchange and ticker:
+            pg_condition = (
+                f"type = '{asset_type.name}' AND "
+                f"exchange = '{exchange.name}' AND "
+                f"ticker = '{ticker}'"
+            )
+        else:
+            assert False
 
         # Request instrument IDs
         request = f"""
@@ -922,7 +932,7 @@ class Keeper:
                 figi
             FROM "Asset"
             WHERE
-                {pg_figi}
+                {pg_condition}
             ;
             """
         records = await cls.transaction(request)
@@ -1305,6 +1315,16 @@ class Keeper:
         logger.debug(f"{cls.__name__}.__getOrders()")
 
         trade_id = kwargs.get("trade_id")
+        order_id = kwargs.get("order_id")
+
+        # create condition
+        if trade_id:
+            pg_condition = f"trade_id = {trade_id}"
+        elif order_id:
+            pg_condition = f"order_id = {order_id}"
+        else:
+            pg_condition = "TRUE"  # return all orders
+
         request = f"""
             SELECT
                 order_id,
@@ -1321,7 +1341,7 @@ class Keeper:
                 trade_id,
                 meta
             FROM "Order"
-            WHERE trade_id = {trade_id}
+            WHERE {pg_condition}
             ;
             """
         order_records = await cls.transaction(request)
@@ -1329,7 +1349,7 @@ class Keeper:
         # Create 'list' of 'Order' objects from 'Records'
         order_list = list()
         for i in order_records:
-            order = Order.fromRecord(i)
+            order = await Order.fromRecord(i)
             order_list.append(order)
 
         return order_list

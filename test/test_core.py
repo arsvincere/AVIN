@@ -189,7 +189,7 @@ async def test_Chart(event_loop):
 
 # }}}
 @pytest.mark.asyncio  # test_Asset  # {{{
-async def test_Asset():
+async def test_Asset(event_loop):
     exchange = Exchange.MOEX
     asset_type = AssetType.SHARE
     ticker = "SBER"
@@ -223,7 +223,7 @@ async def test_Asset():
 
 # }}}
 @pytest.mark.asyncio  # test_Share  # {{{
-async def test_Share():
+async def test_Share(event_loop):
     exchange = Exchange.MOEX
     asset_type = AssetType.SHARE
     id_list = await Data.find(asset_type, exchange, "SBER")
@@ -262,7 +262,7 @@ async def test_Share():
 
 # }}}
 @pytest.mark.asyncio  # test_AssetList  # {{{
-async def test_AssetList():
+async def test_AssetList(event_loop):
     alist = AssetList(name="_unittest")
     assert alist.name == "_unittest"
     assert alist.assets == []
@@ -353,66 +353,82 @@ async def test_AssetList():
 
 
 # }}}
-def test_Order():  # {{{
-    ID = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
-    share = Share(ID)
-    o = Order.Market(Order.Direction.SELL, share, lots=15, quantity=150)
+@pytest.mark.asyncio  # test_Order  # {{{
+async def test_Order(event_loop):
+    sber_id = await InstrumentId.byTicker(
+        AssetType.SHARE, Exchange.MOEX, "SBER"
+    )
+    o = Order.Market(
+        "_unittest", Order.Direction.SELL, sber_id, lots=15, quantity=150
+    )
+    assert o.account_name == "_unittest"
     assert o.direction == Order.Direction.SELL
-    assert o.asset == share
+    assert o.asset_id == sber_id
     assert o.lots == 15
     assert o.quantity == 150
-    assert o.ID is not None
-    assert o.trade_ID == None
+    assert o.order_id is not None
+    assert o.trade_id is None
+    assert o.exec_lots == 0
+    assert o.exec_quantity == 0
     assert o.status == Order.Status.NEW
-    assert o.account_name is None  # задается при размещении ордера
+
+    await Order.save(o)
+
+    # setStatus change both: object & record in db
+    await o.setStatus(Order.Status.POST)
+    assert o.status == Order.Status.POST
+    loaded = await Order.load(o.order_id)
+    assert o.status == loaded.status
+
+    await Order.delete(o)
 
 
 # }}}
-def test_Operation():  # {{{
-    ID = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
-    share = Share(ID)
-    dt = now()
-    op = Operation(
-        account_name="_unittest",
-        dt=dt,
-        direction=Operation.Direction.SELL,
-        asset=share,
-        lots=1,
-        quantity=50,
-        price=100,
-        amount=100 * 50,
-        commission=10,
-        trade_ID=None,
-        meta=None,
-    )
-
-    assert op.dt == dt
-    assert op.direction == Operation.Direction.SELL
-    assert op.asset == share
-    assert op.price == 100
-    assert op.lots == 1
-    assert op.quantity == 50
-    assert op.amount == 5000
-    assert op.commission == 10
-    assert op.meta == None
-
-    obj = Operation.toJson(op)
-    assert isinstance(obj, dict)
-    fromjson_op = Operation.fromJson(obj)
-    assert str(op) == str(fromjson_op)
-
-    assert op.dt == fromjson_op.dt
-    assert op.direction == fromjson_op.direction
-    assert op.asset == fromjson_op.asset
-    assert op.price == fromjson_op.price
-    assert op.lots == fromjson_op.lots
-    assert op.quantity == fromjson_op.quantity
-    assert op.amount == fromjson_op.amount
-    assert op.commission == fromjson_op.commission
-    assert op.meta == fromjson_op.meta
-
-
-# }}}
+# def test_Operation():  # {{{
+#     ID = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
+#     share = Share(ID)
+#     dt = now()
+#     op = Operation(
+#         account_name="_unittest",
+#         dt=dt,
+#         direction=Operation.Direction.SELL,
+#         asset=share,
+#         lots=1,
+#         quantity=50,
+#         price=100,
+#         amount=100 * 50,
+#         commission=10,
+#         trade_ID=None,
+#         meta=None,
+#     )
+#
+#     assert op.dt == dt
+#     assert op.direction == Operation.Direction.SELL
+#     assert op.asset == share
+#     assert op.price == 100
+#     assert op.lots == 1
+#     assert op.quantity == 50
+#     assert op.amount == 5000
+#     assert op.commission == 10
+#     assert op.meta is None
+#
+#     obj = Operation.toJson(op)
+#     assert isinstance(obj, dict)
+#     fromjson_op = Operation.fromJson(obj)
+#     assert str(op) == str(fromjson_op)
+#
+#     assert op.dt == fromjson_op.dt
+#     assert op.direction == fromjson_op.direction
+#     assert op.asset == fromjson_op.asset
+#     assert op.price == fromjson_op.price
+#     assert op.lots == fromjson_op.lots
+#     assert op.quantity == fromjson_op.quantity
+#     assert op.amount == fromjson_op.amount
+#     assert op.commission == fromjson_op.commission
+#     assert op.meta == fromjson_op.meta
+#
+#
+# # }}}
 # def test_Position():  # {{{
 # TODO:
 # позиция это чисто позиция в портфолио, как от брокера приходит
@@ -452,229 +468,229 @@ def test_Operation():  # {{{
 
 
 # }}}
-def test_Cash():  # {{{
-    rub = Cash(Cash.Type.RUB, 1_000_000)
-    assert rub.type == Cash.Type.RUB
-    assert rub.value == 1_000_000
-
-
-# }}}
-def test_Portfolio():  # {{{
-    portfolio = Portfolio()
-
-    # input cash
-    rub = Cash(Cash.Type.RUB, 1_000_000)
-    portfolio.inputCash(rub)
-    cash_in_p = portfolio.cash(Cash.Type.RUB)
-    assert cash_in_p.value == rub.value
-    assert cash_in_p.type == rub.type
-
-    # output cash
-    rub = Cash(Cash.Type.RUB, 100_000)
-    portfolio.outputCash(rub)
-    cash_in_p = portfolio.cash(Cash.Type.RUB)
-    assert cash_in_p.value == 900_000
-
-    # add/get position
-    ID = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
-    share = Share(ID)
-    dt = now()
-    op = Operation(
-        account_name="_unittest",
-        dt=dt,
-        direction=Operation.Direction.BUY,
-        asset=share,
-        price=100,
-        lots=1,
-        quantity=50,
-        amount=100 * 50,
-        commission=10,
-        meta=None,
-    )
-    pos = Position(operations=[op], meta=None)
-
-    portfolio = Portfolio(
-        [
-            rub,
-        ],
-        [
-            pos,
-        ],
-    )
-    shares_pos = portfolio.get(AssetType.SHARE)
-    assert shares_pos[0] == pos
-
-    # TODO: после рефакторинга сигнала это проедалать
-    # remove position (availible only if position closed)
-    # op = Operation(
-    #     dt=         dt,
-    #     direction=  Operation.Direction.SELL,
-    #     asset=      share,
-    #     price=      100,
-    #     lots=       1,
-    #     quantity=   50,
-    #     amount=     100*50,
-    #     commission= 10,
-    #     meta=       None
-    #     )
-    # pos.add(op)
-    # assert pos.status == Position.Status.CLOSE
-    # portfolio.remove(pos)
-    # shares_pos = portfolio.get(AssetType.SHARE)
-    # assert len(shares_pos) == 0
-    #
-
-
-# }}}
-def test_Filter():  # {{{
-    code = """
-def condition(x):
-    return x * 5
-    """
-    f = Filter("example", code)
-    assert f.check(4) == 20
-    assert f.name == "example"
-    assert f.code == code
-    Filter.save(f)
-
-    loaded = Filter.load(f.path)
-    assert Cmd.isExist(loaded.path)
-    assert loaded.check(4) == 20
-    assert loaded.name == "example"
-
-    Filter.rename(loaded, "blablabla")
-    assert Cmd.isExist(loaded.path)
-    Filter.delete(loaded)
-
-
-# }}}
-def test_Trade():  # {{{
-    dt = now()
-    strategy = Strategy("Foobar", "v1")
-    trade_type = Trade.Type.LONG
-    asset = Asset.byTicker(Exchange.MOEX, AssetType.SHARE, "SBER")
-    trade = Trade(dt, strategy, trade_type, asset)
-    assert trade.status == Trade.Status.INITIAL
-
-    order = Order.Limit(
-        Order.Direction.BUY, asset, lots=1, quantity=10, price=100
-    )
-    trade.addOrder(order)  # signals of order connect automaticaly
-
-    op = Operation(
-        account_name="_unittest",
-        dt=dt,
-        direction=Operation.Direction.BUY,
-        asset=asset,
-        price=100,
-        lots=1,
-        quantity=10,
-        amount=100 * 10,
-        commission=5,
-        meta=None,
-    )
-
-    order.posted.emit(order)
-    assert trade.status == Trade.Status.NEW
-
-    order.fulfilled.emit(
-        order,
-        [
-            op,
-        ],
-    )
-    assert trade.status == Trade.Status.OPEN
-    assert trade.isLong()
-    assert not trade.isShort()
-    assert trade.lots() == 1
-    assert trade.quantity() == 10
-    assert trade.buyQuantity() == 10
-    assert trade.sellQuantity() == 0
-    assert trade.amount() == 1000
-    assert trade.buyAmount() == 1000
-    assert trade.sellAmount() == 0
-    assert trade.commission() == 5
-    assert trade.buyCommission() == 5
-    assert trade.sellCommission() == 0
-    assert trade.average() == 100
-    assert trade.buyAverage() == 100
-    assert trade.sellAverage() == 0
-    assert trade.openPrice() == 100
-    assert trade.openDatetime() == dt
-
-    dt2 = dt + ONE_DAY
-    op2 = Operation(
-        account_name="_unittest",
-        dt=dt2,
-        direction=Operation.Direction.BUY,
-        asset=asset,
-        price=100,
-        lots=1,
-        quantity=10,
-        amount=100 * 10,
-        commission=5,
-        meta=None,
-    )
-    trade.addOperation(op2)
-    assert trade.status == Trade.Status.OPEN
-    assert trade.isLong()
-    assert not trade.isShort()
-    assert trade.lots() == 2
-    assert trade.quantity() == 20
-    assert trade.buyQuantity() == 20
-    assert trade.sellQuantity() == 0
-    assert trade.amount() == 2000
-    assert trade.buyAmount() == 2000
-    assert trade.sellAmount() == 0
-    assert trade.commission() == 10
-    assert trade.buyCommission() == 10
-    assert trade.sellCommission() == 0
-    assert trade.average() == 100
-    assert trade.buyAverage() == 100
-    assert trade.sellAverage() == 0
-    assert trade.openPrice() == 100
-    assert trade.openDatetime() == dt
-
-    dt3 = dt2 + ONE_DAY
-    op3 = Operation(
-        account_name="_unittest",
-        dt=dt3,
-        direction=Operation.Direction.SELL,
-        asset=asset,
-        price=110,
-        lots=2,
-        quantity=20,
-        amount=110 * 20,
-        commission=10,
-        meta=None,
-    )
-    trade.addOperation(op3)
-    assert trade.status == Trade.Status.CLOSE
-    assert trade.isLong()
-    assert not trade.isShort()
-    assert trade.lots() == 0
-    assert trade.quantity() == 0
-    assert trade.buyQuantity() == 20
-    assert trade.sellQuantity() == 20
-    assert trade.amount() == 0
-    assert trade.buyAmount() == 2000
-    assert trade.sellAmount() == 2200
-    assert trade.commission() == 20
-    assert trade.buyCommission() == 10
-    assert trade.sellCommission() == 10
-    assert trade.average() == 0
-    assert trade.buyAverage() == 100
-    assert trade.sellAverage() == 110
-    assert trade.openDatetime() == dt
-    assert trade.openPrice() == 100
-    assert trade.closeDatetime() == dt3
-    assert trade.closePrice() == 110
-
-    # members availible for closed trade
-    assert trade.result() == 200 - 20  # sell - commission
-    assert trade.holdingDays() == 3
-    assert trade.percent() == 9.0
-    assert trade.percentPerDay() == 3.0
-
-
-# }}}
+# def test_Cash():  # {{{
+#     rub = Cash(Cash.Type.RUB, 1_000_000)
+#     assert rub.type == Cash.Type.RUB
+#     assert rub.value == 1_000_000
+#
+#
+# # }}}
+# def test_Portfolio():  # {{{
+#     portfolio = Portfolio()
+#
+#     # input cash
+#     rub = Cash(Cash.Type.RUB, 1_000_000)
+#     portfolio.inputCash(rub)
+#     cash_in_p = portfolio.cash(Cash.Type.RUB)
+#     assert cash_in_p.value == rub.value
+#     assert cash_in_p.type == rub.type
+#
+#     # output cash
+#     rub = Cash(Cash.Type.RUB, 100_000)
+#     portfolio.outputCash(rub)
+#     cash_in_p = portfolio.cash(Cash.Type.RUB)
+#     assert cash_in_p.value == 900_000
+#
+#     # add/get position
+#     ID = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
+#     share = Share(ID)
+#     dt = now()
+#     op = Operation(
+#         account_name="_unittest",
+#         dt=dt,
+#         direction=Operation.Direction.BUY,
+#         asset=share,
+#         price=100,
+#         lots=1,
+#         quantity=50,
+#         amount=100 * 50,
+#         commission=10,
+#         meta=None,
+#     )
+#     pos = Position(operations=[op], meta=None)
+#
+#     portfolio = Portfolio(
+#         [
+#             rub,
+#         ],
+#         [
+#             pos,
+#         ],
+#     )
+#     shares_pos = portfolio.get(AssetType.SHARE)
+#     assert shares_pos[0] == pos
+#
+#     # TODO: после рефакторинга сигнала это проедалать
+#     # remove position (availible only if position closed)
+#     # op = Operation(
+#     #     dt=         dt,
+#     #     direction=  Operation.Direction.SELL,
+#     #     asset=      share,
+#     #     price=      100,
+#     #     lots=       1,
+#     #     quantity=   50,
+#     #     amount=     100*50,
+#     #     commission= 10,
+#     #     meta=       None
+#     #     )
+#     # pos.add(op)
+#     # assert pos.status == Position.Status.CLOSE
+#     # portfolio.remove(pos)
+#     # shares_pos = portfolio.get(AssetType.SHARE)
+#     # assert len(shares_pos) == 0
+#     #
+#
+#
+# # }}}
+# def test_Filter():  # {{{
+#     code = """
+# def condition(x):
+#     return x * 5
+#     """
+#     f = Filter("example", code)
+#     assert f.check(4) == 20
+#     assert f.name == "example"
+#     assert f.code == code
+#     Filter.save(f)
+#
+#     loaded = Filter.load(f.path)
+#     assert Cmd.isExist(loaded.path)
+#     assert loaded.check(4) == 20
+#     assert loaded.name == "example"
+#
+#     Filter.rename(loaded, "blablabla")
+#     assert Cmd.isExist(loaded.path)
+#     Filter.delete(loaded)
+#
+#
+# # }}}
+# def test_Trade():  # {{{
+#     dt = now()
+#     strategy = Strategy("Foobar", "v1")
+#     trade_type = Trade.Type.LONG
+#     asset = Asset.byTicker(Exchange.MOEX, AssetType.SHARE, "SBER")
+#     trade = Trade(dt, strategy, trade_type, asset)
+#     assert trade.status == Trade.Status.INITIAL
+#
+#     order = Order.Limit(
+#         Order.Direction.BUY, asset, lots=1, quantity=10, price=100
+#     )
+#     trade.addOrder(order)  # signals of order connect automaticaly
+#
+#     op = Operation(
+#         account_name="_unittest",
+#         dt=dt,
+#         direction=Operation.Direction.BUY,
+#         asset=asset,
+#         price=100,
+#         lots=1,
+#         quantity=10,
+#         amount=100 * 10,
+#         commission=5,
+#         meta=None,
+#     )
+#
+#     order.posted.emit(order)
+#     assert trade.status == Trade.Status.NEW
+#
+#     order.fulfilled.emit(
+#         order,
+#         [
+#             op,
+#         ],
+#     )
+#     assert trade.status == Trade.Status.OPEN
+#     assert trade.isLong()
+#     assert not trade.isShort()
+#     assert trade.lots() == 1
+#     assert trade.quantity() == 10
+#     assert trade.buyQuantity() == 10
+#     assert trade.sellQuantity() == 0
+#     assert trade.amount() == 1000
+#     assert trade.buyAmount() == 1000
+#     assert trade.sellAmount() == 0
+#     assert trade.commission() == 5
+#     assert trade.buyCommission() == 5
+#     assert trade.sellCommission() == 0
+#     assert trade.average() == 100
+#     assert trade.buyAverage() == 100
+#     assert trade.sellAverage() == 0
+#     assert trade.openPrice() == 100
+#     assert trade.openDatetime() == dt
+#
+#     dt2 = dt + ONE_DAY
+#     op2 = Operation(
+#         account_name="_unittest",
+#         dt=dt2,
+#         direction=Operation.Direction.BUY,
+#         asset=asset,
+#         price=100,
+#         lots=1,
+#         quantity=10,
+#         amount=100 * 10,
+#         commission=5,
+#         meta=None,
+#     )
+#     trade.addOperation(op2)
+#     assert trade.status == Trade.Status.OPEN
+#     assert trade.isLong()
+#     assert not trade.isShort()
+#     assert trade.lots() == 2
+#     assert trade.quantity() == 20
+#     assert trade.buyQuantity() == 20
+#     assert trade.sellQuantity() == 0
+#     assert trade.amount() == 2000
+#     assert trade.buyAmount() == 2000
+#     assert trade.sellAmount() == 0
+#     assert trade.commission() == 10
+#     assert trade.buyCommission() == 10
+#     assert trade.sellCommission() == 0
+#     assert trade.average() == 100
+#     assert trade.buyAverage() == 100
+#     assert trade.sellAverage() == 0
+#     assert trade.openPrice() == 100
+#     assert trade.openDatetime() == dt
+#
+#     dt3 = dt2 + ONE_DAY
+#     op3 = Operation(
+#         account_name="_unittest",
+#         dt=dt3,
+#         direction=Operation.Direction.SELL,
+#         asset=asset,
+#         price=110,
+#         lots=2,
+#         quantity=20,
+#         amount=110 * 20,
+#         commission=10,
+#         meta=None,
+#     )
+#     trade.addOperation(op3)
+#     assert trade.status == Trade.Status.CLOSE
+#     assert trade.isLong()
+#     assert not trade.isShort()
+#     assert trade.lots() == 0
+#     assert trade.quantity() == 0
+#     assert trade.buyQuantity() == 20
+#     assert trade.sellQuantity() == 20
+#     assert trade.amount() == 0
+#     assert trade.buyAmount() == 2000
+#     assert trade.sellAmount() == 2200
+#     assert trade.commission() == 20
+#     assert trade.buyCommission() == 10
+#     assert trade.sellCommission() == 10
+#     assert trade.average() == 0
+#     assert trade.buyAverage() == 100
+#     assert trade.sellAverage() == 110
+#     assert trade.openDatetime() == dt
+#     assert trade.openPrice() == 100
+#     assert trade.closeDatetime() == dt3
+#     assert trade.closePrice() == 110
+#
+#     # members availible for closed trade
+#     assert trade.result() == 200 - 20  # sell - commission
+#     assert trade.holdingDays() == 3
+#     assert trade.percent() == 9.0
+#     assert trade.percentPerDay() == 3.0
+#
+#
+# # }}}

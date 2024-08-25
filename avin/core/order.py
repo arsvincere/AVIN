@@ -12,6 +12,8 @@ import abc
 import enum
 
 from avin.core.id import Id
+from avin.data import InstrumentId
+from avin.keeper import Keeper
 from avin.utils import Signal
 
 
@@ -93,25 +95,30 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         @abc.abstractmethod  # __init__# {{{
         def __init__(
             self,
+            account_name,
             direction,
-            figi,
+            asset_id,
             lots,
             quantity,
-            account_name,
             status,
             order_id,
             trade_id,
+            exec_lots,
+            exec_quantity,
             meta,
         ):
             self.direction = direction
-            self.figi = figi
+            self.asset_id = asset_id
             self.lots = lots
             self.quantity = quantity
 
             self.account_name = account_name
-            self.status = status if status else Order.Status.NEW
+            self.__status = status if status else Order.Status.NEW
             self.order_id = order_id if order_id else Id.newId(self)
             self.trade_id = trade_id
+            self.exec_lots = exec_lots if exec_lots else 0
+            self.exec_quantity = exec_quantity if exec_quantity else 0
+
             self.meta = meta
 
             # Signals
@@ -127,7 +134,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             string = (
                 f"Order.{self.type.name} "
                 f"{self.direction.name} "
-                f"{self.asset.ticker} "
+                f"{self.asset_id.ticker} "
                 f"{self.lots} lot"
             )
 
@@ -141,50 +148,14 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             return string
 
         # }}}
-        @classmethod  # save{{{
-        def save(cls, order) -> bool:
-            assert False, "не написана функция"
-
-            # записываем в базу данных через кипера.
+        @property  # status{{{
+        def status(self):
+            return self.__status
 
         # }}}
-        @classmethod  # load{{{
-        def load(cls, ID: Id):
-            assert False, "не написана функция"
-            # подумать ордер от сюда отправляет свой запрос?
-            # или запрос к киперу идет только по части трейда?
-            # а там дальше внутри загрузки трейда грузить все
-            # его ордера??? Странная хуйня а если я просто
-            # хочу посмотреть все активные ордера?
-            # мне нужно сделать селект по статусу, а потом
-            # загрузить каждый такой ордер из таблицы
-            #
-            # ордер  ордер ордер..
-            # если кипер будет ковырять и создавать ордер внутри себя?
-            # то при изменении ордера ковырять кипера тоже
-            #
-            # а если ордер будет ковыряться в бд строке сам?
-            # то при изменении класса надо будет поменять только метод
-            # Order.fromRecord(record)
-            #
-            # киперу просто кидают объекты и он их сохраняет правильно.
-            # если меняется класс то придется менять и БД
-            # если меняется БД меняется только кипер. ОК
-            #
-            # как киперу загружать объекты и выдавать списки объектов
-            # по запросу? Выдавать ему сами объекты? Да.
-            # Однозначно сами объекты а не записи из БД
-            #
-            # Кто где как собирает объект из записи в БД?
-            # варианты
-            # сам объект - он лучше всего себя знает.
-            # и может удобно все разложить по полочкам.
-            # но объект не должен ничего знать про БД...
-            # с БД должен общаться только кипер.
-            # У кипера тогда будет много методов... Да не так
-            # уж и много...
-            # Просто для каждого объекта у кипера есть метод
-            # для записи его к БД и для создания его из БД
+        async def setStatus(self, new_status: Order.Status):  # {{{
+            self.__status = new_status
+            await Keeper.update(self)
 
         # }}}
 
@@ -192,25 +163,29 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     class Market(_BaseOrder):  # {{{
         def __init__(
             self,
+            account_name: str,
             direction: Order.Direction,
-            figi: str,
+            asset_id: str,
             lots: int,
             quantity: int,
-            account_name: str = None,
             status: Order.Status = None,
             order_id: Id = None,
             trade_id: Id = None,
+            exec_lots: int = None,
+            exec_quantity: int = None,
             meta=None,
         ):
             super().__init__(
+                account_name,
                 direction,
-                figi,
+                asset_id,
                 lots,
                 quantity,
-                account_name,
                 status,
                 order_id,
                 trade_id,
+                exec_lots,
+                exec_quantity,
                 meta=None,
             )
             self.type = Order.Type.MARKET
@@ -219,26 +194,30 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     class Limit(_BaseOrder):  # {{{
         def __init__(
             self,
+            account_name: str,
             direction: Order.Direction,
-            figi: str,
+            asset_id: str,
             lots: int,
             quantity: int,
             price: float,
-            account_name: str = None,
             status: Order.Status = None,
             order_id: Id = None,
             trade_id: Id = None,
+            exec_lots: int = None,
+            exec_quantity: int = None,
             meta=None,
         ):
             super().__init__(
+                account_name,
                 direction,
-                figi,
+                asset_id,
                 lots,
                 quantity,
-                account_name,
                 status,
                 order_id,
                 trade_id,
+                exec_lots,
+                exec_quantity,
                 meta=None,
             )
             self.type = Order.Type.LIMIT
@@ -248,16 +227,18 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     class Stop(_BaseOrder):  # {{{
         def __init__(
             self,
+            account_name: str,
             direction: Order.Direction,
-            figi: str,
+            asset_id: str,
             lots: int,
             quantity: int,
             stop_price: float,
             exec_price: float,
-            account_name: str = None,
             status: Order.Status = None,
             order_id: Id = None,
             trade_id: Id = None,
+            exec_lots: int = None,
+            exec_quantity: int = None,
             meta=None,
         ):
             super().__init__(
@@ -269,6 +250,8 @@ class Order(metaclass=abc.ABCMeta):  # {{{
                 status,
                 order_id,
                 trade_id,
+                exec_lots,
+                exec_quantity,
                 meta=None,
             )
             self.type = Order.Type.STOP
@@ -309,22 +292,47 @@ class Order(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
 
+    @classmethod  # save  # {{{
+    async def save(cls, order) -> None:
+        await Keeper.add(order)
+
+    # }}}
+    @classmethod  # load  # {{{
+    async def load(cls, order_id: Id):
+        order_list = await Keeper.get(cls, order_id=order_id)
+        assert len(order_list) == 1
+        order = order_list[0]
+        return order
+
+    # }}}
+    @classmethod  # delete  # {{{
+    async def delete(cls, order) -> None:
+        await Keeper.delete(order)
+
+    # }}}
+    @classmethod  # update  # {{{
+    async def update(cls, order) -> None:
+        await Keeper.update(order)
+
+    # }}}
     @classmethod  # fromRecord{{{
-    def fromRecord(cls, record):
+    async def fromRecord(cls, record):
         methods = {
             "MARKET": Order.__marketOrderFromRecord,
             "LIMIT": Order.__limitOrderFromRecord,
             "STOP": Order.__stopOrderFromRecord,
         }
         method = methods[record["type"]]
-        return method(record)
+        order = await method(record)
+        return order
 
     # }}}
     @classmethod  # __marketOrderFromRecord{{{
-    def __marketOrderFromRecord(cls, record):
+    async def __marketOrderFromRecord(cls, record):
+        ID = await InstrumentId.byFigi(figi=record["figi"])
         order = Order.Market(
             direction=Order.Direction.fromStr(record["direction"]),
-            figi=record["figi"],
+            asset_id=ID,
             lots=record["lots"],
             quantity=record["quantity"],
             account_name=record["account"],
@@ -337,10 +345,11 @@ class Order(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
     @classmethod  # __limitOrderFromRecord{{{
-    def __limitOrderFromRecord(cls, record):
+    async def __limitOrderFromRecord(cls, record):
+        ID = await InstrumentId.byFigi(figi=record["figi"])
         order = Order.Limit(
             direction=Order.Direction.fromStr(record["direction"]),
-            figi=record["figi"],
+            asset_id=ID,
             lots=record["lots"],
             quantity=record["quantity"],
             price=record["price"],
@@ -354,10 +363,11 @@ class Order(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
     @classmethod  # __stopOrderFromRecord{{{
-    def __stopOrderFromRecord(cls, record):
+    async def __stopOrderFromRecord(cls, record):
+        ID = await InstrumentId.byFigi(figi=record["figi"])
         order = Order.Stop(
             direction=Order.Direction.fromStr(record["direction"]),
-            figi=record["figi"],
+            asset_id=ID,
             lots=record["lots"],
             quantity=record["quantity"],
             stop_price=record["stop_price"],
