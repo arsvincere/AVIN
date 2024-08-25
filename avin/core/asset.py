@@ -160,6 +160,9 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         cls, asset_type: AssetType, exchange: Exchange, ticker: str
     ) -> Asset:
         logger.debug(f"{cls.__name__}.byTicker()")
+        assert isinstance(asset_type, AssetType)
+        assert hasattr(exchange, "name")
+        assert isinstance(ticker, str)
 
         asset = await Keeper.get(
             Asset, asset_type=asset_type, exchange=exchange, ticker=ticker
