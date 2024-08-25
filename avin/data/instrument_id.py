@@ -44,8 +44,8 @@ class InstrumentId:  # {{{
 
     # }}}
     def __eq__(self, other: object) -> bool:  # {{{
-        assert hasattr(other, "__figi")
-        return self.__figi == other.__figi
+        assert hasattr(other, "figi")
+        return self.figi == other.figi
 
     # }}}
     @property  # exchange# {{{
