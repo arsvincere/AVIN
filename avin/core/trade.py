@@ -14,6 +14,7 @@ from avin.const import ONE_DAY, Usr
 from avin.core.id import Id
 from avin.core.operation import Operation
 from avin.core.order import Order
+from avin.data import InstrumentId
 from avin.keeper import Keeper
 
 # TODO
@@ -65,7 +66,7 @@ class Trade:  # {{{
         strategy: str,
         version: str,
         trade_type: Trade.Type,
-        figi: str,
+        asset_id: str,
         status: Trade.Status = None,
         trade_id: Id = None,
         orders: list = None,
@@ -87,7 +88,7 @@ class Trade:  # {{{
             "strategy": strategy,
             "version": version,
             "type": trade_type,
-            "figi": figi,
+            "asset_id": asset_id,
             "orders": orders,
             "operations": operations,
             # "result": None,
@@ -112,7 +113,7 @@ class Trade:  # {{{
         dt = dt.strftime("%Y-%m-%d %H:%M")
         string = (
             f"=> Trade {dt} {self.strategy}-{self.version} "
-            f"{self.figi} {self.type.name.lower()}"
+            f"{self.asset_id.ticker} {self.type.name.lower()}"
         )
         return string
 
@@ -151,9 +152,9 @@ class Trade:  # {{{
         return self.__info["type"]
 
     # }}}
-    @property  # figi# {{{
-    def figi(self):
-        return self.__info["figi"]
+    @property  # asset_id# {{{
+    def asset_id(self):
+        return self.__info["asset_id"]
 
     # }}}
     @property  # orders# {{{
@@ -197,8 +198,8 @@ class Trade:  # {{{
         else:
             self.status = Trade.Status.OPEN
 
-        await Keeper.add(operation)
-        await Keeper.update(self)
+        await Operation.save(operation)
+        await Trade.update(self)
 
     # }}}
     def chart(self, timeframe: TimeFrame) -> Chart:  # {{{
@@ -416,16 +417,6 @@ class Trade:  # {{{
         return round(persent_per_day, 2)
 
     # }}}
-    @classmethod  # toJSON# {{{
-    def toJSON(cls, trade):
-        return trade.__info
-
-    # }}}
-    @classmethod  # fromJSON# {{{
-    def fromJSON(cls, obj):
-        assert False
-
-    # }}}
     @classmethod  # fromRecord{{{
     async def fromRecord(cls, record):
         trade_id = record["trade_id"]
@@ -443,18 +434,41 @@ class Trade:  # {{{
         )
 
         # create trade
+        ID = await InstrumentId.byFigi(record["figi"])
         t = Trade(
             dt=record["dt"],
             strategy=record["strategy"],
             version=record["version"],
             trade_type=Trade.Type.fromStr(record["type"]),
-            figi=record["figi"],
+            asset_id=ID,
             status=Trade.Status.fromStr(record["status"]),
             trade_id=record["trade_id"],
             orders=orders,
             operations=operations,
         )
         return t
+
+    # }}}
+    @classmethod  # save  # {{{
+    async def save(cls, trade: Trade) -> None:
+        await Keeper.add(trade)
+
+    # }}}
+    @classmethod  # load  # {{{
+    async def load(cls, trade_id: Id) -> Trade:
+        trade_list = await Keeper.get(cls, trade_id=trade_id)
+        assert len(trade_list) == 1
+        return trade_list[0]
+
+    # }}}
+    @classmethod  # delete  # {{{
+    async def delete(cls, trade: Trade) -> None:
+        await Keeper.delete(trade)
+
+    # }}}
+    @classmethod  # update  # {{{
+    async def update(cls, trade: Trade) -> None:
+        await Keeper.update(trade)
 
     # }}}
 

@@ -463,7 +463,7 @@ class Keeper:
                 '{trade.strategy}',
                 '{trade.version}',
                 '{trade.type.name}',
-                '{trade.figi}'
+                '{trade.asset_id.figi}'
                 );
             """
         await cls.transaction(request)
@@ -537,8 +537,6 @@ class Keeper:
     @classmethod  # __addOperation  # {{{
     async def __addOperation(cls, operation: Operation) -> None:
         logger.debug(f"{cls.__name__}.__addOperation()")
-        assert operation.trade_id is not None
-        assert operation.order_id is not None
 
         if operation.meta is None:
             meta = "NULL"
@@ -1220,43 +1218,50 @@ class Keeper:
     async def __getTrades(cls, Trade, kwargs: dict) -> list[Trades]:
         logger.debug(f"{cls.__name__}.__getTrades()")
 
+        trade_id = kwargs.get("trade_id")
         strategy = kwargs.get("strategy")
         statuses = kwargs.get("status")
         begin = kwargs.get("begin")
         end = kwargs.get("end")
 
-        # Create condition for strategy
-        if strategy is None:
-            pg_strategy = "TRUE"
+        def condition(strategy, statuses, begin, end) -> str:  # {{{
+            # Create condition for strategy
+            if strategy is None:
+                pg_strategy = "TRUE"
+            else:
+                pg_strategy = (
+                    f"(strategy = '{strategy.name}' AND "
+                    f"version = '{strategy.version}')"
+                )
+            # Create condition for statuses, like this:
+            # (status = 'INITIAL' OR status = 'NEW' OR status = 'OPEN')
+            if statuses is None:
+                pg_statuses = "TRUE"
+            else:
+                pg_statuses = f"(status = '{statuses[0].name}'"
+                i = 1
+                while i < len(statuses):
+                    pg_statuses += f" OR status = '{statuses[i].name}'"
+                    i += 1
+                pg_statuses += ")"
+            # Create condition for begin datetime
+            pg_begin = f"dt >= '{begin}'" if begin else "TRUE"
+            # Create condition for end datetime
+            pg_end = f"dt < '{end}'" if end else "TRUE"
+
+        # }}}
+
+        # Create condition
+        if trade_id:
+            pg_condition = f"trade_id = {trade_id}"
         else:
-            pg_strategy = (
-                f"(strategy = '{strategy.name}' AND "
-                f"version = '{strategy.version}')"
-            )
-
-        # Create condition for statuses, like this:
-        # (status = 'INITIAL' OR status = 'NEW' OR status = 'OPEN')
-        if statuses is None:
-            pg_statuses = "TRUE"
-        else:
-            pg_statuses = f"(status = '{statuses[0].name}'"
-            i = 1
-            while i < len(statuses):
-                pg_statuses += f" OR status = '{statuses[i].name}'"
-                i += 1
-            pg_statuses += ")"
-
-        # Create condition for begin datetime
-        pg_begin = f"dt >= '{begin}'" if begin else "TRUE"
-
-        # Create condition for end datetime
-        pg_end = f"dt < '{end}'" if end else "TRUE"
+            pg_condition = condition(strategy, statuses, begin, end)
 
         # Request trades
         request = f"""
             SELECT trade_id, dt, status, strategy, version, type, figi
             FROM "Trade"
-            WHERE {pg_strategy} AND {pg_statuses} AND {pg_begin} AND {pg_end}
+            WHERE {pg_condition}
             ORDER BY dt
             ;
             """
@@ -1278,6 +1283,15 @@ class Keeper:
         logger.debug(f"{cls.__name__}.__getOperations()")
 
         trade_id = kwargs.get("trade_id")
+        operation_id = kwargs.get("operation_id")
+
+        if trade_id:
+            pg_condition = f"trade_id = {trade_id}"
+        elif operation_id:
+            pg_condition = f"operation_id = {operation_id}"
+        else:
+            pg_condition = "TRUE"  # return all operations
+
         request = f"""
             SELECT
                 operation_id,
@@ -1294,7 +1308,7 @@ class Keeper:
                 order_id,
                 meta
             FROM "Operation"
-            WHERE trade_id = {trade_id}
+            WHERE {pg_condition}
             ORDER BY dt
             ;
             """
