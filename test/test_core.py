@@ -261,39 +261,93 @@ async def test_Share():
 
 
 # }}}
-
-
-def test_AssetList():  # {{{
-    tmp_file = Cmd.path(Usr.ASSET, "example.al")
-    if Cmd.isExist(tmp_file):
-        Cmd.delete(tmp_file)
-
-    alist = AssetList(name="example")
-    assert alist.name == "example"
+@pytest.mark.asyncio  # test_AssetList  # {{{
+async def test_AssetList():
+    alist = AssetList(name="_unittest")
+    assert alist.name == "_unittest"
     assert alist.assets == []
     assert alist.count == 0
-    afks = Share(Data.find(Exchange.MOEX, AssetType.SHARE, "AFKS"))
-    sber = Share(Data.find(Exchange.MOEX, AssetType.SHARE, "SBER"))
+
+    afks = await Asset.byTicker(AssetType.SHARE, Exchange.MOEX, "AFKS")
+    sber = await Asset.byTicker(AssetType.SHARE, Exchange.MOEX, "SBER")
+
+    # add
     alist.add(afks)
     assert alist.count == 1
-    alist.add(afks)
-    alist.add(afks)
-    assert alist.count == 1
+
+    # no duplicating items
+    alist.add(sber)
+    alist.add(sber)
     alist.add(sber)
     assert alist.count == 2
-    assert alist[1].ticker == "SBER"
-    alist.remove(sber)
-    assert alist.count == 1
-    assert not Cmd.isExist(alist.path)
-    AssetList.save(alist)
-    assert Cmd.isExist(alist.path)
-    loaded = AssetList.load(alist.path)
-    assert alist.count == 1
+
+    # getitem
     assert alist[0].ticker == "AFKS"
-    AssetList.delete(alist)
-    assert not Cmd.isExist(alist.path)
+    assert alist[1].ticker == "SBER"
+
+    # iter
+    for i in alist:
+        assert isinstance(i, Asset)
+
+    # contain
+    assert afks in alist
+    assert sber in alist
+
+    # remove
+    alist.remove(sber)
+    assert sber not in alist
+    assert alist.count == 1
+
+    # find by ID
+    result = alist.find(afks.ID)
+    assert result == afks
+    result = alist.find(sber.ID)
+    assert result is None
+
+    # save
+    await AssetList.save(alist)
+
+    # load
+    loaded = await AssetList.load("_unittest")
+    assert alist.name == loaded.name
+    assert alist.count == loaded.count
+    assert alist[0].ticker == loaded[0].ticker
+
+    # copy
+    await AssetList.copy(alist, "_unittest_copy")
+    alist_copy = await AssetList.load("_unittest_copy")
+    assert alist_copy.name != alist.name
+    assert alist_copy.name == "_unittest_copy"
+
+    # rename runtime object
+    alist_copy.name = "_unittest_copy_rename"  # rename just object, not in db
+    assert alist_copy.name == "_unittest_copy_rename"
+    loaded = await AssetList.load("_unittest_copy")
+    assert loaded.name == "_unittest_copy"
+    loaded = await AssetList.load("_unittest_copy_rename")  # this not in db
+    assert loaded == []
+    alist_copy.name = "_unittest_copy"  # revert rename object
+
+    # rename runtime object and record in db
+    await AssetList.rename(alist_copy, "_unittest_copy_rename_2")
+    assert alist_copy.name == "_unittest_copy_rename_2"
+    loaded = await AssetList.load("_unittest_copy_rename_2")
+    assert loaded.name == alist_copy.name
+    assert loaded.count == alist_copy.count
+
+    # delete
+    await AssetList.delete(alist)  # delete only from db, not current object
+    await AssetList.delete(alist_copy)  # delete only from db...
+    loaded = await AssetList.load("_unittest")
+    assert loaded == []
+    loaded = await AssetList.load("_unittest_copy")
+    assert loaded == []
+    loaded = await AssetList.load("_unittest_copy_rename_2")
+    assert loaded == []
+
+    # clear list
     alist.clear()
-    assert alist.name == "example"
+    assert alist.name == "_unittest"
     assert alist.assets == []
     assert alist.count == 0
 

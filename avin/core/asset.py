@@ -11,13 +11,13 @@ from __future__ import annotations
 import abc
 from datetime import UTC, date, datetime
 
-from avin.const import DAY_BEGIN, Usr
+from avin.const import DAY_BEGIN
 from avin.core.chart import Chart
 from avin.core.timeframe import TimeFrame
 from avin.data import AssetType, DataSource, Exchange, InstrumentId
 from avin.keeper import Keeper
 from avin.logger import logger
-from avin.utils import Cmd, now
+from avin.utils import now
 
 
 class Asset(metaclass=abc.ABCMeta):  # {{{
@@ -340,20 +340,6 @@ class AssetList:  # {{{
         return len(self.__assets)
 
     # }}}
-    @property  # path{{{
-    def path(self) -> str:
-        path = Cmd.path(self.dir_path, f"{self.__name}.al")
-        return path
-
-    # }}}
-    @property  # dir_path{{{
-    def dir_path(self) -> str:
-        if self.__parent:
-            return self.__parent.dir_path
-        else:
-            return Usr.ASSET
-
-    # }}}
     def add(self, asset: Asset) -> None:  # {{{
         assert isinstance(asset, Asset)
         if asset not in self:
@@ -402,42 +388,38 @@ class AssetList:  # {{{
 
     # }}}
     @classmethod  # save# {{{
-    def save(cls, asset_list) -> None:
-        assert False
+    async def save(cls, asset_list) -> None:
+        assert isinstance(asset_list, AssetList)
+        await Keeper.add(asset_list)
 
     # }}}
     @classmethod  # load# {{{
-    def load(cls, name, parent=None) -> AssetList:
-        assert False
+    async def load(cls, name: str, parent=None) -> AssetList:
+        alist = await Keeper.get(cls, name=name)
+        return alist
 
     # }}}
     @classmethod  # rename# {{{
-    def rename(cls, asset_list, new_name) -> None:
-        assert False
-        # if Cmd.isExist(asset_list.path):
-        #     new_path = Cmd.path(asset_list.dir_path, f"{new_name}.al")
-        #     Cmd.replace(asset_list.path, new_path)
-        # asset_list.__name = new_name
+    async def rename(cls, asset_list: AssetList, new_name: str) -> None:
+        assert isinstance(new_name, str)
+        assert len(new_name) > 0
+
+        await Keeper.delete(asset_list)
+        asset_list.name = new_name
+        await Keeper.add(asset_list)
 
     # }}}
     @classmethod  # copy# {{{
-    def copy(cls, asset_list: AssetList, new_name: str) -> None:
-        assert False
-        # new_list = AssetList(new_name)
-        # new_list.assets = asset_list.assets
-        # new_path = Cmd.path(asset_list.dir_path, f"{new_name}.al")
-        # AssetList.save(new_list, new_path)
+    async def copy(cls, asset_list: AssetList, new_name: str) -> None:
+        new_list = AssetList(new_name)
+        new_list.assets = asset_list.assets
+        await cls.save(new_list)
 
     # }}}
     @classmethod  # delete# {{{
-    def delete(cls, asset_list) -> None:
-        assert False
-        # file_path = asset_list.path
-        # if not Cmd.isExist(file_path):
-        #     logger.error(
-        #         f"Fail delete asset list, file not exist '{file_path}'"
-        #     )
-        # Cmd.delete(file_path)
+    async def delete(cls, asset_list) -> None:
+        assert isinstance(asset_list, AssetList)
+        await Keeper.delete(asset_list)
 
     # }}}
     @classmethod  # request# {{{

@@ -13,7 +13,7 @@ classes in program turn to the database through the interface of this class
 "Keeper". Thus, the entire SQL code is collected inside this class.
 
 But if you really need to make a direct request to the database, you can use
-the 'transaction(sql_request)' method.
+the 'Keeper.transaction(sql_request)' method.
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ from __future__ import annotations
 import inspect
 import json
 import os
+from typing import Any
 
 import asyncpg
 
@@ -142,7 +143,7 @@ class Keeper:
 
     # }}}
     @classmethod  # add  # {{{
-    async def add(cls, obj: object | class_) -> None:
+    async def add(cls, obj: object | Class) -> None:
         logger.debug(f"{cls.__name__}.add()")
 
         # Get class_name & choose method
@@ -204,7 +205,7 @@ class Keeper:
 
     # }}}
     @classmethod  # update  # {{{
-    async def update(cls, obj: object | class_) -> None:
+    async def update(cls, obj: object | Class) -> None:
         logger.debug(f"{cls.__name__}.update()")
 
         # Get class_name & choose method
@@ -615,12 +616,11 @@ class Keeper:
         request = f"""
         DELETE FROM "AssetList" WHERE name = '{alist.name}';
         """
-        print(request)
         await cls.transaction(request)
 
     # }}}
     @classmethod  # __deleteBarsData  # {{{
-    async def __deleteBarsData(cls, _Bar: class_, kwargs: dict) -> None:
+    async def __deleteBarsData(cls, _Bar, kwargs: dict) -> None:
         logger.debug(f"{cls.__name__}.__deleteBarsData()")
 
         ID = kwargs["ID"]
@@ -850,7 +850,7 @@ class Keeper:
     # }}}
 
     @classmethod  # __getClassName  # {{{
-    def __getClassName(cls, obj: object | class_) -> str:
+    def __getClassName(cls, obj: object | Class) -> str:
         logger.debug(f"{cls.__name__}.__getClassName()")
 
         # Get object class name, 'obj' may be a class, when its Exchange
@@ -1023,7 +1023,7 @@ class Keeper:
         records = await cls.transaction(request)
         assert len(records) == 1
         record = records[0]
-        return record["first_dt"], record["last_dt"]
+        return [record["first_dt"], record["last_dt"]]
 
     # }}}
     @classmethod  # __getBarsRecords  # {{{
@@ -1143,12 +1143,10 @@ class Keeper:
         logger.debug(f"{cls.__name__}.__getAssetList()")
 
         name = kwargs.get("name")
+        get_only_names = kwargs.get("get_only_names")
 
         # create condition
-        if name:
-            pg_condition = f"name = '{name}'"
-        else:
-            pg_condition = "TRUE"
+        pg_condition = f"name = '{name}'" if name else "TRUE"
 
         request = f"""
             SELECT
@@ -1166,7 +1164,15 @@ class Keeper:
             alist = await AssetList.fromRecord(records[0])
             return alist
 
-        # return list[AssetList] if more records
+        # return list[str_names] if more records and has flag 'get_only_names'
+        if get_only_names:
+            all_names = list()
+            for i in records:
+                name = i["name"]
+                all_names.append(name)
+            return all_names
+
+        # return list[AssetList] if more records and no flag 'get_only_names'
         all_list = list()
         for record in records:
             alist = await AssetList.fromRecord(record)
