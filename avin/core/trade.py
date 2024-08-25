@@ -185,7 +185,7 @@ class Trade:  # {{{
         order.posted.connect(self.orderPosted)
         order.fulfilled.connect(self.orderFulfilled)
         self.__info["orders"].append(order)
-        Order.save(order)
+        await Order.save(order)
 
     # }}}
     async def addOperation(self, operation: Operation):  # {{{
