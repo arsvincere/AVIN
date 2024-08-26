@@ -65,7 +65,7 @@ class AsyncSignal:  # {{{
         # иметь ввиду что слоты должны быть тоже корутинами.
         # Возможно это я перебдел. Может уберу потом async из def
         # TODO: check что слот это корутина
-        self.__async_slots.append(slot)
+        self.__async_slots.append(async_slot)
 
     # }}}
 
