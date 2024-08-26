@@ -153,8 +153,8 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             return self.__status
 
         # }}}
-        async def setStatus(self, new_status: Order.Status):  # {{{
-            self.__status = new_status
+        async def setStatus(self, status: Order.Status):  # {{{
+            self.__status = status
             await Order.update(self)
 
         # }}}
