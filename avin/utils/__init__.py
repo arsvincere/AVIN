@@ -17,7 +17,7 @@ from avin.utils.other import (
     findRight,
     now,
 )
-from avin.utils.signal import Signal
+from avin.utils.signal import AsyncSignal, Signal
 
 __all__ = (
     "Cmd",
@@ -30,4 +30,5 @@ __all__ = (
     "findRight",
     "now",
     "Signal",
+    "AsyncSignal",
 )
