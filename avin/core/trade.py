@@ -17,13 +17,6 @@ from avin.core.order import Order
 from avin.data import InstrumentId
 from avin.keeper import Keeper
 
-# TODO
-# а вот trade.asset - это отдельное свойство, или функция...
-# короче, пусть этот ассет собирается уже через фиги.
-# а внутри трейда не хранится. Внутри трейда только текстовые поля
-# и перечисления (так уж и быть).
-# и ордер и операция тоже самое только строки и числа
-
 
 class Trade:  # {{{
     class Type(enum.Enum):  # {{{
@@ -42,20 +35,58 @@ class Trade:  # {{{
     # }}}
     class Status(enum.Enum):  # {{{
         UNDEFINE = 0
+
         INITIAL = 1
-        NEW = 2
-        OPEN = 3
-        CLOSE = 4
-        CANCELED = 5
+        EXPECTATION = 2
+        MAKE_ORDER = 3
+
+        TRIGGERED = 10
+        POST_ORDER = 11
+        POSTED = 13
+
+        NEW = 20
+        MAKE_STOP = 21
+        MAKE_TAKE = 22
+        POST_STOP = 23
+        POST_TAKE = 24
+
+        OPEN = 30
+
+        OFF = 40
+
+        FINISH = 50
+        CLOSING = 51
+        REMOVING = 52
+
+        CLOSE = 60
+
+        CANCELED = 90
+        BLOKED = 91
+
+        ARCHIVE = 100
 
         @classmethod  # fromStr
         def fromStr(cls, string: str) -> Trade.Type:
             statuses = {
                 "INITIAL": Trade.Status.INITIAL,
+                "EXPECTATION": Trade.Status.EXPECTATION,
+                "MAKE_ORDER": Trade.Status.MAKE_ORDER,
+                "TRIGGERED": Trade.Status.TRIGGERED,
+                "POST_ORDER": Trade.Status.POST_ORDER,
+                "POSTED": Trade.Status.POSTED,
                 "NEW": Trade.Status.NEW,
+                "MAKE_STOP": Trade.Status.MAKE_STOP,
+                "MAKE_TAKE": Trade.Status.MAKE_TAKE,
+                "STOP_STOP": Trade.Status.STOP_STOP,
+                "STOP_TAKE": Trade.Status.STOP_TAKE,
                 "OPEN": Trade.Status.OPEN,
+                "OFF": Trade.Status.OFF,
+                "FINISH": Trade.Status.FINISH,
+                "CLOSING": Trade.Status.CLOSING,
+                "REMOVING": Trade.Status.REMOVING,
                 "CLOSE": Trade.Status.CLOSE,
                 "CANCELED": Trade.Status.CANCELED,
+                "ARCHIVE": Trade.Status.ARCHIVE,
             }
             return statuses[string]
 
@@ -132,10 +163,6 @@ class Trade:  # {{{
     def status(self):
         return self.__info["status"]
 
-    @status.setter
-    def status(self, status):
-        self.__info["status"] = status
-
     # }}}
     @property  # strategy# {{{
     def strategy(self):
@@ -179,6 +206,11 @@ class Trade:  # {{{
         assert order.trade_id == self.trade_id
         for op in operations:
             self.addOperation(op)
+
+    # }}}
+    async def setStatus(self, status: Trade.Status):  # {{{
+        self.__info["status"] = status
+        await Trade.update(self)
 
     # }}}
     async def addOrder(self, order: Order):  # {{{
@@ -475,9 +507,9 @@ class Trade:  # {{{
 
 # }}}
 class TradeList:  # {{{
-    def __init__(
+    def __init__(  # {{{
         self, name: str = "unnamed", trades=None, parent=None
-    ):  # {{{
+    ):
         self._name = name
         self._trades = trades if trades is not None else list()
         self._childs = list()
