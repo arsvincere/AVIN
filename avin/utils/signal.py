@@ -8,6 +8,14 @@
 
 import asyncio
 
+# посмотри еще раз на либу asyncqt - может от туда форкнуться?
+# или из этих
+# https://github.com/timothycrosley/connectable
+# https://github.com/Numergy/signalslot
+# https://github.com/dgovil/PySignal
+# https://github.com/complynx/qsignal
+# или лучше не форкнуться, а вкурить в код и взять что нужно.
+
 
 class Signal:  # {{{
     def __init__(self, *args):  # {{{

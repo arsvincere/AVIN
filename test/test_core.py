@@ -520,9 +520,12 @@ async def test_Trade():
     await trade.addOrder(order)  # signals of order connect automaticaly
     assert order.trade_id == trade.trade_id  # and parent trade_id was seted
 
+    await order.posted.async_emit(order)
+    assert trade.status == Trade.Status.POSTED  # side effect - status changed
+
     # create operation
     operation_id = 3333
-    op = Operation(
+    operation = Operation(
         account_name="_unittest",
         dt=dt,
         direction=Operation.Direction.BUY,
@@ -537,28 +540,19 @@ async def test_Trade():
         meta=None,
     )
 
-    order.posted.emit(order)
-    assert trade.status == Trade.Status.NEW  # side effect - status changed
-
-    order.fulfilled.emit(
+    await order.fulfilled.async_emit(
         order,
         [
-            op,
+            operation,
         ],
     )
-    # FIX: order.fulfilled.emit() это протой вызов
-    # а потом там в корутину попадаем - addOperation....
-    # и все пиздец
-    # нужно или переходить на асинхронные сигналы слоты или хз че делать
-    # ...
-    # посмотри еще раз на либу asyncqt - может от туда форкнуться?
-    # в любом случая я думаю тут нужен именно форк.
-    # или из этих
-    # https://github.com/timothycrosley/connectable
-    # https://github.com/Numergy/signalslot
-    # https://github.com/dgovil/PySignal
-    # https://github.com/complynx/qsignal
     assert trade.status == Trade.Status.OPEN  # side effect - status changed
+
+    await Keeper.delete(operation)
+    await Keeper.delete(order)
+    await Keeper.delete(trade)
+
+    return
 
     # other property availible for opened trade
     assert trade.isLong()

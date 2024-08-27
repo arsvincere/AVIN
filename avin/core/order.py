@@ -14,7 +14,7 @@ import enum
 from avin.core.id import Id
 from avin.data import InstrumentId
 from avin.keeper import Keeper
-from avin.utils import Signal
+from avin.utils import AsyncSignal
 
 
 class Order(metaclass=abc.ABCMeta):  # {{{
@@ -122,12 +122,12 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             self.meta = meta
 
             # Signals
-            self.posted = Signal(Order._BaseOrder)
-            self.changed = Signal(Order._BaseOrder)
-            self.partial = Signal(Order._BaseOrder, list)
-            self.fulfilled = Signal(Order._BaseOrder, list)
-            self.canceled = Signal(Order._BaseOrder)
-            self.reqected = Signal(Order._BaseOrder)
+            self.posted = AsyncSignal(Order._BaseOrder)
+            self.changed = AsyncSignal(Order._BaseOrder)
+            self.partial = AsyncSignal(Order._BaseOrder, list)
+            self.fulfilled = AsyncSignal(Order._BaseOrder, list)
+            self.canceled = AsyncSignal(Order._BaseOrder)
+            self.reqected = AsyncSignal(Order._BaseOrder)
 
         # }}}
         def __str__(self):  # {{{

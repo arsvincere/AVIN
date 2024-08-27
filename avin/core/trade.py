@@ -37,7 +37,7 @@ class Trade:  # {{{
         UNDEFINE = 0
 
         INITIAL = 1
-        EXPECTATION = 2
+        EXPECT = 2
         MAKE_ORDER = 3
 
         TRIGGERED = 10
@@ -194,18 +194,23 @@ class Trade:  # {{{
         return self.__info["operations"]
 
     # }}}
-    # @slot  #orderPosted # {{{
-    def orderPosted(self, order):
+    # @async_slot  #onOrderPosted # {{{
+    async def onOrderPosted(self, order):
         assert order.trade_id == self.trade_id
-        if self.status == Trade.Status.INITIAL:
-            self.status = Trade.Status.NEW
+        # if status in (INITIAL ... POST_ORDER) -> POSTED
+        if self.status.value < Trade.Status.POSTED.value:
+            await self.setStatus(Trade.Status.POSTED)
+
+        # otherwise trade already open, and this order is stop/take
+        # or another. Essence - trade already open - do nothing with status
+        pass
 
     # }}}
-    # @slot  #orderFulfilled # {{{
-    def orderFulfilled(self, order, operations: list[Operation]):
+    # @async_slot  #onOrderFulfilled # {{{
+    async def onOrderFulfilled(self, order, operations: list[Operation]):
         assert order.trade_id == self.trade_id
         for op in operations:
-            self.addOperation(op)
+            await self.addOperation(op)
 
     # }}}
     async def setStatus(self, status: Trade.Status):  # {{{
@@ -214,24 +219,35 @@ class Trade:  # {{{
 
     # }}}
     async def addOrder(self, order: Order):  # {{{
+        # set self.trade_id
         order.trade_id = self.trade_id
-        order.posted.connect(self.orderPosted)
-        order.fulfilled.connect(self.orderFulfilled)
+
+        # connect signals
+        await order.posted.async_connect(self.onOrderPosted)
+        await order.fulfilled.async_connect(self.onOrderFulfilled)
+
+        # keep in self
         self.__info["orders"].append(order)
+
+        # write in db
         await Order.save(order)
 
     # }}}
     async def addOperation(self, operation: Operation):  # {{{
+        # set self.trade_id
         operation.trade_id = self.trade_id
+
+        # keep in self
         self.__info["operations"].append(operation)
 
-        if self.lots() == 0:
-            self.status = Trade.Status.CLOSE
-        else:
-            self.status = Trade.Status.OPEN
-
+        # write in db
         await Operation.save(operation)
-        await Trade.update(self)
+
+        # update status
+        if self.status == Trade.Status.POSTED:
+            await self.setStatus(Trade.Status.OPEN)
+        elif self.lots() == 0:
+            await self.setStatus(Trade.Status.CLOSE)
 
     # }}}
     def chart(self, timeframe: TimeFrame) -> Chart:  # {{{

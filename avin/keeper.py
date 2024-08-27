@@ -452,6 +452,7 @@ class Keeper:
     async def __addTrade(cls, trade: Trade) -> None:
         logger.debug(f"{cls.__name__}.__addTrade()")
 
+        # Add trade
         request = f"""
             INSERT INTO "Trade" (
                 trade_id, dt, status, strategy, version, type, figi
@@ -765,7 +766,7 @@ class Keeper:
                 strategy = '{trade.strategy}',
                 version = '{trade.version}',
                 type = '{trade.type.name}',
-                figi = '{trade.figi}'
+                figi = '{trade.asset_id.figi}'
             WHERE
                 trade_id = '{trade.trade_id}';
             """
@@ -1454,11 +1455,35 @@ class Keeper:
                 );""",
             """DROP TYPE IF EXISTS public."Trade.Status";""",
             """ CREATE TYPE "Trade.Status" AS ENUM (
+
                 'INITIAL',
+                'EXPECT',
+                'MAKE_ORDER',
+
+                'TRIGGERED',
+                'POST_ORDER',
+                'POSTED',
+
                 'NEW',
+                'MAKE_STOP',
+                'MAKE_TAKE',
+                'POST_STOP',
+                'POST_TAKE',
+
                 'OPEN',
+
+                'OFF',
+
+                'FINISH',
+                'CLOSING',
+                'REMOVING',
+
                 'CLOSE',
+
                 'CANCELED'
+                'BLOCKED'
+
+                'ARCHIVE'
                 );""",
         ]  # }}}
 
