@@ -551,118 +551,6 @@ class TradeList:  # {{{
         return child
 
     # }}}
-    def _selectStrategy(self, key, value):  # {{{
-        selected = list()
-        for trade in self._trades:
-            x = trade["strategy"].get(key)
-            if x == value:
-                selected.append(trade)
-        tlist = TradeList(
-            name="- " + self.name + f" strategy-{key}-{value}",
-            trades=selected,
-            parent=self,
-        )
-        tlist._asset = self.asset
-        self._childs.append(tlist)
-        return tlist
-
-    # }}}
-    def _selectAnalytic(self, key, value):  # {{{
-        selected = list()
-        for trade in self._trades:
-            x = trade["analytic"].get(key)
-            if x == value:
-                selected.append(trade)
-        tlist = TradeList(
-            name="- " + self.name + f" analytic-{key}-{value}",
-            trades=selected,
-            parent=self,
-        )
-        tlist._asset = self.asset
-        self._childs.append(tlist)
-        return tlist
-
-    # }}}
-    def _selectMarket(self, key, value):  # {{{
-        selected = list()
-        for trade in self._trades:
-            x = trade["market analytic"].get(key)
-            if x == value:
-                selected.append(trade)
-        tlist = TradeList(
-            name="- " + self.name + f" market-{key}-{value}",
-            trades=selected,
-            parent=self,
-        )
-        tlist._asset = self.asset
-        self._childs.append(tlist)
-        return tlist
-
-    # }}}
-    def _selectRisk(self, key, value):  # {{{
-        selected = list()
-        for trade in self._trades:
-            x = trade["risk manager"].get(key)
-            if x == value:
-                selected.append(trade)
-        tlist = TradeList(
-            name="- " + self.name + f" risk-{key}-{value}",
-            trades=selected,
-            parent=self,
-        )
-        tlist._asset = self.asset
-        self._childs.append(tlist)
-        return tlist
-
-    # }}}
-    def _selectRuler(self, key, value):  # {{{
-        selected = list()
-        for trade in self._trades:
-            x = trade["ruler"].get(key)
-            if x == value:
-                selected.append(trade)
-        tlist = TradeList(
-            name="- " + self.name + f" risk-{key}-{value}",
-            trades=selected,
-            parent=self,
-        )
-        tlist._asset = self.asset
-        self._childs.append(tlist)
-        return tlist
-
-    # }}}
-    def _selectAdviser(self, key, value):  # {{{
-        selected = list()
-        for trade in self._trades:
-            x = trade["adviser"].get(key)
-            if x == value:
-                selected.append(trade)
-        tlist = TradeList(
-            name="- " + self.name + f" adviser-{key}-{value}",
-            trades=selected,
-            parent=self,
-        )
-        tlist._asset = self.asset
-        self._childs.append(tlist)
-        return tlist
-
-    # }}}
-    def _selectPosition(self, key, value):  # {{{
-        selected = list()
-        for trade in self._trades:
-            x = trade["position"].get(key)
-            if x == value:
-                selected.append(trade)
-        tlist = TradeList(
-            name="- " + self.name + f" position-{key}-{value}",
-            trades=selected,
-            parent=self,
-        )
-        tlist._asset = self.asset
-        self._childs.append(tlist)
-        return tlist
-
-    # }}}
     @staticmethod  # save# {{{
     def save(trade_list, file_path=None):
         if file_path is None:
@@ -790,28 +678,12 @@ class TradeList:  # {{{
         return child
 
     # }}}
-    def selectBack(self):  # {{{
-        selected = list()
-        for trade in self._trades:
-            if trade.isBack():
-                selected.append(trade)
-        child = self._createChild(selected, "back")
-        return child
-
-    # }}}
-    def selectForward(self):  # {{{
-        selected = list()
-        for trade in self._trades:
-            if trade.isForward():
-                selected.append(trade)
-        child = self._createChild(selected, "forward")
-        return child
-
-    # }}}
     def selectFilter(f):  # {{{
         assert False
 
     # }}}
+    def selectStatus(self, status: Trade.Status):
+        pass
 
 
 # }}}

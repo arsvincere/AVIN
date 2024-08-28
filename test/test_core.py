@@ -644,6 +644,13 @@ async def test_Trade():
 
 
 # }}}
+@pytest.mark.asyncio  # test_TradeList  # {{{
+async def test_TradeList():
+    # jjj
+    ...
+
+
+# }}}
 
 
 # def test_Position():  # {{{
