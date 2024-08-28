@@ -11,10 +11,11 @@ from __future__ import annotations
 import enum
 
 from avin.const import ONE_DAY, Usr
+from avin.core.chart import Chart
 from avin.core.id import Id
 from avin.core.operation import Operation
 from avin.core.order import Order
-from avin.data import InstrumentId
+from avin.data import AssetType, InstrumentId
 from avin.keeper import Keeper
 
 
@@ -69,7 +70,7 @@ class Trade:  # {{{
         def fromStr(cls, string: str) -> Trade.Type:
             statuses = {
                 "INITIAL": Trade.Status.INITIAL,
-                "EXPECTATION": Trade.Status.EXPECTATION,
+                "EXPECT": Trade.Status.EXPECTATION,
                 "MAKE_ORDER": Trade.Status.MAKE_ORDER,
                 "TRIGGERED": Trade.Status.TRIGGERED,
                 "POST_ORDER": Trade.Status.POST_ORDER,
@@ -250,11 +251,11 @@ class Trade:  # {{{
             await self.setStatus(Trade.Status.CLOSE)
 
     # }}}
-    def chart(self, timeframe: TimeFrame) -> Chart:  # {{{
-        assert self.asset.type == Type.SHARE
+    async def chart(self, timeframe: TimeFrame) -> Chart:  # {{{
+        assert self.asset_id.type == AssetType.SHARE
         end = self.dt
         begin = self.dt - Chart.DEFAULT_BARS_COUNT * timeframe
-        chart = Chart(self.asset, timeframe, begin, end)
+        chart = await Chart.load(self.asset_id, timeframe, begin, end)
         return chart
 
     # }}}

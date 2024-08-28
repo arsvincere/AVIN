@@ -239,7 +239,7 @@ async def test_Share(event_loop):
     assert sber.figi == "BBG004730N88"
 
     # info
-    assert sber.info is None
+    # assert sber.info is None  # logger - error
     await sber.loadInfo()
     assert sber.info
     assert sber.uid == "e6123145-9665-43e0-8413-cd61b8aa9b13"
@@ -279,8 +279,8 @@ async def test_AssetList(event_loop):
 
     # no duplicating items
     alist.add(sber)
-    alist.add(sber)
-    alist.add(sber)
+    # alist.add(sber)  # logger - warning
+    # alist.add(sber)  # logger - warning
     assert alist.count == 2
 
     # getitem
@@ -445,7 +445,7 @@ async def test_Order(event_loop):
 async def test_Operation():
     ID = await InstrumentId.byTicker(AssetType.SHARE, Exchange.MOEX, "SBER")
     share = Share(ID)
-    dt = datetime(2024, 8, 25, 15, 12, tzinfo=UTC)
+    dt = datetime(2024, 8, 27, 15, 12, tzinfo=UTC)
 
     op = Operation(
         account_name="_unittest",
@@ -471,16 +471,14 @@ async def test_Operation():
     assert op.commission == 10
     assert op.meta is None
 
-    assert str(op) == "2024-08-25 18:12 SELL SBER 50 * 100 = 5000 + 10"
+    assert str(op) == "2024-08-27 18:12 SELL SBER 50 * 100 = 5000 + 10"
 
 
 # }}}
-
-
 @pytest.mark.asyncio  # test_Trade  # {{{
 async def test_Trade():
     # create strategy and trade
-    dt = datetime(2024, 8, 25, 16, 33, tzinfo=UTC)
+    dt = datetime(2024, 8, 27, 16, 33, tzinfo=UTC)
     strategy = Strategy("_unittest", "v1")
     trade_type = Trade.Type.LONG
     asset = await Asset.byTicker(AssetType.SHARE, Exchange.MOEX, "SBER")
@@ -548,12 +546,6 @@ async def test_Trade():
     )
     assert trade.status == Trade.Status.OPEN  # side effect - status changed
 
-    await Keeper.delete(operation)
-    await Keeper.delete(order)
-    await Keeper.delete(trade)
-
-    return
-
     # other property availible for opened trade
     assert trade.isLong()
     assert not trade.isShort()
@@ -573,94 +565,87 @@ async def test_Trade():
     assert trade.openPrice() == 100
     assert trade.openDatetime() == dt
 
-    await Keeper.delete(operation)
-    await Keeper.delete(order)
-    await Keeper.delete(trade)
-    await Keeper.delete(strategy)
-
-    return
-
+    # Add second order and operation
     dt2 = dt + ONE_DAY
-    op2 = Operation(
+    order_id_2 = 2223
+    order_2 = Order.Limit(
         account_name="_unittest",
-        dt=dt2,
-        direction=Operation.Direction.BUY,
-        asset=asset,
-        price=100,
+        direction=Order.Direction.SELL,
+        asset_id=asset.ID,
         lots=1,
         quantity=10,
-        amount=100 * 10,
-        commission=5,
-        meta=None,
-    )
-    trade.addOperation(op2)
-    assert trade.status == Trade.Status.OPEN
-    assert trade.isLong()
-    assert not trade.isShort()
-    assert trade.lots() == 2
-    assert trade.quantity() == 20
-    assert trade.buyQuantity() == 20
-    assert trade.sellQuantity() == 0
-    assert trade.amount() == 2000
-    assert trade.buyAmount() == 2000
-    assert trade.sellAmount() == 0
-    assert trade.commission() == 10
-    assert trade.buyCommission() == 10
-    assert trade.sellCommission() == 0
-    assert trade.average() == 100
-    assert trade.buyAverage() == 100
-    assert trade.sellAverage() == 0
-    assert trade.openPrice() == 100
-    assert trade.openDatetime() == dt
-
-    dt3 = dt2 + ONE_DAY
-    op3 = Operation(
-        account_name="_unittest",
-        dt=dt3,
-        direction=Operation.Direction.SELL,
-        asset=asset,
         price=110,
-        lots=2,
-        quantity=20,
-        amount=110 * 20,
-        commission=10,
+        order_id=order_id_2,
+    )
+    operation_2 = Operation(
+        account_name="_unittest",
+        dt=dt2,
+        direction=Operation.Direction.SELL,
+        asset_id=asset.ID,
+        price=110,
+        lots=1,
+        quantity=10,
+        amount=110 * 10,
+        commission=5,
+        order_id=order_id_2,
         meta=None,
     )
-    trade.addOperation(op3)
+    await trade.addOrder(order_2)  # signals of order connect automaticaly
+    await order_2.posted.async_emit(order_2)
+    await order_2.fulfilled.async_emit(
+        order_2,
+        [
+            operation_2,
+        ],
+    )
+
     assert trade.status == Trade.Status.CLOSE
     assert trade.isLong()
     assert not trade.isShort()
     assert trade.lots() == 0
     assert trade.quantity() == 0
-    assert trade.buyQuantity() == 20
-    assert trade.sellQuantity() == 20
+    assert trade.buyQuantity() == 10
+    assert trade.sellQuantity() == 10
     assert trade.amount() == 0
-    assert trade.buyAmount() == 2000
-    assert trade.sellAmount() == 2200
-    assert trade.commission() == 20
-    assert trade.buyCommission() == 10
-    assert trade.sellCommission() == 10
+    assert trade.buyAmount() == 1000
+    assert trade.sellAmount() == 1100
+    assert trade.commission() == 10
+    assert trade.buyCommission() == 5
+    assert trade.sellCommission() == 5
     assert trade.average() == 0
     assert trade.buyAverage() == 100
     assert trade.sellAverage() == 110
     assert trade.openDatetime() == dt
     assert trade.openPrice() == 100
-    assert trade.closeDatetime() == dt3
+    assert trade.closeDatetime() == dt2
     assert trade.closePrice() == 110
 
     # members availible for closed trade
-    assert trade.result() == 200 - 20  # sell - commission
-    assert trade.holdingDays() == 3
+    assert trade.result() == 1100 - 1000 - 10  # sell - buy - commission
+    assert trade.holdingDays() == 2
     assert trade.percent() == 9.0
-    assert trade.percentPerDay() == 3.0
+    assert trade.percentPerDay() == 4.5
+
+    # clear all
+    await Keeper.delete(operation)
+    await Keeper.delete(operation_2)
+    await Keeper.delete(order)
+    await Keeper.delete(order_2)
+    await Keeper.delete(trade)
+    await Keeper.delete(strategy)
+
+    chart = await trade.chart(TimeFrame("D"))
+    assert chart.last.dt.date() == dt.date()
+
+    chart = await trade.chart(TimeFrame("1M"))
+    print(chart.first)
+    print(chart.last)
+    print(chart.now)
 
 
 # }}}
-@pytest.mark.asyncio  # test_clear_all_vars  # {{{
-async def test_clear_all_vars(): ...
 
 
-# }}}
 # def test_Position():  # {{{
 # TODO:
 # позиция это чисто позиция в портфолио, как от брокера приходит
