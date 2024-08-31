@@ -160,6 +160,7 @@ class Keeper:
             "Account": cls.__addAccount,
             "Strategy": cls.__addStrategy,
             "Trade": cls.__addTrade,
+            "TradeList": cls.__addTradeList,
             "Operation": cls.__addOperation,
             "Order": cls.__addOrder,
             "Market": cls.__addOrder,
@@ -190,6 +191,7 @@ class Keeper:
             "Account": cls.__deleteAccount,
             "Strategy": cls.__deleteStrategy,
             "Trade": cls.__deleteTrade,
+            "TradeList": cls.__deleteTradeList,
             "Operation": cls.__deleteOperation,
             "Order": cls.__deleteOrder,
             "Market": cls.__deleteOrder,
@@ -210,6 +212,7 @@ class Keeper:
         # Get class_name & choose method
         class_name = cls.__getClassName(obj)
         methods = {
+            "TradeList": cls.__updateTradeList,
             "Trade": cls.__updateTrade,
             "Market": cls.__updateOrder,
             "Limit": cls.__updateOrder,
@@ -241,6 +244,7 @@ class Keeper:
             "AssetList": cls.__getAssetList,
             "Account": cls.__getAccount,
             "Trade": cls.__getTrade,
+            "TradeList": cls.__getTradeList,
             "Operation": cls.__getOperations,
             "Order": cls.__getOrders,
         }
@@ -445,6 +449,41 @@ class Keeper:
                 f"Strategy '{strategy.name}-{strategy.version}'"
                 "already exist in database"
             )
+
+    # }}}
+    @classmethod  # __addTradeList  # {{{
+    async def __addTradeList(cls, tlist: TradeList) -> None:
+        logger.debug(f"{cls.__name__}.__addTradeList()")
+
+        # Format trades in postges array
+        if tlist.count > 0:
+            pg_array = "ARRAY["
+            for trade in tlist:
+                t_id = f"{trade.trade_id}, "
+                pg_array += t_id
+            pg_array = pg_array[0:-2]  # remove ", " after last value
+            pg_array += "]"
+        else:
+            pg_array = "'{}'::float[]"
+
+        # If tlist.name is exist - delete
+        request = f"""
+            DELETE FROM "TradeList"
+            WHERE
+                name = '{tlist.name}';
+            """
+        await cls.transaction(request)
+
+        # Add trade list
+        request = f"""
+            INSERT INTO "TradeList" (
+                name, trades
+                )
+            VALUES
+                ( '{tlist.name}', {pg_array} )
+                ;
+            """
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __addTrade  # {{{
@@ -716,6 +755,16 @@ class Keeper:
         await cls.transaction(request)
 
     # }}}
+    @classmethod  # __deleteTradeList  # {{{
+    async def __deleteTradeList(cls, tlist: TradeList, kwargs: dict) -> None:
+        logger.debug(f"{cls.__name__}.__deleteTradeList()")
+
+        request = f"""
+        DELETE FROM "TradeList" WHERE name = '{tlist.name}';
+        """
+        await cls.transaction(request)
+
+    # }}}
     @classmethod  # __deleteTrade  # {{{
     async def __deleteTrade(cls, trade: Trade, kwargs: dict) -> None:
         logger.debug(f"{cls.__name__}.__deleteTrade()")
@@ -753,6 +802,33 @@ class Keeper:
 
     # }}}
 
+    @classmethod  # __updateTradeList  # {{{
+    async def __updateTradeList(cls, tlist: TradeList) -> None:
+        logger.debug(f"{cls.__name__}.__updateTradeList()")
+
+        # Format trades in postges array
+        # TODO: remove duplacate code below and in func __addTradeList
+        # use cls.__format, и остальные преобразования туда перетащи.
+        if tlist.count > 0:
+            pg_array = "ARRAY["
+            for trade in tlist:
+                t_id = f"{trade.trade_id}, "
+                pg_array += t_id
+            pg_array = pg_array[0:-2]  # remove ", " after last value
+            pg_array += "]"
+        else:
+            pg_array = "'{}'::float[]"
+
+        request = f"""
+            UPDATE "TradeList"
+            SET
+                trades = {pg_array}
+            WHERE
+                name = '{tlist.name}';
+            """
+        await cls.transaction(request)
+
+    # }}}
     @classmethod  # __updateTrade  # {{{
     async def __updateTrade(cls, trade: Trade) -> None:
         logger.debug(f"{cls.__name__}.__updateTrade()")
@@ -1214,6 +1290,24 @@ class Keeper:
         return accounts
 
     # }}}
+    @classmethod  # __getTradeList  # {{{
+    async def __getTradeList(cls, TradeList, kwargs: dict) -> TradeList:
+        logger.debug(f"{cls.__name__}.__getTradeList()")
+
+        name = kwargs["name"]
+        request = f"""
+            SELECT name, trades
+            FROM "TradeList"
+            WHERE name = '{name}'
+            ;
+            """
+        records = await cls.transaction(request)
+        assert len(records) == 1
+
+        tlist = await TradeList.fromRecord(records[0])
+        return tlist
+
+    # }}}
     @classmethod  # __getTrade  # {{{
     async def __getTrade(cls, Trade, kwargs: dict) -> list[Trades]:
         logger.debug(f"{cls.__name__}.__getTrade()")
@@ -1374,30 +1468,6 @@ class Keeper:
             order_list.append(order)
 
         return order_list
-
-    # }}}
-    @classmethod  # __getTradeList  # {{{
-    async def __getTradeList(cls, TradeList, kwargs: dict) -> TradeList:
-        logger.debug(f"{cls.__name__}.__getTradeList()")
-        assert False
-
-        # # Request trades
-        # request = f"""
-        #     SELECT trade_id, dt, status, strategy, version, type, figi
-        #     FROM "Trade"
-        #     WHERE {pg_condition}
-        #     ORDER BY dt
-        #     ;
-        #     """
-        # trade_records = await cls.transaction(request)
-        #
-        # # Create 'list' of 'Trade' objects from 'Records'
-        # tlist = list()
-        # for i in trade_records:
-        #     trade = await Trade.fromRecord(i)
-        #     tlist.append(trade)
-        #
-        # return tlist
 
     # }}}
 

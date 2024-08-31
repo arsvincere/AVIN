@@ -525,19 +525,13 @@ class Trade:  # {{{
 # }}}
 class TradeList:  # {{{
     def __init__(  # {{{
-        self,
-        name: str = "unnamed",
-        trades=None,
-        strategy=None,
-        version=None,
-        asset=None,
-        parent=None,
+        self, name: str, trades=None, parent=None
     ):
-        self.__name = name
-        self.__trades = trades if trades else list()
-        self.__asset = parent.asset if parent else asset
-        self.__parent = parent
-        self.__childs = list()
+        self._name = name
+        self._trades = trades if trades else list()
+        self._parent = parent
+        self._childs = list()
+        self._asset = parent.asset if parent else None
 
     # }}}
     def __iter__(self):  # {{{
@@ -570,25 +564,6 @@ class TradeList:  # {{{
     @property  # asset# {{{
     def asset(self):
         return self._asset
-
-    # }}}
-    @property  # test# {{{
-    def test(self):
-        return self._test
-
-    # }}}
-    @property  # dir_path# {{{
-    def dir_path(self):
-        if self._test is not None:
-            return self._test.dir_path
-        else:
-            assert False, "WTF???"
-
-    # }}}
-    @property  # path# {{{
-    def path(self):
-        path = Cmd.join(self.dir_path, "tlist.tl")
-        return path
 
     # }}}
     def parent(self):  # {{{
@@ -651,39 +626,39 @@ class TradeList:  # {{{
     def selectStatus(self, status: Trade.Status):
         assert False
 
-    @staticmethod  # save# {{{
-    def save(trade_list, file_path=None):
-        if file_path is None:
-            file_path = trade_list.path  # default in parent dir
-        obj = list()
-        for trade in trade_list:
-            trade_info_dict = Trade.toJSON(trade)
-            obj.append(trade_info_dict)
-        Cmd.saveJSON(obj, file_path)
-        return True
+    @classmethod  # fromRecord # {{{
+    async def fromRecord(cls, record):
+        name = record["name"]
+        trade_ids = record["trades"]
 
-    # }}}
-    @staticmethod  # load# {{{
-    def load(file_path, parent=None):
-        name = Cmd.name(file_path, extension=False)
-        info_list = Cmd.loadJSON(file_path)
-        tlist = TradeList(name, parent=parent)
-        for info in info_list:
-            trade = Trade(info, parent=tlist)
-            tlist.add(trade)
+        trades = list()
+        for i in trade_ids:
+            trade = await Keeper.get(Trade, trade_id=i)
+            trades.append(trade)
+
+        tlist = cls(name, trades)
         return tlist
 
     # }}}
-    @staticmethod  # delete# {{{
-    def delete(tlist):
-        path = tlist.path
-        if not Cmd.isExist(path):
-            # logger.warning(
-            #     f"Can't delete TradeList: '{path}', file not found"
-            #     )
-            return False
-        Cmd.delete(path)
-        return True
+    @classmethod  # save# {{{
+    async def save(cls, trade_list) -> None:
+        await Keeper.add(trade_list)
+
+    # }}}
+    @classmethod  # load# {{{
+    async def load(cls, name) -> TradeList:
+        tlist = await Keeper.get(cls, name=name)
+        return tlist
+
+    # }}}
+    @classmethod  # update# {{{
+    async def update(cls, trade_list) -> None:
+        await Keeper.update(trade_list)
+
+    # }}}
+    @classmethod  # delete# {{{
+    async def delete(cls, tlist):
+        await Keeper.delete(tlist)
 
     # }}}
 

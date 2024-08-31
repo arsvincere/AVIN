@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS "Trade" ( -- {{{
 -- }}}
 CREATE TABLE IF NOT EXISTS "TradeList" ( -- {{{
     name        text PRIMARY KEY,
-    trades      float ARRAY,
+    trades      float ARRAY
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "Order" ( -- {{{
