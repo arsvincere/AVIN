@@ -1,8 +1,11 @@
 __pycache__/
+.mypy_cache/
 .pytest_cache/
+.ruff_cache/
 avin/__pycache__/
 avin/gui/__pycache__/
 dev/
+doc/.obsidian
 env/
 lang/
 log/
@@ -10,7 +13,7 @@ test/__pycache__/
 test/.pytest_cache/
 tmp/
 usr/
-0.py 
+0.py
 1.py
 2.py
 3.py
@@ -22,15 +25,6 @@ usr/
 9.py
 Session.vim*
 
-doc/.obsidian
-avin/analytic
-avin/connect
-avin/gui
-avin/report
-avin/strategy
-avin/tester
-avin/trader
-avin/company.py.bak
 
 res/cache
 res/data

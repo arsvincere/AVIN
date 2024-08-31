@@ -535,8 +535,6 @@ class TradeList:  # {{{
     ):
         self.__name = name
         self.__trades = trades if trades else list()
-        self.__strategy = parent.strategy if parent else strategy
-        self.__version = parent.version if parent else version
         self.__asset = parent.asset if parent else asset
         self.__parent = parent
         self.__childs = list()
@@ -552,41 +550,6 @@ class TradeList:  # {{{
         child._asset = self.asset
         self._childs.append(child)
         return child
-
-    # }}}
-    @staticmethod  # save# {{{
-    def save(trade_list, file_path=None):
-        if file_path is None:
-            file_path = trade_list.path  # default in parent dir
-        obj = list()
-        for trade in trade_list:
-            trade_info_dict = Trade.toJSON(trade)
-            obj.append(trade_info_dict)
-        Cmd.saveJSON(obj, file_path)
-        return True
-
-    # }}}
-    @staticmethod  # load# {{{
-    def load(file_path, parent=None):
-        name = Cmd.name(file_path, extension=False)
-        info_list = Cmd.loadJSON(file_path)
-        tlist = TradeList(name, parent=parent)
-        for info in info_list:
-            trade = Trade(info, parent=tlist)
-            tlist.add(trade)
-        return tlist
-
-    # }}}
-    @staticmethod  # delete# {{{
-    def delete(tlist):
-        path = tlist.path
-        if not Cmd.isExist(path):
-            # logger.warning(
-            #     f"Can't delete TradeList: '{path}', file not found"
-            #     )
-            return False
-        Cmd.delete(path)
-        return True
 
     # }}}
     @property  # name# {{{
@@ -687,6 +650,42 @@ class TradeList:  # {{{
     # }}}
     def selectStatus(self, status: Trade.Status):
         assert False
+
+    @staticmethod  # save# {{{
+    def save(trade_list, file_path=None):
+        if file_path is None:
+            file_path = trade_list.path  # default in parent dir
+        obj = list()
+        for trade in trade_list:
+            trade_info_dict = Trade.toJSON(trade)
+            obj.append(trade_info_dict)
+        Cmd.saveJSON(obj, file_path)
+        return True
+
+    # }}}
+    @staticmethod  # load# {{{
+    def load(file_path, parent=None):
+        name = Cmd.name(file_path, extension=False)
+        info_list = Cmd.loadJSON(file_path)
+        tlist = TradeList(name, parent=parent)
+        for info in info_list:
+            trade = Trade(info, parent=tlist)
+            tlist.add(trade)
+        return tlist
+
+    # }}}
+    @staticmethod  # delete# {{{
+    def delete(tlist):
+        path = tlist.path
+        if not Cmd.isExist(path):
+            # logger.warning(
+            #     f"Can't delete TradeList: '{path}', file not found"
+            #     )
+            return False
+        Cmd.delete(path)
+        return True
+
+    # }}}
 
 
 # }}}

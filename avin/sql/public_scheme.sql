@@ -75,13 +75,8 @@ CREATE TABLE IF NOT EXISTS "Trade" ( -- {{{
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "TradeList" ( -- {{{
-    strategy    text,
-    version     text,
-    name        text,
+    name        text PRIMARY KEY,
     trades      float ARRAY,
-
-    FOREIGN KEY (strategy, version)
-        REFERENCES "Strategy" (name, version)
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "Order" ( -- {{{
