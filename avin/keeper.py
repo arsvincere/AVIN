@@ -25,9 +25,9 @@ from typing import Any
 
 import asyncpg
 
-from avin.const import Usr
+from avin.const import Dir, Usr
 from avin.logger import logger
-from avin.utils import askUser
+from avin.utils import Cmd, askUser
 
 __all__ = ("Keeper",)
 
@@ -38,6 +38,12 @@ class Keeper:
     USER = Usr.PG_USER
     DATABASE = Usr.PG_DATABASE
     HOST = Usr.PG_HOST
+
+    _DATA_SCHEME = Cmd.path(Dir.SQL, "data_scheme.sql")
+    _ENUMS = Cmd.path(Dir.SQL, "enums.sql")
+    _FUNCTIONS = Cmd.path(Dir.SQL, "functions.sql")
+    _PUBLIC_SCHEME = Cmd.path(Dir.SQL, "public_scheme.sql")
+    _TESTER_SCHEME = Cmd.path(Dir.SQL, "tester_scheme.sql")
     # }}}
 
     @classmethod  # transaction  # {{{
@@ -63,18 +69,11 @@ class Keeper:
         logger.debug(f"{cls.__name__}.createDataBase()")
 
         os.system(f"createdb {cls.DATABASE}")
-        await cls.__createEnums()
-        await cls.__createCacheTable()
-        await cls.__createExchangeTable()
-        await cls.__createAssetTable()
-        await cls.__createAssetListTable()
-        await cls.__createDataTable()
-        await cls.__createAccountTable()
-        await cls.__createStrategyTable()
-        await cls.__createTradeTable()
-        await cls.__createOrderTable()
-        await cls.__createOperationTable()
-        await cls.__createMarketDataScheme()
+        os.system(f"psql -d {cls.DATABASE} < {cls._ENUMS}")
+        os.system(f"psql -d {cls.DATABASE} < {cls._DATA_SCHEME}")
+        os.system(f"psql -d {cls.DATABASE} < {cls._PUBLIC_SCHEME}")
+        os.system(f"psql -d {cls.DATABASE} < {cls._TESTER_SCHEME}")
+        os.system(f"psql -d {cls.DATABASE} < {cls._FUNCTIONS}")
 
         logger.info("Database has been created")
 
@@ -241,7 +240,7 @@ class Keeper:
             "Asset": cls.__getAsset,
             "AssetList": cls.__getAssetList,
             "Account": cls.__getAccount,
-            "Trade": cls.__getTrades,
+            "Trade": cls.__getTrade,
             "Operation": cls.__getOperations,
             "Order": cls.__getOrders,
         }
@@ -1215,9 +1214,9 @@ class Keeper:
         return accounts
 
     # }}}
-    @classmethod  # __getTrades  # {{{
-    async def __getTrades(cls, Trade, kwargs: dict) -> list[Trades]:
-        logger.debug(f"{cls.__name__}.__getTrades()")
+    @classmethod  # __getTrade  # {{{
+    async def __getTrade(cls, Trade, kwargs: dict) -> list[Trades]:
+        logger.debug(f"{cls.__name__}.__getTrade()")
 
         trade_id = kwargs.get("trade_id")
         strategy = kwargs.get("strategy")
@@ -1249,6 +1248,12 @@ class Keeper:
             pg_begin = f"dt >= '{begin}'" if begin else "TRUE"
             # Create condition for end datetime
             pg_end = f"dt < '{end}'" if end else "TRUE"
+
+            pg_condition = (
+                f"{pg_strategy} AND {pg_statuses} AND "
+                f"{pg_begin} AND {pg_end}"
+            )
+            return pg_condition
 
         # }}}
 
@@ -1371,223 +1376,31 @@ class Keeper:
         return order_list
 
     # }}}
+    @classmethod  # __getTradeList  # {{{
+    async def __getTradeList(cls, TradeList, kwargs: dict) -> TradeList:
+        logger.debug(f"{cls.__name__}.__getTradeList()")
+        assert False
 
-    @classmethod  # __createEnums  # {{{
-    async def __createEnums(cls) -> None:
-        logger.debug(f"{cls.__name__}.__createEnums()")
-
-        requests = [  # {{{
-            """DROP TYPE IF EXISTS public."DataSource";""",
-            """ CREATE TYPE "DataSource" AS ENUM (
-                'MOEX',
-                'TINKOFF'
-                );""",
-            """DROP TYPE IF EXISTS public."AssetType";""",
-            """ CREATE TYPE "AssetType" AS ENUM (
-                'CASH',
-                'INDEX',
-                'SHARE',
-                'BOND',
-                'FUTURE',
-                'OPTION',
-                'CURRENCY',
-                'ETF'
-                );""",
-            """DROP TYPE IF EXISTS public."DataType";""",
-            """ CREATE TYPE "DataType" AS ENUM (
-                'BAR_1M',
-                'BAR_5M',
-                'BAR_10M',
-                'BAR_1H',
-                'BAR_D',
-                'BAR_W',
-                'BAR_M',
-                'BAR_Q',
-                'BAR_Y'
-                );""",
-            """DROP TYPE IF EXISTS public."TimeFrame";""",
-            """ CREATE TYPE "TimeFrame" AS ENUM (
-                '1M',
-                '5M',
-                '10M',
-                '1H',
-                'D',
-                'W',
-                'M',
-                'Q',
-                'Y'
-                );""",
-            """DROP TYPE IF EXISTS public."Order.Type";""",
-            """ CREATE TYPE "Order.Type" AS ENUM (
-                'MARKET',
-                'LIMIT',
-                'STOP',
-                'STOP_LOSS',
-                'TAKE_PROFIT',
-                'WAIT',
-                'TRAILING'
-                );""",
-            """DROP TYPE IF EXISTS public."Order.Direction";""",
-            """ CREATE TYPE "Order.Direction" AS ENUM (
-                'BUY',
-                'SELL'
-                );""",
-            """DROP TYPE IF EXISTS public."Order.Status";""",
-            """ CREATE TYPE "Order.Status" AS ENUM (
-                'NEW',
-                'POST',
-                'PARTIAL',
-                'EXECUTED',
-                'OFF',
-                'CANCEL',
-                'REJECT',
-                'WAIT'
-                );""",
-            """DROP TYPE IF EXISTS public."Operation.Direction";""",
-            """ CREATE TYPE "Operation.Direction" AS ENUM (
-                'BUY',
-                'SELL'
-                );""",
-            """DROP TYPE IF EXISTS public."Trade.Type";""",
-            """ CREATE TYPE "Trade.Type" AS ENUM (
-                'LONG',
-                'SHORT'
-                );""",
-            """DROP TYPE IF EXISTS public."Trade.Status";""",
-            """ CREATE TYPE "Trade.Status" AS ENUM (
-
-                'INITIAL',
-                'EXPECT',
-                'MAKE_ORDER',
-
-                'TRIGGERED',
-                'POST_ORDER',
-                'POSTED',
-
-                'NEW',
-                'MAKE_STOP',
-                'MAKE_TAKE',
-                'POST_STOP',
-                'POST_TAKE',
-
-                'OPEN',
-
-                'OFF',
-
-                'FINISH',
-                'CLOSING',
-                'REMOVING',
-
-                'CLOSE',
-
-                'CANCELED'
-                'BLOCKED'
-
-                'ARCHIVE'
-                );""",
-        ]  # }}}
-
-        for i in requests:
-            await cls.transaction(i)
+        # # Request trades
+        # request = f"""
+        #     SELECT trade_id, dt, status, strategy, version, type, figi
+        #     FROM "Trade"
+        #     WHERE {pg_condition}
+        #     ORDER BY dt
+        #     ;
+        #     """
+        # trade_records = await cls.transaction(request)
+        #
+        # # Create 'list' of 'Trade' objects from 'Records'
+        # tlist = list()
+        # for i in trade_records:
+        #     trade = await Trade.fromRecord(i)
+        #     tlist.append(trade)
+        #
+        # return tlist
 
     # }}}
-    @classmethod  # __createCacheTable  # {{{
-    async def __createCacheTable(cls) -> None:
-        logger.debug(f"{cls.__name__}.__createCacheTable()")
 
-        request = """
-        CREATE TABLE IF NOT EXISTS "Cache" (
-            source "DataSource",
-            type "AssetType",
-            info jsonb
-            );
-        """
-        await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __createExchangeTable  # {{{
-    async def __createExchangeTable(cls) -> None:
-        logger.debug(f"{cls.__name__}.__createExchangeTable()")
-
-        request = """
-        CREATE TABLE IF NOT EXISTS "Exchange" (
-            name text PRIMARY KEY
-            );
-        """
-        await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __createAssetTable  # {{{
-    async def __createAssetTable(cls) -> None:
-        logger.debug(f"{cls.__name__}.__createAssetTable()")
-
-        # Create asset table
-        request = """
-        CREATE TABLE IF NOT EXISTS "Asset" (
-            figi text PRIMARY KEY,
-            type "AssetType",
-            exchange text REFERENCES "Exchange"(name),
-            ticker text,
-            name text
-            );
-        """
-        await cls.transaction(request)
-
-        # Create function for add asset if it is not exist
-        request = """
-        CREATE OR REPLACE FUNCTION add_asset_if_not_exist(
-            a_figi text,
-            a_type "AssetType",
-            a_exchange text,
-            a_ticker text,
-            a_name text
-            )
-        RETURNS void
-        LANGUAGE plpgsql
-        AS $$
-            BEGIN
-                IF NOT EXISTS (SELECT figi FROM "Asset" WHERE figi = a_figi)
-                THEN
-                    INSERT INTO "Asset" (figi, type, exchange, ticker, name)
-                    VALUES
-                        (a_figi, a_type, a_exchange, a_ticker, a_name);
-                END IF;
-            END;
-        $$;
-        """
-        await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __createAssetListTable  # {{{
-    async def __createAssetListTable(cls) -> None:
-        logger.debug(f"{cls.__name__}.__createAssetListTable()")
-
-        # Create asset table
-        request = """
-        CREATE TABLE IF NOT EXISTS "AssetList" (
-            name text PRIMARY KEY,
-            assets text ARRAY
-            );
-        """
-        await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __createDataTable  # {{{
-    async def __createDataTable(cls) -> None:
-        logger.debug(f"{cls.__name__}.__createDataTable()")
-
-        request = """
-        CREATE TABLE IF NOT EXISTS "Data" (
-            figi text REFERENCES "Asset"(figi),
-            type "DataType",
-            source "DataSource",
-            first_dt TIMESTAMP WITH TIME ZONE,
-            last_dt TIMESTAMP WITH TIME ZONE
-            );
-        """
-        await cls.transaction(request)
-
-    # }}}
     @classmethod  # __createBarsDataTable  # {{{
     async def __createBarsDataTable(cls, bars_table_name: str) -> None:
         """Create a separate table for bars
@@ -1612,152 +1425,6 @@ class Keeper:
             volume bigint
             );
             """
-        await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __createAccountTable  # {{{
-    async def __createAccountTable(cls) -> None:
-        logger.debug(f"{cls.__name__}.__createAccountTable()")
-
-        # Create account table
-        request = """
-        CREATE TABLE IF NOT EXISTS "Account" (
-            name text PRIMARY KEY,
-            broker text
-            );
-        """
-        await cls.transaction(request)
-
-        # If not exist, create system account for back-tester
-        request = """
-        SELECT name FROM "Account"
-        WHERE name = '_backtest'
-        """
-        records = await cls.transaction(request)
-        if not records:
-            request = """
-            INSERT INTO "Account" (
-                name,
-                broker
-                )
-            VALUES
-                ('_backtest', 'ArsVincere')
-                ;
-            """
-            await cls.transaction(request)
-
-        # If not exist, create system account for unit-tests
-        request = """
-        SELECT name FROM "Account"
-        WHERE name = '_unittest'
-        """
-        records = await cls.transaction(request)
-        if not records:
-            request = """
-            INSERT INTO "Account" (
-                name,
-                broker
-                )
-            VALUES
-                ('_unittest', 'ArsVincere')
-                ;
-            """
-            await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __createStrategyTable  # {{{
-    async def __createStrategyTable(cls) -> None:
-        logger.debug(f"{cls.__name__}.__createStrategyTable()")
-
-        request = """
-        CREATE TABLE IF NOT EXISTS "Strategy" (
-            name text,
-            version text,
-            CONSTRAINT strategy_pkey PRIMARY KEY (name, version)
-            );
-        """
-        await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __createTradeTable  # {{{
-    async def __createTradeTable(cls) -> None:
-        logger.debug(f"{cls.__name__}.__createTradeTable()")
-
-        request = """
-        CREATE TABLE IF NOT EXISTS "Trade" (
-            trade_id    float PRIMARY KEY,
-            dt          TIMESTAMP WITH TIME ZONE,
-            status      "Trade.Status",
-            strategy    text,
-            version     text,
-            type        "Trade.Type",
-            figi        text REFERENCES "Asset"(figi),
-
-			FOREIGN KEY (strategy, version)
-                REFERENCES "Strategy" (name, version)
-			);
-            """
-        await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __createOrderTable  # {{{
-    async def __createOrderTable(cls) -> None:
-        logger.debug(f"{cls.__name__}.__createOrderTable()")
-
-        request = """
-        CREATE TABLE IF NOT EXISTS "Order" (
-            order_id        float PRIMARY KEY,
-            account         text REFERENCES "Account"(name),
-            type            "Order.Type",
-            status          "Order.Status",
-            direction       "Order.Direction",
-            figi            text REFERENCES "Asset"(figi),
-            lots            integer,
-            quantity        integer,
-            price           float,
-            stop_price      float,
-            exec_price      float,
-
-            trade_id        float REFERENCES "Trade"(trade_id),
-            exec_lots       integer,
-            exec_quantity   integer,
-			meta            text
-			);
-            """
-        await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __createOperationTable  # {{{
-    async def __createOperationTable(cls) -> None:
-        logger.debug(f"{cls.__name__}.__createOperationTable()")
-
-        request = """
-        CREATE TABLE IF NOT EXISTS "Operation" (
-            operation_id    float PRIMARY KEY,
-            account         text REFERENCES "Account"(name),
-            dt              TIMESTAMP WITH TIME ZONE,
-            direction       "Operation.Direction",
-            figi            text REFERENCES "Asset"(figi),
-            lots            integer,
-            quantity        integer,
-            price           float,
-            amount          float,
-            commission      float,
-            trade_id        float REFERENCES "Trade"(trade_id),
-            order_id        float REFERENCES "Order"(order_id),
-			meta            text
-			);
-            """
-        await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __createMarketDataScheme  # {{{
-    async def __createMarketDataScheme(cls) -> None:
-        logger.debug(f"{cls.__name__}.__createMarketDataScheme()")
-
-        request = """
-        CREATE SCHEMA IF NOT EXISTS data
-        """
         await cls.transaction(request)
 
     # }}}

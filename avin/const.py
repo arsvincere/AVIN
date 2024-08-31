@@ -45,6 +45,7 @@ class Dir:  # {{{
 
     # Don't edit other dirs
     LIB = os.path.join(ROOT, "avin")
+    SQL = os.path.join(ROOT, "avin", "sql")
     DOС = os.path.join(ROOT, "doc")
     LANG = os.path.join(ROOT, "lang")
     LOG = os.path.join(ROOT, "log")

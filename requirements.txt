@@ -1,4 +1,3 @@
-ruff
 pytest
 pytest-asyncio
 moexalgo

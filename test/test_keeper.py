@@ -7,6 +7,8 @@
 # ============================================================================
 
 
+from datetime import datetime
+
 import pytest
 
 from avin import *
@@ -40,7 +42,7 @@ trade = Trade(
     strategy=strategy.name,
     version=strategy.version,
     trade_type=Trade.Type.LONG,
-    figi=asset_id.figi,
+    asset_id=asset_id,
     trade_id=trade_id,
 )
 
@@ -264,7 +266,7 @@ async def test_trade(event_loop):
         ],
     )
     t = trades[0]
-    assert str(t) == "=> Trade 2024-08-15 18:37 pytest-v0 bbyby long"
+    assert str(t) == "=> Trade 2024-08-15 18:37 pytest-v0 ORIK long"
     assert t.orders[0].order_id == order_id
     assert t.operations[0].operation_id == operation_id
 

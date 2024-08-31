@@ -11,6 +11,12 @@ from __future__ import annotations
 import enum
 import time as timer
 
+# TODO: Изменить на два поля?
+# - type - enum типов (trade, operation, alist, tlist........)
+# - str - time().time() но преобразованное в строку.
+# - в таблице может хранится как    1-484843.4545
+#   а в рантайме уже как два поля
+
 
 class Id:  # {{{
     # {{{-- doc
@@ -67,7 +73,7 @@ class Id:  # {{{
 
         Returns
         -------
-        Id
+        Id:
             New global identifier
 
         """

@@ -70,7 +70,7 @@ class Trade:  # {{{
         def fromStr(cls, string: str) -> Trade.Type:
             statuses = {
                 "INITIAL": Trade.Status.INITIAL,
-                "EXPECT": Trade.Status.EXPECTATION,
+                "EXPECT": Trade.Status.EXPECT,
                 "MAKE_ORDER": Trade.Status.MAKE_ORDER,
                 "TRIGGERED": Trade.Status.TRIGGERED,
                 "POST_ORDER": Trade.Status.POST_ORDER,
@@ -78,8 +78,8 @@ class Trade:  # {{{
                 "NEW": Trade.Status.NEW,
                 "MAKE_STOP": Trade.Status.MAKE_STOP,
                 "MAKE_TAKE": Trade.Status.MAKE_TAKE,
-                "STOP_STOP": Trade.Status.STOP_STOP,
-                "STOP_TAKE": Trade.Status.STOP_TAKE,
+                "POST_STOP": Trade.Status.POST_STOP,
+                "POST_TAKE": Trade.Status.POST_TAKE,
                 "OPEN": Trade.Status.OPEN,
                 "OFF": Trade.Status.OFF,
                 "FINISH": Trade.Status.FINISH,
@@ -525,18 +525,21 @@ class Trade:  # {{{
 # }}}
 class TradeList:  # {{{
     def __init__(  # {{{
-        self, name: str = "unnamed", trades=None, parent=None
+        self,
+        name: str = "unnamed",
+        trades=None,
+        strategy=None,
+        version=None,
+        asset=None,
+        parent=None,
     ):
-        self._name = name
-        self._trades = trades if trades is not None else list()
-        self._childs = list()
-        self._asset = None
-        self._parent = parent
-        if isinstance(parent, Test):
-            self._test = parent
-        elif isinstance(parent, TradeList):
-            self._asset = parent._asset
-            self._test = parent._test
+        self.__name = name
+        self.__trades = trades if trades else list()
+        self.__strategy = parent.strategy if parent else strategy
+        self.__version = parent.version if parent else version
+        self.__asset = parent.asset if parent else asset
+        self.__parent = parent
+        self.__childs = list()
 
     # }}}
     def __iter__(self):  # {{{
@@ -683,7 +686,7 @@ class TradeList:  # {{{
 
     # }}}
     def selectStatus(self, status: Trade.Status):
-        pass
+        assert False
 
 
 # }}}

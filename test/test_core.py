@@ -638,16 +638,53 @@ async def test_Trade():
     assert chart.last.dt.date() == dt.date()
 
     chart = await trade.chart(TimeFrame("1M"))
-    print(chart.first)
-    print(chart.last)
-    print(chart.now)
+    assert chart.last.dt == dt - ONE_MINUTE
 
 
 # }}}
-@pytest.mark.asyncio  # test_TradeList  # {{{
-async def test_TradeList():
-    # jjj
-    ...
+# @pytest.mark.asyncio  # test_TradeList  # {{{
+# async def test_TradeList():
+#     strategy = Strategy("_unittest", "v1")
+#     tlist_name = "_name"
+#     tlist = TradeList(tlist_name)
+#     dt = datetime(2024, 8, 27, 16, 33, tzinfo=UTC)
+#     trade_type = Trade.Type.LONG
+#     asset = await Asset.byTicker(AssetType.SHARE, Exchange.MOEX, "SBER")
+#     trade_id_1 = 1111
+#     trade_1 = Trade(
+#         dt=dt,
+#         strategy=strategy.name,
+#         version=strategy.version,
+#         trade_type=trade_type,
+#         asset_id=asset.ID,
+#         trade_id=trade_id_1,
+#     )
+#     trade_id_1 = 1111
+#     trade_2 = Trade(
+#         dt=dt,
+#         strategy=strategy.name,
+#         version=strategy.version,
+#         trade_type=trade_type,
+#         asset_id=asset.ID,
+#         trade_id=trade_id_2,
+#     )
+#     tlist.add(trade_1)
+#     tlist.add(trade_2)
+#
+#     assert tlist.name == "_name"
+#     assert tlist.count == 2
+#
+#     await TradeList.save(tlist)
+#     loaded = await TradeList.load(tlist_name)
+#     assert loaded.name == tlist.name
+#     assert loaded.count == tlist.count
+#
+#     await Trade.delete(trade)
+#     await TradeList.delete(tlist)
+#     await Keeper.delete(strategy)
+#
+#     # TODO: сохранить трейд лист от какого нибудь теста,
+#     # и на нем проверять.
 
 
 # }}}
