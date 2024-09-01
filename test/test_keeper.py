@@ -261,8 +261,8 @@ async def test_trade(event_loop):
         strategy=strategy,
         status=[
             Trade.Status.INITIAL,
-            Trade.Status.NEW,
-            Trade.Status.OPEN,
+            Trade.Status.PENDING,
+            Trade.Status.OPENED,
         ],
     )
     t = trades[0]

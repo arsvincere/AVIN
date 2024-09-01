@@ -377,8 +377,8 @@ async def test_Order(event_loop):
     await Order.save(o)
 
     # setStatus change both: object & record in db
-    await o.setStatus(Order.Status.POST)
-    assert o.status == Order.Status.POST
+    await o.setStatus(Order.Status.POSTED)
+    assert o.status == Order.Status.POSTED
     loaded = await Order.load(o.order_id)
     assert loaded.status == o.status
 
@@ -544,7 +544,7 @@ async def test_Trade():
             operation,
         ],
     )
-    assert trade.status == Trade.Status.OPEN  # side effect - status changed
+    assert trade.status == Trade.Status.OPENED  # side effect - status changed
 
     # other property availible for opened trade
     assert trade.isLong()
@@ -577,6 +577,7 @@ async def test_Trade():
         price=110,
         order_id=order_id_2,
     )
+    operation_id_2 = 3334
     operation_2 = Operation(
         account_name="_unittest",
         dt=dt2,
@@ -587,6 +588,7 @@ async def test_Trade():
         quantity=10,
         amount=110 * 10,
         commission=5,
+        operation_id=operation_id_2,
         order_id=order_id_2,
         meta=None,
     )
@@ -599,7 +601,7 @@ async def test_Trade():
         ],
     )
 
-    assert trade.status == Trade.Status.CLOSE
+    assert trade.status == Trade.Status.CLOSED
     assert trade.isLong()
     assert not trade.isShort()
     assert trade.lots() == 0
@@ -699,6 +701,62 @@ async def test_TradeList():
 
 # }}}
 
+
+@pytest.mark.asyncio  # test_clear_all_test_vars  # {{{
+async def test_clear_all_test_vars():
+    request = """
+    DELETE FROM "AssetList"
+    WHERE
+        name = '_unittest' OR
+        name = '_unittest_copy' OR
+        name = '_unittest_copy_rename' OR
+        name = '_unittest_copy_rename_2';
+    """
+    await Keeper.transaction(request)
+
+    request = """
+    DELETE FROM "Operation"
+    WHERE
+        operation_id = '3333' OR
+        operation_id = '3333';
+    """
+    await Keeper.transaction(request)
+
+    request = """
+    DELETE FROM "Order"
+    WHERE
+        order_id = '2222' OR
+        order_id = '2223';
+    """
+    await Keeper.transaction(request)
+
+    request = """
+    DELETE FROM "Trade"
+    WHERE
+        trade_id = '1111' OR
+        trade_id = '1112';
+    """
+    await Keeper.transaction(request)
+
+    request = """
+    DELETE FROM "TradeList"
+    WHERE
+        name = '_name';
+    """
+    await Keeper.transaction(request)
+
+    request = """
+    DELETE FROM "Strategy"
+    WHERE
+        name = '_unittest';
+    """
+    await Keeper.transaction(request)
+
+
+# }}}
+# TODO: захардкорить прямо sql код здесь, чтобы в конце
+# теста не зависимо от результатов все возможные следы
+# удалялись, прямым вызовом Keeper.transaction
 
 # def test_Position():  # {{{
 # TODO:

@@ -72,7 +72,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         def fromStr(cls, string: str) -> Order.Status:
             statuses = {
                 "NEW": Order.Status.NEW,
-                "PENDING": Order.Status.WAITING,
+                "PENDING": Order.Status.PENDING,
                 "TIMEOUT": Order.Status.TIMEOUT,
                 "TRIGGERED": Order.Status.TRIGGERED,
                 "SUBMIT": Order.Status.SUBMIT,

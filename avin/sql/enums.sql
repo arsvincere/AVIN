@@ -64,7 +64,7 @@ CREATE TYPE "Trade.Status" AS ENUM (
     'ACTIVE',
     'OFF',
     'FINISH', 'CLOSING', 'REMOVING',
-    'CLOSE',
+    'CLOSED',
     'CANCELED', 'BLOCKED',
     'ARCHIVE'
     );

@@ -28,6 +28,7 @@ class AssetType(enum.Enum):  # {{{
             "SHARE": AssetType.SHARE,
             "BOND": AssetType.BOND,
             "FUTURE": AssetType.FUTURE,
+            "OPTION": AssetType.OPTION,
             "CURRENCY": AssetType.CURRENCY,
             "ETF": AssetType.ETF,
         }

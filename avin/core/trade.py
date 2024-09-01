@@ -58,7 +58,7 @@ class Trade:  # {{{
         CLOSING = 51
         REMOVING = 52
 
-        CLOSE = 60
+        CLOSED = 60
 
         CANCELED = 90
         BLOKED = 91
@@ -84,7 +84,7 @@ class Trade:  # {{{
                 "FINISH": Trade.Status.FINISH,
                 "CLOSING": Trade.Status.CLOSING,
                 "REMOVING": Trade.Status.REMOVING,
-                "CLOSE": Trade.Status.CLOSE,
+                "CLOSED": Trade.Status.CLOSED,
                 "CANCELED": Trade.Status.CANCELED,
                 "BLOKED": Trade.Status.BLOKED,
                 "ARCHIVE": Trade.Status.ARCHIVE,
@@ -246,9 +246,9 @@ class Trade:  # {{{
 
         # update status
         if self.status == Trade.Status.POSTED:
-            await self.setStatus(Trade.Status.OPEN)
+            await self.setStatus(Trade.Status.OPENED)
         elif self.lots() == 0:
-            await self.setStatus(Trade.Status.CLOSE)
+            await self.setStatus(Trade.Status.CLOSED)
 
     # }}}
     async def chart(self, timeframe: TimeFrame) -> Chart:  # {{{
@@ -268,12 +268,12 @@ class Trade:  # {{{
 
     # }}}
     def isWin(self):  # {{{
-        assert self.status == Trade.Status.CLOSE
+        assert self.status == Trade.Status.CLOSED
         return self.result > 0
 
     # }}}
     def isLoss(self):  # {{{
-        assert self.status == Trade.Status.CLOSE
+        assert self.status == Trade.Status.CLOSED
         return self.result <= 0
 
     # }}}
@@ -322,7 +322,7 @@ class Trade:  # {{{
 
     # }}}
     def amount(self):  # {{{
-        if self.status == Trade.Status.CLOSE:
+        if self.status == Trade.Status.CLOSED:
             return 0.0
         total = 0
         for op in self.__info["operations"]:
@@ -389,17 +389,16 @@ class Trade:  # {{{
     # }}}
     def openDatetime(self):  # {{{
         assert self.status in (
-            Trade.Status.OPEN,
-            Trade.Status.CLOSE,
+            Trade.Status.OPENED,
+            Trade.Status.CLOSED,
         )
         return self.__info["operations"][0].dt
 
     # }}}
     def openPrice(self):  # {{{
-        assert self.status in (
-            Trade.Status.OPEN,
-            Trade.Status.CLOSE,
-        )
+        assert self.status.value >= Trade.Status.OPENED.value
+        assert self.status.value != Trade.Status.CANCELED.value
+
         if self.isLong():
             return self.buyAverage()
 
@@ -407,12 +406,12 @@ class Trade:  # {{{
 
     # }}}
     def closeDatetime(self):  # {{{
-        assert self.status == Trade.Status.CLOSE
+        assert self.status == Trade.Status.CLOSED
         return self.__info["operations"][-1].dt
 
     # }}}
     def closePrice(self):  # {{{
-        assert self.status == Trade.Status.CLOSE
+        assert self.status == Trade.Status.CLOSED
         if self.isLong():
             return self.sellAverage()
 
@@ -435,7 +434,7 @@ class Trade:  # {{{
     #     return self.__info["take_price"]
     # # }}}
     def result(self):  # {{{
-        assert self.status == Trade.Status.CLOSE
+        assert self.status == Trade.Status.CLOSED
         result = (
             self.sellAmount()
             - self.buyAmount()
@@ -453,13 +452,13 @@ class Trade:  # {{{
 
     # }}}
     def percent(self):  # {{{
-        assert self.status == Trade.Status.CLOSE
+        assert self.status == Trade.Status.CLOSED
         persent = self.result() / self.buyAmount() * 100
         return round(persent, 2)
 
     # }}}
     def percentPerDay(self):  # {{{
-        assert self.status == Trade.Status.CLOSE
+        assert self.status == Trade.Status.CLOSED
         persent = self.result() / self.buyAmount() * 100
         holding = self.holdingDays()
         persent_per_day = persent / holding
