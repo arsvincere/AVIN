@@ -36,22 +36,21 @@ class Trade:  # {{{
     # }}}
     class Status(enum.Enum):  # {{{
         UNDEFINE = 0
-
         INITIAL = 1
-        EXPECT = 2
-        MAKE_ORDER = 3
+        PENDING = 2
+        TRIGGERED = 3
 
-        TRIGGERED = 10
+        MAKE_ORDER = 10
         POST_ORDER = 11
         POSTED = 13
+        OPENED = 14
 
-        NEW = 20
         MAKE_STOP = 21
         MAKE_TAKE = 22
         POST_STOP = 23
         POST_TAKE = 24
 
-        OPEN = 30
+        ACTIVE = 30
 
         OFF = 40
 
@@ -70,23 +69,24 @@ class Trade:  # {{{
         def fromStr(cls, string: str) -> Trade.Type:
             statuses = {
                 "INITIAL": Trade.Status.INITIAL,
-                "EXPECT": Trade.Status.EXPECT,
-                "MAKE_ORDER": Trade.Status.MAKE_ORDER,
+                "PENDING": Trade.Status.PENDING,
                 "TRIGGERED": Trade.Status.TRIGGERED,
+                "MAKE_ORDER": Trade.Status.MAKE_ORDER,
                 "POST_ORDER": Trade.Status.POST_ORDER,
                 "POSTED": Trade.Status.POSTED,
-                "NEW": Trade.Status.NEW,
+                "OPENED": Trade.Status.OPENED,
                 "MAKE_STOP": Trade.Status.MAKE_STOP,
                 "MAKE_TAKE": Trade.Status.MAKE_TAKE,
                 "POST_STOP": Trade.Status.POST_STOP,
                 "POST_TAKE": Trade.Status.POST_TAKE,
-                "OPEN": Trade.Status.OPEN,
+                "ACTIVE": Trade.Status.ACTIVE,
                 "OFF": Trade.Status.OFF,
                 "FINISH": Trade.Status.FINISH,
                 "CLOSING": Trade.Status.CLOSING,
                 "REMOVING": Trade.Status.REMOVING,
                 "CLOSE": Trade.Status.CLOSE,
                 "CANCELED": Trade.Status.CANCELED,
+                "BLOKED": Trade.Status.BLOKED,
                 "ARCHIVE": Trade.Status.ARCHIVE,
             }
             return statuses[string]

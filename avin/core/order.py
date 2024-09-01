@@ -47,31 +47,43 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     class Status(enum.Enum):  # {{{
         UNDEFINE = 0
         NEW = 1
-        POST = 2
-        PARTIAL = 5  # частично исполнен
-        EXECUTED = 6  # исполнен
+        PENDING = 2
+        TIMEOUT = 3
+        TRIGGERED = 4
+
+        SUBMIT = 10
+        POSTED = 20
+        PARTIAL = 30
+        OFF = 40
+        EXECUTED = 50
+
+        CANCELED = 90
+        BLOCKED = 91
+        REJECTED = 92
+        EXPIRED = 93
+
+        ARCHIVE = 100
 
         # TEST: тест можно ли выставить на тинькоф ордер
         # с тем же ключом идемпотентности после того как ордер
         # отменен на вечерку / ночь / выходные
 
-        OFF = 7  # для убранных на вечерку или выходные стопы
-
-        CANCEL = 8  # отменен
-        REJECT = 9  # отклонен брокером
-        WAIT = 10  # ожидает выполнения условий для выставления
-
         @classmethod  # fromStr
         def fromStr(cls, string: str) -> Order.Status:
             statuses = {
                 "NEW": Order.Status.NEW,
-                "POST": Order.Status.POST,
+                "PENDING": Order.Status.WAITING,
+                "TIMEOUT": Order.Status.TIMEOUT,
+                "TRIGGERED": Order.Status.TRIGGERED,
+                "SUBMIT": Order.Status.SUBMIT,
+                "POSTED": Order.Status.POSTED,
                 "PARTIAL": Order.Status.PARTIAL,
-                "EXECUTED": Order.Status.EXECUTED,
                 "OFF": Order.Status.OFF,
-                "CANCEL": Order.Status.CANCEL,
-                "REJECT": Order.Status.REJECT,
-                "WAIT": Order.Status.WAIT,
+                "EXECUTED": Order.Status.EXECUTED,
+                "CANCELED": Order.Status.CANCELED,
+                "REJECTED": Order.Status.REJECTED,
+                "EXPIRED": Order.Status.EXPIRED,
+                "ARCHIVE": Order.Status.ARCHIVE,
             }
             return statuses[string]
 
