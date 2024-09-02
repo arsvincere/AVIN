@@ -13,20 +13,29 @@ from datetime import UTC, date, datetime
 
 from avin.const import DAY_BEGIN
 from avin.core.chart import Chart
+from avin.core.event import Event
 from avin.core.timeframe import TimeFrame
 from avin.data import AssetType, DataSource, Exchange, InstrumentId
 from avin.keeper import Keeper
 from avin.logger import logger
-from avin.utils import now
+from avin.utils import AsyncSignal, now
 
 
 class Asset(metaclass=abc.ABCMeta):  # {{{
     @abc.abstractmethod  # __init__# {{{
-    def __init__(self, ID: Id, parent=None):
+    def __init__(self, ID: Id):
         self.__ID = ID
         self.__charts = dict()
-        self.__parent = parent
         self.__info = None
+
+        self.new1mBar = AsyncSignal(Asset, Chart)
+        self.new5mBar = AsyncSignal(Asset, Chart)
+        self.new10mBar = AsyncSignal(Asset, Chart)
+        self.new1hBar = AsyncSignal(Asset, Chart)
+        self.newDBar = AsyncSignal(Asset, Chart)
+        self.newWBar = AsyncSignal(Asset, Chart)
+        self.newMBar = AsyncSignal(Asset, Chart)
+        self.updated = AsyncSignal(Asset)
 
     # }}}
     def __str__(self):  # {{{
@@ -115,7 +124,7 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         return chart
 
     # }}}
-    async def loadInfo(self):  # {{{
+    async def loadInfo(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.loadInfo()")
 
         info = await Keeper.info(
@@ -125,12 +134,30 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         self.__info = info[0]
 
     # }}}
-    def parent(self):  # {{{
-        return self.__parent
+    async def update(self, new_bar_event: Event.NewBar) -> None:  # {{{
+        # select chart
+        timeframe = new_bar_event.timeframe
+        chart = self.chart(timeframe)
 
-    # }}}
-    def setParent(self, parent):  # {{{
-        self.__parent = parent
+        # add new bar in this chart
+        new_bar = new_bar_event.bar
+        chart.update(new_bar)
+
+        # emiting special signal for the bar timeframe
+        signals = {
+            "1M": self.new1mBar,
+            "5M": self.new5mBar,
+            "10M": self.new10mBar,
+            "1H": self.new1hBar,
+            "D": self.newDBar,
+            "W": self.newWBar,
+            "M": self.newMBar,
+        }
+        signal = signals[str(timeframe)]
+        await signal.async_emit(self, chart)
+
+        # emiting common signal
+        await self.updated.async_emit(self)
 
     # }}}
     def data(  # {{{
@@ -253,10 +280,9 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
 
 # }}}
 class Index(Asset):  # {{{
-    def __init__(self, ID: Id, parent=None):  # {{{
+    def __init__(self, ID: Id):  # {{{
         assert ID.type == AssetType.INDEX
-        super().__init__(ID, parent)
-        self.__parent = parent
+        super().__init__(ID)
 
     # }}}
 
@@ -268,9 +294,9 @@ class Share(Asset):  # {{{
 
     # }}}
 
-    def __init__(self, ID: Id, parent=None):  # {{{
+    def __init__(self, ID: Id):  # {{{
         assert ID.type == AssetType.SHARE
-        super().__init__(ID, parent)
+        super().__init__(ID)
         self.__book = None
         self.__tic = None
 
@@ -296,11 +322,10 @@ class Share(Asset):  # {{{
 
 
 class AssetList:  # {{{
-    def __init__(self, name: str = "unnamed", parent=None):  # {{{
+    def __init__(self, name: str = "unnamed"):  # {{{
         logger.debug(f"AssetList.__init__({name})")
         self.__name = name
         self.__assets = list()
-        self.__parent = parent
 
     # }}}
     def __getitem__(self, index: int) -> Asset:  # {{{
@@ -316,7 +341,7 @@ class AssetList:  # {{{
         return any(i.ID == asset.ID for i in self.__assets)
 
     # }}}
-    @property  # name{{{
+    @property  # name  # {{{
     def name(self) -> str:
         return self.__name
 
@@ -326,7 +351,7 @@ class AssetList:  # {{{
         self.__name = name
 
     # }}}
-    @property  # assets{{{
+    @property  # assets  # {{{
     def assets(self) -> list[Asset]:
         return self.__assets
 
@@ -338,7 +363,7 @@ class AssetList:  # {{{
         self.__assets = assets
 
     # }}}
-    @property  # count{{{
+    @property  # count  # {{{
     def count(self) -> int:
         return len(self.__assets)
 
@@ -347,7 +372,6 @@ class AssetList:  # {{{
         assert isinstance(asset, Asset)
         if asset not in self:
             self.__assets.append(asset)
-            asset.setParent(self)
             return
 
         logger.warning(f"{asset} already in list '{self.name}'")
@@ -377,12 +401,12 @@ class AssetList:  # {{{
         return None
 
     # }}}
-    @classmethod  # fromRecord# {{{
-    async def fromRecord(cls, record, parent=None) -> AssetList:
+    @classmethod  # fromRecord  # {{{
+    async def fromRecord(cls, record) -> AssetList:
         name = record["name"]
         figi_list = record["assets"]
 
-        alist = cls(name, parent)
+        alist = cls(name)
         for figi in figi_list:
             asset = await Asset.byFigi(figi)
             alist.add(asset)
@@ -390,19 +414,19 @@ class AssetList:  # {{{
         return alist
 
     # }}}
-    @classmethod  # save# {{{
+    @classmethod  # save  # {{{
     async def save(cls, asset_list) -> None:
         assert isinstance(asset_list, AssetList)
         await Keeper.add(asset_list)
 
     # }}}
-    @classmethod  # load# {{{
-    async def load(cls, name: str, parent=None) -> AssetList:
+    @classmethod  # load  # {{{
+    async def load(cls, name: str) -> AssetList:
         alist = await Keeper.get(cls, name=name)
         return alist
 
     # }}}
-    @classmethod  # rename# {{{
+    @classmethod  # rename  # {{{
     async def rename(cls, asset_list: AssetList, new_name: str) -> None:
         assert isinstance(new_name, str)
         assert len(new_name) > 0
@@ -412,14 +436,14 @@ class AssetList:  # {{{
         await Keeper.add(asset_list)
 
     # }}}
-    @classmethod  # copy# {{{
+    @classmethod  # copy  # {{{
     async def copy(cls, asset_list: AssetList, new_name: str) -> None:
         new_list = AssetList(new_name)
         new_list.assets = asset_list.assets
         await cls.save(new_list)
 
     # }}}
-    @classmethod  # delete# {{{
+    @classmethod  # delete  # {{{
     async def delete(cls, asset_list) -> None:
         assert isinstance(asset_list, AssetList)
         await Keeper.delete(asset_list)
@@ -445,7 +469,7 @@ class AssetList:  # {{{
 
     # }}}
     @classmethod  # __checkArgs
-    def __checkArgs(cls, name=None, assets=None, parent=None):
+    def __checkArgs(cls, name=None, assets=None):
         # TODO: check args
         ...
 
