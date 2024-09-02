@@ -116,11 +116,10 @@ class Chart:  # {{{
         return self.__now
 
     # }}}
-    def update(self, new_bars: list[Bar]):  # {{{
-        for bar in new_bars:
-            bar.setChart(self)
-            self.__bars.append(bar)
-        self.__head = len(self.__bars)  # индекс HEAD бара перемещаем
+    def update(self, new_bar: Bar):  # {{{
+        new_bar.setChart(self)
+        self.__bars.append(new_bar)
+        self.__head += 1
         self.__now = None
         self.updated.emit(self)
 
