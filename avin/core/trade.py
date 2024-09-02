@@ -17,6 +17,11 @@ from avin.core.operation import Operation
 from avin.core.order import Order
 from avin.data import AssetType, InstrumentId
 from avin.keeper import Keeper
+from avin.utils import AsyncSignal
+
+# XXX: Trade.create(...)
+# эта функция может быть асинхронной, и она может сразу этот трейд
+# записывать в базу так что не надо будет париться за это стратегии...
 
 
 class Trade:  # {{{
@@ -139,6 +144,11 @@ class Trade:  # {{{
         }
         self.__blocked = False
 
+        # signals
+        self.opened = AsyncSignal(object)
+        self.closed = AsyncSignal(object)
+        self.statusChanged = AsyncSignal(object)
+
     # }}}
     def __str__(self):  # {{{
         dt = self.dt + Usr.TIME_DIF
@@ -217,6 +227,15 @@ class Trade:  # {{{
     async def setStatus(self, status: Trade.Status):  # {{{
         self.__info["status"] = status
         await Trade.update(self)
+
+        # emiting special signal for this status
+        if status == Trade.Status.OPENED:
+            await self.opened.async_emit(self)
+        elif status == Trade.Status.CLOSED:
+            await self.closed.async_emit(self)
+
+        # emiting common signal
+        await self.statusChanged.async_emit(self)
 
     # }}}
     async def addOrder(self, order: Order):  # {{{
@@ -618,6 +637,16 @@ class TradeList:  # {{{
         return child
 
     # }}}
+    def selectAsset(self, asset: Asset):
+        logger.debug(f"{self.__class__.__name__}.selectAsset()")
+        selected = list()
+        for trade in self._trades:
+            if trade.asset.figi == asset.figi:
+                selected.append(trade)
+        child = self._createChild(selected, asset.ticker)
+        child._asset = asset
+        return child
+
     def selectFilter(f):  # {{{
         assert False
 
