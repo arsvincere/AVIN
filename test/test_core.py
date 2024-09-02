@@ -182,11 +182,10 @@ async def test_Chart(event_loop):
 
     # add new bars in chart
     bar = Bar(now(), 1, 1, 1, 1, 5000)
-    chart.update([bar, bar])
+    chart.update(bar)
     bars = chart.getBars()
     assert bars[-1] == bar
-    assert bars[-2] == bar
-    assert bars[-2].vol == 5000
+    assert bars[-1].vol == 5000
 
 
 # }}}
@@ -219,8 +218,6 @@ async def test_Asset(event_loop):
     assert asset.ticker == ticker
     assert asset.figi == figi
     assert asset.name == name
-
-    assert asset.parent() is None
 
 
 # }}}
