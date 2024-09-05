@@ -21,6 +21,8 @@ class TimeFrame:  # {{{
     """
 
     # }}}
+    ALL = []  # initializated below class
+
     def __init__(self, string):  # {{{
         period = {
             "1M": timedelta(minutes=1),
@@ -199,3 +201,13 @@ class TimeFrame:  # {{{
 
 
 # }}}
+
+TimeFrame.ALL = [
+    TimeFrame("1M"),
+    TimeFrame("5M"),
+    TimeFrame("10M"),
+    TimeFrame("1H"),
+    TimeFrame("D"),
+    TimeFrame("W"),
+    TimeFrame("M"),
+]

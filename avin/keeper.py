@@ -159,6 +159,7 @@ class Keeper:
             "AssetList": cls.__addAssetList,
             "Account": cls.__addAccount,
             "Strategy": cls.__addStrategy,
+            "UStrategy": cls.__addStrategy,
             "Trade": cls.__addTrade,
             "TradeList": cls.__addTradeList,
             "Operation": cls.__addOperation,
@@ -217,6 +218,7 @@ class Keeper:
             "Market": cls.__updateOrder,
             "Limit": cls.__updateOrder,
             "Stop": cls.__updateOrder,
+            "Operation": cls.__updateOperation,
             "_InstrumentInfoCache": cls.__updateCache,
         }
 
@@ -305,12 +307,15 @@ class Keeper:
         logger.debug(f"{cls.__name__}.__addAssetList()")
 
         # Format assets in postges value - ARRAY[figi]
-        pg_array = "ARRAY["
-        for asset in alist:
-            figi = f"'{asset.figi}', "
-            pg_array += figi
-        pg_array = pg_array[0:-2]  # remove ", " after last value
-        pg_array += "]"
+        if alist.count > 0:
+            pg_array = "ARRAY["
+            for asset in alist:
+                figi = f"'{asset.figi}', "
+                pg_array += figi
+            pg_array = pg_array[0:-2]  # remove ", " after last value
+            pg_array += "]"
+        else:
+            pg_array = "'{}'::text[]"
 
         # If alist.name is exist - delete
         request = f"""
@@ -509,29 +514,40 @@ class Keeper:
 
     # }}}
     @classmethod  # __addOrder  # {{{
-    async def __addOrder(cls, o: Order) -> None:
+    async def __addOrder(cls, order: Order) -> None:
+        # TODO: broker_id и тому подобные поля, где возможен NULL,
+        # можно упростить код, если буду использовать для них не None
+        # а пустую строку "" на своей стороне.
+        # и над прайсами тоже подумать, на будущее - тоже если текстом
+        # то будет проще, а всю работу по переводу из текста в флоат
+        # или куда там надо можно переложить на класс Price
         logger.debug(f"{cls.__name__}.__addOrder()")
 
         # format prices
-        if o.type.name == "MARKET":
+        if order.type.name == "MARKET":
             price, s_price, e_price = "NULL", "NULL", "NULL"
-        elif o.type.name == "LIMIT":
-            price, s_price, e_price = o.price, "NULL", "NULL"
-        elif o.type.name == "STOP":
-            price, s_price, e_price = "NULL", o.stop_price, o.exec_price
+        elif order.type.name == "LIMIT":
+            price, s_price, e_price = order.price, "NULL", "NULL"
+        elif order.type.name == "STOP":
+            price, s_price, e_price = (
+                "NULL",
+                order.stop_price,
+                order.exec_price,
+            )
         else:
-            assert False, f"WTF??? Order type='{o.type}'"
+            assert False, f"WTF??? Order type='{order.type}'"
 
         # format meta
-        if o.meta is None:
+        if order.meta is None:
             meta = "NULL"
         else:
-            logger.warning("Напиши как правильно meta сохранять")
-            logger.info(o.meta)
-            assert False
+            meta = f"$${order.meta}$$"
 
         # format trade_id
-        trade_id = o.trade_id if o.trade_id else "NULL"
+        trade_id = order.trade_id if order.trade_id else "NULL"
+
+        # format broker_id
+        broker_id = f"'{order.broker_id}'" if order.broker_id else "NULL"
 
         # add
         request = f"""
@@ -550,24 +566,26 @@ class Keeper:
                 trade_id,
                 exec_lots,
                 exec_quantity,
-                meta
+                meta,
+                broker_id
                 )
             VALUES (
-                {o.order_id},
-                '{o.account_name}',
-                '{o.type.name}',
-                '{o.status.name}',
-                '{o.direction.name}',
-                '{o.asset_id.figi}',
-                {o.lots},
-                {o.quantity},
+                {order.order_id},
+                '{order.account_name}',
+                '{order.type.name}',
+                '{order.status.name}',
+                '{order.direction.name}',
+                '{order.asset_id.figi}',
+                {order.lots},
+                {order.quantity},
                 {price},
                 {s_price},
                 {e_price},
                 {trade_id},
-                {o.exec_lots},
-                {o.exec_quantity},
-                {meta}
+                {order.exec_lots},
+                {order.exec_quantity},
+                {meta},
+                {broker_id}
                 );
             """
         await cls.transaction(request)
@@ -580,11 +598,7 @@ class Keeper:
         if operation.meta is None:
             meta = "NULL"
         else:
-            logger.warning("Напиши как правильно meta сохранять")
-            logger.info(operation.meta)
-            assert False
-            # что то типо такого
-            meta = f"'{meta}'"
+            meta = f"$${meta}$$"
 
         request = f"""
             INSERT INTO "Operation" (
@@ -843,7 +857,7 @@ class Keeper:
                 type = '{trade.type.name}',
                 figi = '{trade.asset_id.figi}'
             WHERE
-                trade_id = '{trade.trade_id}';
+                trade_id = {trade.trade_id};
             """
         await cls.transaction(request)
 
@@ -851,14 +865,44 @@ class Keeper:
     @classmethod  # __updateOrder  # {{{
     async def __updateOrder(cls, order: Order) -> None:
         logger.debug(f"{cls.__name__}.__updateOrder()")
+
+        # format meta
+        if order.meta is None:
+            meta = "NULL"
+        else:
+            meta = f"$${order.meta}$$"
+
+        # format trade_id
+        trade_id = order.trade_id if order.trade_id else "NULL"
+
+        # format broker_id
+        broker_id = f"'{order.broker_id}'" if order.broker_id else "NULL"
+
         request = f"""
             UPDATE "Order"
             SET
+                trade_id = {trade_id},
                 status = '{order.status.name}',
                 exec_lots = {order.exec_lots},
-                exec_quantity = {order.exec_quantity}
+                exec_quantity = {order.exec_quantity},
+                meta = {meta},
+                broker_id = {broker_id}
             WHERE
-                order_id = '{order.order_id}';
+                order_id = {order.order_id};
+            """
+        await cls.transaction(request)
+
+    # }}}
+    @classmethod  # __updateOperation  # {{{
+    async def __updateOperation(cls, operation: Operation) -> None:
+        logger.debug(f"{cls.__name__}.__updateOperation()")
+        request = f"""
+            UPDATE "Operation"
+            SET
+                trade_id = {operation.trade_id},
+                commission = {operation.commission}
+            WHERE
+                operation_id = {operation.operation_id};
             """
         await cls.transaction(request)
 
@@ -883,6 +927,12 @@ class Keeper:
             for i in cache.assets_info:
                 pg_source = f"'{cache.source.name}'"
                 pg_asset_type = f"'{cache.asset_type.name}'"
+                # TODO: encoderJson наверное надо сюда втащить из класса
+                # _InstrumentInfoCache, там он вообще нигде никак не
+                # используется? или? а нет.. пока кэш в джсон тоже
+                # дублируется на винт, но потом, когда просмотрщик
+                # гуи будет для кэша, тогда этот метод можно будет
+                # сюда втащить?
                 json_string = json.dumps(
                     i, ensure_ascii=False, default=cache.encoderJson
                 )
@@ -1231,6 +1281,7 @@ class Keeper:
         # create condition
         pg_condition = f"name = '{name}'" if name else "TRUE"
 
+        # request
         request = f"""
             SELECT
                 name,
@@ -1242,12 +1293,7 @@ class Keeper:
             """
         records = await cls.transaction(request)
 
-        # return AssetList if it is one
-        if len(records) == 1:
-            alist = await AssetList.fromRecord(records[0])
-            return alist
-
-        # return list[str_names] if more records and has flag 'get_only_names'
+        # return list[str_names] if flag 'get_only_names'
         if get_only_names:
             all_names = list()
             for i in records:
@@ -1255,7 +1301,7 @@ class Keeper:
                 all_names.append(name)
             return all_names
 
-        # return list[AssetList] if more records and no flag 'get_only_names'
+        # return list[AssetList] if no flag 'get_only_names'
         all_list = list()
         for record in records:
             alist = await AssetList.fromRecord(record)
@@ -1291,7 +1337,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __getTradeList  # {{{
-    async def __getTradeList(cls, TradeList, kwargs: dict) -> TradeList:
+    async def __getTradeList(cls, TradeList, kwargs: dict) -> list[TradeList]:
         logger.debug(f"{cls.__name__}.__getTradeList()")
 
         name = kwargs["name"]
@@ -1302,10 +1348,13 @@ class Keeper:
             ;
             """
         records = await cls.transaction(request)
-        assert len(records) == 1
 
-        tlist = await TradeList.fromRecord(records[0])
-        return tlist
+        all_trade_lists = list()
+        for i in records:
+            tlist = await TradeList.fromRecord(i)
+            all_trade_lists.append(tlist)
+
+        return all_trade_lists
 
     # }}}
     @classmethod  # __getTrade  # {{{
@@ -1368,12 +1417,12 @@ class Keeper:
         trade_records = await cls.transaction(request)
 
         # Create 'list' of 'Trade' objects from 'Records'
-        tlist = list()
+        all_trades = list()
         for i in trade_records:
             trade = await Trade.fromRecord(i)
-            tlist.append(trade)
+            all_trades.append(trade)
 
-        return tlist
+        return all_trades
 
     # }}}
     @classmethod  # __getOperations  # {{{
@@ -1454,7 +1503,8 @@ class Keeper:
                 trade_id,
                 exec_lots,
                 exec_quantity,
-                meta
+                meta,
+                broker_id
             FROM "Order"
             WHERE {pg_condition}
             ;

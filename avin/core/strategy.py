@@ -11,11 +11,13 @@
 from __future__ import annotations
 
 import abc
+import importlib
 
 from avin.const import Usr
 from avin.core.asset import AssetList
 from avin.core.order import Order
 from avin.core.trade import Trade, TradeList
+from avin.logger import logger
 from avin.utils import Cmd, Signal
 
 # XXX: а что если код юзерских стратегий тоже хранить в базе данных...
@@ -29,6 +31,10 @@ from avin.utils import Cmd, Signal
 #   а исходный код на гитхабе, а все ресурсы в БД.
 #   подумать
 
+# TODO: сделай для тестов отдельную специальную стратегию,
+# хуй знает там _Unit_test_strategy
+# а этот класс надо сделать нормально - абстрактным
+
 
 class Strategy(metaclass=abc.ABCMeta):  # {{{
     """Signal"""  # {{{
@@ -40,6 +46,11 @@ class Strategy(metaclass=abc.ABCMeta):  # {{{
     def __init__(self, name, version):  # {{{
         self.__name = name
         self.__version = version
+        self.__account = None
+        self.__cfg = None
+        self.__long_list = None
+        self.__short_list = None
+        self.__active_trades = None
 
     # }}}
     def __str__(self):  # {{{
@@ -56,6 +67,11 @@ class Strategy(metaclass=abc.ABCMeta):  # {{{
         return self.__version
 
     # }}}
+    @property  # account  # {{{
+    def account(self):
+        return self.__account
+
+    # }}}
     @property  # config  # {{{
     def config(self):
         return self.__cfg
@@ -64,11 +80,6 @@ class Strategy(metaclass=abc.ABCMeta):  # {{{
     @property  # timeframe_list  # {{{
     def timeframe_list(self):
         return self.__cfg["timeframe_list"]
-
-    # }}}
-    @property  # account  # {{{
-    def account(self):
-        return self.__account
 
     # }}}
     @property  # long_list  # {{{
@@ -99,6 +110,7 @@ class Strategy(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
     def setAccount(self, account: Account):  # {{{
+        logger.info(f":: Set account {self}={account.name}")
         self.__account = account
 
     # }}}
@@ -114,30 +126,117 @@ class Strategy(metaclass=abc.ABCMeta):  # {{{
         AssetList.save(asset_list)
 
     # }}}
-    async def start(self):
+
+    async def start(self):  # {{{
         raise NotImplementedError()
 
     # }}}
-    async def finish(self):
+    async def finish(self):  # {{{
         raise NotImplementedError()
 
     # }}}
-    async def connect(self, asset_list: AssetList):
+    async def connect(self, asset_list: AssetList):  # {{{
         raise NotImplementedError()
 
     # }}}
-    async def onTradeOpened(self, trade: Trade):
-        logger.info(str(trade))
+    async def onTradeOpened(self, trade: Trade):  # {{{
+        logger.info(f"Trade opened: {trade}")
 
     # }}}
-    async def onTradeClosed(self, trade: Trade):
+    async def onTradeClosed(self, trade: Trade):  # {{{
         logger.info(f"Trade closed: {trade.result()}")
 
     # }}}
+
+    async def createTrade(  # {{{
+        self, dt: datetime, trade_type: Trade.Type, asset: Asset
+    ):
+        trade = Trade(
+            dt=dt,
+            strategy=self.name,
+            version=self.version,
+            trade_type=trade_type,
+            asset_id=asset.ID,
+        )
+        await self.__connectTradeSignals(trade)
+        self.__active_trades.add(trade)
+
+        # update db
+        await Trade.save(trade)
+        await TradeList.save(self.__active_trades)
+
+        logger.info(f":: Created trade {trade}")
+        return trade
+
+    # }}}
+    async def createMarketOrder(  # {{{
+        self, direction: Order.Direction, asset: Asset, lots: int
+    ):
+        order = Order.Market(
+            account_name=self.account.name,
+            direction=direction,
+            asset_id=asset.ID,
+            lots=lots,
+            quantity=lots * asset.lot,
+        )
+        await Order.save(order)
+
+        logger.info(f"{self} create order {order}")
+        return order
+
+    # }}}
+    async def postOrder(self, order: Order):  # {{{
+        order = await self.account.post(order)
+
+        # TODO: ну тут надо как то помягче, подумать
+        # что делать если ордер не прошел, но точно не ассерт
+        # может попробовать еще раз... добавить настройку в аккаунт
+        # типо количество попыток выставить ордер, и если ордер все таки
+        # не выставлен, то надо будет думать какая логика будет. В зависимости
+        # от того на каком этапе трейд. На вскидку
+        # - если трейд не открыт - просто проинформировать и хуй забить на
+        #   на этот трейд, установить ему какой-нибудь статус типо не удалось
+        #   и убрать его нахуй из активных трейдов
+        # - если трейд открыт и он в убытке... срочно закрывать по маркету
+        #   например..
+        # - если трейд открыт и он в плюсе... ну пробовать снова закрывать
+        #   по рынку закрывать, частями закрывать... ситуативно это все...
+        #   может в такие моменты как раз и нужно ручное управление???
+        # assert order.status == Order.Status.POSTED
+
+        # TODO:  ДА! на будущее - нужна возможность ручного управления
+        # трейдами их ордерами и операциями. Гибко. Так чтобы и в реалтайме
+        # можно было все разрулить и потом в базе поправить если какой то
+        # косяк. А там уже когда наработаются ситуации, можно будет делать
+        # автоматическое поведение для частых случаев.
+
+    # }}}
+    async def closeTrade(self, trade: Trade):  # {{{
+        logger.info(f"Close trade: {trade}")
+
+        await trade.setStatus(Trade.Status.CLOSING)
+
+        # create order
+        lots = abs(trade.lots())
+        d = Order.Direction.SELL if trade.lots() > 0 else Order.Direction.BUY
+        order = self.createMarketOrder(
+            direction=d, asset_id=trade.asset_id, lots=lots
+        )
+
+        # attach & post this order
+        await trade.attachOrder(order)
+
+        # постим этот ордер
+        if not askUser("Opening trade. Posting real order?"):
+            return
+        await super().postOrder(order)
+
+    # }}}
+
     @classmethod  # load# {{{
     async def load(cls, name: str, version: str):
         module = name.lower()
-        path = f"user.strategy.{name}.{version}"
+        path = f"usr.strategy.{name}.{version}"
         modul = importlib.import_module(path)
         UStrategy = modul.__getattribute__("UStrategy")
         strategy = UStrategy(name, version)
@@ -162,22 +261,6 @@ class Strategy(metaclass=abc.ABCMeta):  # {{{
         return ver_list
 
     # }}}
-    async def saveNewTrade(self, trade: Trade):  # {{{
-        await trade.opened.async_connect(self.onTradeOpened)
-        await trade.closed.async_connect(self.onTradeClosed)
-        self.active_trades.add(trade)
-
-        await Trade.save(trade)
-        await TradeList.save(self.active_trades)
-
-    # }}}
-    async def postOrder(self, trade: Trade, order: Order):  # {{{
-        await self.account.post(order)
-        assert order.status == Order.Status.POSTED
-
-        await trade.setStatus(Trade.Status.POSTED)
-
-    # }}}
     async def __loadConfig(self):  # {{{
         path = Cmd.path(self.dir_path, "config.cfg")
         if Cmd.isExist(path):
@@ -189,17 +272,45 @@ class Strategy(metaclass=abc.ABCMeta):  # {{{
     # }}}
     async def __loadLongList(self):  # {{{
         list_name = str(self) + "-long"
-        self.__long_list = await AssetList.load(list_name)
+        asset_list = await AssetList.load(list_name)
+
+        if asset_list:
+            self.__long_list = asset_list
+        else:
+            self.__long_list = AssetList(list_name)
+            await AssetList.save(self.__long_list)
 
     # }}}
     async def __loadShortList(self):  # {{{
         list_name = str(self) + "-short"
-        self.__short_list = await AssetList.load(list_name)
+        asset_list = await AssetList.load(list_name)
+
+        if asset_list:
+            self.__short_list = asset_list
+        else:
+            self.__short_list = AssetList(list_name)
+            await AssetList.save(self.__short_list)
 
     # }}}
     async def __loadTradeList(self):  # {{{
+        # try load trade list or create new empty list
         list_name = str(self)
-        self.__active_trades = await TradeList.load(list_name)
+        trade_list = await TradeList.load(list_name)
+
+        if trade_list:
+            self.__active_trades = trade_list
+        else:
+            self.__active_trades = TradeList(list_name)
+            await TradeList.save(self.__active_trades)
+
+        # connect signals
+        for trade in self.__active_trades:
+            await self.__connectTradeSignals(trade)
+
+    # }}}
+    async def __connectTradeSignals(self, trade: Trade):  # {{{
+        await trade.opened.async_connect(self.onTradeOpened)
+        await trade.closed.async_connect(self.onTradeClosed)
 
     # }}}
 

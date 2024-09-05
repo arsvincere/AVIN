@@ -41,7 +41,7 @@ CREATE TYPE "Order.Direction" AS ENUM (
 DROP TYPE IF EXISTS public."Order.Status";--{{{
 CREATE TYPE "Order.Status" AS ENUM (
     'NEW', 'PENDING', 'TIMEOUT', 'TRIGGERED',
-    'SUBMIT', 'POSTED', 'PARTIAL', 'OFF', 'EXECUTED',
+    'SUBMIT', 'POSTED', 'PARTIAL', 'OFF', 'FILLED', 'EXECUTED',
     'CANCELED', 'BLOCKED', 'REJECTED', 'EXPIRED',
     'ARCHIVE'
     );

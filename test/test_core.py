@@ -751,9 +751,6 @@ async def test_clear_all_test_vars():
 
 
 # }}}
-# TODO: захардкорить прямо sql код здесь, чтобы в конце
-# теста не зависимо от результатов все возможные следы
-# удалялись, прямым вызовом Keeper.transaction
 
 # def test_Position():  # {{{
 # TODO:

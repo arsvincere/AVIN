@@ -352,7 +352,7 @@ class _MoexData(_AbstractSource):  # {{{
     ) -> list[Candles]:
         logger.debug(f"{cls.__name__}.__requestCandles()")
 
-        # TODO:
+        # PERF:
         # можно же сделать запрос по 10.000 баров.
         # начиная с бегин, и до тех пор пока меньше энд..
         # и не нужен будет этот геморой с small / big timeframe

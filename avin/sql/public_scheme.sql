@@ -95,7 +95,8 @@ CREATE TABLE IF NOT EXISTS "Order" ( -- {{{
     trade_id        float REFERENCES "Trade"(trade_id),
     exec_lots       integer,
     exec_quantity   integer,
-    meta            text
+    meta            text,
+    broker_id       text
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "Operation" ( -- {{{

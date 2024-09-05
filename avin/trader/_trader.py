@@ -8,10 +8,15 @@
 
 import asyncio
 
-from avin.core import AssetList, TimeFrame
+from avin.core import AssetList, Event, Strategy, TimeFrame
+from avin.data import Data
 from avin.logger import logger
+from avin.trader.scout import Scout
 from avin.trader.tinkoff import Tinkoff
-from avin.utils import Cmd
+
+# FIX: обновление данных сейчас идет с моэкс а там задержка...
+# после обновления данных в БД и загрузки графиков - надо еще
+# раз обновлять данные но уже у брокера запрашивать
 
 
 class Trader:  # {{{
@@ -21,7 +26,7 @@ class Trader:  # {{{
         self.event = None
 
     # }}}
-    def __loadConfig(self):  # {{{
+    async def __loadConfig(self):  # {{{
         logger.info(":: Trader load config")
         self.cfg = {
             "broker": Tinkoff,
@@ -29,22 +34,28 @@ class Trader:  # {{{
             # "broker":           AsyncTinkoff,
             "token": Tinkoff.TOKEN,
             "account": 0,
-            "strategyes": "One,Two,Three,Four,Five",
+            "strategy_list": [
+                ("Every", "minute"),
+            ],
             "timeframe_list": [TimeFrame("1M")],
         }
 
     # }}}
-    def __loadTimeTable(self):  # {{{
+    async def __loadTimeTable(self):  # {{{
         logger.info(":: Trader load timetable")
         self.timetable = None
 
     # }}}
-    def __loadStrategyes(self):  # {{{
+    async def __loadStrategyes(self):  # {{{
         logger.info(":: Trader load strategyes")
         self.strategyes = list()
+        for i in self.cfg["strategy_list"]:
+            name, version = i
+            strategy = await Strategy.load(name, version)
+            self.strategyes.append(strategy)
 
     # }}}
-    def __loadTeam(self):  # {{{
+    async def __loadTeam(self):  # {{{
         logger.info(":: Trader load team")
         self.broker = self.cfg["broker"](trader=self)
         # self.analytic = Analytic(trader=self)
@@ -53,28 +64,31 @@ class Trader:  # {{{
         # self.ruler = Ruler(trader=self)
         # self.adviser = Adviser(trader=self)
         # self.trader = Trader(trader=self)
-        self.observer = Observer(trader=self)
+        self.scout = Scout(broker=self.broker, trader=self)
 
     # }}}
-    def __makeGeneralAssetList(self):  # {{{
+    async def __makeGeneralAssetList(self):  # {{{
         logger.info(":: Trader make asset list")
         # self.alist = AssetList.load(Cmd.path(ASSET_DIR, "afks"), parent=self)
-        self.alist = AssetList.load(
-            Cmd.path(ASSET_DIR, "Trio.al"), parent=self
-        )
+        self.alist = await AssetList.load("Trio")
+
+    # }}}
+    async def __cacheAssetsInfo(self):  # {{{
+        logger.info(":: Trader caching assets info")
+        for asset in self.alist:
+            logger.info(f"  - caching {asset}")
+            await asset.cacheInfo()
 
     # }}}
     async def __updateData(self):  # {{{
         logger.info(":: Trader update historical data")
+        timeframe_list = self.cfg["timeframe_list"]
         for asset in self.alist:
-            self.scout.updateAllData(asset)
-
-    # }}}
-    async def __loadCharts(self):  # {{{
-        logger.info(":: Trader load all chart")
-        for asset in self.alist:
-            logger.info(f"  loading chart {asset.ticker}")
-            asset.loadAllChart()
+            for timeframe in timeframe_list:
+                await Data.update(
+                    ID=asset.ID,
+                    data_type=timeframe.toDataType(),
+                )
 
     # }}}
     async def __updateAnalytic(self):  # {{{
@@ -83,38 +97,31 @@ class Trader:  # {{{
         #     self.analytic.updateAll(asset)
 
     # }}}
+    async def __cacheCharts(self):  # {{{
+        logger.info(":: Trader caching all chart")
+        timeframe_list = self.cfg["timeframe_list"]
+        for asset in self.alist:
+            for timeframe in timeframe_list:
+                logger.info(f"  - caching chart {asset.ticker}-{timeframe}")
+                await asset.cacheChart(timeframe)
+
+    # }}}
+    async def __connectStrategyes(self):  # {{{
+        for strategy in self.strategyes:
+            await strategy.start()
+            await strategy.connect(self.alist)
+
+    # }}}
     async def __processStrategy(self, asset):  # {{{
         logger.info(f":: Trader process {asset.ticker}")
         for s in self.strategyes:
             s.process(asset)
 
     # }}}
-    async def __processSignals(self):  # {{{
-        logger.info(":: Trader process signals")
-
-    # }}}
-    async def __processPositions(self):  # {{{
-        logger.info(":: Trader process positions")
-
-    # }}}
-    async def __finishWork(self):  # {{{
-        ...
-        # strategy.finish()
-        # keeper.saveAll
-        #     saveSignals()
-        #     saveOrders()
-        #     saveOperations()
-        #     savePositions()   (Portfolio snap shot)
-        # keeper.createReport()
-        # sendTelegram()
-        # closeConnection()
-        # updateGUI
-        self.work = False
-
-    # }}}
     async def __attemptConnect(self):  # {{{
         logger.debug("Trader.__attemptConnect()")
-        asyncio.create_task(self.broker.connect(self.cfg["token"]))
+
+        asyncio.create_task(self.broker.connect())
         for n in range(5):
             if self.broker.isConnect():
                 logger.info("  successfully connected!")
@@ -130,14 +137,22 @@ class Trader:  # {{{
     async def __ensureConnection(self):  # {{{
         logger.info(":: Trader ensure connection")
         result = await self.__attemptConnect()
+
         while not result:
             logger.info("  sleep 1 minute...")
             await asyncio.sleep(60)
             logger.info("  try again:")
             result = await self.__attemptConnect()
+
+        # FIX: пусть этот треш пока тут полежит, надо подумать
+        # куда это вынести и в какой момент лучше конетить стратегию
+        # к аккаунту и конетить ли вообще, или стратегия вообще не
+        # будет знать ничего про аккаунт...
         self.scout.setBroker(self.broker)
         accounts = self.broker.getAllAccounts()
         self.account = accounts[0]
+        for strategy in self.strategyes:
+            strategy.setAccount(self.account)
 
     # }}}
     async def __makeDataStream(self):  # {{{
@@ -151,12 +166,12 @@ class Trader:  # {{{
         Loop until the market is openly.
         :return: when market is available for trading
         """
-        status = self.broker.isMarketOpen()
+        status = await self.broker.isMarketOpen()
         while not status:
             logger.info("  waiting to open market, sleep 1 minute")
             await asyncio.sleep(60)
             status = self.broker.isMarketOpen()
-        logger.info("  market is open!")
+        logger.debug("  market is open!")
 
     # }}}
     async def __waitMarketEvent(self):  # {{{
@@ -168,10 +183,10 @@ class Trader:  # {{{
         if self.event is None:
             return
         elif self.event.type == Event.Type.NEW_BAR:
-            logger.info(f"-> receive event {self.event.type}")
-            updated_asset = self.alist.receive(self.event)
-        await self.__processSignals()
-        await self.__processPositions()
+            logger.debug(f"-> receive event {self.event.type}")
+            asset = self.alist.find(figi=self.event.figi)
+            await asset.update(self.event)
+
         self.event = None
 
     # }}}
@@ -182,36 +197,49 @@ class Trader:  # {{{
             await self.__ensureMarketOpen()
             await self.__waitMarketEvent()
             await self.__processEvent()
-            # print(self.account)
-            # print(type(self.account))
-            # print(self.account.money())
-            # p = self.account.portfolio()
-            # for i in p.money:
-            #     print(i)
 
         await self.__finishWork()
 
     # }}}
+    async def __finishWork(self):  # {{{
+        for strategy in self.strategyes:
+            await strategy.finish()
+        ...
+        # strategy.finish()
+        # keeper.saveAll
+        #     saveSignals()
+        #     saveOrders()
+        #     saveOperations()
+        #     savePositions()   (Portfolio snap shot)
+        # keeper.createReport()
+        # sendTelegram()
+        # closeConnection()
+        # updateGUI
+        self.work = False
+
+    # }}}
     async def initialize(self):  # {{{
         logger.info(":: Trader start initialization")
-        self.__loadConfig()
-        self.__loadTimeTable()
-        self.__loadStrategyes()
-        self.__loadTeam()
-        self.__makeGeneralAssetList()
+        await self.__loadConfig()
+        await self.__loadTimeTable()
+        await self.__loadStrategyes()
+        await self.__loadTeam()
+        await self.__makeGeneralAssetList()
+        await self.__cacheAssetsInfo()
 
     # }}}
     async def run(self):  # {{{
         logger.info(":: Trader run")
         await self.__ensureConnection()
         await self.__updateData()
-        await self.__loadCharts()
         await self.__updateAnalytic()
+        await self.__cacheCharts()
+        await self.__connectStrategyes()
         await self.__makeDataStream()
         await self.__mainCycle()
 
     # }}}
-    def stop(self):  # {{{
+    async def stop(self):  # {{{
         if self.work:
             logger.info(":: Trader shuting down")
             self.work = False

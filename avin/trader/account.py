@@ -10,7 +10,12 @@
 
 from __future__ import annotations
 
+import asyncio
+from datetime import UTC, date, datetime, time
+
+from avin.core import Operation, Order
 from avin.logger import logger
+from avin.utils import now
 
 
 class Broker:
@@ -86,24 +91,27 @@ class Account:  # {{{
         return self.__broker.getWithdrawLimits(self.__meta)
 
     # }}}
-    def post(self, order: Order):  # {{{
-        logger.info(f":: Post order: {order}")
+    async def post(self, order: Order):  # {{{
+        logger.info(f":: Account {self.__name} post order: {order}")
+
+        await order.filled.async_connect(self.onOrderFilled)
+
         if order.type == Order.Type.MARKET:
-            response = self.__broker.postMarketOrder(order, self.__meta)
+            order = await self.__broker.postMarketOrder(order, self.__meta)
         elif order.type == Order.Type.LIMIT:
-            response = self.__broker.postLimitOrder(order, self.__meta)
+            order = await self.__broker.postLimitOrder(order, self.__meta)
         elif order.type in (
             Order.Type.STOP,
             Order.Type.STOP_LOSS,
             Order.Type.TAKE_PROFIT,
         ):
-            response = self.__broker.postStopOrder(order, self.__meta)
+            order = await self.__broker.postStopOrder(order, self.__meta)
         elif (
             order.type == Order.Type.WAIT or order.type == Order.Type.TRAILING
         ):
             assert False
-        logger.info(f"Response='{response}'")
-        return response
+
+        return order
 
     # }}}
     def cancel(self, order):  # {{{
@@ -123,9 +131,29 @@ class Account:  # {{{
         return response
 
     # }}}
+    async def onOrderFilled(self, order: Order):
+        logger.debug(f"{self.__class__.__name__}.onOrderFilled({order})")
+        assert order.status == Order.Status.FILLED
+
+        # TODO: здесь конечно надо чтото другое придумать
+        # лучше всего наверное записывать операции в БД как есть
+        # без комиссии, а потом, через некоторое время уже чекать снова
+        # ордер и доставать комиссию по операции
+        # можно сделать например так:
+        # Keeper.update(Operation, order_id=xxx, commission=xxx)
+        print("sleep 1 sec, wait commission")
+        await asyncio.sleep(1)
+        print("wake up")
+
+        operation = self.__broker.getOrderOperation(self.__meta, order)
+
+        await Operation.save(operation)
+        await order.setStatus(Order.Status.EXECUTED)
+        await order.executed.async_emit(order, operation)
+
     @classmethod  # fromRecord  # {{{
     def fromRecord(cls, record):
-        # TODO FIXME
+        # FIX:
         # пока захардкорил в аккаунте имя и броке - это тупо строки.
         # потом надо будет сделать что-то типо account.setConnection(broker)
         # и там внутри проверяется что broker.isConnected()

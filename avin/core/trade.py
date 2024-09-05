@@ -17,11 +17,13 @@ from avin.core.operation import Operation
 from avin.core.order import Order
 from avin.data import AssetType, InstrumentId
 from avin.keeper import Keeper
+from avin.logger import logger
 from avin.utils import AsyncSignal
 
-# XXX: Trade.create(...)
-# эта функция может быть асинхронной, и она может сразу этот трейд
-# записывать в базу так что не надо будет париться за это стратегии...
+# FIX: при удалении трейда, его ID остается в трейд листе..
+# с одной стороны - трейды вообще никогда удаляться то не будут...
+# с другой стороны во время юнит тестов или в работе тестера
+# будут возникать ошибки, нарушение целостности данных
 
 
 class Trade:  # {{{
@@ -118,6 +120,19 @@ class Trade:  # {{{
         if operations is None:
             operations = list()
 
+        # XXX: а в нынешних условиях может нахуй не нужен тут словарь?
+        # в json больше не сохраняю... может просто поля сделать?
+        # ну по крайней мере ордера и операции достать из словаря...
+        # в остальном то да... словарь можно оставить словарем..
+        # и дописывать его в виде json в БД, и то... не весь, а только
+        # те поля которые не включены в таблицу основную...
+        # и еще!
+        # думать какие поля держать в таблице. Результаты трейдов
+        # закрытых, архивированных - их можно сразу прописать, хуйли
+        # их считать то каждый раз...
+        # но это все потом потом потом...
+        # если понадобится быстродействие... пока пусть неуклюже и излишне
+        # но подтягивается все все все. И все считать в реалтайме.
         self.__info = {
             "trade_id": trade_id,
             "datetime": dt,
@@ -154,7 +169,7 @@ class Trade:  # {{{
         dt = self.dt + Usr.TIME_DIF
         dt = dt.strftime("%Y-%m-%d %H:%M")
         string = (
-            f"=> Trade {dt} {self.strategy}-{self.version} "
+            f"{dt} [{self.status.name}] {self.strategy}-{self.version} "
             f"{self.asset_id.ticker} {self.type.name.lower()}"
         )
         return string
@@ -217,11 +232,10 @@ class Trade:  # {{{
         pass
 
     # }}}
-    # @async_slot  #onOrderFulfilled # {{{
-    async def onOrderFulfilled(self, order, operations: list[Operation]):
+    # @async_slot  #onOrderExecuted # {{{
+    async def onOrderExecuted(self, order, operation):
         assert order.trade_id == self.trade_id
-        for op in operations:
-            await self.addOperation(op)
+        await self.attachOperation(operation)
 
     # }}}
     async def setStatus(self, status: Trade.Status):  # {{{
@@ -238,35 +252,24 @@ class Trade:  # {{{
         await self.statusChanged.async_emit(self)
 
     # }}}
-    async def addOrder(self, order: Order):  # {{{
-        # set self.trade_id
-        order.trade_id = self.trade_id
-
-        # connect signals
-        await order.posted.async_connect(self.onOrderPosted)
-        await order.fulfilled.async_connect(self.onOrderFulfilled)
-
-        # keep in self
+    async def attachOrder(self, order: Order):  # {{{
+        # TODO:  self.__info["orders"] -> self.__orders
+        await order.setParentTrade(self)
+        await self.__connectOrderSignals(order)
         self.__info["orders"].append(order)
 
-        # write in db
-        await Order.save(order)
-
     # }}}
-    async def addOperation(self, operation: Operation):  # {{{
-        # set self.trade_id
-        operation.trade_id = self.trade_id
+    async def attachOperation(self, operation: Operation):  # {{{
+        # TODO:  self.__info["operations"] -> self.__operations
 
-        # keep in self
+        assert operation.trade_id == self.trade_id
+        # await operation.setParentTrade(self) # это брокеру уже поставил из ордера
         self.__info["operations"].append(operation)
-
-        # write in db
-        await Operation.save(operation)
 
         # update status
         if self.status == Trade.Status.POSTED:
             await self.setStatus(Trade.Status.OPENED)
-        elif self.lots() == 0:
+        elif self.status == Trade.Status.OPENED and self.lots() == 0:
             await self.setStatus(Trade.Status.CLOSED)
 
     # }}}
@@ -502,7 +505,7 @@ class Trade:  # {{{
 
         # create trade
         ID = await InstrumentId.byFigi(record["figi"])
-        t = Trade(
+        trade = Trade(
             dt=record["dt"],
             strategy=record["strategy"],
             version=record["version"],
@@ -513,7 +516,12 @@ class Trade:  # {{{
             orders=orders,
             operations=operations,
         )
-        return t
+
+        # connect signals of attached orders
+        for order in trade.orders:
+            await trade.__connectOrderSignals(order)
+
+        return trade
 
     # }}}
     @classmethod  # save  # {{{
@@ -523,9 +531,13 @@ class Trade:  # {{{
     # }}}
     @classmethod  # load  # {{{
     async def load(cls, trade_id: Id) -> Trade:
-        trade_list = await Keeper.get(cls, trade_id=trade_id)
-        assert len(trade_list) == 1
-        return trade_list[0]
+        response = await Keeper.get(cls, trade_id=trade_id)
+        if len(response) == 1:  # response == [ Trade, ]
+            return response[0]
+
+        # else: error, trade not found
+        logger.error(f"trade_id='{trade_id}' does not exist!")
+        exit(3)
 
     # }}}
     @classmethod  # delete  # {{{
@@ -536,6 +548,12 @@ class Trade:  # {{{
     @classmethod  # update  # {{{
     async def update(cls, trade: Trade) -> None:
         await Keeper.update(trade)
+
+    # }}}
+    async def __connectOrderSignals(self, order: Order):  # {{{
+        logger.critical(f"__connectOrderSignals {order}")
+        await order.posted.async_connect(self.onOrderPosted)
+        await order.executed.async_connect(self.onOrderExecuted)
 
     # }}}
 
@@ -637,21 +655,28 @@ class TradeList:  # {{{
         return child
 
     # }}}
-    def selectAsset(self, asset: Asset):
+    def selectAsset(self, asset: Asset):  # {{{
         logger.debug(f"{self.__class__.__name__}.selectAsset()")
         selected = list()
         for trade in self._trades:
-            if trade.asset.figi == asset.figi:
+            if trade.asset_id.figi == asset.figi:
                 selected.append(trade)
-        child = self._createChild(selected, asset.ticker)
+        child = self._createChild(selected, suffix=asset.ticker)
         child._asset = asset
         return child
 
-    def selectFilter(f):  # {{{
-        assert False
+    # }}}
+    def selectStatus(self, status: Trade.Status):  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectStatus()")
+        selected = list()
+        for trade in self._trades:
+            if trade.status == status:
+                selected.append(trade)
+        child = self._createChild(selected, suffix=status.name)
+        return child
 
     # }}}
-    def selectStatus(self, status: Trade.Status):
+    def selectFilter(f):
         assert False
 
     @classmethod  # fromRecord # {{{
@@ -660,8 +685,8 @@ class TradeList:  # {{{
         trade_ids = record["trades"]
 
         trades = list()
-        for i in trade_ids:
-            trade = await Keeper.get(Trade, trade_id=i)
+        for trade_id in trade_ids:
+            trade = await Trade.load(trade_id)
             trades.append(trade)
 
         tlist = cls(name, trades)
@@ -675,8 +700,13 @@ class TradeList:  # {{{
     # }}}
     @classmethod  # load# {{{
     async def load(cls, name) -> TradeList:
-        tlist = await Keeper.get(cls, name=name)
-        return tlist
+        response = await Keeper.get(cls, name=name)
+        if len(response) == 1:  # response == [ TradeList, ]
+            return response[0]
+
+        # else: error, trade list not found
+        logger.error(f"Trade list '{name}' not found!")
+        return None
 
     # }}}
     @classmethod  # update# {{{

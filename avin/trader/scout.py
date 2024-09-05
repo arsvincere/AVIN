@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+from avin.core import TimeFrame
 from avin.logger import logger
 
 
@@ -22,7 +23,7 @@ class Scout:  # {{{
 
     # }}}
     def setBroker(self, broker):  # {{{
-        logger.debug(f"Scout.setBroker()")
+        logger.debug("Scout.setBroker()")
 
     # }}}
     def updateAllData(self, asset):  # {{{
@@ -38,7 +39,9 @@ class Scout:  # {{{
         for asset in alist:
             for timeframe in timeframes:
                 self.__broker.addSubscription(self.stream, asset, timeframe)
-                logger.info(f"Scout add subscription {asset.ticker}-{timeframe}")
+                logger.info(
+                    f"Scout add subscription {asset.ticker}-{timeframe}"
+                )
         self.__broker.checkStream(self.stream)
 
     # }}}

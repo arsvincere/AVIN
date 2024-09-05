@@ -89,7 +89,11 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         if isinstance(timeframe, str):
             timeframe = TimeFrame(timeframe)
 
-        return self.__charts.get(timeframe, None)
+        chart = self.__charts.get(timeframe, None)
+        if not chart:
+            assert False, f"Chart {self.ID.figi}-{timeframe} not cached"
+
+        return chart
 
     # }}}
     async def cacheChart(  # {{{
@@ -124,7 +128,7 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         return chart
 
     # }}}
-    async def loadInfo(self) -> None:  # {{{
+    async def cacheInfo(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.loadInfo()")
 
         info = await Keeper.info(
@@ -394,13 +398,30 @@ class AssetList:  # {{{
         self.__assets.clear()
 
     # }}}
-    def find(self, ID: Id):  # {{{
+    def find(self, ID: Id = None, figi: str = None) -> Asset:  # {{{
+        if ID:
+            return self.__findById(ID)
+        if figi:
+            asset = self.__findByFigi(figi)
+            return asset
+
+        assert False, "Bad arguments"
+
+    # }}}
+    def __findById(self, ID: Id) -> Asset | None:
         for i in self.__assets:
             if i.ID == ID:
                 return i
+
         return None
 
-    # }}}
+    def __findByFigi(self, figi: str) -> Asset | None:
+        for i in self.__assets:
+            if i.figi == figi:
+                return i
+
+        return None
+
     @classmethod  # fromRecord  # {{{
     async def fromRecord(cls, record) -> AssetList:
         name = record["name"]
@@ -422,8 +443,9 @@ class AssetList:  # {{{
     # }}}
     @classmethod  # load  # {{{
     async def load(cls, name: str) -> AssetList:
-        alist = await Keeper.get(cls, name=name)
-        return alist
+        response = await Keeper.get(cls, name=name)
+        assert len(response) == 1  # response == [AssetList, ]
+        return response[0]
 
     # }}}
     @classmethod  # rename  # {{{
