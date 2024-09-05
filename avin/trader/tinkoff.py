@@ -285,7 +285,7 @@ class Tinkoff(Broker):  # {{{
         return response
 
     # }}}
-    def getOrderOperation(self, acc, order) -> Operation:
+    def getOrderOperation(self, acc, order) -> Operation:  # {{{
         response = self.getOrderState(acc, order)
         assert (
             response.execution_report_status
@@ -313,10 +313,10 @@ class Tinkoff(Broker):  # {{{
             trade_id=order.trade_id,
             meta=None,
         )
-        print(response)
 
         return operation
 
+    # }}}
     async def postMarketOrder(  # {{{
         self, order: Order.Market, account: Account
     ):
@@ -482,7 +482,7 @@ class Tinkoff(Broker):  # {{{
         logger.debug("async Tinkoff.checkStream()")
         it = iter(stream)
         response = next(stream)
-        logger.debug(f"  - async Tinkoff.checkStream: Response='{response}'")
+        logger.info(f"  - Tinkoff.checkStream: Response='{response}'")
 
     # }}}
     def waitEvent(self, stream: AsyncMarketDataStreamManager):  # {{{

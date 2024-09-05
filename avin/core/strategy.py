@@ -170,14 +170,21 @@ class Strategy(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
     async def createMarketOrder(  # {{{
-        self, direction: Order.Direction, asset: Asset, lots: int
+        self, direction: Order.Direction, asset_id: InstrumentId, lots: int
     ):
+        # FIX:  надо как то через ИД добывать кол-во лотов
+        # ассет сюда передавать тоже не удобно, хотя возможно...
+        # во время процесс опенед трэйдес ассет то мы активный имеем...
+        # но вообще конечно бред это все, количество лотов вообще
+        # нужно включить в общие поля, не через json, а из json
+        # как раз их выпилить на уровне модуля Data
+        # и min_price_step тоже
         order = Order.Market(
             account_name=self.account.name,
             direction=direction,
-            asset_id=asset.ID,
+            asset_id=asset_id,
             lots=lots,
-            quantity=lots * asset.lot,
+            quantity=lots * 100,  # FIX:
         )
         await Order.save(order)
 
@@ -186,10 +193,22 @@ class Strategy(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
     async def postOrder(self, order: Order):  # {{{
+        trade = self.active_trades.find(order.trade_id)
+        # TODO: еще раз подумать, название статуса, может
+        # OPENING???
+        # POST_OPEN_ORDER???
+        await trade.setStatus(Trade.Status.POST_ORDER)
+        # FIX: а когда другой ордер будешь постить, на закрытие, тоже
+        # статус окажется пост ордер, надо в другом месте статс ставить
+        # или все таки заводить отдельную хуйню типо - открыть трейд
+        # и внутри трейда ордера хранить не просто листом а
+        # опен ордер, стоп ордер, тэйк ордер...
+        # но это рождает геморой с БД... отдельный подтип ордера еще
+        # добавлять..
+
         order = await self.account.post(order)
 
-        # TODO: ну тут надо как то помягче, подумать
-        # что делать если ордер не прошел, но точно не ассерт
+        # TODO: что делать если ордер не прошел???
         # может попробовать еще раз... добавить настройку в аккаунт
         # типо количество попыток выставить ордер, и если ордер все таки
         # не выставлен, то надо будет думать какая логика будет. В зависимости
@@ -219,7 +238,7 @@ class Strategy(metaclass=abc.ABCMeta):  # {{{
         # create order
         lots = abs(trade.lots())
         d = Order.Direction.SELL if trade.lots() > 0 else Order.Direction.BUY
-        order = self.createMarketOrder(
+        order = await self.createMarketOrder(
             direction=d, asset_id=trade.asset_id, lots=lots
         )
 
@@ -227,9 +246,7 @@ class Strategy(metaclass=abc.ABCMeta):  # {{{
         await trade.attachOrder(order)
 
         # постим этот ордер
-        if not askUser("Opening trade. Posting real order?"):
-            return
-        await super().postOrder(order)
+        await self.postOrder(order)
 
     # }}}
 

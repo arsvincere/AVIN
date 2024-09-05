@@ -82,4 +82,10 @@ class Id:  # {{{
         return ID
 
     # }}}
+    @classmethod  # fromFloat# {{{
+    def fromFloat(cls, id_value) -> Id:
+        ID = Id(id_value)
+        return ID
+
+    # }}}
     # }}}

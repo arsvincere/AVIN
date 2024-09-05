@@ -66,11 +66,10 @@ class Trade:  # {{{
         REMOVING = 52
 
         CLOSED = 60
+        ARCHIVE = 70
 
         CANCELED = 90
         BLOKED = 91
-
-        ARCHIVE = 100
 
         @classmethod  # fromStr
         def fromStr(cls, string: str) -> Trade.Type:
@@ -223,7 +222,6 @@ class Trade:  # {{{
     # @async_slot  #onOrderPosted # {{{
     async def onOrderPosted(self, order):
         assert order.trade_id == self.trade_id
-        # if status in (INITIAL ... POST_ORDER) -> POSTED
         if self.status.value < Trade.Status.POSTED.value:
             await self.setStatus(Trade.Status.POSTED)
 
@@ -235,6 +233,10 @@ class Trade:  # {{{
     # @async_slot  #onOrderExecuted # {{{
     async def onOrderExecuted(self, order, operation):
         assert order.trade_id == self.trade_id
+
+        if self.status.value < Trade.Status.OPENED.value:
+            await self.setStatus(Trade.Status.OPENED)
+
         await self.attachOperation(operation)
 
     # }}}
@@ -266,10 +268,8 @@ class Trade:  # {{{
         # await operation.setParentTrade(self) # это брокеру уже поставил из ордера
         self.__info["operations"].append(operation)
 
-        # update status
-        if self.status == Trade.Status.POSTED:
-            await self.setStatus(Trade.Status.OPENED)
-        elif self.status == Trade.Status.OPENED and self.lots() == 0:
+        # check lots count & update status
+        if self.lots() == 0:
             await self.setStatus(Trade.Status.CLOSED)
 
     # }}}
@@ -410,10 +410,7 @@ class Trade:  # {{{
 
     # }}}
     def openDatetime(self):  # {{{
-        assert self.status in (
-            Trade.Status.OPENED,
-            Trade.Status.CLOSED,
-        )
+        assert self.status.value >= Trade.Status.OPENED.value
         return self.__info["operations"][0].dt
 
     # }}}
@@ -428,7 +425,10 @@ class Trade:  # {{{
 
     # }}}
     def closeDatetime(self):  # {{{
-        assert self.status == Trade.Status.CLOSED
+        assert self.status in (
+            Trade.Status.CLOSED,
+            Trade.Status.ARCHIVE,
+        )
         return self.__info["operations"][-1].dt
 
     # }}}
@@ -512,7 +512,7 @@ class Trade:  # {{{
             trade_type=Trade.Type.fromStr(record["type"]),
             asset_id=ID,
             status=Trade.Status.fromStr(record["status"]),
-            trade_id=record["trade_id"],
+            trade_id=Id.fromFloat(record["trade_id"]),
             orders=orders,
             operations=operations,
         )
@@ -551,7 +551,7 @@ class Trade:  # {{{
 
     # }}}
     async def __connectOrderSignals(self, order: Order):  # {{{
-        logger.critical(f"__connectOrderSignals {order}")
+        logger.debug(f"__connectOrderSignals {order}")
         await order.posted.async_connect(self.onOrderPosted)
         await order.executed.async_connect(self.onOrderExecuted)
 
@@ -617,6 +617,13 @@ class TradeList:  # {{{
     # }}}
     def clear(self) -> None:  # {{{
         self._trades.clear()
+
+    # }}}
+    def find(self, trade_id: Id) -> Trade:  # {{{
+        for trade in self._trades:
+            if trade.trade_id == trade_id:
+                return trade
+        return None
 
     # }}}
     def selectLong(self):  # {{{
