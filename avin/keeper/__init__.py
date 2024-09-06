@@ -6,8 +6,6 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-from avin.trader._trader import Trader
-from avin.trader.account import Account
-from avin.trader.tinkoff import Tinkoff
+from avin.keeper._keeper import Keeper
 
-__all__ = ("Trader", "Account", "Tinkoff")
+__all__ = ("Keeper",)

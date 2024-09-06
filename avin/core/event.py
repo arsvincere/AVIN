@@ -83,3 +83,9 @@ class Event:  # {{{
 
 
 # }}}
+
+
+class BarEvent(Event): ...
+
+
+class TransactionEvent(Event): ...

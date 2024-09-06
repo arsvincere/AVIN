@@ -27,15 +27,44 @@ from avin.keeper import Keeper
 # ну смотри ордер filled - этот сигнал же может и стратегия ловить и трейд
 # трейд не может запросить свою операцию, он тупой должен быть.
 # а вот стратегия вполне...
-# может вообще все это гавно от трейда отвязать с подключением ордеров и операций
-# может пусть этим базовый класс стратегии занимается?
+# может вообще все это гавно от трейда отвязать с подключением ордеров и
+# операций, может пусть этим базовый класс стратегии занимается?
 # если так получится было бы хорошо.
 # Нет, не получится. Ордер привязан к трейду. Если ордер привязать
 # к стратегии то придется разбираться к какому трейду это добро приехало.
 
 
 class Transaction:
-    def __init__(self, dt, price, quantity, id): ...
+    def __init__(
+        self,
+        dt: datetime,
+        price: float,
+        quantity: int,
+        broker_id: str,
+        order_id: str,
+    ):
+        self.dt = dt
+        self.quantity = quantity
+        self.price = price
+        self.broker_id = broker_id
+        self.order_id = order_id
+
+    @classmethod  # save  # {{{
+    async def save(cls, transaction: Transaction) -> None:
+        await Keeper.add(transaction)
+
+    # }}}
+    @classmethod  # load  # {{{
+    async def load(cls, order_id: str) -> list[Transaction]:
+        transactions = await Keeper.get(cls, order_id=order_id)
+        return transactions
+
+    # }}}
+    @classmethod  # delete  # {{{
+    async def delete(cls, transaction: Transaction) -> None:
+        await Keeper.delete(transaction)
+
+    # }}}
 
 
 class Operation:  # {{{

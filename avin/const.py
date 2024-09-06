@@ -10,24 +10,6 @@ import enum
 import os
 from datetime import UTC, time, timedelta
 
-__all__ = (
-    "Dir",
-    "Res",
-    "Usr",
-    "WeekDays",
-    "UTC",
-    "ONE_SECOND",
-    "ONE_MINUTE",
-    "FIVE_MINUTE",
-    "TEN_MINUTE",
-    "ONE_HOUR",
-    "ONE_DAY",
-    "ONE_WEEK",
-    "ONE_MONTH",
-    "DAY_BEGIN",
-    "DAY_END",
-)
-
 
 class Dir:  # {{{
     """Program directories"""
@@ -45,7 +27,6 @@ class Dir:  # {{{
 
     # Don't edit other dirs
     LIB = os.path.join(ROOT, "avin")
-    SQL = os.path.join(ROOT, "avin", "sql")
     DOС = os.path.join(ROOT, "doc")
     LANG = os.path.join(ROOT, "lang")
     LOG = os.path.join(ROOT, "log")
@@ -157,3 +138,21 @@ ONE_MONTH = timedelta(days=30)
 ONE_YEAR = timedelta(days=365)
 DAY_BEGIN = time(0, 0, tzinfo=UTC)
 DAY_END = time(23, 59, tzinfo=UTC)
+
+__all__ = (
+    "Dir",
+    "Res",
+    "Usr",
+    "WeekDays",
+    "UTC",
+    "ONE_SECOND",
+    "ONE_MINUTE",
+    "FIVE_MINUTE",
+    "TEN_MINUTE",
+    "ONE_HOUR",
+    "ONE_DAY",
+    "ONE_WEEK",
+    "ONE_MONTH",
+    "DAY_BEGIN",
+    "DAY_END",
+)

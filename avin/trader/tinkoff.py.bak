@@ -15,6 +15,7 @@ from datetime import datetime
 
 import tinkoff.invest as ti
 from tinkoff.invest import (
+    CandleInterval,
     Client,
     MoneyValue,
     OrderDirection,
@@ -38,8 +39,8 @@ from tinkoff.invest.utils import (
 from avin.core import Asset, Bar, Event, Operation, Order, TimeFrame
 from avin.data import *
 from avin.logger import logger
+from avin.trader.abstract_broker import Broker
 from avin.trader.account import Account
-from avin.trader.broker import Broker
 from avin.utils import Cmd
 
 
@@ -608,14 +609,14 @@ class Tinkoff(Broker):  # {{{
     @staticmethod  # _CandleIntervalFrom# {{{
     def _CandleIntervalFrom(
         timeframe: TimeFrame,
-    ) -> ti.CandleInterval:
+    ) -> tinkoff.invest.CandleInterval:
         intervals = {
-            "1M": ti.CandleInterval.CANDLE_INTERVAL_1_MIN,
-            "5M": ti.CandleInterval.CANDLE_INTERVAL_5_MIN,
-            "1H": ti.CandleInterval.CANDLE_INTERVAL_HOUR,
-            "D": ti.CandleInterval.CANDLE_INTERVAL_DAY,
-            "W": ti.CandleInterval.CANDLE_INTERVAL_WEEK,
-            "M": ti.CandleInterval.CANDLE_INTERVAL_MONTH,
+            "1M": CandleInterval.CANDLE_INTERVAL_1_MIN,
+            "5M": CandleInterval.CANDLE_INTERVAL_5_MIN,
+            "1H": CandleInterval.CANDLE_INTERVAL_HOUR,
+            "D": CandleInterval.CANDLE_INTERVAL_DAY,
+            "W": CandleInterval.CANDLE_INTERVAL_WEEK,
+            "M": CandleInterval.CANDLE_INTERVAL_MONTH,
         }
         return intervals[str(timeframe)]
 
@@ -709,7 +710,7 @@ class Tinkoff(Broker):  # {{{
     @staticmethod  # _toTimeFrame# {{{
     def _toTimeFrame(tinkoff_interval) -> TimeFrame:
         si = SubscriptionInterval
-        ci = ti.CandleInterval
+        ci = CandleInterval
         if isinstance(tinkoff_interval, SubscriptionInterval):
             intervals = {
                 si.SUBSCRIPTION_INTERVAL_ONE_MINUTE: "1M",
@@ -720,7 +721,7 @@ class Tinkoff(Broker):  # {{{
                 si.SUBSCRIPTION_INTERVAL_MONTH: "M",
             }
             string = intervals[tinkoff_interval]
-        elif isinstance(tinkoff_interval, ti.CandleInterval):
+        elif isinstance(tinkoff_interval, CandleInterval):
             intervals = {
                 ci.CANDLE_INTERVAL_1_MIN: "1M",
                 ci.CANDLE_INTERVAL_5_MIN: "5M",

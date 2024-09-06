@@ -39,31 +39,13 @@ class Keeper:
     DATABASE = Usr.PG_DATABASE
     HOST = Usr.PG_HOST
 
-    _DATA_SCHEME = Cmd.path(Dir.SQL, "data_scheme.sql")
-    _ENUMS = Cmd.path(Dir.SQL, "enums.sql")
-    _FUNCTIONS = Cmd.path(Dir.SQL, "functions.sql")
-    _PUBLIC_SCHEME = Cmd.path(Dir.SQL, "public_scheme.sql")
-    _TESTER_SCHEME = Cmd.path(Dir.SQL, "tester_scheme.sql")
+    _DATA_SCHEME = Cmd.path(Dir.LIB, "keeper", "data_scheme.sql")
+    _ENUMS = Cmd.path(Dir.LIB, "keeper", "enums.sql")
+    _FUNCTIONS = Cmd.path(Dir.LIB, "keeper", "functions.sql")
+    _PUBLIC_SCHEME = Cmd.path(Dir.LIB, "keeper", "public_scheme.sql")
+    _TESTER_SCHEME = Cmd.path(Dir.LIB, "keeper", "tester_scheme.sql")
     # }}}
 
-    @classmethod  # transaction  # {{{
-    async def transaction(cls, sql_request: str) -> list[Record]:
-        logger.debug(f"{cls.__name__}.transaction()\n{sql_request}")
-
-        try:
-            conn = await asyncpg.connect(
-                user=cls.USER,
-                database=cls.DATABASE,
-                host=cls.HOST,
-            )
-            records = await conn.fetch(sql_request)
-            await conn.close()
-            return records
-        except asyncpg.exceptions.NumericValueOutOfRangeError as err:
-            logger.critical(err)
-            exit(2)
-
-    # }}}
     @classmethod  # createDataBase  # {{{
     async def createDataBase(cls) -> None:
         logger.debug(f"{cls.__name__}.createDataBase()")
@@ -90,6 +72,24 @@ class Keeper:
 
         os.system(f"dropdb {cls.DATABASE}")
         logger.info("Database has been deleted")
+
+    # }}}
+    @classmethod  # transaction  # {{{
+    async def transaction(cls, sql_request: str) -> list[Record]:
+        logger.debug(f"{cls.__name__}.transaction()\n{sql_request}")
+
+        try:
+            conn = await asyncpg.connect(
+                user=cls.USER,
+                database=cls.DATABASE,
+                host=cls.HOST,
+            )
+            records = await conn.fetch(sql_request)
+            await conn.close()
+            return records
+        except asyncpg.exceptions.NumericValueOutOfRangeError as err:
+            logger.critical(err)
+            exit(2)
 
     # }}}
     @classmethod  # info  # {{{
@@ -464,7 +464,7 @@ class Keeper:
         if tlist.count > 0:
             pg_array = "ARRAY["
             for trade in tlist:
-                t_id = f"{trade.trade_id}, "
+                t_id = f"'{trade.trade_id}', "
                 pg_array += t_id
             pg_array = pg_array[0:-2]  # remove ", " after last value
             pg_array += "]"
@@ -501,7 +501,7 @@ class Keeper:
                 trade_id, dt, status, strategy, version, type, figi
                 )
             VALUES (
-                {trade.trade_id},
+                '{trade.trade_id}',
                 '{trade.dt}',
                 '{trade.status.name}',
                 '{trade.strategy}',
@@ -544,7 +544,7 @@ class Keeper:
             meta = f"$${order.meta}$$"
 
         # format trade_id
-        trade_id = order.trade_id if order.trade_id else "NULL"
+        trade_id = f"'{order.trade_id}'" if order.trade_id else "NULL"
 
         # format broker_id
         broker_id = f"'{order.broker_id}'" if order.broker_id else "NULL"
@@ -570,7 +570,7 @@ class Keeper:
                 broker_id
                 )
             VALUES (
-                {order.order_id},
+                '{order.order_id}',
                 '{order.account_name}',
                 '{order.type.name}',
                 '{order.status.name}',
@@ -603,6 +603,8 @@ class Keeper:
         request = f"""
             INSERT INTO "Operation" (
                 operation_id,
+                order_id,
+                trade_id,
                 account,
                 dt,
                 direction,
@@ -612,12 +614,12 @@ class Keeper:
                 price,
                 amount,
                 commission,
-                trade_id,
-                order_id,
                 meta
             )
             VALUES (
-                {operation.operation_id},
+                '{operation.operation_id}',
+                '{operation.order_id}',
+                '{operation.trade_id}',
                 '{operation.account_name}',
                 '{operation.dt}',
                 '{operation.direction.name}',
@@ -627,8 +629,6 @@ class Keeper:
                 {operation.price},
                 {operation.amount},
                 {operation.commission},
-                {operation.trade_id},
-                {operation.order_id},
                 {meta}
             );
         """
@@ -826,12 +826,12 @@ class Keeper:
         if tlist.count > 0:
             pg_array = "ARRAY["
             for trade in tlist:
-                t_id = f"{trade.trade_id}, "
+                t_id = f"'{trade.trade_id}', "
                 pg_array += t_id
             pg_array = pg_array[0:-2]  # remove ", " after last value
             pg_array += "]"
         else:
-            pg_array = "'{}'::float[]"
+            pg_array = "'{}'::text[]"
 
         request = f"""
             UPDATE "TradeList"
@@ -857,7 +857,7 @@ class Keeper:
                 type = '{trade.type.name}',
                 figi = '{trade.asset_id.figi}'
             WHERE
-                trade_id = {trade.trade_id};
+                trade_id = '{trade.trade_id}';
             """
         await cls.transaction(request)
 
@@ -873,7 +873,7 @@ class Keeper:
             meta = f"$${order.meta}$$"
 
         # format trade_id
-        trade_id = order.trade_id if order.trade_id else "NULL"
+        trade_id = f"'{order.trade_id}'" if order.trade_id else "NULL"
 
         # format broker_id
         broker_id = f"'{order.broker_id}'" if order.broker_id else "NULL"
@@ -888,7 +888,7 @@ class Keeper:
                 meta = {meta},
                 broker_id = {broker_id}
             WHERE
-                order_id = {order.order_id};
+                order_id = '{order.order_id}';
             """
         await cls.transaction(request)
 
@@ -899,10 +899,10 @@ class Keeper:
         request = f"""
             UPDATE "Operation"
             SET
-                trade_id = {operation.trade_id},
+                trade_id = '{operation.trade_id}',
                 commission = {operation.commission}
             WHERE
-                operation_id = {operation.operation_id};
+                operation_id = '{operation.operation_id}';
             """
         await cls.transaction(request)
 
@@ -1076,7 +1076,7 @@ class Keeper:
         data_type = kwargs.get("data_type")
 
         # Create figi condition
-        pg_id = f"figi = '{ID.figi}'" if ID else "TRUE"
+        pg_figi = f"figi = '{ID.figi}'" if ID else "TRUE"
 
         # Create figi condition
         pg_data_type = f"type = '{data_type.name}'" if data_type else "TRUE"
@@ -1085,7 +1085,7 @@ class Keeper:
         request = f"""
             SELECT * FROM "Data"
             WHERE
-                {pg_id} AND {pg_data_type};
+                {pg_figi} AND {pg_data_type};
             """
         records = await cls.transaction(request)
         return records
@@ -1142,7 +1142,7 @@ class Keeper:
         data_type = kwargs["data_type"]
 
         # Create figi condition
-        pg_id = f"figi = '{ID.figi}'"
+        pg_figi = f"figi = '{ID.figi}'"
 
         # Create figi condition
         pg_data_type = f"type = '{data_type.name}'"
@@ -1151,7 +1151,7 @@ class Keeper:
         request = f"""
             SELECT * FROM "Data"
             WHERE
-                {pg_id} AND {pg_data_type};
+                {pg_figi} AND {pg_data_type};
             """
         records = await cls.transaction(request)
         assert len(records) == 1
@@ -1402,7 +1402,7 @@ class Keeper:
 
         # Create condition
         if trade_id:
-            pg_condition = f"trade_id = {trade_id}"
+            pg_condition = f"trade_id = '{trade_id}'"
         else:
             pg_condition = condition(strategy, statuses, begin, end)
 
@@ -1435,9 +1435,9 @@ class Keeper:
         operation_id = kwargs.get("operation_id")
 
         if trade_id:
-            pg_condition = f"trade_id = {trade_id}"
+            pg_condition = f"trade_id = '{trade_id}'"
         elif operation_id:
-            pg_condition = f"operation_id = {operation_id}"
+            pg_condition = f"operation_id = '{operation_id}'"
         else:
             pg_condition = "TRUE"  # return all operations
 
@@ -1481,9 +1481,9 @@ class Keeper:
 
         # create condition
         if trade_id:
-            pg_condition = f"trade_id = {trade_id}"
+            pg_condition = f"trade_id = '{trade_id}'"
         elif order_id:
-            pg_condition = f"order_id = {order_id}"
+            pg_condition = f"order_id = '{order_id}'"
         else:
             pg_condition = "TRUE"  # return all orders
 

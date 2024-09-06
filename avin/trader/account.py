@@ -18,10 +18,6 @@ from avin.logger import logger
 from avin.utils import now
 
 
-class Broker:
-    name = "Tinkoff"
-
-
 class Account:  # {{{
     def __init__(self, name: str, broker: str, meta: object):  # {{{
         logger.debug("Account.__init__()")

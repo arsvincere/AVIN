@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS "Trader" ( -- {{{
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "Trade" ( -- {{{
-    trade_id    float PRIMARY KEY,
+    trade_id    text PRIMARY KEY,
     dt          TIMESTAMP WITH TIME ZONE,
     status      "Trade.Status",
     strategy    text,
@@ -76,11 +76,11 @@ CREATE TABLE IF NOT EXISTS "Trade" ( -- {{{
 -- }}}
 CREATE TABLE IF NOT EXISTS "TradeList" ( -- {{{
     name        text PRIMARY KEY,
-    trades      float ARRAY
+    trades      text ARRAY
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "Order" ( -- {{{
-    order_id        float PRIMARY KEY,
+    order_id        text PRIMARY KEY,
     account         text REFERENCES "Account"(name),
     type            "Order.Type",
     status          "Order.Status",
@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS "Order" ( -- {{{
     stop_price      float,
     exec_price      float,
 
-    trade_id        float REFERENCES "Trade"(trade_id),
+    trade_id        text REFERENCES "Trade"(trade_id),
     exec_lots       integer,
     exec_quantity   integer,
     meta            text,
@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS "Order" ( -- {{{
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "Operation" ( -- {{{
-    operation_id    float PRIMARY KEY,
+    operation_id    text PRIMARY KEY,
     account         text REFERENCES "Account"(name),
     dt              TIMESTAMP WITH TIME ZONE,
     direction       "Operation.Direction",
@@ -110,8 +110,8 @@ CREATE TABLE IF NOT EXISTS "Operation" ( -- {{{
     price           float,
     amount          float,
     commission      float,
-    trade_id        float REFERENCES "Trade"(trade_id),
-    order_id        float REFERENCES "Order"(order_id),
+    trade_id        text REFERENCES "Trade"(trade_id),
+    order_id        text REFERENCES "Order"(order_id),
     meta            text
     );
 -- }}}

@@ -1,0 +1,99 @@
+#!/usr/bin/env  python3
+# ============================================================================
+# URL:          http://arsvincere.com
+# AUTHOR:       Alex Avin
+# E-MAIL:       mr.alexavin@gmail.com
+# LICENSE:      GNU GPLv3
+# ============================================================================
+
+from __future__ import annotations
+
+import abc
+
+from avin.core import BarEvent, TransactionEvent
+from avin.utils import AsyncSignal
+
+
+class Broker(metaclass=abc.ABCMeta):  # {{{
+    name: str = ""
+    new_bar = AsyncSignal(BarEvent)
+    new_transaction = AsyncSignal(TransactionEvent)
+    # вот тут потом аккаунт уже запрашивает ордер стэйт и
+    # обновляет его статус, количество выполненных, или
+    # если он там полностью уже выполнен, получает операцию
+    # и отправляет сигнал order.executed.async_emit(order, operation)
+
+    # list[OrderStage]: price, quantity, id, dt
+
+    @abc.abstractmethod
+    def __init__(self): ...
+    @abc.abstractmethod
+    def isConnect(self) -> bool: ...
+    @abc.abstractmethod
+    async def connect(self): ...
+    @abc.abstractmethod
+    async def disconnect(self): ...
+    @abc.abstractmethod
+    async def isMarketOpen(self) -> bool: ...
+
+    @abc.abstractmethod
+    async def getAccount(self, account_name: str) -> Account: ...
+    @abc.abstractmethod
+    async def getAllAccounts(self) -> list[Account]: ...
+    @abc.abstractmethod
+    async def getMoney(self, account: Account) -> float: ...
+    @abc.abstractmethod
+    async def getLimitOrders(self, account: Account) -> list[Order]: ...
+    @abc.abstractmethod
+    async def getStopOrders(self, account: Account) -> list[Order]: ...
+    @abc.abstractmethod
+    async def getOperations(self, account: Account) -> list[Operation]: ...
+    @abc.abstractmethod
+    async def getPositions(self, account: Account) -> list[Postition]: ...
+    @abc.abstractmethod
+    async def getDetailedPortfolio(self, account: Account) -> Portfolio: ...
+    @abc.abstractmethod
+    async def getWithdrawLimits(self, account: Account): ...
+    @abc.abstractmethod
+    async def getOrderOperation(self, order: Order) -> Order.Status: ...
+    @abc.abstractmethod
+    async def getHistoricalBars(
+        self,
+        asset: Asset,
+        timeframe: TimeFrame,
+        begin: datetime,
+        end: datetime,
+    ) -> list[Bar]: ...
+    @abc.abstractmethod
+    async def getLastPrice(self, asset: Asset) -> Order.Status: ...
+
+    @abc.abstractmethod
+    async def syncOrder(self, order: Order) -> Order: ...
+    @abc.abstractmethod
+    async def postMarketOrder(self, order: Order) -> Order: ...
+    @abc.abstractmethod
+    async def postLimitOrder(self, order: Order) -> Order: ...
+    @abc.abstractmethod
+    async def postStopOrder(self, order: Order) -> Order: ...
+    @abc.abstractmethod
+    async def postStopLoss(self, order: Order) -> Order: ...
+    @abc.abstractmethod
+    async def postTakeProfit(self, order: Order) -> Order: ...
+    @abc.abstractmethod
+    async def cancelLimitOrder(self, order: Order) -> Order: ...
+    @abc.abstractmethod
+    async def cancelStopOrder(self, order: Order) -> Order: ...
+
+    @abc.abstractmethod
+    async def createBarStream(self, account: Account) -> bool: ...
+    @abc.abstractmethod
+    async def createTransactionStream(self, account: Account) -> bool: ...
+    @abc.abstractmethod
+    async def createOperationStream(self, account: Account) -> bool: ...
+    @abc.abstractmethod
+    async def createPositionStream(self, account: Account) -> bool: ...
+    @abc.abstractmethod
+    async def subscribe(self, asset: Asset, data_type: DataType) -> bool: ...
+
+
+# }}}

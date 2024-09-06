@@ -11,16 +11,10 @@ from __future__ import annotations
 import enum
 import time as timer
 
-# TODO: Изменить на два поля?
-# - type - enum типов (trade, operation, alist, tlist........)
-# - str - time().time() но преобразованное в строку.
-# - в таблице может хранится как    1-484843.4545
-#   а в рантайме уже как два поля
-
 
 class Id:  # {{{
     # {{{-- doc
-    """Id - Identifier for trades, orders, operations, positions.
+    """Id - Identifier for trades, orders, operations.
 
     Note
     ----
@@ -47,11 +41,10 @@ class Id:  # {{{
         TRADE = 1
         ORDER = 2
         OPERATION = 3
-        POSITION = 4
 
     # }}}
-    def __init__(self, timestamp: float):  # {{{
-        self.__val = timestamp
+    def __init__(self, id_value: str):  # {{{
+        self.__val = id_value
 
     # }}}
     def __str__(self):  # {{{
@@ -63,7 +56,7 @@ class Id:  # {{{
 
     # }}}
     @classmethod  # newId# {{{
-    def newId(cls, obj: Trade | Order | Operation | Position) -> Id:
+    def newId(cls, obj: Trade | Order | Operation) -> Id:
         """Generate new global identifier
 
         Parameters
@@ -78,12 +71,13 @@ class Id:  # {{{
 
         """
 
-        ID = Id(timer.time())
+        val = str(timer.time())
+        ID = Id(val)
         return ID
 
     # }}}
-    @classmethod  # fromFloat# {{{
-    def fromFloat(cls, id_value) -> Id:
+    @classmethod  # fromStr# {{{
+    def fromFloat(cls, id_value: str) -> Id:
         ID = Id(id_value)
         return ID
 
