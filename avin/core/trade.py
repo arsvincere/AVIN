@@ -264,8 +264,7 @@ class Trade:  # {{{
     async def attachOperation(self, operation: Operation):  # {{{
         # TODO:  self.__info["operations"] -> self.__operations
 
-        assert operation.trade_id == self.trade_id
-        # await operation.setParentTrade(self) # это брокеру уже поставил из ордера
+        await operation.setParentTrade(self)
         self.__info["operations"].append(operation)
 
         # check lots count & update status

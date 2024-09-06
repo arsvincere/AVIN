@@ -36,7 +36,7 @@ acc = Account("_pytest", "Tinkoff", None)
 strategy = Strategy("pytest", "v0")
 
 dt = datetime(2024, 8, 15, 15, 37, tzinfo=UTC)
-trade_id = 111
+trade_id = Id(111)
 trade = Trade(
     dt=dt,
     strategy=strategy.name,
@@ -46,7 +46,7 @@ trade = Trade(
     trade_id=trade_id,
 )
 
-order_id = 222
+order_id = Id(222)
 order = Order.Limit(
     account_name="_unittest",
     direction=Order.Direction.BUY,
@@ -58,7 +58,7 @@ order = Order.Limit(
     trade_id=trade_id,
 )
 
-operation_id = 333
+operation_id = Id(333)
 operation = Operation(
     account_name="_unittest",
     dt=now(),
@@ -253,8 +253,10 @@ async def test_strategy(event_loop):
 @pytest.mark.asyncio  # test_trade  # {{{
 async def test_trade(event_loop):
     await Keeper.add(trade)
-    await trade.addOrder(order)
-    await trade.addOperation(operation)
+    await trade.attachOrder(order)
+    await trade.attachOperation(operation)
+    await Order.save(order)
+    await Operation.save(operation)
 
     trades = await Keeper.get(
         Trade,
@@ -266,7 +268,8 @@ async def test_trade(event_loop):
         ],
     )
     t = trades[0]
-    assert str(t) == "=> Trade 2024-08-15 18:37 pytest-v0 ORIK long"
+
+    assert str(t) == "2024-08-15 18:37 [INITIAL] pytest-v0 ORIK long"
     assert t.orders[0].order_id == order_id
     assert t.operations[0].operation_id == operation_id
 
