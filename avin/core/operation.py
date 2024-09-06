@@ -37,17 +37,17 @@ from avin.keeper import Keeper
 class Transaction:
     def __init__(
         self,
+        order_id: str,
         dt: datetime,
         price: float,
         quantity: int,
         broker_id: str,
-        order_id: str,
     ):
+        self.order_id = order_id
         self.dt = dt
         self.quantity = quantity
         self.price = price
         self.broker_id = broker_id
-        self.order_id = order_id
 
     @classmethod  # save  # {{{
     async def save(cls, transaction: Transaction) -> None:

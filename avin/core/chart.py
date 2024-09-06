@@ -178,7 +178,7 @@ class Chart:  # {{{
             return None
 
     # }}}
-    @classmethod  # async load# {{{
+    @classmethod  # load# {{{
     async def load(
         cls,
         ID: InstrumentId,

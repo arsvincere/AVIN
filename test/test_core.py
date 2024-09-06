@@ -237,8 +237,10 @@ async def test_Share(event_loop):
     asset_type = AssetType.SHARE
     id_list = await Data.find(asset_type, exchange, "SBER")
     assert len(id_list) == 1
+    sber_id = id_list[0]
     sber = Share(id_list[0])
 
+    assert sber_id == sber.ID
     assert sber.exchange == exchange
     assert sber.type == asset_type
     assert sber.ticker == "SBER"
@@ -248,25 +250,25 @@ async def test_Share(event_loop):
     # info
     # assert sber.info is None  # logger - error
     await sber.cacheInfo()
-    assert sber.info
+    assert sber.info is not None
     assert sber.uid == "e6123145-9665-43e0-8413-cd61b8aa9b13"
     assert sber.min_price_step == 0.01
     assert sber.lot == 10
 
     await sber.cacheChart("D")
     assert sber.chart("D").timeframe == TimeFrame("D")
-    # assert sber.chart("1H") is None  # AssertionError
+    # assert sber.chart("1H")  # AssetError
 
     await sber.cacheChart("1H")
     assert sber.chart("1H").timeframe == TimeFrame("1H")
 
     sber.clearCache()
-    # assert sber.chart("1H") is None
-    # assert sber.chart("D") is None
+    # assert sber.chart("1H")  # AssetError
+    # assert sber.chart("D")  # AssetError
 
     chart = await sber.loadChart("1M")
     assert chart.timeframe == TimeFrame("1M")
-    # assert sber.chart("1M") is None  # loading not caching
+    # assert sber.chart("1M")  # AssetError (loading not caching)
 
 
 # }}}
