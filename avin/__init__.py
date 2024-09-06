@@ -10,5 +10,4 @@ from avin.const import *
 from avin.core import *
 from avin.data import *
 from avin.keeper import *
-from avin.logger import *
 from avin.utils import *

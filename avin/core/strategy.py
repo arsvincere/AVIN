@@ -17,8 +17,7 @@ from avin.const import Usr
 from avin.core.asset import AssetList
 from avin.core.order import Order
 from avin.core.trade import Trade, TradeList
-from avin.logger import logger
-from avin.utils import Cmd, Signal
+from avin.utils import Cmd, Signal, logger
 
 # XXX: а что если код юзерских стратегий тоже хранить в базе данных...
 # удобно же... или нихуя не удобно? Зато его можно будет не импортить,

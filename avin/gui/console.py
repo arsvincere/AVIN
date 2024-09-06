@@ -6,15 +6,16 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-""" Doc """
+"""Doc"""
 
-import sys
 import logging
-from datetime import datetime, date, time
-from PyQt6 import QtCore, QtGui, QtWidgets
-from PyQt6.QtCore import Qt
+import sys
+
+from PyQt6 import QtCore, QtWidgets
+
 # from avin.gui.custom import Palette, Font
-from avin.logger import logger
+from avin.utils import logger
+
 
 class Handler(logging.StreamHandler, QtCore.QObject):
     message = QtCore.pyqtSignal(str)
@@ -58,9 +59,8 @@ class ConsoleWidget(QtWidgets.QTabWidget):
         logger.debug(f"{self.__class__.__name__}.__createTester()")
         self.handler = Handler(self)
         formatter = logging.Formatter(
-            "%(asctime)s [%(levelname)s] %(message)s",
-            datefmt="%H:%M:%S"
-            )
+            "%(asctime)s [%(levelname)s] %(message)s", datefmt="%H:%M:%S"
+        )
         self.handler.setFormatter(formatter)
         self.handler.setLevel(logging.INFO)
         logger.addHandler(self.handler)
@@ -84,7 +84,6 @@ class ConsoleWidget(QtWidgets.QTabWidget):
         self.__scrollDown()
 
 
-
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     # user_palette = Palette()
@@ -95,4 +94,3 @@ if __name__ == "__main__":
     # w.showMaximized()
     w.show()
     sys.exit(app.exec())
-

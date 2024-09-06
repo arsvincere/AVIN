@@ -8,11 +8,7 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-import sys
-
-from avin.const import *
-from avin.data import *
-from avin.logger import logger
+from avin import *
 
 
 def main():

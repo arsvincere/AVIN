@@ -20,8 +20,7 @@ from avin.data.data_type import DataType
 from avin.data.exchange import Exchange
 from avin.data.instrument_id import InstrumentId
 from avin.keeper import Keeper
-from avin.logger import logger
-from avin.utils import Cmd, now
+from avin.utils import Cmd, logger, now
 
 
 class Data:  # {{{

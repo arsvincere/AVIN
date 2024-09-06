@@ -10,9 +10,9 @@ import asyncio
 
 from avin.core import AssetList, Event, Strategy, TimeFrame
 from avin.data import Data
-from avin.logger import logger
 from avin.trader.scout import Scout
 from avin.trader.tinkoff import Tinkoff
+from avin.utils import logger
 
 # FIX: обновление данных сейчас идет с моэкс а там задержка...
 # после обновления данных в БД и загрузки графиков - надо еще

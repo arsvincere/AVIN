@@ -51,7 +51,7 @@ class Id:  # {{{
         return f"{self.__val}"
 
     # }}}
-    def __eq__(self, other: GId):  # {{{
+    def __eq__(self, other: Id):  # {{{
         return self.__val == other.__val
 
     # }}}

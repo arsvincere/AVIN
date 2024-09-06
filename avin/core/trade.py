@@ -17,8 +17,7 @@ from avin.core.operation import Operation
 from avin.core.order import Order
 from avin.data import AssetType, InstrumentId
 from avin.keeper import Keeper
-from avin.logger import logger
-from avin.utils import AsyncSignal
+from avin.utils import AsyncSignal, logger
 
 # FIX: при удалении трейда, его ID остается в трейд листе..
 # с одной стороны - трейды вообще никогда удаляться то не будут...

@@ -36,7 +36,7 @@ acc = Account("_pytest", "Tinkoff", None)
 strategy = Strategy("pytest", "v0")
 
 dt = datetime(2024, 8, 15, 15, 37, tzinfo=UTC)
-trade_id = Id(111)
+trade_id = Id("111")
 trade = Trade(
     dt=dt,
     strategy=strategy.name,
@@ -46,7 +46,7 @@ trade = Trade(
     trade_id=trade_id,
 )
 
-order_id = Id(222)
+order_id = Id("222")
 order = Order.Limit(
     account_name="_unittest",
     direction=Order.Direction.BUY,
@@ -58,7 +58,7 @@ order = Order.Limit(
     trade_id=trade_id,
 )
 
-operation_id = Id(333)
+operation_id = Id("333")
 operation = Operation(
     account_name="_unittest",
     dt=now(),

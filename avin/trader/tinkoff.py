@@ -37,10 +37,9 @@ from tinkoff.invest.utils import (
 
 from avin.core import Asset, Bar, Event, Operation, Order, TimeFrame
 from avin.data import *
-from avin.logger import logger
 from avin.trader.account import Account
 from avin.trader.broker import Broker
-from avin.utils import Cmd
+from avin.utils import Cmd, logger
 
 
 class Tinkoff(Broker):  # {{{

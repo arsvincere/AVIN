@@ -11,7 +11,7 @@ from __future__ import annotations
 from avin.data.asset_type import AssetType
 from avin.data.exchange import Exchange
 from avin.keeper import Keeper
-from avin.logger import logger
+from avin.utils import logger
 
 
 class InstrumentId:  # {{{

@@ -17,8 +17,7 @@ from avin.core.event import Event
 from avin.core.timeframe import TimeFrame
 from avin.data import AssetType, DataSource, Exchange, InstrumentId
 from avin.keeper import Keeper
-from avin.logger import logger
-from avin.utils import AsyncSignal, now
+from avin.utils import AsyncSignal, logger, now
 
 
 class Asset(metaclass=abc.ABCMeta):  # {{{

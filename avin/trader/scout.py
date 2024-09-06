@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 from avin.core import TimeFrame
-from avin.logger import logger
+from avin.utils import logger
 
 
 class Scout:  # {{{

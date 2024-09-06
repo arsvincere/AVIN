@@ -16,8 +16,7 @@ from avin.core.bar import Bar
 from avin.core.timeframe import TimeFrame
 from avin.data import InstrumentId
 from avin.keeper import Keeper
-from avin.logger import logger
-from avin.utils import Signal, findLeft
+from avin.utils import Signal, findLeft, logger
 
 
 class Chart:  # {{{

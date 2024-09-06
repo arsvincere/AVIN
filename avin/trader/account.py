@@ -14,8 +14,7 @@ import asyncio
 from datetime import UTC, date, datetime, time
 
 from avin.core import Operation, Order
-from avin.logger import logger
-from avin.utils import now
+from avin.utils import logger, now
 
 
 class Account:  # {{{

@@ -7,6 +7,7 @@
 # ============================================================================
 
 from avin.utils.cmd import Cmd
+from avin.utils.logger import logger
 from avin.utils.other import (
     askUser,
     binarySearch,
@@ -21,6 +22,7 @@ from avin.utils.signal import AsyncSignal, Signal
 
 __all__ = (
     "Cmd",
+    "logger",
     "askUser",
     "binarySearch",
     "codeCounter",

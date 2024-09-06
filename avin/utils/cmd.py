@@ -15,7 +15,7 @@ import subprocess
 import zipfile
 from collections import deque
 
-from avin.logger import logger
+from avin.utils.logger import logger
 
 
 class Cmd:  # {{{
