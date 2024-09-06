@@ -10,7 +10,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from avin.const import DAY_BEGIN, DAY_END, Res, Usr, WeekDays
+from avin.config import Usr
+from avin.const import DAY_BEGIN, DAY_END, Res, WeekDays
 from avin.data._bar import _Bar, _BarsData
 from avin.data._moex import _MoexData
 from avin.data._tinkoff import _TinkoffData

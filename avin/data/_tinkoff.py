@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import tinkoff.invest as ti
 
-from avin.const import Res, Usr
+from avin.config import Usr
+from avin.const import Res
 from avin.data._cache import _InstrumentInfoCache
 from avin.data.asset_type import AssetType
 from avin.data.data_source import DataSource, _AbstractSource

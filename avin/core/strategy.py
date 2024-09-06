@@ -13,7 +13,7 @@ from __future__ import annotations
 import abc
 import importlib
 
-from avin.const import Usr
+from avin.config import Usr
 from avin.core.asset import AssetList
 from avin.core.order import Order
 from avin.core.trade import Trade, TradeList

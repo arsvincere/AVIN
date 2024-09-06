@@ -10,7 +10,8 @@ import logging
 import os
 from datetime import date
 
-from avin.const import Dir, Usr
+from avin.config import Usr
+from avin.const import Dir
 
 __all__ = ("logger",)
 

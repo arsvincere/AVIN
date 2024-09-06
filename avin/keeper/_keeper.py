@@ -25,7 +25,8 @@ from typing import Any
 
 import asyncpg
 
-from avin.const import Dir, Usr
+from avin.config import Usr
+from avin.const import Dir
 from avin.utils import Cmd, askUser, logger
 
 __all__ = ("Keeper",)

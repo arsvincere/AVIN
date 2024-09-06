@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import enum
 
-from avin.const import ONE_DAY, Usr
+from avin.config import Usr
+from avin.const import ONE_DAY
 from avin.core.chart import Chart
 from avin.core.id import Id
 from avin.core.operation import Operation

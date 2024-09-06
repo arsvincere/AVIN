@@ -11,7 +11,7 @@ from __future__ import annotations
 import enum
 from datetime import datetime
 
-from avin.const import Usr
+from avin.config import Usr
 from avin.core.id import Id
 from avin.data import InstrumentId
 from avin.keeper import Keeper
