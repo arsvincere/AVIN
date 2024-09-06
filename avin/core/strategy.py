@@ -140,11 +140,13 @@ class Strategy(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
     async def onTradeOpened(self, trade: Trade):  # {{{
-        logger.info(f"Trade opened: {trade}")
+        logger.info(f"Trade opened: '{trade}'")
+        logger.info(f"Trade open dt: '{trade.openDatetime()}'")
 
     # }}}
     async def onTradeClosed(self, trade: Trade):  # {{{
-        logger.info(f"Trade closed: {trade.result()}")
+        logger.info(f"Trade closed: '{trade}'")
+        logger.info(f"Trade closed result: {trade.result()}")
 
     # }}}
 
@@ -231,8 +233,6 @@ class Strategy(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
     async def closeTrade(self, trade: Trade):  # {{{
-        logger.info(f"Close trade: {trade}")
-
         await trade.setStatus(Trade.Status.CLOSING)
 
         # create order

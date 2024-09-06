@@ -34,6 +34,10 @@ from avin.keeper import Keeper
 # к стратегии то придется разбираться к какому трейду это добро приехало.
 
 
+class Transaction:
+    def __init__(self, dt, price, quantity, id): ...
+
+
 class Operation:  # {{{
     class Direction(enum.Enum):  # {{{
         UNDEFINE = 0

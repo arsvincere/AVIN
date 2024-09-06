@@ -146,7 +146,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             # Signals
             self.posted = AsyncSignal(Order._BaseOrder)
             self.filled = AsyncSignal(Order._BaseOrder)
-            self.reqected = AsyncSignal(Order._BaseOrder)
+            self.rejected = AsyncSignal(Order._BaseOrder)
             self.canceled = AsyncSignal(Order._BaseOrder)
             self.executed = AsyncSignal(Order._BaseOrder, Operation)
             # XXX: а нахуй вообще нужна эта проверка типов у сигналов?

@@ -233,11 +233,10 @@ class Trade:  # {{{
     # @async_slot  #onOrderExecuted # {{{
     async def onOrderExecuted(self, order, operation):
         assert order.trade_id == self.trade_id
+        await self.attachOperation(operation)
 
         if self.status.value < Trade.Status.OPENED.value:
             await self.setStatus(Trade.Status.OPENED)
-
-        await self.attachOperation(operation)
 
     # }}}
     async def setStatus(self, status: Trade.Status):  # {{{

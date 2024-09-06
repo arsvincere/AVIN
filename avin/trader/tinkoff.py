@@ -240,7 +240,7 @@ class Tinkoff(Broker):  # {{{
             account_id=acc.id
         )
         logger.debug(f"Tinkoff.getWithdrawLimits: Response='{response}'")
-        return limits
+        return response
 
     # }}}
     def getOrderState(self, acc, order):  # {{{

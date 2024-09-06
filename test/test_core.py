@@ -700,6 +700,9 @@ async def test_TradeList():
 
 # }}}
 
+# TODO: test Event
+# TODO: test Id
+
 
 @pytest.mark.asyncio  # test_clear_all_test_vars  # {{{
 async def test_clear_all_test_vars():
