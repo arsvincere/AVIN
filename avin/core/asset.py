@@ -10,6 +10,9 @@ from __future__ import annotations
 
 import abc
 from datetime import UTC, date, datetime
+from typing import Any
+
+import pandas as pd
 
 from avin.const import DAY_BEGIN
 from avin.core.chart import Chart
@@ -22,10 +25,10 @@ from avin.utils import AsyncSignal, logger, now
 
 class Asset(metaclass=abc.ABCMeta):  # {{{
     @abc.abstractmethod  # __init__# {{{
-    def __init__(self, ID: Id):
+    def __init__(self, ID: InstrumentId):
         self.__ID = ID
-        self.__charts = dict()
-        self.__info = None
+        self.__charts: dict[TimeFrame, Chart] = dict()
+        self.__info: dict[str, Any] | None = None
 
         self.new1mBar = AsyncSignal(Asset, Chart)
         self.new5mBar = AsyncSignal(Asset, Chart)
@@ -98,8 +101,8 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
     async def cacheChart(  # {{{
         self,
         timeframe: TimeFrame | str,
-        begin: date | str = None,
-        end: date | str = None,
+        begin: datetime | str | None = None,
+        end: datetime | str | None = None,
     ) -> None:
         logger.debug(f"{self.__class__.__name__}.cacheChart()")
 
@@ -113,9 +116,9 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
     # }}}
     async def loadChart(  # {{{
         self,
-        timeframe: Timeframe | str,
-        begin: datetime | str = None,
-        end: datetime | str = None,
+        timeframe: TimeFrame | str,
+        begin: datetime | str | None = None,
+        end: datetime | str | None = None,
     ) -> Chart:
         logger.debug(f"{self.__class__.__name__}.loadChart()")
 
@@ -143,8 +146,7 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         chart = self.chart(timeframe)
 
         # add new bar in this chart
-        new_bar = new_bar_event.bar
-        chart.update(new_bar)
+        chart.update(new_bar_event.bar)
 
         # emiting special signal for the bar timeframe
         signals = {
@@ -168,7 +170,7 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         timeframe: TimeFrame | str,
         begin: datetime,
         end: datetime,
-    ) -> DataFrame:
+    ) -> pd.DataFrame:
         # TODO: return dataframe
         assert False
 
@@ -178,7 +180,7 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
     @classmethod  # byId #{{{
-    def byId(cls, ID: Id) -> Asset:
+    def byId(cls, ID: InstrumentId) -> Asset:
         logger.debug(f"{cls.__name__}.byId()")
 
         asset = cls.__getCertainTypeAsset(ID)
@@ -221,7 +223,9 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
     @classmethod  # __checkArgs# {{{
-    def __checkArgs(cls, timeframe, begin, end):
+    def __checkArgs(
+        cls, timeframe, begin, end
+    ) -> tuple[TimeFrame, datetime, datetime]:
         # check timeframe
         if isinstance(timeframe, TimeFrame):
             pass
@@ -267,7 +271,7 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
     @classmethod  # __getCertainTypeAsset# {{{
-    def __getCertainTypeAsset(cls, ID: Id):
+    def __getCertainTypeAsset(cls, ID: InstrumentId):
         if ID.type == AssetType.INDEX:
             index = Index(ID)
             return index
@@ -283,7 +287,7 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
 
 # }}}
 class Index(Asset):  # {{{
-    def __init__(self, ID: Id):  # {{{
+    def __init__(self, ID: InstrumentId):  # {{{
         assert ID.type == AssetType.INDEX
         super().__init__(ID)
 
@@ -297,7 +301,7 @@ class Share(Asset):  # {{{
 
     # }}}
 
-    def __init__(self, ID: Id):  # {{{
+    def __init__(self, ID: InstrumentId):  # {{{
         assert ID.type == AssetType.SHARE
         super().__init__(ID)
         self.__book = None
@@ -328,7 +332,7 @@ class AssetList:  # {{{
     def __init__(self, name: str = "unnamed"):  # {{{
         logger.debug(f"AssetList.__init__({name})")
         self.__name = name
-        self.__assets = list()
+        self.__assets: list[Asset] = list()
 
     # }}}
     def __getitem__(self, index: int) -> Asset:  # {{{
@@ -384,20 +388,22 @@ class AssetList:  # {{{
         logger.debug(f"AssetList.remove({asset.ticker})")
         try:
             self.__assets.remove(asset)
-            return True
+            return
         except ValueError:
             logger.exception(
                 f"AssetList.remove(asset): Fail: "
                 f"инструмент '{asset.ticker}' нет в списке '{self.name}'",
             )
-            return False
+            return
 
     # }}}
     def clear(self) -> None:  # {{{
         self.__assets.clear()
 
     # }}}
-    def find(self, ID: Id = None, figi: str = None) -> Asset:  # {{{
+    def find(
+        self, ID: InstrumentId | None = None, figi: str | None = None
+    ) -> Asset | None:  # {{{
         if ID:
             return self.__findById(ID)
         if figi:
@@ -407,7 +413,7 @@ class AssetList:  # {{{
         assert False, "Bad arguments"
 
     # }}}
-    def __findById(self, ID: Id) -> Asset | None:
+    def __findById(self, ID: InstrumentId) -> Asset | None:
         for i in self.__assets:
             if i.ID == ID:
                 return i

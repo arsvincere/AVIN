@@ -26,6 +26,8 @@ from avin.utils import AsyncSignal
 # а блять... это сделать по другому.
 # и у ордера и у операции должен быть метод - типо setParentTrade...
 
+# TODO: а может сюда транзакции подключить.
+
 
 class Order(metaclass=abc.ABCMeta):  # {{{
     """doc# {{{
@@ -408,8 +410,8 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             quantity=record["quantity"],
             price=record["price"],
             status=Order.Status.fromStr(record["status"]),
-            order_id=Id.fromFloat(record["order_id"]),
-            trade_id=Id.fromFloat(record["trade_id"]),
+            order_id=Id.fromStr(record["order_id"]),
+            trade_id=Id.fromStr(record["trade_id"]),
             exec_lots=record["exec_lots"],
             exec_quantity=record["exec_quantity"],
             meta=record["meta"],

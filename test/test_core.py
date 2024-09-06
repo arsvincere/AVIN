@@ -13,6 +13,16 @@ import pytest
 from avin import *
 
 
+def test_Id():  # {{{
+    obj = object()
+    id_ = Id.newId(obj)
+    string = str(id_)
+
+    from_str = Id.fromStr(string)
+    assert id_ == from_str
+
+
+# }}}
 def test_Range():  # {{{
     r = Range(5, 10)
 
@@ -483,7 +493,7 @@ async def test_Trade():
     strategy = Strategy("_unittest", "v1")
     trade_type = Trade.Type.LONG
     asset = await Asset.byTicker(AssetType.SHARE, Exchange.MOEX, "SBER")
-    trade_id = 1111
+    trade_id = Id("1111")
     trade = Trade(
         dt=dt,
         strategy=strategy.name,
@@ -506,7 +516,7 @@ async def test_Trade():
     await Trade.save(trade)
 
     # create order
-    order_id = 2222
+    order_id = Id("2222")
     order = Order.Limit(
         account_name="_unittest",
         direction=Order.Direction.BUY,
@@ -523,7 +533,7 @@ async def test_Trade():
     assert trade.status == Trade.Status.POSTED  # side effect - status changed
 
     # create operation
-    operation_id = 3333
+    operation_id = Id("3333")
     operation = Operation(
         account_name="_unittest",
         dt=dt,
@@ -563,7 +573,7 @@ async def test_Trade():
 
     # Add second order and operation
     dt2 = dt + ONE_DAY
-    order_id_2 = 2223
+    order_id_2 = Id("2223")
     order_2 = Order.Limit(
         account_name="_unittest",
         direction=Order.Direction.SELL,
@@ -573,7 +583,7 @@ async def test_Trade():
         price=110,
         order_id=order_id_2,
     )
-    operation_id_2 = 3334
+    operation_id_2 = Id("3334")
     operation_2 = Operation(
         account_name="_unittest",
         dt=dt2,
@@ -701,7 +711,6 @@ async def test_TradeList():
 # }}}
 
 # TODO: test Event
-# TODO: test Id
 
 
 @pytest.mark.asyncio  # test_clear_all_test_vars  # {{{

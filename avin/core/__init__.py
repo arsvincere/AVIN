@@ -9,7 +9,7 @@
 from avin.core.asset import Asset, AssetList, Index, Share
 from avin.core.bar import Bar
 from avin.core.chart import Chart
-from avin.core.event import BarEvent, Event, TransactionEvent
+from avin.core.event import Event, NewBarEvent, TransactionEvent
 from avin.core.id import Id
 from avin.core.operation import Operation
 from avin.core.order import Order
@@ -34,6 +34,6 @@ __all__ = (
     "TradeList",
     "Strategy",
     "Event",
-    "BarEvent",
+    "NewBarEvent",
     "TransactionEvent",
 )

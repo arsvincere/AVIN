@@ -155,9 +155,9 @@ class Operation:  # {{{
             price=record["price"],
             amount=record["amount"],
             commission=record["commission"],
-            operation_id=Id.fromFloat(record["operation_id"]),
-            order_id=Id.fromFloat(record["order_id"]),
-            trade_id=Id.fromFloat(record["trade_id"]),
+            operation_id=Id.fromStr(record["operation_id"]),
+            order_id=Id.fromStr(record["order_id"]),
+            trade_id=Id.fromStr(record["trade_id"]),
             meta=record["meta"],
         )
         return op

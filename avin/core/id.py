@@ -77,7 +77,7 @@ class Id:  # {{{
 
     # }}}
     @classmethod  # fromStr# {{{
-    def fromFloat(cls, id_value: str) -> Id:
+    def fromStr(cls, id_value: str) -> Id:
         ID = Id(id_value)
         return ID
 

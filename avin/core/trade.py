@@ -510,7 +510,7 @@ class Trade:  # {{{
             trade_type=Trade.Type.fromStr(record["type"]),
             asset_id=ID,
             status=Trade.Status.fromStr(record["status"]),
-            trade_id=Id.fromFloat(record["trade_id"]),
+            trade_id=Id.fromStr(record["trade_id"]),
             orders=orders,
             operations=operations,
         )
