@@ -12,7 +12,8 @@ from datetime import datetime
 import pytest
 
 from avin import *
-from avin.data._data import _Bar, _BarsData
+from avin.data._bar import _Bar, _BarsData
+from avin.data._manager import _Manager
 from avin.trader.account import Account
 
 # TEST VARS{{{
@@ -170,7 +171,7 @@ async def test_bars_data(event_loop):
 
     # side effect - added information about availible data
     # table with figi, data_type, source, first_dt, last_dt
-    data_info_list = await Keeper.get(Data, ID=asset_id)
+    data_info_list = await Keeper.get(_Manager, ID=asset_id)
     assert len(data_info_list) == 1
     data_info = data_info_list[0]
     assert data_info["figi"] == asset_id.figi

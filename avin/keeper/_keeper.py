@@ -236,7 +236,7 @@ class Keeper:
         class_name = cls.__getClassName(Class)
         methods = {
             "InstrumentId": cls.__getInstrumentId,
-            "Data": cls.__getData,
+            "_Manager": cls.__getDataInfo,
             "DataSource": cls.__getDataSource,
             "DataType": cls.__getDataType,
             "datetime": cls.__getDateTime,
@@ -1068,9 +1068,9 @@ class Keeper:
         return id_list
 
     # }}}
-    @classmethod  # __getData  # {{{
-    async def __getData(cls, Data, kwargs: dict) -> list[Record]:
-        logger.debug(f"{cls.__name__}.__getData()")
+    @classmethod  # __getDataInfo  # {{{
+    async def __getDataInfo(cls, Data, kwargs: dict) -> list[Record]:
+        logger.debug(f"{cls.__name__}.__getDataInfo()")
 
         ID = kwargs.get("ID")
         data_type = kwargs.get("data_type")
