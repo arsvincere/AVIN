@@ -163,10 +163,9 @@ class Keeper:
             "Trade": cls.__addTrade,
             "TradeList": cls.__addTradeList,
             "Operation": cls.__addOperation,
-            "Order": cls.__addOrder,
-            "Market": cls.__addOrder,
-            "Limit": cls.__addOrder,
-            "Stop": cls.__addOrder,
+            "MarketOrder": cls.__addOrder,
+            "LimitOrder": cls.__addOrder,
+            "StopOrder": cls.__addOrder,
         }
         add_method = methods[class_name]
 
@@ -194,10 +193,9 @@ class Keeper:
             "Trade": cls.__deleteTrade,
             "TradeList": cls.__deleteTradeList,
             "Operation": cls.__deleteOperation,
-            "Order": cls.__deleteOrder,
-            "Market": cls.__deleteOrder,
-            "Limit": cls.__deleteOrder,
-            "Stop": cls.__deleteOrder,
+            "MarketOrder": cls.__deleteOrder,
+            "LimitOrder": cls.__deleteOrder,
+            "StopOrder": cls.__deleteOrder,
             "_Bar": cls.__deleteBarsData,
         }
         delete_method = methods[class_name]
@@ -215,9 +213,9 @@ class Keeper:
         methods = {
             "TradeList": cls.__updateTradeList,
             "Trade": cls.__updateTrade,
-            "Market": cls.__updateOrder,
-            "Limit": cls.__updateOrder,
-            "Stop": cls.__updateOrder,
+            "MarketOrder": cls.__updateOrder,
+            "LimitOrder": cls.__updateOrder,
+            "StopOrder": cls.__updateOrder,
             "Operation": cls.__updateOperation,
             "_InstrumentInfoCache": cls.__updateCache,
         }

@@ -393,7 +393,7 @@ async def test_Order(event_loop):
     sber_id = await InstrumentId.byTicker(
         AssetType.SHARE, Exchange.MOEX, "SBER"
     )
-    o = Order.Market(
+    o = MarketOrder(
         "_unittest", Order.Direction.SELL, sber_id, lots=15, quantity=150
     )
     assert o.account_name == "_unittest"
@@ -401,7 +401,7 @@ async def test_Order(event_loop):
     assert o.asset_id == sber_id
     assert o.lots == 15
     assert o.quantity == 150
-    assert o.order_id is not None
+    assert o.order_id is None
     assert o.trade_id is None
     assert o.exec_lots == 0
     assert o.exec_quantity == 0
@@ -429,7 +429,7 @@ async def test_Order(event_loop):
     await Order.delete(o)
 
     # Limit order
-    o_limit = Order.Limit(
+    o_limit = LimitOrder(
         "_unittest",
         Order.Direction.BUY,
         sber_id,
@@ -443,14 +443,14 @@ async def test_Order(event_loop):
     assert o_limit.lots == 15
     assert o_limit.quantity == 150
     assert o_limit.price == 300
-    assert o_limit.order_id is not None
+    assert o_limit.order_id is None
     assert o_limit.trade_id is None
     assert o_limit.exec_lots == 0
     assert o_limit.exec_quantity == 0
     assert o_limit.status == Order.Status.NEW
 
     # Stop order
-    o_stop = Order.Stop(
+    o_stop = StopOrder(
         "_unittest",
         Order.Direction.BUY,
         sber_id,
@@ -466,7 +466,7 @@ async def test_Order(event_loop):
     assert o_stop.quantity == 150
     assert o_stop.stop_price == 301
     assert o_stop.exec_price == 302
-    assert o_stop.order_id is not None
+    assert o_stop.order_id is None
     assert o_stop.trade_id is None
     assert o_stop.exec_lots == 0
     assert o_stop.exec_quantity == 0
@@ -539,7 +539,7 @@ async def test_Trade():
 
     # create order
     order_id = Id("2222")
-    order = Order.Limit(
+    order = LimitOrder(
         account_name="_unittest",
         direction=Order.Direction.BUY,
         asset_id=asset.ID,
@@ -596,7 +596,7 @@ async def test_Trade():
     # Add second order and operation
     dt2 = dt + ONE_DAY
     order_id_2 = Id("2223")
-    order_2 = Order.Limit(
+    order_2 = LimitOrder(
         account_name="_unittest",
         direction=Order.Direction.SELL,
         asset_id=asset.ID,

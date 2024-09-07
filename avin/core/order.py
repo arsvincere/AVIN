@@ -10,40 +10,19 @@ from __future__ import annotations
 
 import abc
 import enum
+from typing import Optional
 
 from avin.core.id import Id
 from avin.core.operation import Operation
+from avin.core.transaction import Transaction
 from avin.data import InstrumentId
 from avin.keeper import Keeper
 from avin.utils import AsyncSignal
-
-# TODO: в жопу это мракобесие с классом неймспейсом
-# делай его абстракным и наследуй от него все ордера
-# иначе потом в коде невозможно проверять типы
-# не на закрытый же класс _BaseOrder ссылаться
-# в трейде тогда можно будет обойтись одним методом - сет селф ид
-# который сможет клеить свое ИД и ордеру и операции...
-# а блять... это сделать по другому.
-# и у ордера и у операции должен быть метод - типо setParentTrade...
 
 # TODO: а может сюда транзакции подключить.
 
 
 class Order(metaclass=abc.ABCMeta):  # {{{
-    """doc# {{{
-    This class is used only as a namespace
-
-    To get syntax like Order.Market, Order.Limit, Order.StopLoss
-    I think it looks better than MarketOrder, LimitOrder, StopLossOrder...
-
-    In addition, this simplifies imports, it is enough to import one
-    class Order for get access to all order types.
-    """
-
-    # }}}
-    @abc.abstractmethod  # __init__# {{{
-    def __init__(self): ...
-
     # }}}
     class Type(enum.Enum):  # {{{
         UNDEFINE = 0
@@ -113,234 +92,107 @@ class Order(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
 
-    class _BaseOrder(metaclass=abc.ABCMeta):  # {{{
-        @abc.abstractmethod  # __init__# {{{
-        def __init__(
-            self,
-            account_name,
-            direction,
-            asset_id,
-            lots,
-            quantity,
-            status,
-            order_id,
-            trade_id,
-            exec_lots,
-            exec_quantity,
-            meta,
-            broker_id,
-        ):
-            self.direction = direction
-            self.asset_id = asset_id
-            self.lots = lots
-            self.quantity = quantity
+    @abc.abstractmethod  # __init__# {{{
+    def __init__(
+        self,
+        account_name,
+        direction,
+        asset_id,
+        lots,
+        quantity,
+        status,
+        order_id,
+        trade_id,
+        exec_lots,
+        exec_quantity,
+        meta,
+        broker_id,
+        transactions,
+    ):
+        self.direction = direction
+        self.asset_id = asset_id
+        self.lots = lots
+        self.quantity = quantity
 
-            self.account_name = account_name
-            self.status = status if status else Order.Status.NEW
-            self.order_id = order_id if order_id else Id.newId(self)
-            self.trade_id = trade_id
-            self.exec_lots = exec_lots if exec_lots else 0
-            self.exec_quantity = exec_quantity if exec_quantity else 0
+        self.account_name = account_name
+        self.status = status
+        self.order_id = order_id
+        self.trade_id = trade_id
+        self.exec_lots = exec_lots
+        self.exec_quantity = exec_quantity
 
-            self.meta = meta
-            self.broker_id = broker_id
+        self.meta = meta
+        self.broker_id = broker_id
+        self.transactions = transactions if transactions else list()
 
-            # Signals
-            self.posted = AsyncSignal(Order._BaseOrder)
-            self.filled = AsyncSignal(Order._BaseOrder)
-            self.rejected = AsyncSignal(Order._BaseOrder)
-            self.canceled = AsyncSignal(Order._BaseOrder)
-            self.executed = AsyncSignal(Order._BaseOrder, Operation)
-            # XXX: а нахуй вообще нужна эта проверка типов у сигналов?
-            # как то это не по питонячи, даешь свободное число аргументов
-            # и свободные типы?
-
-            self.statusChanged = AsyncSignal(Order._BaseOrder)
-
-        # }}}
-        def __str__(self):  # {{{
-            string = (
-                f"Order.{self.type.name} "
-                f"{self.direction.name} "
-                f"{self.asset_id.ticker} "
-                f"{self.lots} lot"
-            )
-
-            if self.type == Order.Type.MARKET:
-                pass
-            elif self.type == Order.Type.LIMIT:
-                string += f", {self.quantity}x{self.price}"
-            elif self.type == Order.Type.STOP:
-                string += f", stop={self.stop_price}, exec={self.exec_price}"
-
-            return string
-
-        # }}}
-        async def setStatus(self, status: Order.Status):  # {{{
-            self.status = status
-            await Order.update(self)
-
-            # emitting special signal for this status
-            if status == Order.Status.POSTED:
-                await self.posted.async_emit(self)
-            if status == Order.Status.FILLED:
-                await self.filled.async_emit(self)
-            if status == Order.Status.REJECTED:
-                await self.reqected.async_emit(self)
-            if status == Order.Status.CANCELED:
-                await self.canceled.async_emit(self)
-
-            # emiting common signal
-            await self.statusChanged.async_emit(self)
-
-        # }}}
-        async def setParentTrade(self, trade):  # {{{
-            self.trade_id = trade.trade_id
-            await Order.update(self)
-
-        # }}}
-        async def setMeta(self, broker_response: str):  # {{{
-            self.meta = broker_response
-            await Order.update(self)
-
-        # }}}
+        # Signals
+        self.statusChanged = AsyncSignal(Order)
+        self.posted = AsyncSignal(Order)
+        self.partial = AsyncSignal(Order)
+        self.filled = AsyncSignal(Order)
+        self.executed = AsyncSignal(Order, Operation)
+        self.rejected = AsyncSignal(Order)
+        self.canceled = AsyncSignal(Order)
 
     # }}}
-    class Market(_BaseOrder):  # {{{
-        def __init__(
-            self,
-            account_name: str,
-            direction: Order.Direction,
-            asset_id: InstrumentId,
-            lots: int,
-            quantity: int,
-            status: Order.Status = None,
-            order_id: Id = None,
-            trade_id: Id = None,
-            exec_lots: int = None,
-            exec_quantity: int = None,
-            meta=None,
-            broker_id=None,
-        ):
-            super().__init__(
-                account_name,
-                direction,
-                asset_id,
-                lots,
-                quantity,
-                status,
-                order_id,
-                trade_id,
-                exec_lots,
-                exec_quantity,
-                meta=meta,
-                broker_id=broker_id,
-            )
-            self.type = Order.Type.MARKET
+    def __str__(self):  # {{{
+        string = (
+            f"{self.type.name} "
+            f"status={self.status.name} "
+            f"acc={self.account_name} "
+            f"{self.direction.name} "
+            f"{self.asset_id.ticker} "
+            f"{self.exec_lots}/{self.lots} lot"
+        )
+
+        if self.type == Order.Type.MARKET:
+            pass
+        elif self.type == Order.Type.LIMIT:
+            string += f", {self.quantity}x{self.price}"
+        elif self.type == Order.Type.STOP:
+            string += f", stop={self.stop_price}, exec={self.exec_price}"
+
+        return string
 
     # }}}
-    class Limit(_BaseOrder):  # {{{
-        def __init__(
-            self,
-            account_name: str,
-            direction: Order.Direction,
-            asset_id: InstrumentId,
-            lots: int,
-            quantity: int,
-            price: float,
-            status: Order.Status = None,
-            order_id: Id = None,
-            trade_id: Id = None,
-            exec_lots: int = None,
-            exec_quantity: int = None,
-            meta=None,
-            broker_id=None,
-        ):
-            super().__init__(
-                account_name,
-                direction,
-                asset_id,
-                lots,
-                quantity,
-                status,
-                order_id,
-                trade_id,
-                exec_lots,
-                exec_quantity,
-                meta=meta,
-                broker_id=broker_id,
-            )
-            self.type = Order.Type.LIMIT
-            self.price = price
+    async def setStatus(self, status: Order.Status):  # {{{
+        self.status = status
+        await Order.update(self)
+
+        # emitting special signal for this status
+        if status == Order.Status.POSTED:
+            await self.posted.async_emit(self)
+        if status == Order.Status.FILLED:
+            await self.filled.async_emit(self)
+        if status == Order.Status.REJECTED:
+            await self.rejected.async_emit(self)
+        if status == Order.Status.CANCELED:
+            await self.canceled.async_emit(self)
+
+        # emiting common signal
+        await self.statusChanged.async_emit(self)
 
     # }}}
-    class Stop(_BaseOrder):  # {{{
-        def __init__(
-            self,
-            account_name: str,
-            direction: Order.Direction,
-            asset_id: InstrumentId,
-            lots: int,
-            quantity: int,
-            stop_price: float,
-            exec_price: float,
-            status: Order.Status = None,
-            order_id: Id = None,
-            trade_id: Id = None,
-            exec_lots: int = None,
-            exec_quantity: int = None,
-            meta=None,
-            broker_id=None,
-        ):
-            super().__init__(
-                account_name,
-                direction,
-                asset_id,
-                lots,
-                quantity,
-                status,
-                order_id,
-                trade_id,
-                exec_lots,
-                exec_quantity,
-                meta=meta,
-                broker_id=broker_id,
-            )
-            self.type = Order.Type.STOP
-            self.stop_price = stop_price
-            self.exec_price = exec_price
+    async def setParentTrade(self, trade):  # {{{
+        self.trade_id = trade.trade_id
+        await Order.update(self)
 
     # }}}
-    class StopLoss(_BaseOrder):  # {{{
-        def __init__(
-            self,
-            position: Position,  # ??? XXX: подумай еще раз
-            stop_price: float,
-            exec_price: float,
-            trade_id: Id = None,
-            status: Order.Status = None,
-        ):
-            assert False
+    async def setMeta(self, broker_response: str):  # {{{
+        self.meta = broker_response
+        await Order.update(self)
 
     # }}}
-    class TakeProfit(_BaseOrder):  # {{{
-        def __init__(
-            self,
-            position: Position,  # ??? XXX: подумай еще раз
-            stop_price: float,
-            exec_price: float,
-            trade_id: Id = None,
-            status: Order.Status = None,
-        ):
-            assert False
+    async def attachTransaction(self, transaction: Transaction):  # {{{
+        assert transaction.order_id == self.order_id
+        self.transactions.append(transaction)
 
-    # }}}
-    class Wait(_BaseOrder):  # {{{
-        ...
+        # TODO: пересчитать на основе транзакций количество
+        # выполненных лотов? или у брокера это все таки
+        # из ордер стэйта просто получать?
+        assert False
 
-    # }}}
-    class Trailing(_BaseOrder):  # {{{
-        ...
+        await super().update(self)
 
     # }}}
 
@@ -382,7 +234,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     @classmethod  # __marketOrderFromRecord{{{
     async def __marketOrderFromRecord(cls, record):
         ID = await InstrumentId.byFigi(figi=record["figi"])
-        order = Order.Market(
+        order = MarketOrder(
             account_name=record["account"],
             direction=Order.Direction.fromStr(record["direction"]),
             asset_id=ID,
@@ -402,7 +254,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     @classmethod  # __limitOrderFromRecord{{{
     async def __limitOrderFromRecord(cls, record):
         ID = await InstrumentId.byFigi(figi=record["figi"])
-        order = Order.Limit(
+        order = LimitOrder(
             account_name=record["account"],
             direction=Order.Direction.fromStr(record["direction"]),
             asset_id=ID,
@@ -423,7 +275,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     @classmethod  # __stopOrderFromRecord{{{
     async def __stopOrderFromRecord(cls, record):
         ID = await InstrumentId.byFigi(figi=record["figi"])
-        order = Order.Stop(
+        order = StopOrder(
             account_name=record["account"],
             direction=Order.Direction.fromStr(record["direction"]),
             asset_id=ID,
@@ -445,3 +297,157 @@ class Order(metaclass=abc.ABCMeta):  # {{{
 # }}}
 
 # }}}
+
+
+class MarketOrder(Order):  # {{{
+    def __init__(
+        self,
+        account_name: str,
+        direction: Order.Direction,
+        asset_id: InstrumentId,
+        lots: int,
+        quantity: int,
+        status: Order.Status = Order.Status.NEW,
+        order_id: Optional[Id] = None,
+        trade_id: Optional[Id] = None,
+        exec_lots: int = 0,
+        exec_quantity: int = 0,
+        meta: str = "",
+        broker_id: str = "",
+        transactions=Optional[list],
+    ):
+        super().__init__(
+            account_name,
+            direction,
+            asset_id,
+            lots,
+            quantity,
+            status,
+            order_id,
+            trade_id,
+            exec_lots,
+            exec_quantity,
+            meta=meta,
+            broker_id=broker_id,
+            transactions=transactions,
+        )
+        self.type = Order.Type.MARKET
+
+
+# }}}
+class LimitOrder(Order):  # {{{
+    def __init__(
+        self,
+        account_name: str,
+        direction: Order.Direction,
+        asset_id: InstrumentId,
+        lots: int,
+        quantity: int,
+        price: float,
+        status: Order.Status = Order.Status.NEW,
+        order_id: Optional[Id] = None,
+        trade_id: Optional[Id] = None,
+        exec_lots: int = 0,
+        exec_quantity: int = 0,
+        meta: str = "",
+        broker_id: str = "",
+        transactions=Optional[list],
+    ):
+        super().__init__(
+            account_name,
+            direction,
+            asset_id,
+            lots,
+            quantity,
+            status,
+            order_id,
+            trade_id,
+            exec_lots,
+            exec_quantity,
+            meta=meta,
+            broker_id=broker_id,
+            transactions=transactions,
+        )
+        self.type = Order.Type.LIMIT
+        self.price = price
+
+
+# }}}
+class StopOrder(Order):  # {{{
+    def __init__(
+        self,
+        account_name: str,
+        direction: Order.Direction,
+        asset_id: InstrumentId,
+        lots: int,
+        quantity: int,
+        stop_price: float,
+        exec_price: float,
+        status: Order.Status = Order.Status.NEW,
+        order_id: Optional[Id] = None,
+        trade_id: Optional[Id] = None,
+        exec_lots: int = 0,
+        exec_quantity: int = 0,
+        meta: str = "",
+        broker_id: str = "",
+        transactions=Optional[list],
+    ):
+        super().__init__(
+            account_name,
+            direction,
+            asset_id,
+            lots,
+            quantity,
+            status,
+            order_id,
+            trade_id,
+            exec_lots,
+            exec_quantity,
+            meta=meta,
+            broker_id=broker_id,
+            transactions=transactions,
+        )
+        self.type = Order.Type.STOP
+        self.stop_price = stop_price
+        self.exec_price = exec_price
+
+
+# }}}
+class WaitOrder(Order):  # {{{
+    ...
+
+
+# }}}
+class TrailingOrder(Order):  # {{{
+    ...
+
+
+# }}}
+
+
+# class StopLoss(Order):  # {{{
+#     def __init__(
+#         self,
+#         position: Position,  # ??? XXX: подумай еще раз
+#         stop_price: float,
+#         exec_price: float,
+#         trade_id: Id = None,
+#         status: Order.Status = None,
+#     ):
+#         assert False
+#
+#
+# # }}}
+# class TakeProfit(Order):  # {{{
+#     def __init__(
+#         self,
+#         position: Position,  # ??? XXX: подумай еще раз
+#         stop_price: float,
+#         exec_price: float,
+#         trade_id: Id = None,
+#         status: Order.Status = None,
+#     ):
+#         assert False
+#
+#
+# # }}}
