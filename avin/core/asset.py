@@ -9,14 +9,13 @@
 from __future__ import annotations
 
 import abc
-from datetime import UTC, date, datetime
-from typing import Any
+from datetime import datetime
+from typing import Any, Optional, Union
 
 import pandas as pd
 
-from avin.const import DAY_BEGIN
 from avin.core.chart import Chart
-from avin.core.event import Event
+from avin.core.event import NewBarEvent
 from avin.core.timeframe import TimeFrame
 from avin.data import AssetType, DataSource, Exchange, InstrumentId
 from avin.keeper import Keeper
@@ -93,7 +92,7 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         return self.__info
 
     # }}}
-    def chart(self, timeframe: TimeFrame | str) -> Chart:  # {{{
+    def chart(self, timeframe: Union[TimeFrame, str]) -> Chart:  # {{{
         logger.debug(f"{self.__class__.name}.chart()")
 
         # convert type if needed
@@ -114,14 +113,14 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
     # }}}
     async def cacheChart(  # {{{
         self,
-        timeframe: TimeFrame | str,
-        begin: datetime | str | None = None,
-        end: datetime | str | None = None,
+        timeframe: Union[TimeFrame, str],
+        begin: Optional[datetime] = None,
+        end: Optional[datetime] = None,
     ) -> None:
         logger.debug(f"{self.__class__.__name__}.cacheChart()")
 
-        # check args
-        timeframe, begin, end = self.__checkArgs(timeframe, begin, end)
+        # format args
+        timeframe, begin, end = self.__formatArgs(timeframe, begin, end)
 
         # load chart and keep it
         chart = await Chart.load(self.ID, timeframe, begin, end)
@@ -138,7 +137,7 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         self.__info = response[0]
 
     # }}}
-    async def update(self, new_bar_event: Event.NewBar) -> None:  # {{{
+    async def update(self, new_bar_event: NewBarEvent) -> None:  # {{{
         logger.debug(f"{self.__class__.name}.update()")
 
         # select chart
@@ -167,14 +166,14 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
     # }}}
     async def loadChart(  # {{{
         self,
-        timeframe: TimeFrame | str,
-        begin: date | str | None = None,
-        end: date | str | None = None,
+        timeframe: Union[TimeFrame, str],
+        begin: Optional[datetime] = None,
+        end: Optional[datetime] = None,
     ) -> Chart:
         logger.debug(f"{self.__class__.__name__}.loadChart()")
 
-        # check args
-        timeframe, begin, end = self.__checkArgs(timeframe, begin, end)
+        # format args
+        timeframe, begin, end = self.__formatArgs(timeframe, begin, end)
 
         # load chart and return it
         chart = await Chart.load(self.ID, timeframe, begin, end)
@@ -183,7 +182,7 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
     # }}}
     async def loadData(  # {{{
         self,
-        timeframe: TimeFrame | str,
+        timeframe: Union[TimeFrame, str],
         begin: datetime,
         end: datetime,
     ) -> pd.DataFrame:
@@ -237,16 +236,11 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         return asset
 
     # }}}
-    @classmethod  # __checkArgs# {{{
-    def __checkArgs(
+    @classmethod  # __formatArgs# {{{
+    def __formatArgs(
         cls, timeframe, begin, end
     ) -> tuple[TimeFrame, datetime, datetime]:
-        logger.debug(f"{cls.__name__}.__checkArgs()")
-
-        # XXX: вот этот весь геморой с датами которые могут быть
-        # date | str | None - он вообще нахуй нужен?
-        # не проще ли сразу дэйттайм сюда отправлять и не ебать
-        # мозги?
+        logger.debug(f"{cls.__name__}.__formatArgs()")
 
         # check timeframe
         if isinstance(timeframe, TimeFrame):
@@ -260,34 +254,17 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
             )
             raise TypeError(timeframe)
 
-        # check begin
-        if isinstance(begin, str):
-            begin = datetime.combine(
-                date.fromisoformat(begin),
-                Exchange.MOEX.SESSION_BEGIN,
-                tzinfo=UTC,
-            )
-
-        # check end
-        if isinstance(end, str):
-            end = datetime.combine(
-                date.fromisoformat(end),
-                DAY_BEGIN,
-                tzinfo=UTC,
-            )
-
         # when begin & end == None, load DEFAULT_BARS_COUNT
         if begin is None and end is None:
             period = timeframe * Chart.DEFAULT_BARS_COUNT
             begin = now().replace(microsecond=0) - period
             end = now()
 
+        # 'begin', 'end' must be datetime
         if not isinstance(begin, datetime):
-            logger.critical(f"Invalid begin='{begin}'")
-            raise TypeError(begin)
+            raise TypeError(f"Invalid begin='{begin}'")
         if not isinstance(end, datetime):
-            logger.critical(f"Invalid end='{end}'")
-            raise TypeError(end)
+            raise TypeError(f"Invalid end='{end}'")
 
         return timeframe, begin, end
 
@@ -297,11 +274,9 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         logger.debug(f"{cls.__name__}.__getCertainTypeAsset()")
 
         if ID.type == AssetType.INDEX:
-            index = Index(ID)
-            return index
+            return Index(ID)
         elif ID.type == AssetType.SHARE:
-            share = Share(ID)
-            return share
+            return Share(ID)
 
         logger.critical(f"Unknown asset type={ID.type}")
         assert False
@@ -473,7 +448,7 @@ class AssetList:  # {{{
 
     # }}}
     @classmethod  # save  # {{{
-    async def save(cls, asset_list) -> None:
+    async def save(cls, asset_list: AssetList) -> None:
         logger.debug(f"{cls.__name__}.save()")
         assert isinstance(asset_list, AssetList)
         await Keeper.add(asset_list)
@@ -488,7 +463,7 @@ class AssetList:  # {{{
 
     # }}}
     @classmethod  # delete  # {{{
-    async def delete(cls, asset_list) -> None:
+    async def delete(cls, asset_list: AssetList) -> None:
         logger.debug(f"{cls.__name__}.delete()")
         assert isinstance(asset_list, AssetList)
         await Keeper.delete(asset_list)
