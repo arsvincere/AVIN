@@ -67,7 +67,7 @@ class TimeFrame:  # {{{
         return hash(str(self))
 
     # }}}
-    def __eq__(self, other):  # operator =={{{
+    def __eq__(self, other):  # operator ==  # {{{
         if isinstance(other, TimeFrame):
             return self.__period == other.__period
         elif isinstance(other, timedelta):
@@ -81,7 +81,7 @@ class TimeFrame:  # {{{
             )
 
     # }}}
-    def __lt__(self, other):  # operator <{{{
+    def __lt__(self, other):  # operator <  # {{{
         if isinstance(other, TimeFrame):
             return self.__period < other.__period
         elif isinstance(other, timedelta):
@@ -95,7 +95,7 @@ class TimeFrame:  # {{{
             )
 
     # }}}
-    def __le__(self, other):  # operator <={{{
+    def __le__(self, other):  # operator <=  # {{{
         if isinstance(other, TimeFrame):
             return self.__period <= other.__period
         elif isinstance(other, timedelta):
@@ -109,7 +109,7 @@ class TimeFrame:  # {{{
             )
 
     # }}}
-    def __gt__(self, other):  # operator >{{{
+    def __gt__(self, other):  # operator >  # {{{
         if isinstance(other, TimeFrame):
             return self.__period > other.__period
         elif isinstance(other, timedelta):
@@ -123,7 +123,7 @@ class TimeFrame:  # {{{
             )
 
     # }}}
-    def __ge__(self, other):  # operator >={{{
+    def __ge__(self, other):  # operator >=  # {{{
         if isinstance(other, TimeFrame):
             return self.__period >= other.__period
         elif isinstance(other, timedelta):
@@ -137,7 +137,7 @@ class TimeFrame:  # {{{
             )
 
     # }}}
-    def __add__(self, other):  # operator +{{{
+    def __add__(self, other):  # operator +  # {{{
         if isinstance(other, timedelta):
             return other + self.__period
         if isinstance(other, datetime):
@@ -148,7 +148,7 @@ class TimeFrame:  # {{{
             )
 
     # }}}
-    def __radd__(self, other):  # operator +{{{
+    def __radd__(self, other):  # operator + #  {{{
         if isinstance(other, timedelta):
             return other + self.__period
         if isinstance(other, datetime):
