@@ -190,6 +190,7 @@ class Keeper:
             "AssetList": cls.__deleteAssetList,
             "Account": cls.__deleteAccount,
             "Strategy": cls.__deleteStrategy,
+            "UStrategy": cls.__deleteStrategy,
             "Trade": cls.__deleteTrade,
             "TradeList": cls.__deleteTradeList,
             "Operation": cls.__deleteOperation,
