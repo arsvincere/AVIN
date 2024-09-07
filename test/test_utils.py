@@ -6,16 +6,13 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-import sys
+
 from avin.utils import *
-from avin.const import *
-from avin.core import *
-from avin.company import *
-from avin.gui import *
+
 
 def test_binarySearch():
-    v1 = [0,1,2,3,4,5,6,7,8]
-    v2 = [0,1,2,3,4,5,6,7,8,9]
+    v1 = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    v2 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     for i in v1:
         assert binarySearch(v1, i) == i
     for i in v2:
@@ -27,8 +24,9 @@ def test_binarySearch():
     x = 0.5
     assert binarySearch(v1, x) is None
 
+
 def test_find_Left_Right():
-    v1 = [0,1,2,3,4,5,6,7,8,9]
+    v1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     x = -5
     assert findLeft(v1, x) is None
     assert findRight(v1, x) == 0
@@ -43,9 +41,5 @@ def test_find_Left_Right():
     assert findRight(v1, x) == None
 
 
-
-
-
 if __name__ == "__main__":
     ...
-
