@@ -9,13 +9,17 @@
 from __future__ import annotations
 
 import enum
+from datetime import datetime
+from typing import Optional
 
 from avin.config import Usr
 from avin.const import ONE_DAY
+from avin.core.asset import Asset
 from avin.core.chart import Chart
 from avin.core.id import Id
 from avin.core.operation import Operation
 from avin.core.order import Order
+from avin.core.timeframe import TimeFrame
 from avin.data import AssetType, InstrumentId
 from avin.keeper import Keeper
 from avin.utils import AsyncSignal, logger
@@ -81,7 +85,7 @@ class Trade:  # {{{
         BLOKED = 91
 
         @classmethod  # fromStr
-        def fromStr(cls, string: str) -> Trade.Type:
+        def fromStr(cls, string: str) -> Trade.Status:
             statuses = {
                 "INITIAL": Trade.Status.INITIAL,
                 "PENDING": Trade.Status.PENDING,
@@ -114,15 +118,11 @@ class Trade:  # {{{
         version: str,
         trade_type: Trade.Type,
         asset_id: str,
-        status: Trade.Status = None,
-        trade_id: Id = None,
-        orders: list = None,
-        operations: list = None,
+        status: Trade.Status = Trade.Status.INITIAL,
+        trade_id: Optional[Id] = None,
+        orders: Optional[list] = None,
+        operations: Optional[list] = None,
     ):
-        if status is None:
-            status = Trade.Status.INITIAL
-        if trade_id is None:
-            trade_id = Id.newId(self)
         if orders is None:
             orders = list()
         if operations is None:
@@ -149,8 +149,6 @@ class Trade:  # {{{
             "version": version,
             "type": trade_type,
             "asset_id": asset_id,
-            "orders": orders,
-            "operations": operations,
             # "result": None,
             # "percent": None,
             # "holding_days": None,
@@ -165,6 +163,8 @@ class Trade:  # {{{
             # "stop_price": None,
             # "take_price": None,
         }
+        self.__orders = orders
+        self.__operations = operations
         self.__blocked = False
 
         # signals
@@ -220,12 +220,12 @@ class Trade:  # {{{
     # }}}
     @property  # orders# {{{
     def orders(self):
-        return self.__info["orders"]
+        return self.__orders
 
     # }}}
     @property  # operations# {{{
     def operations(self):
-        return self.__info["operations"]
+        return self.__operations
 
     # }}}
     # @async_slot  #onOrderPosted # {{{
@@ -266,14 +266,14 @@ class Trade:  # {{{
         # TODO:  self.__info["orders"] -> self.__orders
         await order.setParentTrade(self)
         await self.__connectOrderSignals(order)
-        self.__info["orders"].append(order)
+        self.__orders.append(order)
 
     # }}}
     async def attachOperation(self, operation: Operation):  # {{{
         # TODO:  self.__info["operations"] -> self.__operations
 
         await operation.setParentTrade(self)
-        self.__info["operations"].append(operation)
+        self.__operations.append(operation)
 
         # check lots count & update status
         if self.lots() == 0:
@@ -573,7 +573,7 @@ class TradeList:  # {{{
         self._name = name
         self._trades = trades if trades else list()
         self._parent = parent
-        self._childs = list()
+        self._childs: list[TradeList] = list()
         self._asset = parent.asset if parent else None
 
     # }}}
@@ -615,7 +615,6 @@ class TradeList:  # {{{
     # }}}
     def add(self, trade: Trade) -> None:  # {{{
         self._trades.append(trade)
-        trade._parent = self
 
     # }}}
     def remove(self, trade: Trade) -> None:  # {{{
@@ -626,7 +625,7 @@ class TradeList:  # {{{
         self._trades.clear()
 
     # }}}
-    def find(self, trade_id: Id) -> Trade:  # {{{
+    def find(self, trade_id: Id) -> Trade | None:  # {{{
         for trade in self._trades:
             if trade.trade_id == trade_id:
                 return trade
@@ -713,7 +712,7 @@ class TradeList:  # {{{
 
     # }}}
     @classmethod  # load# {{{
-    async def load(cls, name) -> TradeList:
+    async def load(cls, name) -> TradeList | None:
         response = await Keeper.get(cls, name=name)
         if len(response) == 1:  # response == [ TradeList, ]
             return response[0]
