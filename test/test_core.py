@@ -512,7 +512,8 @@ async def test_Operation():
 async def test_Trade():
     # create strategy and trade
     dt = datetime(2024, 8, 27, 16, 33, tzinfo=UTC)
-    strategy = Strategy("_unittest", "v1")
+    strategy = await Strategy.load("Every", "day")
+    # await Keeper.add(strategy)
     trade_type = Trade.Type.LONG
     asset = await Asset.byTicker(AssetType.SHARE, Exchange.MOEX, "SBER")
     trade_id = Id("1111")
@@ -657,7 +658,6 @@ async def test_Trade():
     await Keeper.delete(order)
     await Keeper.delete(order_2)
     await Keeper.delete(trade)
-    await Keeper.delete(strategy)
 
     chart = await trade.chart(TimeFrame("D"))
     assert chart.last.dt.date() == dt.date()
@@ -674,8 +674,8 @@ async def test_TradeList():
     tlist = TradeList(tlist_name)
 
     # create strategy
-    strategy = Strategy("_unittest", "v1")
-    await Keeper.add(strategy)
+    strategy = await Strategy.load("Every", "day")
+    # await Keeper.add(strategy)
 
     # create trades
     dt = datetime(2024, 8, 27, 16, 33, tzinfo=UTC)
@@ -727,7 +727,6 @@ async def test_TradeList():
     await TradeList.delete(tlist)
     await Trade.delete(trade_1)
     await Trade.delete(trade_2)
-    await Trade.delete(strategy)
 
 
 # }}}
@@ -773,13 +772,6 @@ async def test_clear_all_test_vars():
     DELETE FROM "TradeList"
     WHERE
         name = '_name';
-    """
-    await Keeper.transaction(request)
-
-    request = """
-    DELETE FROM "Strategy"
-    WHERE
-        name = '_unittest';
     """
     await Keeper.transaction(request)
 

@@ -12,9 +12,9 @@ from datetime import datetime
 import pytest
 
 from avin import *
+from avin.core.account import Account
 from avin.data._bar import _Bar, _BarsData
 from avin.data._manager import _Manager
-from avin.trader.account import Account
 
 # TEST VARS{{{
 
@@ -34,7 +34,17 @@ share = Share(asset_id)
 
 acc = Account("_pytest", "Tinkoff", None)
 
-strategy = Strategy("pytest", "v0")
+
+# для данных тэстов такой имитации достаточно
+# тащить реальную стратегию сюда влом, ее через await
+# надо грузить
+class Strategy:
+    name = "pytest"
+    version = "v0"
+
+
+strategy = Strategy()
+
 
 dt = datetime(2024, 8, 15, 15, 37, tzinfo=UTC)
 trade_id = Id("111")
@@ -48,7 +58,7 @@ trade = Trade(
 )
 
 order_id = Id("222")
-order = Order.Limit(
+order = LimitOrder(
     account_name="_unittest",
     direction=Order.Direction.BUY,
     asset_id=asset_id,
@@ -246,7 +256,6 @@ async def test_account(event_loop):
 # }}}
 @pytest.mark.asyncio  # test_strategy  # {{{
 async def test_strategy(event_loop):
-    strategy = Strategy("pytest", "v0")
     await Keeper.add(strategy)
 
 
