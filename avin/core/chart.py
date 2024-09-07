@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Optional
 
 from avin.core.bar import Bar
 from avin.core.timeframe import TimeFrame
@@ -31,6 +32,8 @@ class Chart:  # {{{
         timeframe: TimeFrame,
         bars: list[Bar],
     ):
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+
         check = self.__checkArgs(ID, timeframe, bars)
         if not check:
             return
@@ -43,12 +46,12 @@ class Chart:  # {{{
         self.__bars = bars
 
         self.__head = len(self.__bars)  # index of HEAD bar
-        self.__now = None  # realtime bar
+        self.__now: Optional[Bar] = None  # realtime bar
 
         self.updated = Signal(object)
 
     # }}}
-    def __getitem__(self, index):  # {{{
+    def __getitem__(self, index: int):  # {{{
         """Доступ к барам графика по индексу
         ----------------------------------------------------------------------
         [0, 1, 2, 3] (real_time_bar)  - так данные лежат физически
@@ -65,6 +68,8 @@ class Chart:  # {{{
         chart[0]     перехватываем и возвращаем реал тайм бар,
         chart[1] == 0 - 1 < 0 перехватываем и возвращаем None
         """
+        logger.debug(f"{self.__class__.__name__}.__getitem__()")
+
         if index == 0:
             return self.__now  # возвращаем реал тайм бар
         index = self.__head - index
@@ -76,6 +81,7 @@ class Chart:  # {{{
 
     # }}}
     def __iter__(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__iter__()")
         return iter(self.__bars)
 
     # }}}
@@ -115,7 +121,8 @@ class Chart:  # {{{
         return self.__now
 
     # }}}
-    def update(self, new_bar: Bar):  # {{{
+    def update(self, new_bar: Bar) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.update()")
         new_bar.setChart(self)
         self.__bars.append(new_bar)
         self.__head += 1
@@ -124,10 +131,12 @@ class Chart:  # {{{
 
     # }}}
     def getBars(self) -> list[Bar]:  # {{{
+        logger.debug(f"{self.__class__.__name__}.getBars()")
         return self.__bars[0 : self.__head]
 
     # }}}
-    def getTodayBars(self):  # {{{
+    def getTodayBars(self) -> list[Bar]:  # {{{
+        logger.debug(f"{self.__class__.__name__}.getTodayBars()")
         if self.__now is None:
             return list()
         today = self.__now.dt.date()
@@ -138,6 +147,7 @@ class Chart:  # {{{
 
     # }}}
     def setHeadIndex(self, index) -> bool:  # {{{
+        logger.debug(f"{self.__class__.__name__}.setHeadIndex()")
         assert isinstance(index, int)
         if index < 0:
             return False
@@ -148,11 +158,13 @@ class Chart:  # {{{
         return True
 
     # }}}
-    def getHeadIndex(self):  # {{{
+    def getHeadIndex(self) -> int:  # {{{
+        logger.debug(f"{self.__class__.__name__}.getHeadIndex()")
         return self.__head
 
     # }}}
     def setHeadDatetime(self, dt: datetime) -> bool:  # {{{
+        logger.debug(f"{self.__class__.__name__}.setHeadDatetime()")
         assert isinstance(dt, datetime)
 
         index = findLeft(self.__bars, dt, lambda x: x.dt)
@@ -164,12 +176,14 @@ class Chart:  # {{{
             assert False
 
     # }}}
-    def resetHead(self):  # {{{
+    def resetHead(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.resetHead()")
         self.__head = len(self.__bars)
         self.__now = None
 
     # }}}
-    def nextHead(self):  # {{{
+    def nextHead(self) -> Optional[Bar]:  # {{{
+        logger.debug(f"{self.__class__.__name__}.nextHead()")
         if self.__head < len(self.__bars) - 1:
             self.__head += 1
             self.__now = self.__bars[self.__head]
@@ -186,6 +200,7 @@ class Chart:  # {{{
         begin: datetime,
         end: datetime,
     ) -> Chart:
+        logger.debug(f"{cls.__name__}.load()")
         # check args, may be raise TypeError, ValueError
         cls.__checkArgs(
             ID=ID,
@@ -217,6 +232,7 @@ class Chart:  # {{{
         begin=None,
         end=None,
     ):
+        logger.debug(f"{cls.__name__}.__checkArgs()")
         if ID:
             cls.__checkID(ID)
 
@@ -237,6 +253,8 @@ class Chart:  # {{{
     # }}}
     @classmethod  # __checkAsset  # {{{
     def __checkID(cls, ID):
+        logger.debug(f"{cls.__name__}.__checkID()")
+
         if not isinstance(ID, InstrumentId):
             logger.critical(f"Invalid ID={ID}")
             raise TypeError(ID)
@@ -244,6 +262,8 @@ class Chart:  # {{{
     # }}}
     @classmethod  # __checkTimeFrame  # {{{
     def __checkTimeFrame(cls, timeframe):
+        logger.debug(f"{cls.__name__}.__checkTimeFrame()")
+
         if not isinstance(timeframe, TimeFrame):
             logger.critical(f"Invalid timeframe={timeframe}")
             raise TypeError(timeframe)
@@ -251,6 +271,8 @@ class Chart:  # {{{
     # }}}
     @classmethod  # __checkBars  # {{{
     def __checkBars(cls, bars):
+        logger.debug(f"{cls.__name__}.__checkBars()")
+
         if not isinstance(bars, list):
             logger.critical(f"Invalid bars={bars}")
             raise TypeError(bars)
@@ -265,6 +287,8 @@ class Chart:  # {{{
     # }}}
     @classmethod  # __checkBegin  # {{{
     def __checkBegin(cls, begin: datetime):
+        logger.debug(f"{cls.__name__}.__checkBegin()")
+
         if not isinstance(begin, datetime):
             logger.critical(f"Invalid begin={begin}")
             raise TypeError(begin)
@@ -276,6 +300,8 @@ class Chart:  # {{{
     # }}}
     @classmethod  # __checkEnd  # {{{
     def __checkEnd(cls, end: datetime):
+        logger.debug(f"{cls.__name__}.__checkEnd()")
+
         if not isinstance(end, datetime):
             logger.critical(f"Invalid end={end}")
             raise TypeError(end)
