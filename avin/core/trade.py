@@ -24,20 +24,6 @@ from avin.data import AssetType, InstrumentId
 from avin.keeper import Keeper
 from avin.utils import AsyncSignal, logger
 
-# FIX: при удалении трейда, его ID остается в трейд листе..
-# с одной стороны - трейды вообще никогда удаляться то не будут...
-# с другой стороны во время юнит тестов или в работе тестера
-# будут возникать ошибки, нарушение целостности данных
-
-
-# XXX: а не получится ли всю работу по ордерам и операциям, да и транзакциям
-# переложить на аккаунт, трейду то зачем вся эта информация?
-# ему можно просто статус поменять и этого достаточно стратегии...
-# хотя нет, ордера точно ему нужно хранить, для кол бэков, и стратегия
-# с этими ордерами манипулирует...
-# ...
-# а вот транзакции и операции??? вот зачем они трейду нужны???
-
 
 class Trade:  # {{{
     class Type(enum.Enum):  # {{{
@@ -116,31 +102,20 @@ class Trade:  # {{{
         dt: datetime,
         strategy: str,
         version: str,
-        trade_type: Trade.Type,
+        trade_type: Trate.Type,
         asset_id: str,
-        status: Trade.Status = Trade.Status.INITIAL,
+        status: Trade.Status = Status.INITIAL,
         trade_id: Optional[Id] = None,
         orders: Optional[list] = None,
         operations: Optional[list] = None,
     ):
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+
         if orders is None:
             orders = list()
         if operations is None:
             operations = list()
 
-        # XXX: а в нынешних условиях может нахуй не нужен тут словарь?
-        # в json больше не сохраняю... может просто поля сделать?
-        # ну по крайней мере ордера и операции достать из словаря...
-        # в остальном то да... словарь можно оставить словарем..
-        # и дописывать его в виде json в БД, и то... не весь, а только
-        # те поля которые не включены в таблицу основную...
-        # и еще!
-        # думать какие поля держать в таблице. Результаты трейдов
-        # закрытых, архивированных - их можно сразу прописать, хуйли
-        # их считать то каждый раз...
-        # но это все потом потом потом...
-        # если понадобится быстродействие... пока пусть неуклюже и излишне
-        # но подтягивается все все все. И все считать в реалтайме.
         self.__info = {
             "trade_id": trade_id,
             "datetime": dt,
@@ -249,6 +224,8 @@ class Trade:  # {{{
 
     # }}}
     async def setStatus(self, status: Trade.Status):  # {{{
+        logger.debug(f"{self.__class__.__name__}.setStatus()")
+
         self.__info["status"] = status
         await Trade.update(self)
 
@@ -263,14 +240,15 @@ class Trade:  # {{{
 
     # }}}
     async def attachOrder(self, order: Order):  # {{{
-        # TODO:  self.__info["orders"] -> self.__orders
+        logger.debug(f"{self.__class__.__name__}.attachOrder()")
+
         await order.setParentTrade(self)
         await self.__connectOrderSignals(order)
         self.__orders.append(order)
 
     # }}}
     async def attachOperation(self, operation: Operation):  # {{{
-        # TODO:  self.__info["operations"] -> self.__operations
+        logger.debug(f"{self.__class__.__name__}.attachOperation()")
 
         await operation.setParentTrade(self)
         self.__operations.append(operation)
@@ -281,6 +259,8 @@ class Trade:  # {{{
 
     # }}}
     async def chart(self, timeframe: TimeFrame) -> Chart:  # {{{
+        logger.debug(f"{self.__class__.__name__}.chart()")
+
         assert self.asset_id.type == AssetType.SHARE
         end = self.dt
         begin = self.dt - Chart.DEFAULT_BARS_COUNT * timeframe
@@ -316,7 +296,7 @@ class Trade:  # {{{
     # }}}
     def lots(self):  # {{{
         total = 0
-        for op in self.__info["operations"]:
+        for op in self.__operations:
             if op.direction == Operation.Direction.BUY:
                 total += op.lots
             elif op.direction == Operation.Direction.SELL:
@@ -326,7 +306,7 @@ class Trade:  # {{{
     # }}}
     def quantity(self):  # {{{
         total = 0
-        for op in self.__info["operations"]:
+        for op in self.__operations:
             if op.direction == Operation.Direction.BUY:
                 total += op.quantity
             elif op.direction == Operation.Direction.SELL:
@@ -336,7 +316,7 @@ class Trade:  # {{{
     # }}}
     def buyQuantity(self):  # {{{
         total = 0
-        for op in self.__info["operations"]:
+        for op in self.__operations:
             if op.direction == Operation.Direction.BUY:
                 total += op.quantity
         return total
@@ -344,7 +324,7 @@ class Trade:  # {{{
     # }}}
     def sellQuantity(self):  # {{{
         total = 0
-        for op in self.__info["operations"]:
+        for op in self.__operations:
             if op.direction == Operation.Direction.SELL:
                 total += op.quantity
         return total
@@ -354,7 +334,7 @@ class Trade:  # {{{
         if self.status == Trade.Status.CLOSED:
             return 0.0
         total = 0
-        for op in self.__info["operations"]:
+        for op in self.__operations:
             if op.direction == Operation.Direction.BUY:
                 total += op.amount
             elif op.direction == Operation.Direction.SELL:
@@ -364,7 +344,7 @@ class Trade:  # {{{
     # }}}
     def buyAmount(self):  # {{{
         total = 0
-        for op in self.__info["operations"]:
+        for op in self.__operations:
             if op.direction == Operation.Direction.BUY:
                 total += op.amount
         return total
@@ -372,7 +352,7 @@ class Trade:  # {{{
     # }}}
     def sellAmount(self):  # {{{
         total = 0
-        for op in self.__info["operations"]:
+        for op in self.__operations:
             if op.direction == Operation.Direction.SELL:
                 total += op.amount
         return total
@@ -384,7 +364,7 @@ class Trade:  # {{{
     # }}}
     def buyCommission(self):  # {{{
         total = 0
-        for op in self.__info["operations"]:
+        for op in self.__operations:
             if op.direction == Operation.Direction.BUY:
                 total += op.commission
         return total
@@ -392,7 +372,7 @@ class Trade:  # {{{
     # }}}
     def sellCommission(self):  # {{{
         total = 0
-        for op in self.__info["operations"]:
+        for op in self.__operations:
             if op.direction == Operation.Direction.SELL:
                 total += op.commission
         return total
@@ -418,7 +398,7 @@ class Trade:  # {{{
     # }}}
     def openDatetime(self):  # {{{
         assert self.status.value >= Trade.Status.OPENED.value
-        return self.__info["operations"][0].dt
+        return self.__operations[0].dt
 
     # }}}
     def openPrice(self):  # {{{
@@ -436,7 +416,7 @@ class Trade:  # {{{
             Trade.Status.CLOSED,
             Trade.Status.ARCHIVE,
         )
-        return self.__info["operations"][-1].dt
+        return self.__operations[-1].dt
 
     # }}}
     def closePrice(self):  # {{{
@@ -474,8 +454,8 @@ class Trade:  # {{{
 
     # }}}
     def holdingDays(self):  # {{{
-        opn_dt = self.__info["operations"][0].dt
-        cls_dt = self.__info["operations"][-1].dt
+        opn_dt = self.__operations[0].dt
+        cls_dt = self.__operations[-1].dt
         holding = cls_dt - opn_dt + ONE_DAY
         return holding.days
 
@@ -496,6 +476,8 @@ class Trade:  # {{{
     # }}}
     @classmethod  # fromRecord{{{
     async def fromRecord(cls, record):
+        logger.debug(f"{cls.__name__}.fromRecord()")
+
         trade_id = record["trade_id"]
 
         # request operations of trade
@@ -533,11 +515,14 @@ class Trade:  # {{{
     # }}}
     @classmethod  # save  # {{{
     async def save(cls, trade: Trade) -> None:
+        logger.debug(f"{cls.__name__}.save()")
         await Keeper.add(trade)
 
     # }}}
     @classmethod  # load  # {{{
     async def load(cls, trade_id: Id) -> Trade:
+        logger.debug(f"{cls.__name__}.load()")
+
         response = await Keeper.get(cls, trade_id=trade_id)
         if len(response) == 1:  # response == [ Trade, ]
             return response[0]
@@ -549,16 +534,20 @@ class Trade:  # {{{
     # }}}
     @classmethod  # delete  # {{{
     async def delete(cls, trade: Trade) -> None:
+        logger.debug(f"{cls.__name__}.delete()")
         await Keeper.delete(trade)
 
     # }}}
     @classmethod  # update  # {{{
     async def update(cls, trade: Trade) -> None:
+        logger.debug(f"{cls.__name__}.update()")
         await Keeper.update(trade)
 
     # }}}
     async def __connectOrderSignals(self, order: Order):  # {{{
-        logger.debug(f"__connectOrderSignals {order}")
+        logger.debug(
+            f"{self.__class__.__name__}.__connectOrderSignals('{order}')"
+        )
         await order.posted.async_connect(self.onOrderPosted)
         await order.executed.async_connect(self.onOrderExecuted)
 
@@ -570,6 +559,8 @@ class TradeList:  # {{{
     def __init__(  # {{{
         self, name: str, trades=None, parent=None
     ):
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+
         self._name = name
         self._trades = trades if trades else list()
         self._parent = parent
@@ -610,22 +601,28 @@ class TradeList:  # {{{
 
     # }}}
     def parent(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.parent()")
         return self._parent
 
     # }}}
     def add(self, trade: Trade) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.add()")
         self._trades.append(trade)
 
     # }}}
     def remove(self, trade: Trade) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.remove()")
         self._trades.remove(trade)
 
     # }}}
     def clear(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.clear()")
         self._trades.clear()
 
     # }}}
     def find(self, trade_id: Id) -> Trade | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.find()")
+
         for trade in self._trades:
             if trade.trade_id == trade_id:
                 return trade
@@ -633,6 +630,8 @@ class TradeList:  # {{{
 
     # }}}
     def selectLong(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectLong()")
+
         selected = list()
         for trade in self._trades:
             if trade.isLong():
@@ -642,6 +641,8 @@ class TradeList:  # {{{
 
     # }}}
     def selectShort(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectShort()")
+
         selected = list()
         for trade in self._trades:
             if trade.isShort():
@@ -651,6 +652,8 @@ class TradeList:  # {{{
 
     # }}}
     def selectWin(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectWin()")
+
         selected = list()
         for trade in self._trades:
             if trade.isWin():
@@ -660,6 +663,8 @@ class TradeList:  # {{{
 
     # }}}
     def selectLoss(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectLoss()")
+
         selected = list()
         for trade in self._trades:
             if trade.isLoss():
@@ -670,6 +675,7 @@ class TradeList:  # {{{
     # }}}
     def selectAsset(self, asset: Asset):  # {{{
         logger.debug(f"{self.__class__.__name__}.selectAsset()")
+
         selected = list()
         for trade in self._trades:
             if trade.asset_id.figi == asset.figi:
@@ -681,6 +687,7 @@ class TradeList:  # {{{
     # }}}
     def selectStatus(self, status: Trade.Status):  # {{{
         logger.debug(f"{self.__class__.__name__}.selectStatus()")
+
         selected = list()
         for trade in self._trades:
             if trade.status == status:
@@ -693,7 +700,8 @@ class TradeList:  # {{{
         assert False
 
     @classmethod  # fromRecord # {{{
-    async def fromRecord(cls, record):
+    async def fromRecord(cls, record: asyncpg.Record):
+        logger.debug(f"{cls.__name__}.fromRecord()")
         name = record["name"]
         trade_ids = record["trades"]
 
@@ -708,11 +716,14 @@ class TradeList:  # {{{
     # }}}
     @classmethod  # save# {{{
     async def save(cls, trade_list) -> None:
+        logger.debug(f"{cls.__name__}.save()")
         await Keeper.add(trade_list)
 
     # }}}
     @classmethod  # load# {{{
     async def load(cls, name) -> TradeList | None:
+        logger.debug(f"{cls.__name__}.load()")
+
         response = await Keeper.get(cls, name=name)
         if len(response) == 1:  # response == [ TradeList, ]
             return response[0]
@@ -724,11 +735,13 @@ class TradeList:  # {{{
     # }}}
     @classmethod  # update# {{{
     async def update(cls, trade_list) -> None:
+        logger.debug(f"{cls.__name__}.update()")
         await Keeper.update(trade_list)
 
     # }}}
     @classmethod  # delete# {{{
     async def delete(cls, tlist):
+        logger.debug(f"{cls.__name__}.delete()")
         await Keeper.delete(tlist)
 
     # }}}
