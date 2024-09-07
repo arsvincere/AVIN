@@ -12,44 +12,28 @@ from __future__ import annotations
 
 import abc
 import importlib
+from datetime import datetime
 
 from avin.config import Usr
-from avin.core.asset import AssetList
-from avin.core.order import Order
+from avin.core.account import Account
+from avin.core.asset import Asset, AssetList
+from avin.core.order import MarketOrder, Order
 from avin.core.trade import Trade, TradeList
-from avin.utils import Cmd, Signal, logger
-
-# XXX: а что если код юзерских стратегий тоже хранить в базе данных...
-# удобно же... или нихуя не удобно? Зато его можно будет не импортить,
-# а делать eval, или че там для нескольких строк кода...
-# можно из БД загружать текст, создавать временный файл с кодом, и оттуда
-# его импортить, но сохранять потом снова в БД.
-# - вопрос?
-#   нахер этот геморой нужен?
-#   ну например чтобы дампнул базу - и точно уверен что у тебя все есть
-#   а исходный код на гитхабе, а все ресурсы в БД.
-#   подумать
-
-# TODO: сделай для тестов отдельную специальную стратегию,
-# хуй знает там _Unit_test_strategy
-# а этот класс надо сделать нормально - абстрактным
+from avin.data import InstrumentId
+from avin.utils import AsyncSignal, Cmd, logger
 
 
 class Strategy(metaclass=abc.ABCMeta):  # {{{
     """Signal"""  # {{{
 
-    tradeOpened = Signal(Trade)
-    tradeClosed = Signal(Trade)
+    tradeOpened = AsyncSignal(Trade)
+    tradeClosed = AsyncSignal(Trade)
 
     # }}}
-    def __init__(self, name, version):  # {{{
+    @abc.abstractmethod  # __init__  # {{{
+    def __init__(self, name: str, version: str):
         self.__name = name
         self.__version = version
-        self.__account = None
-        self.__cfg = None
-        self.__long_list = None
-        self.__short_list = None
-        self.__active_trades = None
 
     # }}}
     def __str__(self):  # {{{
@@ -116,13 +100,13 @@ class Strategy(metaclass=abc.ABCMeta):  # {{{
     async def setLongList(self, asset_list: AssetList):  # {{{
         asset_list.name = str(self) + "-long"
         self.__long_list = asset_list
-        AssetList.save(asset_list)
+        await AssetList.save(asset_list)
 
     # }}}
     async def setShortList(self, asset_list: AssetList):  # {{{
         asset_list.name = str(self) + "-short"
         self.__short_list = asset_list
-        AssetList.save(asset_list)
+        await AssetList.save(asset_list)
 
     # }}}
 
@@ -180,7 +164,7 @@ class Strategy(metaclass=abc.ABCMeta):  # {{{
         # нужно включить в общие поля, не через json, а из json
         # как раз их выпилить на уровне модуля Data
         # и min_price_step тоже
-        order = Order.Market(
+        order = MarketOrder(
             account_name=self.account.name,
             direction=direction,
             asset_id=asset_id,
@@ -251,7 +235,6 @@ class Strategy(metaclass=abc.ABCMeta):  # {{{
 
     @classmethod  # load# {{{
     async def load(cls, name: str, version: str):
-        module = name.lower()
         path = f"usr.strategy.{name}.{version}"
         modul = importlib.import_module(path)
         UStrategy = modul.__getattribute__("UStrategy")
@@ -267,7 +250,7 @@ class Strategy(metaclass=abc.ABCMeta):  # {{{
     # }}}
     @classmethod  # versions# {{{
     def versions(cls, strategy_name: str):
-        path = Cmd.path(STRATEGY_DIR, strategy_name)
+        path = Cmd.path(Usr.STRATEGY, strategy_name)
         files = Cmd.getFiles(path)
         files = Cmd.select(files, extension=".py")
         ver_list = list()
@@ -277,6 +260,7 @@ class Strategy(metaclass=abc.ABCMeta):  # {{{
         return ver_list
 
     # }}}
+
     async def __loadConfig(self):  # {{{
         path = Cmd.path(self.dir_path, "config.cfg")
         if Cmd.isExist(path):
