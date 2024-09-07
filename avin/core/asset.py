@@ -475,11 +475,16 @@ class AssetList:  # {{{
 
     # }}}
     @classmethod  # load  # {{{
-    async def load(cls, name: str) -> AssetList:
+    async def load(cls, name: str) -> AssetList | None:
         logger.debug(f"{cls.__name__}.load()")
+
         response = await Keeper.get(cls, name=name)
-        assert len(response) == 1  # response == [AssetList, ]
-        return response[0]
+        if len(response) == 1:  # response == [ AssetList, ]
+            return response[0]
+
+        # else: error, asset list not found
+        logger.error(f"Asset list '{name}' not found!")
+        return None
 
     # }}}
     @classmethod  # delete  # {{{
