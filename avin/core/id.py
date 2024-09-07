@@ -8,11 +8,11 @@
 
 from __future__ import annotations
 
-import enum
 import time as timer
+from typing import Any, Union
 
 
-class Id:  # {{{
+class Id:
     # {{{-- doc
     """Id - Identifier for trades, orders, operations.
 
@@ -20,29 +20,8 @@ class Id:  # {{{
     ----
     Don't use class constructor. Create new class object by call member
     newId()
-
-    Attributes
-    ----------
-    type: Id.Type
-    time: float
-        Value returned by call time.time(), current time in seconds since
-        the Epoch.
-
-    Subclass
-    --------
-    Type: enum.Enum
-        Enum the type of valid objects
     """  # }}}
 
-    class Type(enum.Enum):  # {{{
-        """Enum the type of valid objects"""
-
-        UNDEFINE = 0
-        TRADE = 1
-        ORDER = 2
-        OPERATION = 3
-
-    # }}}
     def __init__(self, id_value: str):  # {{{
         self.__val = id_value
 
@@ -56,7 +35,7 @@ class Id:  # {{{
 
     # }}}
     @classmethod  # newId# {{{
-    def newId(cls, obj: Trade | Order | Operation) -> Id:
+    def newId(cls, obj: Union[Trade, Order, Operation, Any]) -> Id:
         """Generate new global identifier
 
         Parameters
@@ -81,5 +60,4 @@ class Id:  # {{{
         ID = Id(id_value)
         return ID
 
-    # }}}
     # }}}
