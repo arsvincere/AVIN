@@ -10,15 +10,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional, Union
 
 from avin.data.data_source import DataSource
+from avin.data.data_type import DataType
+from avin.data.instrument_id import InstrumentId
 from avin.keeper import Keeper
 from avin.utils import logger
 
 
 @dataclass  # _Bar# {{{
 class _Bar:
-    dt: datetime | str
+    dt: Union[datetime | str]
     open: float
     high: float
     low: float
@@ -53,7 +56,7 @@ class _BarsData:  # {{{
         ID: InstrumentId,
         data_type: DataType,
         bars: list[_Bar],
-        source: Source,
+        source: DataSource,
     ):
         self.__ID = ID
         self.__type = data_type
@@ -133,9 +136,9 @@ class _BarsData:  # {{{
         cls,
         ID: InstrumentId,
         data_type: DataType,
-        begin: int = None,
-        end: int = None,
-    ) -> _BarsData:
+        begin: Optional[int] = None,
+        end: Optional[int] = None,
+    ) -> None:
         logger.debug(f"{cls.__name__}.delete()")
 
         # If begin == end == None, delete all the data
