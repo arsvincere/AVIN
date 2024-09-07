@@ -17,14 +17,14 @@ class Range:  # {{{
     """doc# {{{
     Закрытый диапазон [min, max]
     Представляет части бара - тело, тени или весь диапазон бара.
-    --
+
     Example:
     r = Range[10, 18]
     print(11 in r)  # True
     print(30 in r)  # False
     print(r.mid())  # 14
     print(r.abs())  # 8
-    --
+
     bar = Bar(now(), 10, 11, 11.1, 9.9, 1000)
     body = bar.body  # Range(10, 11)
     print(10.9 in body)  # True
@@ -162,12 +162,14 @@ class Range:  # {{{
              ###
                #
         """
+
         assert n in (1, 2)
         half = (self.__max - self.__min) / 2
+
         if n == 1:
             return Range(self.__min, self.__min + half)
-        elif n == 2:
-            return Range(self.__min + half, self.__max)
+        # n == 2
+        return Range(self.__min + half, self.__max)
 
     # }}}
     def third(self, n) -> Range:  # {{{
@@ -182,14 +184,16 @@ class Range:  # {{{
              ###
                #        Это 1 треть
         """
+
         assert n in (1, 2, 3)
         third = (self.__max - self.__min) / 3
+
         if n == 1:
             return Range(self.__min, self.__min + third)
         elif n == 2:
             return Range(self.__min + third, self.__min + 2 * third)
-        elif n == 3:
-            return Range(self.__min + 2 * third, self.__max)
+        # n == 3
+        return Range(self.__min + 2 * third, self.__max)
 
     # }}}
     def quarter(self, n) -> Range:  # {{{
@@ -207,14 +211,15 @@ class Range:  # {{{
         """
         assert n in (1, 2, 3, 4)
         quarter = (self.__max - self.__min) / 4
+
         if n == 1:
             return Range(self.__min, self.__min + quarter)
         elif n == 2:
             return Range(self.__min + quarter, self.__min + 2 * quarter)
         elif n == 3:
             return Range(self.__min + 2 * quarter, self.__min + 3 * quarter)
-        elif n == 4:
-            return Range(self.__min + 3 * quarter, self.__max)
+        # n == 4
+        return Range(self.__min + 3 * quarter, self.__max)
 
     # }}}
 
