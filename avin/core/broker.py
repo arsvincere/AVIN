@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import abc
 
-from avin.core import NewBarEvent, TransactionEvent
+from avin.core.event import NewBarEvent, TransactionEvent
 from avin.utils import AsyncSignal
 
 
