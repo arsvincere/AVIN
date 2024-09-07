@@ -17,7 +17,14 @@ import pandas as pd
 from avin.core.chart import Chart
 from avin.core.event import NewBarEvent
 from avin.core.timeframe import TimeFrame
-from avin.data import AssetType, DataSource, Exchange, InstrumentId
+from avin.data import (
+    AssetType,
+    Data,
+    DataSource,
+    DataType,
+    Exchange,
+    InstrumentId,
+)
 from avin.keeper import Keeper
 from avin.utils import AsyncSignal, logger, now
 
@@ -188,8 +195,21 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
     ) -> pd.DataFrame:
         logger.debug(f"{self.__class__.name}.loadData()")
 
-        # TODO: return dataframe
-        assert False
+        # check and convert args
+        assert begin <= end
+        if isinstance(timeframe, str):
+            data_type = DataType.fromStr(timeframe)
+        elif isinstance(timeframe, TimeFrame):
+            data_type = timeframe.toDataType()
+        else:
+            raise TypeError(f"Invalid timeframe='{timeframe}'")
+
+        # request bars records
+        records = await Data.request(self.ID, data_type, begin, end)
+
+        # create & return DataFrame
+        df = pd.DataFrame([dict(r) for r in records])
+        return df
 
     # }}}
     @classmethod  # fromRecord# {{{

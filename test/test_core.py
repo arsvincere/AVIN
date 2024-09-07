@@ -229,6 +229,13 @@ async def test_Asset(event_loop):
     assert asset.figi == figi
     assert asset.name == name
 
+    # load bars data as DataFrame
+    sber = await Asset.byTicker(AssetType.SHARE, Exchange.MOEX, "SBER")
+    begin = datetime(2023, 1, 1, tzinfo=UTC)
+    end = datetime(2023, 2, 1, tzinfo=UTC)
+    dataframe = await sber.loadData(TimeFrame("D"), begin, end)
+    assert dataframe["volume"][0] == 21098550  # volume 2023-01-03 SBER
+
 
 # }}}
 @pytest.mark.asyncio  # test_Share  # {{{
