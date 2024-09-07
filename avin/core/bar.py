@@ -11,9 +11,13 @@
 from __future__ import annotations
 
 import enum
+from datetime import datetime
+from typing import Optional, TypeVar
 
 from avin.core.range import Range
 from avin.data._bar import _Bar
+
+Chart = TypeVar("Chart")
 
 
 class Bar(_Bar):  # {{{
@@ -29,8 +33,17 @@ class Bar(_Bar):  # {{{
         EXTREMUM = 32
 
     # }}}
-    def __init__(self, dt, opn, hgh, low, cls, vol, chart=None):  # {{{
-        _Bar.__init__(self, dt, opn, hgh, low, cls, vol)
+    def __init__(
+        self,
+        dt: datetime,
+        open: float,
+        high: float,
+        low: float,
+        close: float,
+        vol: int,
+        chart: Optional[Chart] = None,
+    ):  # {{{
+        _Bar.__init__(self, dt, open, high, low, close, vol)
         self.__chart = chart
         self.__analyse()
 
@@ -40,12 +53,12 @@ class Bar(_Bar):  # {{{
 
     # }}}
     @property  # range{{{
-    def range(self):
+    def range(self) -> Range:
         return Range(self.low, self.high, Range.Type.RANGE, self)
 
     # }}}
     @property  # body{{{
-    def body(self):
+    def body(self) -> Range:
         if self.open < self.close:
             return Range(self.open, self.close, Range.Type.BODY, self)
         else:
@@ -53,7 +66,7 @@ class Bar(_Bar):  # {{{
 
     # }}}
     @property  # lower{{{
-    def lower(self):
+    def lower(self) -> Range:
         if self.isBull():
             return Range(self.low, self.open, Range.Type.LOWER, self)
         else:
@@ -61,7 +74,7 @@ class Bar(_Bar):  # {{{
 
     # }}}
     @property  # upper# {{{
-    def upper(self):
+    def upper(self) -> Range:
         if self.isBull():
             return Range(self.close, self.high, Range.Type.UPPER, self)
         else:
@@ -77,7 +90,7 @@ class Bar(_Bar):  # {{{
         self.__chart = chart
 
     # }}}
-    def addFlag(self, flag) -> None:  # {{{
+    def addFlag(self, flag: Bar.Type) -> None:  # {{{
         assert isinstance(flag, Bar.Type)
         self.__flags |= flag
 
@@ -112,7 +125,9 @@ class Bar(_Bar):  # {{{
 
     # }}}
     @classmethod  # fromRecord# {{{
-    def fromRecord(cls, record, chart=None):
+    def fromRecord(
+        cls, record: asyncpg.Record, chart: Optional[Chart] = None
+    ):
         bar = cls(
             record["dt"],
             record["open"],
