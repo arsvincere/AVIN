@@ -13,7 +13,8 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, date, datetime, time
 
-from avin.core import Operation, Order
+from avin.core.operation import Operation
+from avin.core.order import Order
 from avin.utils import logger, now
 
 
