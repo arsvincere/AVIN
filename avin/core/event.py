@@ -13,10 +13,11 @@ from __future__ import annotations
 import abc
 import enum
 
-# TODO: Event - abc.class, -> NewBarEvent, OrderExecEvent,
+from avin.core.order import Order
+from avin.core.transaction import Transaction
 
 
-class Event:  # {{{
+class Event(metaclass=abc.ABCMeta):  # {{{
     class Type(enum.Enum):
         UNDEFINE = 0
         NEW_BAR = 1
