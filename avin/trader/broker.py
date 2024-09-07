@@ -10,13 +10,13 @@ from __future__ import annotations
 
 import abc
 
-from avin.core import BarEvent, TransactionEvent
+from avin.core import NewBarEvent, TransactionEvent
 from avin.utils import AsyncSignal
 
 
 class Broker(metaclass=abc.ABCMeta):  # {{{
     name: str = ""
-    new_bar = AsyncSignal(BarEvent)
+    new_bar = AsyncSignal(NewBarEvent)
     new_transaction = AsyncSignal(TransactionEvent)
     # вот тут потом аккаунт уже запрашивает ордер стэйт и
     # обновляет его статус, количество выполненных, или
