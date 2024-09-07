@@ -141,6 +141,19 @@ def test_TimeFrame():  # {{{
 
 
 # }}}
+def test_NewBarEvent():  # {{{
+    figi = "BBG004730N88"
+    timeframe = TimeFrame("1M")
+    bar = Bar("2023-01-01", 10, 12, 9, 11, 1000, chart=None)
+
+    event = NewBarEvent(figi, timeframe, bar)
+    assert event.figi == figi
+    assert event.timeframe == timeframe
+    assert event.bar == bar
+    assert event.type == Event.Type.NEW_BAR
+
+
+# }}}
 
 
 @pytest.mark.asyncio  # test_Chart  # {{{
@@ -718,8 +731,6 @@ async def test_TradeList():
 
 
 # }}}
-
-# TODO: test Event
 
 
 @pytest.mark.asyncio  # test_clear_all_test_vars  # {{{
