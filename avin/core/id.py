@@ -9,7 +9,6 @@
 from __future__ import annotations
 
 import time as timer
-from typing import Any, Union
 
 
 class Id:
@@ -35,7 +34,7 @@ class Id:
 
     # }}}
     @classmethod  # newId# {{{
-    def newId(cls, obj: Union[Trade, Order, Operation, Any]) -> Id:
+    def newId(cls) -> Id:
         """Generate new global identifier
 
         Parameters
