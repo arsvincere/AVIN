@@ -20,16 +20,13 @@ from avin.core.timeframe import TimeFrame
 from avin.data import (
     AssetType,
     Data,
-    DataSource,
     DataType,
     Exchange,
     InstrumentId,
 )
+from avin.exceptions import AssetError
 from avin.keeper import Keeper
 from avin.utils import AsyncSignal, logger, now
-
-
-class AssetError(Exception): ...
 
 
 class Asset(metaclass=abc.ABCMeta):  # {{{
@@ -93,10 +90,7 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
     # }}}
     @property  # info# {{{
     def info(self):
-        if not self.__info:
-            raise AssetError(f"Info not loaded, asset={self}")
-
-        return self.__info
+        return self.__ID.info
 
     # }}}
     def chart(self, timeframe: Union[TimeFrame, str]) -> Chart:  # {{{
@@ -132,16 +126,6 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         # load chart and keep it
         chart = await Chart.load(self.ID, timeframe, begin, end)
         self.__charts[timeframe] = chart
-
-    # }}}
-    async def cacheInfo(self) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.loadInfo()")
-
-        response = await Keeper.info(
-            DataSource.TINKOFF, self.type, figi=self.figi
-        )
-        assert len(response) == 1  # response == [dict, ]
-        self.__info = response[0]
 
     # }}}
     async def update(self, new_bar_event: NewBarEvent) -> None:  # {{{
@@ -215,12 +199,15 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
     @classmethod  # fromRecord# {{{
     def fromRecord(cls, record: asyncpg.Record) -> Asset:
         logger.debug(f"{cls.__name__}.fromRecord()")
-        exchange = Exchange.fromStr(record["exchange"])
-        asset_type = AssetType.fromStr(record["type"])
-        ticker = record["ticker"]
-        figi = record["figi"]
-        name = record["name"]
-        ID = InstrumentId(asset_type, exchange, ticker, figi, name)
+
+        ID = InstrumentId(
+            asset_type=AssetType.fromStr(record["type"]),
+            exchange=Exchange.fromStr(record["exchange"]),
+            ticker=record["ticker"],
+            figi=record["figi"],
+            name=record["name"],
+        )
+
         asset = Asset.byId(ID)
         return asset
 

@@ -73,14 +73,32 @@ class InstrumentId:  # {{{
         return self.__name
 
     # }}}
+    @property  # info# {{{
+    def info(self):
+        if not self.__info:
+            raise AssetError(f"Info not loaded, InstrumentId={self}")
+
+        return self.__info
+
+    # }}}
+    async def cacheInfo(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.loadInfo()")
+
+        response = await Keeper.info(
+            DataSource.TINKOFF, self.type, figi=self.figi
+        )
+        assert len(response) == 1  # response == [dict, ]
+        self.__info = response[0]
+
+    # }}}
     @classmethod  # fromRecord# {{{
     def fromRecord(cls, record) -> InstrumentId:
         ID = InstrumentId(
-            exchange=Exchange.fromStr(record["exchange"]),
             asset_type=AssetType.fromStr(record["type"]),
-            name=record["name"],
+            exchange=Exchange.fromStr(record["exchange"]),
             ticker=record["ticker"],
             figi=record["figi"],
+            name=record["name"],
         )
 
         return ID
