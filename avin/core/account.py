@@ -13,13 +13,14 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, date, datetime, time
 
+from avin.core.broker import Broker
 from avin.core.operation import Operation
 from avin.core.order import Order
 from avin.utils import logger, now
 
 
 class Account:  # {{{
-    def __init__(self, name: str, broker: str, meta: object):  # {{{
+    def __init__(self, name: str, broker: Broker, meta: object):  # {{{
         logger.debug("Account.__init__()")
         self.__name = name
         self.__broker = broker
