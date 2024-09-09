@@ -7,7 +7,6 @@
 # ============================================================================
 
 from avin.trader._trader import Trader
-from avin.trader.account import Account
 from avin.trader.tinkoff import Tinkoff
 
-__all__ = ("Trader", "Account", "Tinkoff")
+__all__ = ("Trader", "Tinkoff")
