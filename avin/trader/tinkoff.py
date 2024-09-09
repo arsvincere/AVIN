@@ -17,11 +17,12 @@ from typing import Any
 import tinkoff.invest as ti
 from tinkoff.invest.utils import (
     decimal_to_quotation,
+    money_to_decimal,
     quotation_to_decimal,
 )
 
 from avin.config import Usr
-from avin.core import Account, Asset, Broker, LimitOrder, Order
+from avin.core import Account, Asset, Broker, Id, LimitOrder, Order
 from avin.data import AssetType, Exchange, InstrumentId
 from avin.exceptions import BrokerError
 from avin.utils import Cmd, logger
@@ -159,7 +160,7 @@ class Tinkoff(Broker):
         return money
 
     # }}}
-    async def getLimitOrders(self, account: Account) -> list[Order]:
+    async def getLimitOrders(self, account: Account) -> list[Order]:  # {{{
         """Response example# {{{
         GetOrdersResponse(
             orders=[
@@ -217,6 +218,7 @@ class Tinkoff(Broker):
         orders = list()
         for i in response.orders:
             asset_id = await InstrumentId.byFigi(i.figi)
+            await asset_id.cacheInfo()
             order = LimitOrder(
                 account_name=account.name,
                 direction=self.__ti_to_av(i.direction),
@@ -225,7 +227,7 @@ class Tinkoff(Broker):
                 quantity=i.lots_requested * asset_id.lot,
                 price=self.__ti_to_av(i.initial_order_price),
                 status=self.__ti_to_av(i.execution_report_status),
-                order_id=i.order_request_id,
+                order_id=Id.fromStr(i.order_request_id),
                 trade_id=None,
                 exec_lots=i.lots_executed,
                 exec_quantity=i.lots_executed * asset_id.lot,
@@ -236,6 +238,7 @@ class Tinkoff(Broker):
             orders.append(order)
         return orders
 
+    # }}}
     async def getStopOrders(self, account: Account) -> list[Order]: ...
     async def getOperations(self, account: Account) -> list[Operation]: ...
     async def getPositions(self, account: Account) -> list[Postition]: ...

@@ -82,6 +82,16 @@ class InstrumentId:  # {{{
         return self.__info
 
     # }}}
+    @property  # lot# {{{
+    def lot(self):
+        return self.__info["lot"]
+
+    # }}}
+    @property  # min_price_step# {{{
+    def min_price_step(self):
+        return self.__info["min_price_increment"]
+
+    # }}}
     async def cacheInfo(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.loadInfo()")
 
