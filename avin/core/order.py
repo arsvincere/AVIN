@@ -95,6 +95,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     @abc.abstractmethod  # __init__# {{{
     def __init__(
         self,
+        order_type,
         account_name,
         direction,
         asset_id,
@@ -109,13 +110,14 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         broker_id,
         transactions,
     ):
+        self.type = order_type
+        self.account_name = account_name
         self.direction = direction
         self.asset_id = asset_id
         self.lots = lots
         self.quantity = quantity
-
-        self.account_name = account_name
         self.status = status
+
         self.order_id = order_id
         self.trade_id = trade_id
         self.exec_lots = exec_lots
@@ -317,6 +319,7 @@ class MarketOrder(Order):  # {{{
         transactions=Optional[list],
     ):
         super().__init__(
+            Order.Type.MARKET,
             account_name,
             direction,
             asset_id,
@@ -331,7 +334,6 @@ class MarketOrder(Order):  # {{{
             broker_id=broker_id,
             transactions=transactions,
         )
-        self.type = Order.Type.MARKET
 
 
 # }}}
@@ -354,6 +356,7 @@ class LimitOrder(Order):  # {{{
         transactions=Optional[list],
     ):
         super().__init__(
+            Order.Type.LIMIT,
             account_name,
             direction,
             asset_id,
@@ -368,7 +371,6 @@ class LimitOrder(Order):  # {{{
             broker_id=broker_id,
             transactions=transactions,
         )
-        self.type = Order.Type.LIMIT
         self.price = price
 
 
@@ -393,6 +395,7 @@ class StopOrder(Order):  # {{{
         transactions=Optional[list],
     ):
         super().__init__(
+            Order.Type.STOP,
             account_name,
             direction,
             asset_id,
@@ -407,7 +410,6 @@ class StopOrder(Order):  # {{{
             broker_id=broker_id,
             transactions=transactions,
         )
-        self.type = Order.Type.STOP
         self.stop_price = stop_price
         self.exec_price = exec_price
 
