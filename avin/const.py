@@ -61,12 +61,12 @@ class WeekDays(enum.Enum):  # {{{
     Sat = 5
     Sun = 6
 
-    @staticmethod  # isWorkday# {{{
+    @staticmethod  # isWorkday  # {{{
     def isWorkday(day_number: int):
         return day_number < 5
 
     # }}}
-    @staticmethod  # isHoliday# {{{
+    @staticmethod  # isHoliday  # {{{
     def isHoliday(day_number):
         return day_number in (5, 6)
 
