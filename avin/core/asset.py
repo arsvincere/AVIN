@@ -112,6 +112,13 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         self.__charts.clear()
 
     # }}}
+    async def cacheInfo(  # {{{
+        self,
+    ) -> None:
+        logger.debug(f"{self.__class__.__name__}.cacheInfo()")
+        await self.__ID.cacheInfo()
+
+    # }}}
     async def cacheChart(  # {{{
         self,
         timeframe: Union[TimeFrame, str],
