@@ -14,8 +14,7 @@ from avin import *
 
 
 def test_Id():  # {{{
-    obj = object()
-    id_ = Id.newId(obj)
+    id_ = Id.newId()
     string = str(id_)
 
     from_str = Id.fromStr(string)
@@ -269,7 +268,7 @@ async def test_Share(event_loop):
 
     # info
     # assert sber.info is None  # logger - error
-    await sber.cacheInfo()
+    await sber.ID.cacheInfo()
     assert sber.info is not None
     assert sber.uid == "e6123145-9665-43e0-8413-cd61b8aa9b13"
     assert sber.min_price_step == 0.01
