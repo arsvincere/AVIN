@@ -93,6 +93,16 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         return self.__ID.info
 
     # }}}
+    @property  # lot# {{{
+    def lot(self):
+        return self.__ID.lot
+
+    # }}}
+    @property  # min_price_step# {{{
+    def min_price_step(self):
+        return self.__ID.min_price_step
+
+    # }}}
     def chart(self, timeframe: Union[TimeFrame, str]) -> Chart:  # {{{
         logger.debug(f"{self.__class__.name}.chart()")
 
@@ -326,16 +336,6 @@ class Share(Asset):  # {{{
     @property  # uid{{{
     def uid(self):
         return self.info["uid"]
-
-    # }}}
-    @property  # lot{{{
-    def lot(self):
-        return int(self.info["lot"])
-
-    # }}}
-    @property  # min_price_step{{{
-    def min_price_step(self):
-        return float(self.info["min_price_increment"])
 
     # }}}
 

@@ -21,6 +21,17 @@ from avin.utils import AsyncSignal
 
 # TODO: а может сюда транзакции подключить.
 
+# TODO: стоп ордер.. POSTED... потом он срабатывает
+# на стороне брокера то он все, считается исчезшим
+# вместо него создает лимит ордер.
+# надо мне тоже такую логику завести,
+# возможно прямо вот так же: StopStatus...
+# ---
+# пока поменял статусы местами немного... пойдет для начала
+# надо синхронизировать с БД только статусы
+# а таймаут вообще пока выпилил, впизду когда понадобится
+# тогда и добавлю.
+
 
 class Order(metaclass=abc.ABCMeta):  # {{{
     # }}}
@@ -38,11 +49,12 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     class Status(enum.Enum):  # {{{
         UNDEFINE = enum.auto()
         NEW = enum.auto()
-        PENDING = enum.auto()
-        TIMEOUT = enum.auto()
-        TRIGGERED = enum.auto()
 
         SUBMIT = enum.auto()
+
+        PENDING = enum.auto()
+        TRIGGERED = enum.auto()
+
         POSTED = enum.auto()
         PARTIAL = enum.auto()
         OFF = enum.auto()
@@ -139,7 +151,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     # }}}
     def __str__(self):  # {{{
         string = (
-            f"{self.type.name} "
+            f"type={self.type.name} "
             f"status={self.status.name} "
             f"acc={self.account_name} "
             f"{self.direction.name} "

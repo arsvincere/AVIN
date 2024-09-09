@@ -9,6 +9,7 @@
 import bisect
 import os
 from datetime import datetime, timezone
+from decimal import Decimal
 
 
 def now():  # {{{
@@ -16,6 +17,12 @@ def now():  # {{{
 
 
 # }}}
+def round_price(price: float, min_price_step: float):
+    price = Decimal(price)
+    price -= price % Decimal(min_price_step)
+    return float(price)
+
+
 def binarySearch(vector, x, key=None):  # {{{
     left = 0
     right = len(vector) - 1

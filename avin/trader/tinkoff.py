@@ -15,6 +15,7 @@ from decimal import Decimal
 from typing import Any
 
 import tinkoff.invest as ti
+from grpc import StatusCode
 from tinkoff.invest.utils import (
     decimal_to_quotation,
     money_to_decimal,
@@ -22,10 +23,21 @@ from tinkoff.invest.utils import (
 )
 
 from avin.config import Usr
-from avin.core import Account, Asset, Broker, Id, LimitOrder, Order
+from avin.core import Account, Asset, Broker, Id, LimitOrder, Order, StopOrder
 from avin.data import AssetType, Exchange, InstrumentId
 from avin.exceptions import BrokerError
 from avin.utils import Cmd, logger
+
+# TODO: округление прайсов упростить.
+# или пилить свой класс работающий с currency, units, nano
+# или что то типо такого
+# round_price(155.56484668, min_price_step)
+
+
+# TODO: сделай единообразным поведение методов getLimitOrders, getStopOrders,
+# если уж перехватываешь исключение то везде
+
+# TODO: проверить возвращаемые значения, сделать нормальные bool везде
 
 
 class Tinkoff(Broker):
@@ -49,8 +61,10 @@ class Tinkoff(Broker):
 
     # }}}
     async def connect(self) -> None:  # {{{
-        logger.info(":: Tinkoff try to connect")
+        if self.__connected:
+            return
 
+        logger.info(":: Tinkoff try to connect")
         self.__connect_task = asyncio.create_task(self.__runConnectionCycle())
 
         seconds_elapsed = 0
@@ -239,46 +253,97 @@ class Tinkoff(Broker):
         return orders
 
     # }}}
-    async def getStopOrders(self, account: Account) -> list[Order]: ...
+    async def getStopOrders(self, account: Account) -> list[Order]:  # {{{
+        """Response example# {{{
+        GetStopOrdersResponse(
+            stop_orders=[
+                StopOrder(
+                    stop_order_id='5dfa66c8-090e-4594-9bac-5a3eef0a0873',
+                    lots_requested=1,
+                    figi='BBG004S68CP5',
+                    direction=<StopOrderDirection.STOP_ORDER_DIRECTION_BUY: 1>,
+                    currency='rub',
+                    order_type=<StopOrderType.STOP_ORDER_TYPE_TAKE_PROFIT: 1>,
+                    create_date=datetime.datetime(
+                        2024, 9, 9, 14, 46, 56, 6253,
+                        tzinfo=datetime.timezone.utc
+                    ),
+                    activation_date_time=datetime.datetime(
+                        1970, 1, 1, 0, 0,
+                        tzinfo=datetime.timezone.utc
+                    ),
+                    expiration_time=datetime.datetime(
+                        1970, 1, 1, 0, 0,
+                        tzinfo=datetime.timezone.utc
+                        ),
+                    price=MoneyValue(
+                        currency='rub', units=90, nano=400000000
+                    ),
+                    stop_price=MoneyValue(
+                        currency='rub ', units=90, nano=400000000
+                    ),
+                    instrument_uid='cf1c6158-a303-43ac-89eb-9b1db8f96043',
+                    take_profit_type=<TakeProfitType.TAKE_PROFIT_TYPE_REGULAR: 1>,
+                    trailing_data=StopOrderTrailingData(
+                        indent=Quotation(units=0, nano=0),
+                        indent_type=
+                            <TrailingValueType.TRAILING_VALUE_UNSPECIFIED: 0>,
+                        spread=Quotation(units=0, nano=0),
+                        spread_type=
+                            <TrailingValueType.TRAILING_VALUE_UNSPECIFIED: 0>,
+                        status=<TrailingStopStatus.TRAILING_STOP_UNSPECIFIED: 0>,
+                    price=Quotation(units=0, nano=0),
+                    extr=Quotation(units=0, nano=0)),
+                    status=<StopOrderStatusOption.STOP_ORDER_STATUS_ACTIVE: 2>,
+                    exchange_order_type=
+                        <ExchangeOrderType.EXCHANGE_ORDER_TYPE_LIMIT: 2>,
+                    exchange_order_id=None
+                )
+            ]
+        )
+        """  # }}}
+        logger.debug(f"Tinkoff.getStopOrders(account={account})")
+
+        try:
+            response = await self.__client.stop_orders.get_stop_orders(
+                account_id=account.meta.id
+            )
+            logger.debug(f"Tinkoff.getStopOrders: Response='{response}'")
+        except ti.exceptions.InvestError:
+            logger.error("Tinkoff.getStopOrders: Error={err}")
+            return None
+
+        orders = list()
+        for i in response.stop_orders:
+            asset_id = await InstrumentId.byFigi(i.figi)
+            await asset_id.cacheInfo()
+            order = StopOrder(
+                account_name=account.name,
+                direction=self.__ti_to_av(i.direction),
+                asset_id=asset_id,
+                lots=i.lots_requested,
+                quantity=i.lots_requested * asset_id.lot,
+                stop_price=self.__ti_to_av(i.stop_price),
+                exec_price=self.__ti_to_av(i.price),
+                status=self.__ti_to_av(i.status),
+                order_id=None,
+                trade_id=None,
+                exec_lots=0,  # XXX: у него не может быть исполненных лотов...
+                exec_quantity=0,
+                meta=str(i),
+                broker_id=i.stop_order_id,
+                transactions=list(),  # XXX: их тут тоже не может быть...
+            )
+            orders.append(order)
+
+        return orders
+
+    # }}}
     async def getOperations(self, account: Account) -> list[Operation]: ...
     async def getPositions(self, account: Account) -> list[Postition]: ...
     async def getDetailedPortfolio(self, account: Account) -> Portfolio: ...
     async def getWithdrawLimits(self, account: Account): ...
     async def getOrderOperation(self, order: Order) -> Order.Status: ...
-    async def getLastPrice(  # {{{
-        self, asset_id: InstrumentId
-    ) -> float | None:
-        with ti.Client(Tinkoff.TOKEN) as client:
-            try:
-                response = client.market_data.get_last_prices(
-                    figi=[
-                        asset_id.figi,
-                    ]
-                )
-                last_price = response.last_prices[0].price
-                last_price = float(quotation_to_decimal(last_price))
-            except ti.exceptions.RequestError as err:
-                tracking_id = err.metadata.tracking_id if err.metadata else ""
-                logger.error(
-                    f"Tracking_id={tracking_id}, "
-                    f"code={err.code}, "
-                    f"RequestError={errcode}"
-                )
-                return None
-            return last_price
-
-    # }}}
-    async def getHistoricalBars(  # {{{
-        self,
-        asset: Asset,
-        timeframe: TimeFrame,
-        begin: datetime,
-        end: datetime,
-    ) -> list[Bar]:
-        pass
-        ...
-
-    # }}}
 
     async def syncOrder(self, order: Order, account: Account):  # {{{
         """response example # {{{
@@ -389,16 +454,59 @@ class Tinkoff(Broker):
         status = self.__ti_to_av(response.execution_report_status)
         await order.setStatus(status)
 
-        return order
+        return True
 
     # }}}
     async def postLimitOrder(self, order: Order, account: Account):  # {{{
+        """Response example# {{{
+        PostOrderResponse(
+            order_id='52004328245',
+            execution_report_status=
+                <OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_NEW: 4>,
+            lots_requested=1,
+            lots_executed=0,
+            initial_order_price=MoneyValue(
+                currency='rub', units=89, nano=400000000
+            ),
+            executed_order_price=MoneyValue(
+                currency='', units=0, nano=0
+            ),
+            total_order_amount=MoneyValue(
+                currency='rub', units=89, nano=400000000
+            ),
+            initial_commission=MoneyValue(
+                currency='', units=0, nano=0
+            ),
+            executed_commission=MoneyValue(
+                currency='', units=0, nano=0
+            ),
+            aci_value=MoneyValue(
+                currency='', units=0, nano=0),
+            figi='BBG004S68CP5',
+            direction=<OrderDirection.ORDER_DIRECTION_BUY: 1>,
+            initial_security_price=MoneyValue(
+                currency='rub', units=89, nano=400000000
+            ),
+            order_type=<OrderType.ORDER_TYPE_LIMIT: 1>,
+            message='',
+            initial_order_price_pt=Quotation(units=0, nano=0),
+            instrument_uid='cf1c6158-a303-43ac-89eb-9b1db8f96043',
+            order_request_id='1725888227.1013482',
+            response_metadata=ResponseMetadata(
+                tracking_id='8616870e4bb1c42902197477b64fc542',
+                server_time=datetime.datetime(
+                    2024, 9, 9, 13, 23, 47, 398094,
+                    tzinfo=datetime.timezone.utc
+                )
+            )
+        )
+        """  # }}}
         logger.debug(f"Tinkoff.postLimitOrder({order})")
 
         response: ti.PostOrderResponse = (
             await self.__client.orders.post_order(
-                account_id=account.meta.id,
                 order_type=self.__av_to_ti(order, ti.OrderType),
+                account_id=account.meta.id,
                 direction=self.__av_to_ti(order, ti.OrderDirection),
                 figi=order.asset_id.figi,
                 quantity=order.lots,
@@ -415,10 +523,52 @@ class Tinkoff(Broker):
         status = self.__ti_to_av(response.execution_report_status)
         await order.setStatus(status)
 
-        return order
+        return True
 
     # }}}
-    async def postStopOrder(self, order: Order, account: Account): ...
+    async def postStopOrder(self, order: StopOrder, account: Account):  # {{{
+        """Response example  # {{{
+        PostStopOrderResponse(
+            stop_order_id='f3f7e4e7-f076-4cc9-861d-d9995ed84b0f',
+            order_request_id='',
+            response_metadata=ResponseMetadata(
+                tracking_id='87c7ed9d50034bb360a5f40edc3ba05c',
+                server_time=datetime.datetime(
+                    2024, 9, 9, 13, 32, 6, 690535,
+                    tzinfo=datetime.timezone.utc
+                )
+            )
+        )
+        """  # }}}
+
+        logger.debug(f"Tinkoff.postStopOrder({order})")
+        try:
+            response = await self.__client.stop_orders.post_stop_order(
+                stop_order_type=self.__av_to_ti(order, ti.StopOrderType),
+                account_id=account.meta.id,
+                direction=self.__av_to_ti(order, ti.StopOrderDirection),
+                figi=order.asset_id.figi,
+                quantity=order.lots,
+                price=self.__av_to_ti(order.exec_price, ti.Quotation),
+                stop_price=self.__av_to_ti(order.stop_price, ti.Quotation),
+                # order_id=str(order.order_id),
+                expiration_type=self.__av_to_ti(
+                    order, ti.StopOrderExpirationType
+                ),
+                # expire_date=
+            )
+            logger.debug(f"Tinkoff.postStopOrder: Response='{response}'")
+        except ti.exceptions.RequestError as err:
+            logger.error(f"{err}")
+            return False
+
+        order.broker_id = response.stop_order_id
+        order.meta = str(response)
+        await order.setStatus(Order.Status.PENDING)
+
+        return True
+
+    # }}}
     async def postStopLoss(self, order: Order, account: Account): ...
     async def postTakeProfit(self, order: Order, account: Account): ...
     async def cancelLimitOrder(  # {{{
@@ -439,9 +589,8 @@ class Tinkoff(Broker):
             )
         )
         """  # }}}
-        logger.debug(
-            f"Tinkoff.cancelLimitOrder(account={account}, order={order})"
-        )
+        logger.debug(f"Tinkoff.cancelLimitOrder({account}, {order})")
+
         response: ti.CancelOrderResponse = (
             await self.__client.orders.cancel_order(
                 account_id=account.meta.id,
@@ -454,13 +603,87 @@ class Tinkoff(Broker):
         return order.status == Order.Status.CANCELED
 
     # }}}
-    async def cancelStopOrder(self, order: Order, account: Account): ...
+    async def cancelStopOrder(self, order: Order, account: Account):  # {{{
+        """Response example# {{{
+        CancelStopOrderResponse(
+            time=datetime.datetime(
+                2024, 9, 9, 15, 41, 4, 882931,
+                tzinfo=datetime.timezone.utc)
+            )
 
+        Exception:
+        raise AioRequestError(status_code, details, metadata) from e
+        tinkoff.invest.exceptions.AioRequestError: (
+            <StatusCode.NOT_FOUND: (5, 'not found')>,
+            '50006',
+            Metadata(
+                tracking_id='8b0b16ada64beec08d131b751d51df85',
+                ratelimit_limit='50, 50;w=60',
+                ratelimit_remaining=48,
+                ratelimit_reset=39,
+                message='Stop-order notfound'
+            )
+        )
+        """  # }}}
+        logger.debug(f"Tinkoff.cancelStopOrder({account}, {order})")
+
+        try:
+            response = await self.__client.stop_orders.cancel_stop_order(
+                account_id=account.meta.id,
+                stop_order_id=order.broker_id,
+            )
+            logger.debug(f"Tinkoff.cancelStopOrder: Response='{response}'")
+        except ti.exceptions.AioRequestError as err:
+            logger.error(err)
+            if err.code == StatusCode.NOT_FOUND:
+                # TODO: подумать как лучше всего тут действовать
+                raise BrokerError(
+                    f"Tinkoff stop-order '{order.order_id}' - not found"
+                )
+                return False  # ???
+
+        await order.setStatus(Order.Status.CANCELED)
+        return True
+
+    # }}}
     async def createBarStream(self, account: Account) -> bool: ...
     async def createTransactionStream(self, account: Account) -> bool: ...
     async def createOperationStream(self, account: Account) -> bool: ...
     async def createPositionStream(self, account: Account) -> bool: ...
     async def subscribe(self, asset: Asset, data_type: DataType) -> bool: ...
+
+    @classmethod  # getLastPrice  # {{{
+    def getLastPrice(
+        cls,
+        asset_id: InstrumentId,
+    ) -> float | None:
+        with ti.Client(cls.TOKEN) as client:
+            try:
+                response = client.market_data.get_last_prices(
+                    figi=[
+                        asset_id.figi,
+                    ]
+                )
+                last_price = response.last_prices[0].price
+                last_price = float(quotation_to_decimal(last_price))
+            except ti.exceptions.AioRequestError as err:
+                logger.error(err)
+                return None
+
+            return last_price
+
+    # }}}
+    async def getHistoricalBars(  # {{{
+        self,
+        asset: Asset,
+        timeframe: TimeFrame,
+        begin: datetime,
+        end: datetime,
+    ) -> list[Bar]:
+        pass
+        ...
+
+    # }}}
 
     async def __runConnectionCycle(self):  # {{{
         logger.debug("Tinkoff.__runConnectionCycle()")
@@ -539,9 +762,11 @@ class Tinkoff(Broker):
             case "OrderDirection":
                 return Tinkoff.__tiOrderDirection_to_avDirection(obj)
             case "StopOrderDirection":
-                return Tinkoff.__tiOrderDirection_to_avDirection(obj)
+                return Tinkoff.__tiStopOrderDirection_to_avDirection(obj)
             case "OrderExecutionReportStatus":
                 return Tinkoff.__tiOrderExecutionReportStatus_to_avStatus(obj)
+            case "StopOrderStatusOption":
+                return Tinkoff.__tiStopOrderStatusOption_to_avStatus(obj)
             case _:
                 raise BrokerError(
                     f"Tinkoff fail convert: unknown object='{obj}', "
@@ -603,12 +828,13 @@ class Tinkoff(Broker):
     def __tiStopOrderDirection_to_avDirection(tinkoff_direction):
         logger.debug("Tinkoff.__tiOrderDirection_to_avOrderDirection()")
 
+        t = ti.StopOrderDirection
         directions = {
-            "STOP_ORDER_DIRECTION_UNSPECIFIED": Order.Direction.UNDEFINE,
-            "STOP_ORDER_DIRECTION_BUY": Order.Direction.BUY,
-            "STOP_ORDER_DIRECTION_SELL": Order.Direction.SELL,
+            t.STOP_ORDER_DIRECTION_UNSPECIFIED: Order.Direction.UNDEFINE,
+            t.STOP_ORDER_DIRECTION_BUY: Order.Direction.BUY,
+            t.STOP_ORDER_DIRECTION_SELL: Order.Direction.SELL,
         }
-        avin_direction = directions[tinkoff_direction.name]
+        avin_direction = directions[tinkoff_direction]
 
         return avin_direction
 
@@ -619,7 +845,8 @@ class Tinkoff(Broker):
             "Tinkoff.__tiOrderExecutionReportStatus_to_avOrderStatus()"
         )
 
-        t = ti.OrderExecutionReportStatus  # def short type name
+        # tinkoff limit order statuses
+        t = ti.OrderExecutionReportStatus
         statuses = {
             t.EXECUTION_REPORT_STATUS_UNSPECIFIED: Order.Status.UNDEFINE,
             t.EXECUTION_REPORT_STATUS_FILL: Order.Status.FILLED,
@@ -629,6 +856,31 @@ class Tinkoff(Broker):
             t.EXECUTION_REPORT_STATUS_PARTIALLYFILL: Order.Status.PARTIAL,
         }
         avin_status = statuses[tinkoff_status]
+
+        return avin_status
+
+    # }}}
+    @staticmethod  # __tiStopOrderStatusOption_to_avStatus  # {{{
+    def __tiStopOrderStatusOption_to_avStatus(tinkoff_status):
+        logger.debug("Tinkoff.__tiStopOrderStatusOption_to_avStatus()")
+
+        # tinkoff stop order statuses
+        t = ti.StopOrderStatusOption
+        statuses = {
+            t.STOP_ORDER_STATUS_UNSPECIFIED: Order.Status.UNDEFINE,
+            t.STOP_ORDER_STATUS_ALL: Order.Status.UNDEFINE,  # XXX: что это?
+            t.STOP_ORDER_STATUS_ACTIVE: Order.Status.PENDING,  # XXX: rename ACTIVE?
+            t.STOP_ORDER_STATUS_EXECUTED: Order.Status.EXECUTED,  # TEST:
+            t.STOP_ORDER_STATUS_CANCELED: Order.Status.CANCELED,
+            t.STOP_ORDER_STATUS_EXPIRED: Order.Status.EXPIRED,
+        }
+        avin_status = statuses[tinkoff_status]
+
+        # TEST: надо посмотреть поподробнее, какой статус становится
+        # у ордера когда он срабатывает, возможно у тинькова executed
+        # это тоже что у меня triggered... кстати... тогда можно
+        # этот ордер не считать вообще... блять сложно короче пиздец
+        # надо смотреть как меняется статус ордера у тинька
         return avin_status
 
     # }}}
@@ -641,13 +893,15 @@ class Tinkoff(Broker):
             case "Quotation":
                 return Tinkoff.__avPrice_to_tiQuotation(av_obj)
             case "OrderType":
-                return Tinkoff.__extract_OrderType_from_Order(av_obj)
+                return Tinkoff.__avOrder_to_OrderType(av_obj)
             case "StopOrderType":
-                return Tinkoff.__extract_StopOrderType_from_Order(av_obj)
+                return Tinkoff.__avOrder_to_StopOrderType(av_obj)
             case "OrderDirection":
-                return Tinkoff.__extract_OrderDirection_from_Order(av_obj)
+                return Tinkoff.__avOrder_to_OrderDirection(av_obj)
             case "StopOrderDirection":
-                return Tinkoff.__extract_StopOrderDirection_from_Order(av_obj)
+                return Tinkoff.__avOrder_to_StopOrderDirection(av_obj)
+            case "StopOrderExpirationType":
+                return Tinkoff.__avOrder_to_StopOrderExpirationType(av_obj)
             case _:
                 raise BrokerError(
                     f"Tinkoff fail extract: ti_class='{ti_class}', "
@@ -664,8 +918,8 @@ class Tinkoff(Broker):
             return quotation
 
     # }}}
-    @staticmethod  # __extract_OrderType_from_Order  # {{{
-    def __extract_OrderType_from_Order(order: Order):
+    @staticmethod  # __avOrder_to_OrderType  # {{{
+    def __avOrder_to_OrderType(order: Order):
         t = ti.OrderType
 
         if order.type == Order.Type.MARKET:
@@ -675,8 +929,8 @@ class Tinkoff(Broker):
             return t.ORDER_TYPE_LIMIT
 
     # }}}
-    @staticmethod  # __extract_StopOrderType_from_Order  # {{{
-    def __extract_StopOrderType_from_Order(order: Order):
+    @staticmethod  # __avOrder_to_StopOrderType  # {{{
+    def __avOrder_to_StopOrderType(order: Order):
         t = ti.StopOrderType
 
         if order.type == Order.Type.STOP_LOSS:
@@ -688,19 +942,19 @@ class Tinkoff(Broker):
         if order.type == Order.Type.STOP:
             current_price = Tinkoff.getLastPrice(order.asset_id)
             if order.direction == Order.Direction.BUY:
-                if current_price >= order.price:
+                if current_price >= order.stop_price:
                     return t.STOP_ORDER_TYPE_TAKE_PROFIT
-                if current_price < order.price:
-                    return t.STOP_ORDER_TYPE_STOP_LOSS
+                if current_price < order.stop_price:
+                    return t.STOP_ORDER_TYPE_STOP_LIMIT
             elif order.direction == Order.Direction.SELL:
-                if current_price <= order.price:
+                if current_price <= order.stop_price:
                     return t.STOP_ORDER_TYPE_TAKE_PROFIT
-                if current_price > order.price:
-                    return t.STOP_ORDER_TYPE_STOP_LOSS
+                if current_price > order.stop_price:
+                    return t.STOP_ORDER_TYPE_STOP_LIMIT
 
     # }}}
-    @staticmethod  # __extract_OrderDirection_from_Order  # {{{
-    def __extract_OrderDirection_from_Order(order: Order):
+    @staticmethod  # __avOrder_to_OrderDirection  # {{{
+    def __avOrder_to_OrderDirection(order: Order):
         assert order.type in (Order.Type.MARKET, Order.Type.LIMIT)
 
         if order.direction == Order.Direction.BUY:
@@ -712,8 +966,8 @@ class Tinkoff(Broker):
         return ti.OrderDirection.ORDER_DIRECTION_UNSPECIFIED
 
     # }}}
-    @staticmethod  # __extract_StopOrderDirection_from_Order  # {{{
-    def __extract_StopOrderDirection_from_Order(order: Order):
+    @staticmethod  # __avOrder_to_StopOrderDirection  # {{{
+    def __avOrder_to_StopOrderDirection(order: Order):
         assert order.type in (
             Order.Type.STOP,
             Order.Type.WAIT,
@@ -728,5 +982,17 @@ class Tinkoff(Broker):
             return ti.StopOrderDirection.STOP_ORDER_DIRECTION_SELL
 
         return StopOrderDirection.STOP_ORDER_DIRECTION_UNSPECIFIED
+
+    # }}}
+    @staticmethod  # __avOrder_to_StopOrderExpirationType  # {{{
+    def __avOrder_to_StopOrderExpirationType(order: Order):
+        t = ti.StopOrderExpirationType
+
+        if order.type == Order.Type.STOP:
+            return t.STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_CANCEL
+        if order.type == Order.Type.STOP_LOSS:
+            return t.STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_CANCEL
+        if order.type == Order.Type.TAKE_PROFIT:
+            return t.STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_CANCEL
 
     # }}}

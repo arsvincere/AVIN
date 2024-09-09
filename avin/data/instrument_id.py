@@ -15,7 +15,7 @@ from avin.keeper import Keeper
 from avin.utils import logger
 
 
-class InstrumentId:  # {{{
+class InstrumentId:
     """doc # {{{
     Unified identifier for all assets.
     """
@@ -84,12 +84,12 @@ class InstrumentId:  # {{{
     # }}}
     @property  # lot# {{{
     def lot(self):
-        return self.__info["lot"]
+        return int(self.info["lot"])
 
     # }}}
     @property  # min_price_step# {{{
     def min_price_step(self):
-        return self.__info["min_price_increment"]
+        return float(self.info["min_price_increment"])
 
     # }}}
     async def cacheInfo(self) -> None:  # {{{
@@ -173,6 +173,3 @@ class InstrumentId:  # {{{
         return True
 
     # }}}
-
-
-# }}}
