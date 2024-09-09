@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 from avin.data.asset_type import AssetType
+from avin.data.data_source import DataSource
 from avin.data.exchange import Exchange
 from avin.keeper import Keeper
 from avin.utils import logger
