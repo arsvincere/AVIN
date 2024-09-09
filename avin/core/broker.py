@@ -14,25 +14,18 @@ from avin.core.event import NewBarEvent, TransactionEvent
 from avin.utils import AsyncSignal
 
 
-class Broker(metaclass=abc.ABCMeta):  # {{{
-    name: str = ""
-    new_bar = AsyncSignal(NewBarEvent)
-    new_transaction = AsyncSignal(TransactionEvent)
-    # вот тут потом аккаунт уже запрашивает ордер стэйт и
-    # обновляет его статус, количество выполненных, или
-    # если он там полностью уже выполнен, получает операцию
-    # и отправляет сигнал order.executed.async_emit(order, operation)
-
-    # list[OrderStage]: price, quantity, id, dt
-
+class Broker(metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def __init__(self): ...
+    def __init__(self):
+        self.new_bar = AsyncSignal(NewBarEvent)
+        self.new_transaction = AsyncSignal(TransactionEvent)
+
     @abc.abstractmethod
     def isConnect(self) -> bool: ...
     @abc.abstractmethod
-    async def connect(self): ...
+    async def connect(self) -> None: ...
     @abc.abstractmethod
-    async def disconnect(self): ...
+    async def disconnect(self) -> None: ...
     @abc.abstractmethod
     async def isMarketOpen(self) -> bool: ...
 
@@ -57,6 +50,8 @@ class Broker(metaclass=abc.ABCMeta):  # {{{
     @abc.abstractmethod
     async def getOrderOperation(self, order: Order) -> Order.Status: ...
     @abc.abstractmethod
+    async def getLastPrice(self, asset: Asset) -> Order.Status: ...
+    @abc.abstractmethod
     async def getHistoricalBars(
         self,
         asset: Asset,
@@ -64,8 +59,6 @@ class Broker(metaclass=abc.ABCMeta):  # {{{
         begin: datetime,
         end: datetime,
     ) -> list[Bar]: ...
-    @abc.abstractmethod
-    async def getLastPrice(self, asset: Asset) -> Order.Status: ...
 
     @abc.abstractmethod
     async def syncOrder(self, order: Order) -> Order: ...
@@ -94,6 +87,3 @@ class Broker(metaclass=abc.ABCMeta):  # {{{
     async def createPositionStream(self, account: Account) -> bool: ...
     @abc.abstractmethod
     async def subscribe(self, asset: Asset, data_type: DataType) -> bool: ...
-
-
-# }}}
