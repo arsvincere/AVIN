@@ -260,6 +260,15 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         return asset
 
     # }}}
+    @classmethod  # byUid# {{{
+    async def byFigi(cls, uid: str) -> Asset:
+        logger.debug(f"{cls.__name__}.byUid()")
+
+        ID = InstrumentId.byUid(uid)
+        asset = Asset.byId(ID)
+        return asset
+
+    # }}}
     @classmethod  # __formatArgs# {{{
     def __formatArgs(
         cls, timeframe, begin, end
