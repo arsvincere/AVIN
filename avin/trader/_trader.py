@@ -18,8 +18,55 @@ from avin.utils import logger
 # после обновления данных в БД и загрузки графиков - надо еще
 # раз обновлять данные но уже у брокера запрашивать
 
+# TODO: вот примерно так выглядеть будет попытка создания
+# дата стрима и пересоздание если не получилось
+# сделай из этого говнокода цикл аккуратный с нормальными логами
+# и запихай в какой нибудь метод типо
+# trader.__createDataStream
 
-class Trader:  # {{{
+# await broker.createDataStream(mvid, DataType.BAR_1M)
+# await broker.new_bar.async_connect(onNewBar)
+# started = await broker.startDataStream()
+# if not started:
+#     print("попытка 2")
+#     await broker.disconnect()
+#     print("sleep 10 sec")
+#     await asyncio.sleep(10)
+#     await broker.connect()
+#     await broker.createDataStream(mvid, DataType.BAR_1M)
+#     started = await broker.startDataStream()
+# if not started:
+#     print("попытка 3")
+#     await broker.disconnect()
+#     print("sleep 10 sec")
+#     await asyncio.sleep(10)
+#     await broker.connect()
+#     await broker.createDataStream(mvid, DataType.BAR_1M)
+#     started = await broker.startDataStream()
+# if not started:
+#     print("попытка 4")
+#     await broker.disconnect()
+#     print("sleep 10 sec")
+#     await asyncio.sleep(10)
+#     await broker.connect()
+#     await broker.createDataStream(mvid, DataType.BAR_1M)
+#     started = await broker.startDataStream()
+# if not started:
+#     print("попытка 5")
+#     await broker.disconnect()
+#     print("sleep 10 sec")
+#     await asyncio.sleep(10)
+#     await broker.connect()
+#     await broker.createDataStream(mvid, DataType.BAR_1M)
+#     started = await broker.startDataStream()
+# if not started:
+#     print("Game over.")
+#     exit(0)
+#
+# await asyncio.sleep(600)
+
+
+class Trader:
     def __init__(self):  # {{{
         logger.debug("Genera.__init__()")
         self.work = False
@@ -247,6 +294,3 @@ class Trader:  # {{{
             logger.warning("Trader.stop() called, but now he is not work")
 
     # }}}
-
-
-# }}}
