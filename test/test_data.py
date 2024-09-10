@@ -73,6 +73,9 @@ async def test_InstrumentId():
     by_figi = await InstrumentId.byFigi("BBG004730N88")
     assert by_figi.name == sber.name
 
+    by_uid = await InstrumentId.byUid("cf1c6158-a303-43ac-89eb-9b1db8f96043")
+    assert by_uid.ticker == "MVID"
+
 
 # }}}
 @pytest.mark.asyncio  # test_Data_cache  # {{{
