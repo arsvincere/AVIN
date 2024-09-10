@@ -150,6 +150,30 @@ class InstrumentId:
         return ID
 
     # }}}
+    @classmethod  # byUid# {{{
+    async def byUid(cls, uid: str) -> InstrumentId | None:
+        logger.debug(f"{cls.__name__}.byUid()")
+
+        if not cls.__checkArgs(uid=uid):
+            return None
+
+        info_list = await Keeper.info(
+            source=DataSource.TINKOFF, asset_type=None, uid=uid
+        )
+        assert len(info_list) == 1
+        info = info_list[0]
+
+        ID = InstrumentId(
+            asset_type=AssetType.fromStr(info["type"]),
+            exchange=Exchange.fromStr(info["exchange"]),
+            ticker=info["ticker"],
+            figi=info["figi"],
+            name=info["name"],
+        )
+
+        return ID
+
+    # }}}
     @classmethod  # __checkArgs{{{
     def __checkArgs(
         cls,
@@ -158,6 +182,7 @@ class InstrumentId:
         ticker=None,
         figi=None,
         name=None,
+        uid=None,
     ):
         if asset_type:
             assert isinstance(asset_type, AssetType)
@@ -169,6 +194,8 @@ class InstrumentId:
             assert isinstance(figi, str)
         if name:
             assert isinstance(name, str)
+        if uid:
+            assert isinstance(uid, str)
 
         return True
 
