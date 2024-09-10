@@ -44,12 +44,17 @@ async def test_Tinkoff(event_loop):
         status=Order.Status.NEW,
         order_id=order_id,
     )
-    await broker.postMarketOrder(order, account)
+    await broker.postMarketOrder(account, order)
     assert order.status in (Order.Status.POSTED, Order.Status.FILLED)
     order.order_id = Id.newId()
     order.direction = Order.Direction.SELL
-    await broker.postMarketOrder(order, account)
+    await broker.postMarketOrder(account, order)
     assert order.status in (Order.Status.POSTED, Order.Status.FILLED)
+
+    # get order operation
+    operation = await broker.getOrderOperation(account, order)
+    assert operation.asset_id == order.asset_id
+    assert operation.lots == order.lots
 
     # post LimitOrder buy
     last_price = broker.getLastPrice(mvid)
@@ -64,7 +69,7 @@ async def test_Tinkoff(event_loop):
         status=Order.Status.NEW,
         order_id=order_id,
     )
-    await broker.postLimitOrder(limit_order, account)
+    await broker.postLimitOrder(account, limit_order)
     assert limit_order.status == Order.Status.POSTED
 
     # get it limit order
@@ -81,7 +86,7 @@ async def test_Tinkoff(event_loop):
     assert received_order.broker_id == limit_order.broker_id
 
     # cancel limit order buy
-    successful = await broker.cancelLimitOrder(limit_order, account)
+    successful = await broker.cancelLimitOrder(account, limit_order)
     assert successful
 
     # post LimitOrder sell
@@ -97,7 +102,7 @@ async def test_Tinkoff(event_loop):
         status=Order.Status.NEW,
         order_id=order_id,
     )
-    await broker.postLimitOrder(limit_order, account)
+    await broker.postLimitOrder(account, limit_order)
     assert limit_order.status == Order.Status.POSTED
 
     # get it limit order
@@ -114,10 +119,10 @@ async def test_Tinkoff(event_loop):
     assert received_order.broker_id == limit_order.broker_id
 
     # cancel limit order sell
-    successful = await broker.cancelLimitOrder(limit_order, account)
+    successful = await broker.cancelLimitOrder(account, limit_order)
     assert successful
 
-    # post stop order
+    # post stop order buy
     last_price = broker.getLastPrice(mvid)
     price = round_price(last_price - 10, mvid.min_price_step)
     order_id = Id.newId()
@@ -133,7 +138,8 @@ async def test_Tinkoff(event_loop):
         order_id=order_id,
     )
 
-    await broker.postStopOrder(stop_order, account)
+    await broker.postStopOrder(account, stop_order)
+    assert stop_order.status == Order.Status.PENDING
 
     received_order = await broker.getStopOrders(account)
     received_order = received_order[0]
@@ -149,8 +155,38 @@ async def test_Tinkoff(event_loop):
     assert received_order.broker_id == stop_order.broker_id
     assert received_order.order_id is None
 
-    await broker.cancelStopOrder(stop_order, account)
+    await broker.cancelStopOrder(account, stop_order)
     assert stop_order.status == Order.Status.CANCELED
+
+    # post stop order sell
+    last_price = broker.getLastPrice(mvid)
+    price = round_price(last_price + 10, mvid.min_price_step)
+
+    order_id = Id.newId()
+    stop_order = StopOrder(
+        account_name=account.name,
+        direction=Order.Direction.SELL,
+        asset_id=mvid.ID,
+        lots=1,
+        quantity=1 * mvid.lot,
+        stop_price=price,
+        exec_price=price,
+        status=Order.Status.NEW,
+        order_id=order_id,
+    )
+
+    await broker.postStopOrder(account, stop_order)
+    assert stop_order.status == Order.Status.PENDING
+
+    await broker.cancelStopOrder(account, stop_order)
+    assert stop_order.status == Order.Status.CANCELED
+
+    # get operations, last 2 operation - buy/sell MVID
+    from_ = now() - ONE_MINUTE
+    to = now()
+    operations = await broker.getOperations(account, from_, to)
+    assert operations[0].asset_id == mvid.ID
+    assert operations[1].asset_id == mvid.ID
 
     # disconnect
     await broker.disconnect()
