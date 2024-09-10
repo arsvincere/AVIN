@@ -10,15 +10,11 @@ from __future__ import annotations
 
 import abc
 
-from avin.core.event import NewBarEvent, TransactionEvent
-from avin.utils import AsyncSignal
-
 
 class Broker(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def __init__(self):
-        self.new_bar = AsyncSignal(NewBarEvent)
-        self.new_transaction = AsyncSignal(TransactionEvent)
+        pass
 
     @abc.abstractmethod
     def isConnect(self) -> bool: ...
@@ -76,14 +72,3 @@ class Broker(metaclass=abc.ABCMeta):
     async def cancelLimitOrder(self, order: Order) -> Order: ...
     @abc.abstractmethod
     async def cancelStopOrder(self, order: Order) -> Order: ...
-
-    @abc.abstractmethod
-    async def createBarStream(self, account: Account) -> bool: ...
-    @abc.abstractmethod
-    async def createTransactionStream(self, account: Account) -> bool: ...
-    @abc.abstractmethod
-    async def createOperationStream(self, account: Account) -> bool: ...
-    @abc.abstractmethod
-    async def createPositionStream(self, account: Account) -> bool: ...
-    @abc.abstractmethod
-    async def subscribe(self, asset: Asset, data_type: DataType) -> bool: ...

@@ -19,7 +19,7 @@ from avin.core.order import Order
 from avin.utils import logger, now
 
 
-class Account:  # {{{
+class Account:
     def __init__(self, name: str, broker: Broker, meta: object):  # {{{
         logger.debug("Account.__init__()")
         self.__name = name
@@ -91,7 +91,7 @@ class Account:  # {{{
     async def post(self, order: Order):  # {{{
         logger.info(f":: Account {self.__name} post order: {order}")
 
-        await order.filled.async_connect(self.onOrderFilled)
+        await order.filled.async_connect(self.__onOrderFilled)
 
         if order.type == Order.Type.MARKET:
             order = await self.__broker.postMarketOrder(order, self.__meta)
@@ -111,7 +111,8 @@ class Account:  # {{{
         return order
 
     # }}}
-    def cancel(self, order):  # {{{
+    async def cancel(self, order):  # {{{
+        assert False, "Не переписывал еще этот метод, на обновленного Брокера"
         logger.info(
             f"Cancel order: {order.type.name} "
             f"{order.direction.name} "
@@ -128,26 +129,6 @@ class Account:  # {{{
         return response
 
     # }}}
-    async def onOrderFilled(self, order: Order):
-        logger.debug(f"{self.__class__.__name__}.onOrderFilled({order})")
-        assert order.status == Order.Status.FILLED
-
-        # TODO: здесь конечно надо чтото другое придумать
-        # лучше всего наверное записывать операции в БД как есть
-        # без комиссии, а потом, через некоторое время уже чекать снова
-        # ордер и доставать комиссию по операции
-        # можно сделать например так:
-        # Keeper.update(Operation, order_id=xxx, commission=xxx)
-        print("sleep 1 sec, wait commission")
-        await asyncio.sleep(1)
-        print("wake up")
-
-        operation = self.__broker.getOrderOperation(self.__meta, order)
-
-        await Operation.save(operation)
-        await order.setStatus(Order.Status.EXECUTED)
-        await order.executed.async_emit(order, operation)
-
     @classmethod  # fromRecord  # {{{
     def fromRecord(cls, record):
         # FIX:
@@ -161,6 +142,24 @@ class Account:  # {{{
         return acc
 
     # }}}
+    async def __onOrderFilled(self, order: Order):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__onOrderFilled({order})")
+        assert order.status == Order.Status.FILLED
 
+        # TODO: здесь конечно надо чтото другое придумать
+        # лучше всего наверное записывать операции в БД как есть
+        # без комиссии, а потом, через некоторое время уже чекать снова
+        # ордер и доставать комиссию по операции
+        # можно сделать например так:
+        # Keeper.update(Operation, order_id=xxx, commission=xxx)
+        print("sleep 2 sec, wait commission")
+        await asyncio.sleep(2)
+        print("wake up")
 
-# }}}
+        operation = self.__broker.getOrderOperation(self.__meta, order)
+
+        await Operation.save(operation)
+        await order.setStatus(Order.Status.EXECUTED)
+        await order.executed.async_emit(order, operation)
+
+    # }}}

@@ -18,7 +18,7 @@ from avin.data import InstrumentId
 from avin.keeper import Keeper
 
 
-class Operation:  # {{{
+class Operation:
     class Direction(enum.Enum):  # {{{
         UNDEFINE = 0
         BUY = 1
@@ -127,6 +127,3 @@ class Operation:  # {{{
         await Keeper.update(operation)
 
     # }}}
-
-
-# }}}

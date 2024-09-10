@@ -33,7 +33,7 @@ class Bar(_Bar):  # {{{
         EXTREMUM = 32
 
     # }}}
-    def __init__(
+    def __init__(  # {{{
         self,
         dt: datetime,
         open: float,
@@ -42,7 +42,7 @@ class Bar(_Bar):  # {{{
         close: float,
         vol: int,
         chart: Optional[Chart] = None,
-    ):  # {{{
+    ):
         _Bar.__init__(self, dt, open, high, low, close, vol)
         self.__chart = chart
         self.__analyse()

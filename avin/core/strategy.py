@@ -23,7 +23,7 @@ from avin.data import InstrumentId
 from avin.utils import AsyncSignal, Cmd, logger
 
 
-class Strategy(metaclass=abc.ABCMeta):  # {{{
+class Strategy(metaclass=abc.ABCMeta):
     """Signal"""  # {{{
 
     tradeOpened = AsyncSignal(Trade)
@@ -314,8 +314,6 @@ class Strategy(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
 
-
-# }}}
 
 if __name__ == "__main__":
     ...
