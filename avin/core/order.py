@@ -94,6 +94,13 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         BUY = 1
         SELL = 2
 
+        def toOperationDirection(self):
+            if self == Order.Direction.BUY:
+                return Operation.Direction.BUY
+
+            if self == Order.Direction.SELL:
+                return Operation.Direction.SELL
+
         @classmethod  # fromStr
         def fromStr(cls, string: str) -> Order.Direction:
             directions = {
