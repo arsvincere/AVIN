@@ -14,6 +14,7 @@ import asyncio
 from datetime import UTC, date, datetime, time
 
 from avin.core.broker import Broker
+from avin.core.event import TransactionEvent
 from avin.core.operation import Operation
 from avin.core.order import Order
 from avin.utils import logger, now
@@ -25,6 +26,7 @@ class Account:
         self.__name = name
         self.__broker = broker
         self.__meta = meta
+        self.__active_orders = list()
 
     # }}}
     @property  # name# {{{
@@ -42,73 +44,79 @@ class Account:
         return self.__meta
 
     # }}}
-    def addMoney(self, money):  # {{{
+    async def addMoney(self, money: float):  # {{{
         logger.debug(f"Account.addMoney({money})")
-        self.__broker.addMoney(self.__meta, money)
+        await self.__broker.addMoney(self, money)
 
     # }}}
-    def money(self):  # {{{
+    async def money(self):  # {{{
         logger.debug("Account.money()")
-        return self.__broker.getMoney(self.__meta)
+        money = await self.__broker.getMoney(self)
+        return money
 
     # }}}
-    def orders(self):  # {{{
+    async def orders(self):  # {{{
         logger.debug("Account.orders()")
-        limit_orders = self.__broker.getLimitOrders(self.__meta)
+
+        limit_orders = await self.__broker.getLimitOrders(self)
+
         if self.__broker.TARGET == Sandbox.TARGET:
             stop_orders = list()
         else:
-            stop_orders = self.__broker.getStopOrders(self.__meta)
+            stop_orders = await self.__broker.getStopOrders(self)
+
         return limit_orders + stop_orders
 
     # }}}
-    def operations(self, begin=None, end=None):  # {{{
+    async def operations(self, begin=None, end=None):  # {{{
         logger.debug("Account.operations()")
-        if begin is None:
+
+        if begin is None and end is None:
             end = now()
             begin = datetime.combine(date.today(), time(0, 0), UTC)
-        operations = self.__broker.getOperations(self.__meta, begin, end)
+
+        operations = await self.__broker.getOperations(self, begin, end)
         return operations
 
     # }}}
-    def portfolio(self) -> Portfolio:  # {{{
+    async def positions(self) -> Portfolio:  # {{{
         logger.debug("Account.positions()")
-        portfolio = self.__broker.getPositions(self.__meta)
+
+        positions = await self.__broker.getPositions(self)
+        return positions
+
+    # }}}
+    async def portfolio(self) -> Portfolio:  # {{{
+        logger.debug("Account.portfolio()")
+        portfolio = await self.__broker.getPortfolio(self)
         return portfolio
 
     # }}}
-    def detailedPortfolio(self) -> Portfolio:  # {{{
-        logger.debug("Account.portfolio()")
-        p = self.__broker.getDetailedPortfolio(self.__meta)
-        return p
-
-    # }}}
-    def withdrawLimits(self):  # {{{
+    async def withdrawLimits(self):  # {{{
         logger.debug("Account.withdrawLimits()")
-        return self.__broker.getWithdrawLimits(self.__meta)
+        limits = await self.__broker.getWithdrawLimits(self)
+        return limits
 
     # }}}
-    async def post(self, order: Order):  # {{{
+    async def post(self, order: Order) -> bool:  # {{{
         logger.info(f":: Account {self.__name} post order: {order}")
 
-        await order.filled.async_connect(self.__onOrderFilled)
+        post_methods = {
+            Order.Type.MARKET: self.__broker.postMarketOrder,
+            Order.Type.LIMIT: self.__broker.postLimitOrder,
+            Order.Type.STOP: self.__broker.postStopOrder,
+            Order.Type.STOP_LOSS: self.__broker.postStopLoss,
+            Order.Type.TAKE_PROFIT: self.__broker.postTakeProfit,
+        }
+        method = post_methods[order.type]
+        result = method(self, order)
 
-        if order.type == Order.Type.MARKET:
-            order = await self.__broker.postMarketOrder(order, self.__meta)
-        elif order.type == Order.Type.LIMIT:
-            order = await self.__broker.postLimitOrder(order, self.__meta)
-        elif order.type in (
-            Order.Type.STOP,
-            Order.Type.STOP_LOSS,
-            Order.Type.TAKE_PROFIT,
-        ):
-            order = await self.__broker.postStopOrder(order, self.__meta)
-        elif (
-            order.type == Order.Type.WAIT or order.type == Order.Type.TRAILING
-        ):
-            assert False
+        if result:
+            self.__active_orders.append(order)
+            await order.filled.async_connect(self.__onOrderFilled)
+            await self.__broker.syncOrder(self, order)
 
-        return order
+        return result
 
     # }}}
     async def cancel(self, order):  # {{{
@@ -122,11 +130,23 @@ class Account:
             f"ID={order.ID}"
         )
         if order.type == Order.Type.LIMIT:
-            response = self.__broker.cancelLimitOrder(order, self.__meta)
+            response = self.__broker.cancelLimitOrder(self, order)
         else:
-            response = self.__broker.cancelStopOrder(order, self.__meta)
+            response = self.__broker.cancelStopOrder(self, order)
         logger.info(f"Cancel order: Response='{response}'")
         return response
+
+    # }}}
+    async def receiveTransaction(self, event: TransactionEvent):  # {{{
+        logger.info(f"{event}")
+
+        self.__active_orders.sort
+        for i in self.__active_orders:
+            if order.broker_id == event.order_broker_id:
+                order = i
+                break
+
+        await self.broker.syncOrder(self, order)
 
     # }}}
     @classmethod  # fromRecord  # {{{
@@ -142,24 +162,31 @@ class Account:
         return acc
 
     # }}}
+
     async def __onOrderFilled(self, order: Order):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__onOrderFilled({order})")
+        logger.debug(f"Account.__onOrderFilled({order})")
         assert order.status == Order.Status.FILLED
 
-        # TODO: здесь конечно надо чтото другое придумать
-        # лучше всего наверное записывать операции в БД как есть
-        # без комиссии, а потом, через некоторое время уже чекать снова
-        # ордер и доставать комиссию по операции
-        # можно сделать например так:
-        # Keeper.update(Operation, order_id=xxx, commission=xxx)
-        print("sleep 2 sec, wait commission")
-        await asyncio.sleep(2)
-        print("wake up")
-
-        operation = self.__broker.getOrderOperation(self.__meta, order)
+        operation = self.__broker.getOrderOperation(self, order)
 
         await Operation.save(operation)
         await order.setStatus(Order.Status.EXECUTED)
         await order.executed.async_emit(order, operation)
 
+        # await commission for operation
+        if operation.commission == 0:
+            asyncio.create_task(self.__requestCommission(order, operation))
+
     # }}}
+    async def __requestCommission(self, order, operation):  # {{{
+        logger.debug("Account.__requestCommission()")
+
+        while operation.commission == 0:
+            await asyncio.sleep(10)
+            c = await self.__broker.getExecutedCommission(self, order)
+            operation.commission = c
+
+        await Operation.update(operation)
+
+
+# }}}

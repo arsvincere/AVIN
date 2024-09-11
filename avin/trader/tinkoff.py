@@ -472,7 +472,7 @@ class Tinkoff(Broker):
         return response
 
     # }}}
-    @classmethod  # getDetailedPortfolio  # {{{
+    @classmethod  # getPortfolio  # {{{
     async def getDetailedPortfolio(cls, account: Account) -> Portfolio:
         logger.debug(f"Tinkoff.getDetailedPortfolio({account})")
         response: ti.PortfolioResponse = (
@@ -523,6 +523,20 @@ class Tinkoff(Broker):
         )
 
         return operation
+
+    # }}}
+    @classmethod  # getExecutedCommission  # {{{
+    async def getExecutedCommission(
+        cls, account: Account, order: Order
+    ) -> Order.Status:
+        response: ti.OrderState = await cls.__getOrderState(account, order)
+        assert (
+            response.execution_report_status
+            == ti.OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_FILL
+        )
+
+        commission = cls.__ti_to_av(response.executed_commission)
+        return commission
 
     # }}}
     @classmethod  # getHistoricalBars  # {{{
@@ -609,7 +623,7 @@ class Tinkoff(Broker):
 
     # }}}
     @classmethod  # postMarketOrder  # {{{
-    async def postMarketOrder(cls, account: Account, order: Order):
+    async def postMarketOrder(cls, account: Account, order: Order) -> bool:
         """Response example# {{{
         Response='PostOrderResponse(
             order_id='R270663867',
@@ -654,30 +668,29 @@ class Tinkoff(Broker):
         """  # }}}
         logger.debug(f"Tinkoff.postMarketOrder({order})")
 
-        response: ti.PostOrderResponse = (
-            await cls.__connect.orders.post_order(
-                account_id=account.meta.id,
-                order_type=cls.__av_to_ti(order, ti.OrderType),
-                direction=cls.__av_to_ti(order, ti.OrderDirection),
-                figi=order.asset_id.figi,
-                quantity=order.lots,
-                order_id=str(order.order_id),
+        try:
+            response: ti.PostOrderResponse = (
+                await cls.__connect.orders.post_order(
+                    account_id=account.meta.id,
+                    order_type=cls.__av_to_ti(order, ti.OrderType),
+                    direction=cls.__av_to_ti(order, ti.OrderDirection),
+                    figi=order.asset_id.figi,
+                    quantity=order.lots,
+                    order_id=str(order.order_id),
+                )
             )
-        )
-        logger.debug(f"Tinkoff.postMarketOrder: Response='{response}'")
+            logger.debug(f"Tinkoff.postMarketOrder: Response='{response}'")
+        except ti.exceptions.AioRequestError as err:
+            logger.error(f"{err}")
+            return False
 
-        # save broker_id, save 'response' in order.meta and
-        # setStatus -> side effect: update in db and emit signals
         order.broker_id = response.order_id
         order.meta = str(response)
-        status = cls.__ti_to_av(response.execution_report_status)
-        await order.setStatus(status)
-
         return True
 
     # }}}
     @classmethod  # postLimitOrder  # {{{
-    async def postLimitOrder(cls, account: Account, order: Order):
+    async def postLimitOrder(cls, account: Account, order: Order) -> bool:
         """Response example# {{{
         PostOrderResponse(
             order_id='52004328245',
@@ -723,31 +736,30 @@ class Tinkoff(Broker):
         """  # }}}
         logger.debug(f"Tinkoff.postLimitOrder({order})")
 
-        response: ti.PostOrderResponse = (
-            await cls.__connect.orders.post_order(
-                order_type=cls.__av_to_ti(order, ti.OrderType),
-                account_id=account.meta.id,
-                direction=cls.__av_to_ti(order, ti.OrderDirection),
-                figi=order.asset_id.figi,
-                quantity=order.lots,
-                price=Tinkoff.__av_to_ti(order.price, ti.Quotation),
-                order_id=str(order.order_id),
+        try:
+            response: ti.PostOrderResponse = (
+                await cls.__connect.orders.post_order(
+                    order_type=cls.__av_to_ti(order, ti.OrderType),
+                    account_id=account.meta.id,
+                    direction=cls.__av_to_ti(order, ti.OrderDirection),
+                    figi=order.asset_id.figi,
+                    quantity=order.lots,
+                    price=Tinkoff.__av_to_ti(order.price, ti.Quotation),
+                    order_id=str(order.order_id),
+                )
             )
-        )
-        logger.debug(f"Tinkoff.postLimitOrder: Response='{response}'")
+            logger.debug(f"Tinkoff.postLimitOrder: Response='{response}'")
+        except ti.exceptions.AioRequestError as err:
+            logger.error(f"{err}")
+            return False
 
-        # save broker_id, save 'response' in order.meta and
-        # setStatus -> side effect: update in db and emit signals
         order.broker_id = response.order_id
         order.meta = str(response)
-        status = cls.__ti_to_av(response.execution_report_status)
-        await order.setStatus(status)
-
         return True
 
     # }}}
     @classmethod  # postStopOrder  # {{{
-    async def postStopOrder(cls, account: Account, order: Order):
+    async def postStopOrder(cls, account: Account, order: Order) -> bool:
         """Response example  # {{{
         PostStopOrderResponse(
             stop_order_id='f3f7e4e7-f076-4cc9-861d-d9995ed84b0f',
@@ -779,24 +791,22 @@ class Tinkoff(Broker):
                 # expire_date=
             )
             logger.debug(f"Tinkoff.postStopOrder: Response='{response}'")
-        except ti.exceptions.RequestError as err:
+        except ti.exceptions.AioRequestError as err:
             logger.error(f"{err}")
             return False
 
         order.broker_id = response.stop_order_id
         order.meta = str(response)
-        await order.setStatus(Order.Status.PENDING)
-
         return True
 
     # }}}
     @classmethod  # postStopLoss  # {{{
-    async def postStopLoss(cls, account: Account, order: Order):
+    async def postStopLoss(cls, account: Account, order: Order) -> bool:
         return cls.postStopOrder(account, order)
 
     # }}}
     @classmethod  # postTakeProfit:  # {{{
-    async def postTakeProfit(cls, account: Account, order: Order):
+    async def postTakeProfit(cls, account: Account, order: Order) -> bool:
         return cls.postStopOrder(account, order)
 
     # }}}
@@ -819,16 +829,19 @@ class Tinkoff(Broker):
         """  # }}}
         logger.debug(f"Tinkoff.cancelLimitOrder({account}, {order})")
 
-        response: ti.CancelOrderResponse = (
-            await cls.__connect.orders.cancel_order(
-                account_id=account.meta.id,
-                order_id=order.broker_id,
+        try:
+            response: ti.CancelOrderResponse = (
+                await cls.__connect.orders.cancel_order(
+                    account_id=account.meta.id,
+                    order_id=order.broker_id,
+                )
             )
-        )
-        logger.debug(f"Tinkoff.cancelLimitOrder: Response='{response}'")
+            logger.debug(f"Tinkoff.cancelLimitOrder: Response='{response}'")
+        except ti.exceptions.AioRequestError as err:
+            logger.error(f"{err}")
+            return False
 
-        await cls.syncOrder(account, order)
-        return order.status == Order.Status.CANCELED
+        return True
 
     # }}}
     @classmethod  # cancelStopOrder  # {{{
@@ -865,13 +878,11 @@ class Tinkoff(Broker):
         except ti.exceptions.AioRequestError as err:
             logger.error(err)
             if err.code == StatusCode.NOT_FOUND:
-                # TODO: подумать как лучше всего тут действовать
                 raise BrokerError(
                     f"Tinkoff stop-order '{order.order_id}' - not found"
                 )
-                return False  # ???
+            return False
 
-        await order.setStatus(Order.Status.CANCELED)
         return True
 
     # }}}
@@ -1150,7 +1161,7 @@ class Tinkoff(Broker):
 
             event = cls.__ti_to_av(response)
             await Tinkoff.new_transaction.async_emit(event)
-            # account.receiveTransaction(transaction_event)  # TODO: me
+            account.receiveTransaction(transaction_event)  # TODO: me
 
     # }}}
 
