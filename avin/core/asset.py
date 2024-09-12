@@ -145,33 +145,6 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         self.__charts[timeframe] = chart
 
     # }}}
-    async def update(self, new_bar_event: NewBarEvent) -> None:  # {{{
-        logger.debug(f"{self.__class__.name}.update()")
-
-        # select chart
-        timeframe = new_bar_event.timeframe
-        chart = self.chart(timeframe)
-
-        # add new bar in this chart
-        chart.update(new_bar_event.bar)
-
-        # emiting special signal for the bar timeframe
-        signals = {
-            "1M": self.newBar1m,
-            "5M": self.newBar5m,
-            "10M": self.newBar10m,
-            "1H": self.newBar1h,
-            "D": self.newBarD,
-            "W": self.newBarW,
-            "M": self.newBarM,
-        }
-        signal = signals[str(timeframe)]
-        await signal.async_emit(self, chart)
-
-        # emiting common signal
-        await self.updated.async_emit(self)
-
-    # }}}
     async def loadChart(  # {{{
         self,
         timeframe: Union[TimeFrame, str],
@@ -211,6 +184,33 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         # create & return DataFrame
         df = pd.DataFrame([dict(r) for r in records])
         return df
+
+    # }}}
+    async def receiveNewBar(self, new_bar_event: NewBarEvent) -> None:  # {{{
+        logger.info(f"{self.ticker} receive {new_bar_event.bar}")
+
+        # select chart
+        timeframe = new_bar_event.timeframe
+        chart = self.chart(timeframe)
+
+        # add new bar in this chart
+        chart.update(new_bar_event.bar)
+
+        # emiting special signal for the bar timeframe
+        signals = {
+            "1M": self.newBar1m,
+            "5M": self.newBar5m,
+            "10M": self.newBar10m,
+            "1H": self.newBar1h,
+            "D": self.newBarD,
+            "W": self.newBarW,
+            "M": self.newBarM,
+        }
+        signal = signals[str(timeframe)]
+        await signal.async_emit(self, chart)
+
+        # emiting common signal
+        await self.updated.async_emit(self)
 
     # }}}
     @classmethod  # fromRecord# {{{
@@ -261,10 +261,10 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
     @classmethod  # byUid# {{{
-    async def byFigi(cls, uid: str) -> Asset:
+    async def byUid(cls, uid: str) -> Asset:
         logger.debug(f"{cls.__name__}.byUid()")
 
-        ID = InstrumentId.byUid(uid)
+        ID = await InstrumentId.byUid(uid)
         asset = Asset.byId(ID)
         return asset
 
