@@ -31,6 +31,11 @@ from avin.utils import Cmd, askUser, logger
 
 __all__ = ("Keeper",)
 
+# TODO: trade order operation - сохранение в базу без ИД запретить.
+# возможно стоит начать падать через exit.
+# а то через асинкио не долетают исключения...
+# или их надо ловить в await наверное...
+
 
 class Keeper:
     """const"""  # {{{
@@ -597,7 +602,7 @@ class Keeper:
         if operation.meta is None:
             meta = "NULL"
         else:
-            meta = f"$${meta}$$"
+            meta = f"$${operation.meta}$$"
 
         request = f"""
             INSERT INTO "Operation" (
