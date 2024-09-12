@@ -40,7 +40,7 @@ def configure(logger):  # {{{
 # }}}
 def _configStreamLog(logger):  # {{{
     stream_formatter = logging.Formatter(
-        "%(module)s: %(asctime)s [%(levelname)s] %(message)s",
+        "%(asctime)s [%(levelname)s] %(message)s",
         datefmt="%H:%M:%S",
     )
     stream_handler = logging.StreamHandler()
