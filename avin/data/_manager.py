@@ -115,7 +115,7 @@ class _Manager:  # {{{
         logger.debug(f"{cls.__name__}.update()")
 
         # request info about availible data
-        records = await Keeper.get(Data, ID=ID, data_type=data_type)
+        records = await Keeper.get(cls, ID=ID, data_type=data_type)
         assert len(records) == 1
         record = records[0]
 
