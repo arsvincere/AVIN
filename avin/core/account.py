@@ -15,6 +15,7 @@ from datetime import UTC, date, datetime, time
 
 from avin.core.broker import Broker
 from avin.core.event import TransactionEvent
+from avin.core.id import Id
 from avin.core.operation import Operation
 from avin.core.order import Order
 from avin.utils import logger, now
@@ -22,7 +23,7 @@ from avin.utils import logger, now
 
 class Account:
     def __init__(self, name: str, broker: Broker, meta: object):  # {{{
-        logger.debug("Account.__init__()")
+        logger.debug(f"Account.__init__({name}, {broker}, {meta})")
         self.__name = name
         self.__broker = broker
         self.__meta = meta
@@ -99,6 +100,7 @@ class Account:
 
     # }}}
     async def post(self, order: Order) -> bool:  # {{{
+        logger.debug("Account.post()")
         logger.info(f":: Account {self.__name} post order: {order}")
 
         post_methods = {
@@ -109,77 +111,91 @@ class Account:
             Order.Type.TAKE_PROFIT: self.__broker.postTakeProfit,
         }
         method = post_methods[order.type]
-        result = method(self, order)
+        result = await method(self, order)
 
-        if result:
-            self.__active_orders.append(order)
-            await order.filled.async_connect(self.__onOrderFilled)
-            await self.__broker.syncOrder(self, order)
+        if not result:
+            assert False, "чет не палучилась, подумай что делать тогда"
+
+        self.__active_orders.append(order)
+        await self.broker.syncOrder(self, order)
+
+        # TODO:
+        # обработать неудачные попытки Order.Status: UNDEFINE, REJECTED
 
         return result
 
     # }}}
     async def cancel(self, order):  # {{{
-        assert False, "Не переписывал еще этот метод, на обновленного Брокера"
-        logger.info(
-            f"Cancel order: {order.type.name} "
-            f"{order.direction.name} "
-            f"{order.asset.ticker} "
-            f"{order.lots} x ({order.asset.lot}) x {order.price}, "
-            f"exec_price={order.exec_price} "
-            f"ID={order.ID}"
-        )
-        if order.type == Order.Type.LIMIT:
-            response = self.__broker.cancelLimitOrder(self, order)
+        logger.debug("Account.cancel()")
+        logger.info(f":: Account {self.__name} cancel order: {order}")
+
+        t = Order.Type
+        if order.type == t.LIMIT:
+            result = self.__broker.cancelLimitOrder(self, order)
+        elif order.type in (t.STOP, t.STOP_LOSS, t.TAKE_PROFIT):
+            result = self.__broker.cancelStopOrder(self, order)
         else:
-            response = self.__broker.cancelStopOrder(self, order)
-        logger.info(f"Cancel order: Response='{response}'")
-        return response
+            assert False, f"че за тип ордера? {order.type}"
+
+        return result
 
     # }}}
     async def receiveTransaction(self, event: TransactionEvent):  # {{{
-        logger.info(f"{event}")
+        logger.debug("Account.receiveTransaction()")
+        logger.info(f"Account '{self.name}' receive {event}")
 
-        self.__active_orders.sort
+        order = None
         for i in self.__active_orders:
-            if order.broker_id == event.order_broker_id:
+            if i.broker_id == event.order_broker_id:
                 order = i
                 break
 
+        if not order:
+            logger.warning(
+                f"Account '{self.name}' received event {event}, "
+                f"but order not found"
+            )
+            return
+
         await self.broker.syncOrder(self, order)
+        if order.status == Order.Status.FILLED:
+            await self.__onOrderFilled(order)
 
     # }}}
     @classmethod  # fromRecord  # {{{
     def fromRecord(cls, record):
-        # FIX:
-        # пока захардкорил в аккаунте имя и броке - это тупо строки.
-        # потом надо будет сделать что-то типо account.setConnection(broker)
-        # и там внутри проверяется что broker.isConnected()
-        # а что там с переменной meta делать пока вообще вопрос.. подумаю...
-        # При этом весь код в классе - подразумевает что broker - это не
-        # строка а объект класса брокер. Надо будет переделать потом.
-        acc = Account(name=record["name"], broker=record["broker"], meta=None)
-        return acc
+        logger.debug("Account.fromRecord()")
+        assert False
+        # FIX: аккаунт не создается из базы, он создается из брокера,
+        # запросмо getAccount, getAllAccount
+        # выпили старый код который это использовал, он наверное
+        # только в тестах и остался.
 
     # }}}
-
     async def __onOrderFilled(self, order: Order):  # {{{
         logger.debug(f"Account.__onOrderFilled({order})")
         assert order.status == Order.Status.FILLED
 
-        operation = self.__broker.getOrderOperation(self, order)
+        operation = await self.__broker.getOrderOperation(self, order)
+        operation.operation_id = Id.newId()
 
         await Operation.save(operation)
         await order.setStatus(Order.Status.EXECUTED)
         await order.executed.async_emit(order, operation)
 
+        # remove order from self.__active_orders
+        i = 0
+        while i < len(self.__active_orders):
+            if self.__active_orders[i].order_id == order.order_id:
+                self.__active_orders.pop(i)
+
         # await commission for operation
         if operation.commission == 0:
-            asyncio.create_task(self.__requestCommission(order, operation))
+            await self.__requestCommission(order, operation)
 
     # }}}
     async def __requestCommission(self, order, operation):  # {{{
-        logger.debug("Account.__requestCommission()")
+        logger.info("Account.__requestCommission()")
 
         while operation.commission == 0:
             await asyncio.sleep(10)
@@ -187,6 +203,9 @@ class Account:
             operation.commission = c
 
         await Operation.update(operation)
+        logger.info(
+            f"Account '{self.name}' receive commission for: {operation}"
+        )
 
 
 # }}}

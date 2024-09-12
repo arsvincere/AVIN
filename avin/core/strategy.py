@@ -17,6 +17,7 @@ from datetime import datetime
 from avin.config import Usr
 from avin.core.account import Account
 from avin.core.asset import Asset, AssetList
+from avin.core.id import Id
 from avin.core.order import MarketOrder, Order
 from avin.core.trade import Trade, TradeList
 from avin.data import InstrumentId
@@ -109,89 +110,60 @@ class Strategy(metaclass=abc.ABCMeta):
         await AssetList.save(asset_list)
 
     # }}}
-
-    async def start(self):  # {{{
-        raise NotImplementedError()
-
-    # }}}
-    async def finish(self):  # {{{
-        raise NotImplementedError()
-
-    # }}}
-    async def connect(self, asset_list: AssetList):  # {{{
-        raise NotImplementedError()
-
-    # }}}
-    async def onTradeOpened(self, trade: Trade):  # {{{
-        logger.info(f"Trade opened: '{trade}'")
-        logger.info(f"Trade open dt: '{trade.openDatetime()}'")
-
-    # }}}
-    async def onTradeClosed(self, trade: Trade):  # {{{
-        logger.info(f"Trade closed: '{trade}'")
-        logger.info(f"Trade closed result: {trade.result()}")
-
-    # }}}
-
     async def createTrade(  # {{{
         self, dt: datetime, trade_type: Trade.Type, asset: Asset
     ):
+        logger.debug("Strategy.createTrade()")
+
         trade = Trade(
             dt=dt,
             strategy=self.name,
             version=self.version,
             trade_type=trade_type,
             asset_id=asset.ID,
+            status=Trade.Status.INITIAL,
+            trade_id=Id.newId(),
         )
         await self.__connectTradeSignals(trade)
         self.__active_trades.add(trade)
+        logger.info(f":: Created trade {trade}")
 
         # update db
         await Trade.save(trade)
         await TradeList.save(self.__active_trades)
 
-        logger.info(f":: Created trade {trade}")
         return trade
 
     # }}}
     async def createMarketOrder(  # {{{
         self, direction: Order.Direction, asset_id: InstrumentId, lots: int
     ):
-        # FIX:  надо как то через ИД добывать кол-во лотов
-        # ассет сюда передавать тоже не удобно, хотя возможно...
-        # во время процесс опенед трэйдес ассет то мы активный имеем...
-        # но вообще конечно бред это все, количество лотов вообще
-        # нужно включить в общие поля, не через json, а из json
-        # как раз их выпилить на уровне модуля Data
-        # и min_price_step тоже
+        logger.debug("Strategy.createMarketOrder()")
+
+        if not asset_id.info:
+            await asset_id.cacheInfo()
+
         order = MarketOrder(
             account_name=self.account.name,
             direction=direction,
             asset_id=asset_id,
             lots=lots,
-            quantity=lots * 100,  # FIX:
+            quantity=lots * asset_id.lot,
+            status=Order.Status.NEW,
+            order_id=Id.newId(),
         )
-        await Order.save(order)
-
         logger.info(f"{self} create order {order}")
+
+        await Order.save(order)
         return order
 
     # }}}
     async def postOrder(self, order: Order):  # {{{
+        logger.debug(f"Strategy.postOrder({order})")
         trade = self.active_trades.find(order.trade_id)
-        # TODO: еще раз подумать, название статуса, может
-        # OPENING???
-        # POST_OPEN_ORDER???
         await trade.setStatus(Trade.Status.POST_ORDER)
-        # FIX: а когда другой ордер будешь постить, на закрытие, тоже
-        # статус окажется пост ордер, надо в другом месте статс ставить
-        # или все таки заводить отдельную хуйню типо - открыть трейд
-        # и внутри трейда ордера хранить не просто листом а
-        # опен ордер, стоп ордер, тэйк ордер...
-        # но это рождает геморой с БД... отдельный подтип ордера еще
-        # добавлять..
 
-        order = await self.account.post(order)
+        result = await self.account.post(order)
 
         # TODO: что делать если ордер не прошел???
         # может попробовать еще раз... добавить настройку в аккаунт
@@ -207,6 +179,8 @@ class Strategy(metaclass=abc.ABCMeta):
         #   по рынку закрывать, частями закрывать... ситуативно это все...
         #   может в такие моменты как раз и нужно ручное управление???
         # assert order.status == Order.Status.POSTED
+        if not result:
+            assert False, "ордер не выставился"
 
         # TODO:  ДА! на будущее - нужна возможность ручного управления
         # трейдами их ордерами и операциями. Гибко. Так чтобы и в реалтайме
@@ -216,6 +190,7 @@ class Strategy(metaclass=abc.ABCMeta):
 
     # }}}
     async def closeTrade(self, trade: Trade):  # {{{
+        logger.debug(f"Strategy.closeTrade({trade})")
         await trade.setStatus(Trade.Status.CLOSING)
 
         # create order
@@ -227,9 +202,35 @@ class Strategy(metaclass=abc.ABCMeta):
 
         # attach & post this order
         await trade.attachOrder(order)
-
-        # постим этот ордер
         await self.postOrder(order)
+
+    # }}}
+
+    @abc.abstractmethod  # start  # {{{
+    async def start(self):
+        logger.info(f":: Strategy {self} started")
+
+    # }}}
+    @abc.abstractmethod  # finish  # {{{
+    async def finish(self):
+        logger.info(f":: Strategy {self} finished")
+
+    # }}}
+    @abc.abstractmethod  # connect  # {{{
+    async def connect(self, asset_list: AssetList):
+        logger.info(f":: Strategy {self} connecting")
+
+    # }}}
+    @abc.abstractmethod  # onTradeOpened  # {{{
+    async def onTradeOpened(self, trade: Trade):
+        logger.info(f"Trade opened: '{trade}'")
+        logger.info(f"Trade open dt: '{trade.openDatetime()}'")
+
+    # }}}
+    @abc.abstractmethod  # onTradeClosed  # {{{
+    async def onTradeClosed(self, trade: Trade):
+        logger.info(f"Trade closed: '{trade}'")
+        logger.info(f"Trade closed result: {trade.result()}")
 
     # }}}
 
@@ -238,7 +239,7 @@ class Strategy(metaclass=abc.ABCMeta):
         path = f"usr.strategy.{name}.{version}"
         modul = importlib.import_module(path)
         UStrategy = modul.__getattribute__("UStrategy")
-        strategy = UStrategy(name, version)
+        strategy = UStrategy()
 
         await strategy.__loadConfig()
         await strategy.__loadLongList()
