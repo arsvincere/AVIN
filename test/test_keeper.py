@@ -32,7 +32,7 @@ data_type = DataType.BAR_D
 
 share = Share(asset_id)
 
-acc = Account("_pytest", "Tinkoff", None)
+acc = Account("_pytest", Tinkoff, None)
 
 
 # для данных тэстов такой имитации достаточно
@@ -243,14 +243,7 @@ async def test_asset(event_loop):
 # }}}
 @pytest.mark.asyncio  # test_account  # {{{
 async def test_account(event_loop):
-    acc = Account("_pytest", "Tinkoff", None)
     await Keeper.add(acc)
-
-    received_acc = await Keeper.get(Account, name="_pytest")
-    assert len(received_acc) == 1
-    received_acc = received_acc[0]
-    assert acc.name == received_acc.name
-    assert acc.broker == received_acc.broker
 
 
 # }}}

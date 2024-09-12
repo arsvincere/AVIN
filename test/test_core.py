@@ -392,15 +392,21 @@ async def test_Order(event_loop):
     sber_id = await InstrumentId.byTicker(
         AssetType.SHARE, Exchange.MOEX, "SBER"
     )
+    order_id = Id(100500)
     o = MarketOrder(
-        "_unittest", Order.Direction.SELL, sber_id, lots=15, quantity=150
+        "_unittest",
+        Order.Direction.SELL,
+        sber_id,
+        lots=15,
+        quantity=150,
+        order_id=order_id,
     )
     assert o.account_name == "_unittest"
     assert o.direction == Order.Direction.SELL
     assert o.asset_id == sber_id
     assert o.lots == 15
     assert o.quantity == 150
-    assert o.order_id is None
+    assert o.order_id == order_id
     assert o.trade_id is None
     assert o.exec_lots == 0
     assert o.exec_quantity == 0
@@ -511,7 +517,7 @@ async def test_Operation():
 async def test_Trade():
     # create strategy and trade
     dt = datetime(2024, 8, 27, 16, 33, tzinfo=UTC)
-    strategy = await Strategy.load("Every", "day")
+    strategy = await Strategy.load("Every", "minute")
     # await Keeper.add(strategy)
     trade_type = Trade.Type.LONG
     asset = await Asset.byTicker(AssetType.SHARE, Exchange.MOEX, "SBER")
@@ -673,7 +679,7 @@ async def test_TradeList():
     tlist = TradeList(tlist_name)
 
     # create strategy
-    strategy = await Strategy.load("Every", "day")
+    strategy = await Strategy.load("Every", "minute")
     # await Keeper.add(strategy)
 
     # create trades
@@ -754,6 +760,7 @@ async def test_clear_all_test_vars():
     request = """
     DELETE FROM "Order"
     WHERE
+        order_id = '100500' OR
         order_id = '2222' OR
         order_id = '2223';
     """

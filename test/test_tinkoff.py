@@ -14,23 +14,26 @@ from avin import *
 
 @pytest.mark.asyncio
 async def test_Tinkoff(event_loop):
+    # connect{{{
     await Tinkoff.connect()
     assert Tinkoff.isConnect()
-
+    # }}}
+    # get all account # {{{
     accounts = await Tinkoff.getAllAccounts()
     assert len(accounts) == 4
-
+    # }}}
+    # get account{{{
     account = await Tinkoff.getAccount("Alex")
     assert account.name == "Alex"
     assert account.broker.name == "Tinkoff"
     assert account.meta is not None
-
-    # get money
+    # }}}
+    # get money{{{
     money = await Tinkoff.getMoney(account)
     assert isinstance(money, float)
     assert money > 0
-
-    # post MarketOrder buy then sell
+    # }}}
+    # post MarketOrder buy then sell{{{
     mvid = await Asset.byTicker(AssetType.SHARE, Exchange.MOEX, "MVID")
     await mvid.cacheInfo()
     order_id = Id.newId()
@@ -43,19 +46,24 @@ async def test_Tinkoff(event_loop):
         status=Order.Status.NEW,
         order_id=order_id,
     )
-    await Tinkoff.postMarketOrder(account, order)
-    assert order.status in (Order.Status.POSTED, Order.Status.FILLED)
+    posted = await Tinkoff.postMarketOrder(account, order)
+    assert posted
+    await Tinkoff.syncOrder(account, order)
+    assert order.status == Order.Status.FILLED
+
     order.order_id = Id.newId()
     order.direction = Order.Direction.SELL
-    await Tinkoff.postMarketOrder(account, order)
-    assert order.status in (Order.Status.POSTED, Order.Status.FILLED)
+    posted = await Tinkoff.postMarketOrder(account, order)
+    assert posted
+    await Tinkoff.syncOrder(account, order)
+    assert order.status == Order.Status.FILLED
 
     # get order operation
     operation = await Tinkoff.getOrderOperation(account, order)
     assert operation.asset_id == order.asset_id
     assert operation.lots == order.lots
-
-    # post LimitOrder buy
+    # }}}
+    # post LimitOrder buy{{{
     last_price = Tinkoff.getLastPrice(mvid)
     order_id = Id.newId()
     limit_order = LimitOrder(
@@ -68,7 +76,9 @@ async def test_Tinkoff(event_loop):
         status=Order.Status.NEW,
         order_id=order_id,
     )
-    await Tinkoff.postLimitOrder(account, limit_order)
+    posted = await Tinkoff.postLimitOrder(account, limit_order)
+    assert posted
+    await Tinkoff.syncOrder(account, limit_order)
     assert limit_order.status == Order.Status.POSTED
 
     # get it limit order
@@ -81,14 +91,16 @@ async def test_Tinkoff(event_loop):
     assert received_order.lots == limit_order.lots
     assert received_order.quantity == limit_order.quantity
     # assert received_order.price == limit_order.price  # TODO: correct round
-    assert received_order.order_id == limit_order.order_id
     assert received_order.broker_id == limit_order.broker_id
+    assert received_order.order_id == limit_order.order_id
 
     # cancel limit order buy
     successful = await Tinkoff.cancelLimitOrder(account, limit_order)
     assert successful
-
-    # post LimitOrder sell
+    await Tinkoff.syncOrder(account, limit_order)
+    assert limit_order.status == Order.Status.CANCELED
+    # }}}
+    # post LimitOrder sell{{{
     last_price = Tinkoff.getLastPrice(mvid)
     order_id = Id.newId()
     limit_order = LimitOrder(
@@ -101,7 +113,9 @@ async def test_Tinkoff(event_loop):
         status=Order.Status.NEW,
         order_id=order_id,
     )
-    await Tinkoff.postLimitOrder(account, limit_order)
+    posted = await Tinkoff.postLimitOrder(account, limit_order)
+    assert posted
+    await Tinkoff.syncOrder(account, limit_order)
     assert limit_order.status == Order.Status.POSTED
 
     # get it limit order
@@ -114,14 +128,16 @@ async def test_Tinkoff(event_loop):
     assert received_order.lots == limit_order.lots
     assert received_order.quantity == limit_order.quantity
     # assert received_order.price == limit_order.price # TODO: correct round
-    assert received_order.order_id == limit_order.order_id
     assert received_order.broker_id == limit_order.broker_id
+    assert received_order.order_id == limit_order.order_id
 
     # cancel limit order sell
     successful = await Tinkoff.cancelLimitOrder(account, limit_order)
     assert successful
-
-    # post stop order buy
+    await Tinkoff.syncOrder(account, limit_order)
+    assert limit_order.status == Order.Status.CANCELED
+    # }}}
+    # post stop order buy{{{
     last_price = Tinkoff.getLastPrice(mvid)
     price = round_price(last_price - 10, mvid.min_price_step)
     order_id = Id.newId()
@@ -137,7 +153,9 @@ async def test_Tinkoff(event_loop):
         order_id=order_id,
     )
 
-    await Tinkoff.postStopOrder(account, stop_order)
+    posted = await Tinkoff.postStopOrder(account, stop_order)
+    assert posted
+    await Tinkoff.syncOrder(account, stop_order)
     assert stop_order.status == Order.Status.PENDING
 
     received_order = await Tinkoff.getStopOrders(account)
@@ -154,10 +172,12 @@ async def test_Tinkoff(event_loop):
     assert received_order.broker_id == stop_order.broker_id
     assert received_order.order_id is None
 
-    await Tinkoff.cancelStopOrder(account, stop_order)
+    canceled = await Tinkoff.cancelStopOrder(account, stop_order)
+    assert canceled
+    await Tinkoff.syncOrder(account, stop_order)
     assert stop_order.status == Order.Status.CANCELED
-
-    # post stop order sell
+    # }}}
+    # post stop order sell{{{
     last_price = Tinkoff.getLastPrice(mvid)
     price = round_price(last_price + 10, mvid.min_price_step)
 
@@ -174,19 +194,26 @@ async def test_Tinkoff(event_loop):
         order_id=order_id,
     )
 
-    await Tinkoff.postStopOrder(account, stop_order)
+    posted = await Tinkoff.postStopOrder(account, stop_order)
+    assert posted
+    await Tinkoff.syncOrder(account, stop_order)
     assert stop_order.status == Order.Status.PENDING
 
-    await Tinkoff.cancelStopOrder(account, stop_order)
+    canceled = await Tinkoff.cancelStopOrder(account, stop_order)
+    assert canceled
+    await Tinkoff.syncOrder(account, stop_order)
     assert stop_order.status == Order.Status.CANCELED
-
-    # get operations, last 2 operation - buy/sell MVID
+    # }}}
+    # get operations, last 2 operation - buy/sell MVID{{{
     from_ = now() - ONE_MINUTE
     to = now()
     operations = await Tinkoff.getOperations(account, from_, to)
     assert operations[0].asset_id == mvid.ID
     assert operations[1].asset_id == mvid.ID
-
-    # disconnect
+    # }}}
+    # disconnect{{{
     await Tinkoff.disconnect()
     assert not Tinkoff.isConnect()
+
+
+# }}}
