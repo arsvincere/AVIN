@@ -423,7 +423,7 @@ class Keeper:
             )
         VALUES (
             '{account.name}',
-            '{account.broker}'
+            '{account.broker.name}'
             );
         """
 
