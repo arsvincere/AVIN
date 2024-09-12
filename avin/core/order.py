@@ -17,7 +17,7 @@ from avin.core.operation import Operation
 from avin.core.transaction import Transaction
 from avin.data import InstrumentId
 from avin.keeper import Keeper
-from avin.utils import AsyncSignal
+from avin.utils import AsyncSignal, logger
 
 # TODO: а может сюда транзакции подключить.
 
@@ -72,10 +72,9 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         def fromStr(cls, string: str) -> Order.Status:
             statuses = {
                 "NEW": Order.Status.NEW,
-                "PENDING": Order.Status.PENDING,
-                "TIMEOUT": Order.Status.TIMEOUT,
-                "TRIGGERED": Order.Status.TRIGGERED,
                 "SUBMIT": Order.Status.SUBMIT,
+                "PENDING": Order.Status.PENDING,
+                "TRIGGERED": Order.Status.TRIGGERED,
                 "POSTED": Order.Status.POSTED,
                 "PARTIAL": Order.Status.PARTIAL,
                 "OFF": Order.Status.OFF,
@@ -129,6 +128,8 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         broker_id,
         transactions,
     ):
+        logger.debug("Order.__init__()")
+
         self.type = order_type
         self.account_name = account_name
         self.direction = direction
@@ -177,14 +178,30 @@ class Order(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
     async def setStatus(self, status: Order.Status):  # {{{
+        logger.debug(f"Order.setStatus({status})")
+
+        # NOTE: бывает когда маркет ордер сразу исполняется, или лимитка
+        # сразу исполняется. После этого акканут запрашивает Broker.syncOrder
+        # получает FILLED.
+        # А через доли секунды прилетает TransactionEvent, и в его
+        # обработке снова вызывается Broker.syncOrder и снова получаем
+        # статус FILLED.
+        # --
+        # Не синхронизировать ордер сразу после выставления не вариант
+        # нужне же узнать поставилась ли лимитка/стоп...
+        # --
+        # Как решить этот косяк на уровне общения Account / Broker
+        # не придумал, так что костыляю тут - повторное присвоение
+        # статуса просто пропускаем.
+        if self.status == status:
+            return
+
         self.status = status
         await Order.update(self)
 
         # emitting special signal for this status
         if status == Order.Status.POSTED:
             await self.posted.async_emit(self)
-        if status == Order.Status.FILLED:
-            await self.filled.async_emit(self)
         if status == Order.Status.REJECTED:
             await self.rejected.async_emit(self)
         if status == Order.Status.CANCELED:
@@ -195,16 +212,22 @@ class Order(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
     async def setParentTrade(self, trade):  # {{{
+        logger.debug(f"Order.setParentTrade({trade})")
+
         self.trade_id = trade.trade_id
         await Order.update(self)
 
     # }}}
     async def setMeta(self, broker_response: str):  # {{{
+        logger.debug(f"Order.setMeta({broker_response})")
+
         self.meta = broker_response
         await Order.update(self)
 
     # }}}
     async def attachTransaction(self, transaction: Transaction):  # {{{
+        logger.debug(f"Order.attachTransaction({transaction})")
+
         assert transaction.order_id == self.order_id
         self.transactions.append(transaction)
 
@@ -213,17 +236,20 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         # из ордер стэйта просто получать?
         assert False
 
-        await super().update(self)
+        await Order.update(self)
 
     # }}}
 
     @classmethod  # save  # {{{
     async def save(cls, order) -> None:
+        logger.debug(f"Order.save({order})")
         await Keeper.add(order)
 
     # }}}
     @classmethod  # load  # {{{
     async def load(cls, order_id: Id):
+        logger.debug(f"Order.load({order_id})")
+
         order_list = await Keeper.get(cls, order_id=order_id)
         assert len(order_list) == 1
         order = order_list[0]
@@ -232,16 +258,20 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     # }}}
     @classmethod  # delete  # {{{
     async def delete(cls, order) -> None:
+        logger.debug(f"Order.delete({order})")
         await Keeper.delete(order)
 
     # }}}
     @classmethod  # update  # {{{
     async def update(cls, order) -> None:
+        logger.debug(f"Order.update({order})")
         await Keeper.update(order)
 
     # }}}
     @classmethod  # fromRecord{{{
     async def fromRecord(cls, record):
+        logger.debug(f"Order.fromRecord({record})")
+
         methods = {
             "MARKET": Order.__marketOrderFromRecord,
             "LIMIT": Order.__limitOrderFromRecord,
@@ -254,6 +284,8 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     # }}}
     @classmethod  # __marketOrderFromRecord{{{
     async def __marketOrderFromRecord(cls, record):
+        logger.debug(f"Order.__marketOrderFromRecord({record})")
+
         ID = await InstrumentId.byFigi(figi=record["figi"])
         order = MarketOrder(
             account_name=record["account"],
@@ -274,6 +306,8 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     # }}}
     @classmethod  # __limitOrderFromRecord{{{
     async def __limitOrderFromRecord(cls, record):
+        logger.debug(f"Order.__limitOrderFromRecord({record})")
+
         ID = await InstrumentId.byFigi(figi=record["figi"])
         order = LimitOrder(
             account_name=record["account"],
@@ -295,6 +329,8 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     # }}}
     @classmethod  # __stopOrderFromRecord{{{
     async def __stopOrderFromRecord(cls, record):
+        logger.debug(f"Order.__stopOrderFromRecord({record})")
+
         ID = await InstrumentId.byFigi(figi=record["figi"])
         order = StopOrder(
             account_name=record["account"],
@@ -444,8 +480,6 @@ class TrailingOrder(Order):  # {{{
 
 
 # }}}
-
-
 # class StopLoss(Order):  # {{{
 #     def __init__(
 #         self,
