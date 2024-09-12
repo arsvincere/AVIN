@@ -37,6 +37,7 @@ class InstrumentId:
         self.__ticker = ticker
         self.__figi = figi
         self.__name = name
+        self.__info = None
 
     # }}}
     def __str__(self):  # {{{
@@ -76,9 +77,6 @@ class InstrumentId:
     # }}}
     @property  # info# {{{
     def info(self):
-        if not self.__info:
-            raise AssetError(f"Info not loaded, InstrumentId={self}")
-
         return self.__info
 
     # }}}
