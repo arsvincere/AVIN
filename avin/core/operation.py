@@ -16,6 +16,7 @@ from avin.config import Usr
 from avin.core.id import Id
 from avin.data import InstrumentId
 from avin.keeper import Keeper
+from avin.utils import logger
 
 
 class Operation:
@@ -36,7 +37,6 @@ class Operation:
         # }}}
 
     # }}}
-
     def __init__(  # {{{
         self,
         account_name: str,
@@ -53,6 +53,8 @@ class Operation:
         trade_id: Optional[Id] = None,
         meta: Optional[str] = None,
     ):
+        logger.debug("Operation.__init__()")
+
         self.account_name = account_name
         self.dt = dt
         self.direction = direction
@@ -80,12 +82,15 @@ class Operation:
 
     # }}}
     async def setParentTrade(self, trade):  # {{{
+        logger.debug(f"Operation.setParentTrade({trade})")
         self.trade_id = trade.trade_id
         await Operation.update(self)
 
     # }}}
     @classmethod  # fromRecord{{{
     async def fromRecord(cls, record: asyncpg.Record) -> Operation:
+        logger.debug(f"Operation.fromRecord({record})")
+
         ID = await InstrumentId.byFigi(record["figi"])
 
         op = Operation(
@@ -108,22 +113,26 @@ class Operation:
     # }}}
     @classmethod  # save{{{
     async def save(cls, operation: Operation) -> None:
+        logger.debug(f"Operation.save({operation})")
         await Keeper.add(operation)
 
     # }}}
     @classmethod  # load{{{
     async def load(cls, operation_id: Id) -> Operation:
+        logger.debug(f"Operation.load({operation_id})")
         op = await Keeper.get(cls, operation_id=operation_id)
         return op
 
     # }}}
     @classmethod  # delete{{{
     async def delete(cls, operation: Operation) -> None:
+        logger.debug(f"Operation.delete({operation})")
         await Keeper.delete(operation)
 
     # }}}
     @classmethod  # update{{{
     async def update(cls, operation: Operation) -> None:
+        logger.debug(f"Operation.update({operation})")
         await Keeper.update(operation)
 
     # }}}
