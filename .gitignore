@@ -2,15 +2,11 @@ __pycache__/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
-avin/__pycache__/
-avin/gui/__pycache__/
 dev/
 doc/.obsidian
 env/
 lang/
 log/
-test/__pycache__/
-test/.pytest_cache/
 tmp/
 usr/
 0.py
@@ -34,5 +30,4 @@ res/sound
 res/voice
 
 install.sh
-run.sh
 
