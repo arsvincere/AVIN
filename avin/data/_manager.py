@@ -21,6 +21,8 @@ from avin.data.instrument_id import InstrumentId
 from avin.keeper import Keeper
 from avin.utils import Cmd, logger, now
 
+# FIX: при конвертации 1М -> 5М, незавершенную 5М свечу собирает...
+
 
 class _Manager:  # {{{
     _AUTO_UPDATE = Usr.AUTO_UPDATE_MARKET_DATA
