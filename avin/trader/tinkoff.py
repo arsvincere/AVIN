@@ -83,7 +83,7 @@ class Tinkoff(Broker):
             return True
 
         logger.info(":: Tinkoff try to connect")
-        cls.__connect_cycle = asyncio.create_task(cls.__runConnectionCycle())
+        cls.__connect_cycle = asyncio.create_task(cls.__connectionCycle())
 
         seconds_elapsed = 0
         while not cls.__connect_cycle_is_active:
@@ -1014,7 +1014,7 @@ class Tinkoff(Broker):
     @classmethod  # startDataStream  # {{{
     async def startDataStream(cls) -> bool:
         logger.info(":: Tinkoff try start data stream")
-        cls.__data_cycle = asyncio.create_task(cls.__waitData())
+        cls.__data_cycle = asyncio.create_task(cls.__dataCycle())
 
         seconds_elapsed = 0
         while not cls.__data_cycle_is_active:
@@ -1044,7 +1044,9 @@ class Tinkoff(Broker):
     @classmethod  # startTransactionStream  # {{{
     async def startTransactionStream(cls):
         logger.info(":: Tinkoff start transaction stream")
-        cls.__transaction_cycle = asyncio.create_task(cls.__waitTransaction())
+        cls.__transaction_cycle = asyncio.create_task(
+            cls.__transactionCycle()
+        )
         cls.__transaction_cycle_is_active = True
         return True
 
@@ -1059,21 +1061,6 @@ class Tinkoff(Broker):
 
     # }}}
 
-    @classmethod  # __runConnectionCycle  # {{{
-    async def __runConnectionCycle(cls):
-        logger.debug("Tinkoff.__runConnectionCycle()")
-
-        async with ti.AsyncClient(cls.TOKEN, target=cls.TARGET) as client:
-            response = await client.users.get_accounts()
-            if not response:
-                return
-
-            cls.__connect = client
-            cls.__connect_cycle_is_active = True
-            while cls.__connect_cycle_is_active:
-                await asyncio.sleep(1)
-
-    # }}}
     @classmethod  # __getOrderState  # {{{
     async def __getOrderState(cls, account: Account, order: Order):
         """Response example # {{{
@@ -1143,8 +1130,23 @@ class Tinkoff(Broker):
         return response
 
     # }}}
-    @classmethod  # __waitData  # {{{
-    async def __waitData(cls):
+    @classmethod  # __connectionCycle  # {{{
+    async def __connectionCycle(cls):
+        logger.debug("Tinkoff.__connectionCycle()")
+
+        async with ti.AsyncClient(cls.TOKEN, target=cls.TARGET) as client:
+            response = await client.users.get_accounts()
+            if not response:
+                return
+
+            cls.__connect = client
+            cls.__connect_cycle_is_active = True
+            while cls.__connect_cycle_is_active:
+                await asyncio.sleep(1)
+
+    # }}}
+    @classmethod  # __dataCycle  # {{{
+    async def __dataCycle(cls):
         """Response example# {{{
         MarketDataResponse(
             subscribe_candles_response=None,
@@ -1176,9 +1178,9 @@ class Tinkoff(Broker):
             ping=None,
             )
         """  # }}}
-        logger.debug("async Tinkoff.__waitData()")
+        logger.debug("async Tinkoff.__dataCycle()")
         async for response in cls.__data_stream:
-            logger.debug(f"Tinkoff.__waitData: Response='{response}'")
+            logger.debug(f"Tinkoff.__dataCycle: Response='{response}'")
             cls.__data_cycle_is_active = True
             if response.candle:
                 figi = response.candle.figi
@@ -1199,8 +1201,8 @@ class Tinkoff(Broker):
         cls.__data_cycle_is_active = False  # XXX: ???
 
     # }}}
-    @classmethod  # __waitTransaction  # {{{
-    async def __waitTransaction(cls):
+    @classmethod  # __transactionCycle  # {{{
+    async def __transactionCycle(cls):
         """Response example# {{{
         TradesStreamResponse(
             order_trades=OrderTrades(
@@ -1229,10 +1231,10 @@ class Tinkoff(Broker):
             subscription=None
         )
         """  # }}}
-        logger.debug("Tinkoff.__waitTransaction()")
+        logger.debug("Tinkoff.__transactionCycle()")
 
         async for response in cls.__transaction_stream:
-            logger.debug(f"Tinkoff.__waitTransaction: Response='{response}'")
+            logger.debug(f"Tinkoff.__transactionCycle: Response='{response}'")
 
             if response.order_trades:
                 event: ti.OrderTrades = cls.__ti_to_av(response.order_trades)
