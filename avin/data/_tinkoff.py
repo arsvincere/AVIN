@@ -195,6 +195,11 @@ class _TinkoffData(_AbstractSource):  # {{{
     ) -> list[_Bar]:
         logger.debug(f"{cls.__name__}.getHistoricalBars()")
         assert False, "переписать на postgres, пока качаю только с МОЕКС"
+
+        if data_type not in cls.AVAILIBLE_DATA:
+            logger.error(f"Can't update {ID}-{data_type}")
+            return
+
         logger.info(
             f"  - request {ID.ticker}-{data_type.value} from {begin.date()}"
         )

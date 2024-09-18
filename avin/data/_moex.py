@@ -25,7 +25,7 @@ from avin.keeper import Keeper
 from avin.utils import Cmd, logger
 
 
-class _MoexData(_AbstractSource):  # {{{
+class _MoexData(_AbstractSource):
     """const"""  # {{{
 
     source = DataSource.MOEX
@@ -210,6 +210,10 @@ class _MoexData(_AbstractSource):  # {{{
         end: datetime,
     ) -> list[_Bar]:
         logger.debug(f"{cls.__name__}.getHistoricalBars()")
+
+        if data_type not in cls.AVAILIBLE_DATA:
+            logger.error(f"Can't update {ID}-{data_type}")
+            return list()
 
         # Without authorization - delay is more than 15min
         # for authorized users delay is 2-5 min
@@ -512,6 +516,3 @@ class _MoexData(_AbstractSource):  # {{{
         return standart_asset_type
 
     # }}}
-
-
-# }}}
