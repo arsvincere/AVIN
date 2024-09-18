@@ -14,7 +14,14 @@ from avin.core.chart import Chart
 from avin.core.event import Event, NewBarEvent, TransactionEvent
 from avin.core.id import Id
 from avin.core.operation import Operation
-from avin.core.order import LimitOrder, MarketOrder, Order, StopOrder
+from avin.core.order import (
+    LimitOrder,
+    MarketOrder,
+    Order,
+    StopLoss,
+    StopOrder,
+    TakeProfit,
+)
 from avin.core.range import Range
 from avin.core.strategy import Strategy
 from avin.core.timeframe import TimeFrame
@@ -34,6 +41,8 @@ __all__ = (
     "MarketOrder",
     "LimitOrder",
     "StopOrder",
+    "StopLoss",
+    "TakeProfit",
     "Operation",
     "Trade",
     "TradeList",
