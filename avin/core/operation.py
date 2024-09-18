@@ -47,7 +47,7 @@ class Operation:
         quantity: int,
         price: float,
         amount: float,
-        commission: float,
+        commission: Optional[float],
         operation_id: Optional[Id] = None,
         order_id: Optional[Id] = None,
         trade_id: Optional[Id] = None,
