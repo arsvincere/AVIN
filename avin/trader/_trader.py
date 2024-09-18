@@ -23,46 +23,7 @@ from avin.utils import logger
 # и запихай в какой нибудь метод типо
 # trader.__createDataStream
 
-# await broker.createDataStream(mvid, DataType.BAR_1M)
-# await broker.new_bar.async_connect(onNewBar)
-# started = await broker.startDataStream()
-# if not started:
-#     print("попытка 2")
-#     await broker.disconnect()
-#     print("sleep 10 sec")
-#     await asyncio.sleep(10)
-#     await broker.connect()
-#     await broker.createDataStream(mvid, DataType.BAR_1M)
-#     started = await broker.startDataStream()
-# if not started:
-#     print("попытка 3")
-#     await broker.disconnect()
-#     print("sleep 10 sec")
-#     await asyncio.sleep(10)
-#     await broker.connect()
-#     await broker.createDataStream(mvid, DataType.BAR_1M)
-#     started = await broker.startDataStream()
-# if not started:
-#     print("попытка 4")
-#     await broker.disconnect()
-#     print("sleep 10 sec")
-#     await asyncio.sleep(10)
-#     await broker.connect()
-#     await broker.createDataStream(mvid, DataType.BAR_1M)
-#     started = await broker.startDataStream()
-# if not started:
-#     print("попытка 5")
-#     await broker.disconnect()
-#     print("sleep 10 sec")
-#     await asyncio.sleep(10)
-#     await broker.connect()
-#     await broker.createDataStream(mvid, DataType.BAR_1M)
-#     started = await broker.startDataStream()
-# if not started:
-#     print("Game over.")
-#     exit(0)
-#
-# await asyncio.sleep(600)
+# TODO: причесать логи и отступы в них
 
 
 class Trader:
@@ -76,11 +37,9 @@ class Trader:
         logger.info(":: Trader load config")
         self.cfg = {
             "broker": Tinkoff,
-            # "broker":           Sandbox,
-            # "broker":           AsyncTinkoff,
             "account": "Alex",
             "strategy_list": [
-                ("Every", "minute"),
+                ("Every", "five"),
             ],
             "timeframe_list": [
                 "1M",
@@ -110,21 +69,13 @@ class Trader:
             self.timeframe_list.append(timeframe)
 
     # }}}
-    async def __loadTeam(self):  # {{{
-        logger.info(":: Trader load team")
+    async def __loadBroker(self):  # {{{
+        logger.info(":: Trader load broker")
         self.broker = self.cfg["broker"]
-        # self.analytic = Analytic(trader=self)
-        # self.market = Market(trader=self)
-        # self.risk = Risk(trader=self)
-        # self.ruler = Ruler(trader=self)
-        # self.adviser = Adviser(trader=self)
-        # self.trader = Trader(trader=self)
-        # self.scout = Scout(broker=self.broker, trader=self)
 
     # }}}
     async def __makeGeneralAssetList(self):  # {{{
         logger.info(":: Trader make asset list")
-        # self.alist = AssetList.load(Cmd.path(ASSET_DIR, "afks"), parent=self)
         self.alist = await AssetList.load("Trio")
 
     # }}}
@@ -296,7 +247,7 @@ class Trader:
         await self.__loadTimeTable()
         await self.__loadStrategyes()
         await self.__loadTimeFrameList()
-        await self.__loadTeam()
+        await self.__loadBroker()
         await self.__makeGeneralAssetList()
         await self.__cacheAssetsInfo()
         await self.__updateHistoricalData()
