@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS "Order" ( -- {{{
     stop_price      float,
     exec_price      float,
 
-    trade_id        text REFERENCES "Trade"(trade_id),
+    trade_id        text REFERENCES "Trade"(trade_id) ON DELETE CASCADE,
     exec_lots       integer,
     exec_quantity   integer,
     meta            text,
@@ -110,7 +110,7 @@ CREATE TABLE IF NOT EXISTS "Operation" ( -- {{{
     price           float,
     amount          float,
     commission      float,
-    trade_id        text REFERENCES "Trade"(trade_id),
+    trade_id        text REFERENCES "Trade"(trade_id) ON DELETE CASCADE,
     order_id        text REFERENCES "Order"(order_id),
     meta            text
     );
