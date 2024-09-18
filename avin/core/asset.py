@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import abc
 from datetime import datetime
-from typing import Any, Optional, Union
+from typing import Any, ClassVar, Optional, Union
 
 import pandas as pd
 
@@ -239,7 +239,7 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
     # }}}
     @classmethod  # byTicker# {{{
     async def byTicker(
-        cls, asset_type: AssetType, exchange: Exchange, ticker: str
+        cls, asset_type: AssetType, exchange: ClassVar, ticker: str
     ) -> Asset:
         logger.debug(f"{cls.__name__}.byTicker()")
         assert isinstance(asset_type, AssetType)
