@@ -213,12 +213,12 @@ async def test_Tinkoff(event_loop):
     assert operations[0].asset_id == mvid.ID
     assert operations[1].asset_id == mvid.ID
     # }}}
-    # get historical bars
+    # get historical bars{{{
     from_ = datetime.combine(date.today(), DAY_BEGIN, UTC)
     to = now()
     bars = await Tinkoff.getHistoricalBars(mvid, TimeFrame("1M"), from_, to)
     assert len(bars) > 0
-
+    # }}}
     # disconnect{{{
     await Tinkoff.disconnect()
     assert not Tinkoff.isConnect()
