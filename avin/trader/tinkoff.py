@@ -817,12 +817,14 @@ class Tinkoff(Broker):
     # }}}
     @classmethod  # postStopLoss  # {{{
     async def postStopLoss(cls, account: Account, order: Order) -> bool:
-        return cls.postStopOrder(account, order)
+        result = await cls.postStopOrder(account, order)
+        return result
 
     # }}}
     @classmethod  # postTakeProfit:  # {{{
     async def postTakeProfit(cls, account: Account, order: Order) -> bool:
-        return cls.postStopOrder(account, order)
+        result = await cls.postStopOrder(account, order)
+        return result
 
     # }}}
     @classmethod  # cancelLimitOrder  # {{{
