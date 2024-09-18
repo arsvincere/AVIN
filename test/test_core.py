@@ -6,6 +6,7 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
+import asyncio
 from datetime import UTC, datetime
 
 import pytest
@@ -735,6 +736,70 @@ async def test_TradeList():
 
 
 # }}}
+@pytest.mark.asyncio  # test_Strategy  # {{{
+async def test_Strategy():
+    await Tinkoff.connect()
+    if not Tinkoff.isConnect():
+        print("Fail to connect")
+        return
+
+    asset = await Asset.byTicker(AssetType.SHARE, Exchange.MOEX, "MVID")
+    account = await Tinkoff.getAccount("Alex")
+    strategy = await Strategy.load("Every", "minute")
+    strategy.setAccount(account)
+    await Tinkoff.createTransactionStream(account)
+    await Tinkoff.startTransactionStream()
+
+    assert strategy.name == "Every"
+    assert strategy.version == "minute"
+    assert strategy.account == account
+    assert strategy.config is not None
+    assert strategy.timeframe_list is not None
+    assert strategy.long_list is not None
+    assert strategy.short_list is not None
+    assert strategy.active_trades is not None
+    assert strategy.path == Usr.STRATEGY + "/Every/minute.py"
+    assert strategy.dir_path == Usr.STRATEGY + "/Every"
+
+    # создаем трейд
+    trade = await strategy.createTrade(
+        now(),
+        Trade.Type.LONG,
+        asset,
+    )
+
+    # создаем ордер
+    order = await strategy.createMarketOrder(
+        direction=Order.Direction.BUY,
+        asset_id=asset.ID,
+        lots=1,
+    )
+
+    # связываем этот ордер с трейдом
+    await trade.attachOrder(order)
+
+    # постим этот ордер
+    await strategy.postOrder(order)
+    await asyncio.sleep(5)
+
+    # ордер исполняется...
+    assert order.status == Order.Status.EXECUTED
+
+    # создаем и постим стоп лосс на 0.3%
+    stop_loss = await strategy.createStopLoss(trade, stop_percent=0.3)
+    await strategy.postOrder(stop_loss)
+    await asyncio.sleep(2)
+
+    # создаем и постим стоп лосс на 0.9%
+    take_profit = await strategy.createTakeProfit(trade, take_percent=0.9)
+    await strategy.postOrder(take_profit)
+    await asyncio.sleep(2)
+
+    await asyncio.sleep(5)
+    await strategy.closeTrade(trade)
+
+
+# }}}
 
 
 @pytest.mark.asyncio  # test_clear_all_test_vars  # {{{
@@ -771,6 +836,22 @@ async def test_clear_all_test_vars():
     WHERE
         trade_id = '1111' OR
         trade_id = '1112';
+    """
+    await Keeper.transaction(request)
+
+    request = """
+    DELETE FROM "Trade"
+    WHERE
+        strategy = 'Every'
+    """
+    await Keeper.transaction(request)
+
+    request = """
+    DELETE FROM "TradeList"
+    WHERE
+        name = 'Every-minute' OR
+        name = 'Every-five' OR
+        name = 'Every-day';
     """
     await Keeper.transaction(request)
 
