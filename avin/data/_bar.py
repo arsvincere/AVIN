@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, Union
 
+from avin.config import Usr
 from avin.data.data_source import DataSource
 from avin.data.data_type import DataType
 from avin.data.instrument_id import InstrumentId
@@ -33,6 +34,15 @@ class _Bar:
             self.dt = datetime.fromisoformat(self.dt)
 
     # }}}
+    def __str__(self):
+        usr_dt = self.dt + Usr.TIME_DIF
+        str_dt = usr_dt.strftime("%Y-%m-%d %H:%M")
+        string = (
+            f"Bar {str_dt} O={self.open} H={self.high} "
+            f"L={self.low} C={self.close} V={self.vol} "
+        )
+        return string
+
     @classmethod  # fromRecord{{{
     def fromRecord(cls, record):
         bar = cls(
