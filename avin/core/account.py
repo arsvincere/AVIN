@@ -142,7 +142,6 @@ class Account:
     # }}}
     async def receiveTransaction(self, event: TransactionEvent):  # {{{
         logger.debug("Account.receiveTransaction()")
-        logger.info(f"Account '{self.name}' receive {event}")
 
         order = None
         for i in self.__active_orders:
@@ -157,6 +156,7 @@ class Account:
             )
             return
 
+        logger.info(f"Account '{self.name}' receive {event}")
         await self.broker.syncOrder(self, order)
         if order.status == Order.Status.FILLED:
             await self.__onOrderFilled(order)
