@@ -171,6 +171,8 @@ class Keeper:
             "MarketOrder": cls.__addOrder,
             "LimitOrder": cls.__addOrder,
             "StopOrder": cls.__addOrder,
+            "StopLoss": cls.__addOrder,
+            "TakeProfit": cls.__addOrder,
         }
         add_method = methods[class_name]
 
@@ -222,6 +224,8 @@ class Keeper:
             "MarketOrder": cls.__updateOrder,
             "LimitOrder": cls.__updateOrder,
             "StopOrder": cls.__updateOrder,
+            "StopLoss": cls.__updateOrder,
+            "TakeProfit": cls.__updateOrder,
             "Operation": cls.__updateOperation,
             "_InstrumentInfoCache": cls.__updateCache,
         }
@@ -464,6 +468,18 @@ class Keeper:
     async def __addTradeList(cls, tlist: TradeList) -> None:
         logger.debug(f"{cls.__name__}.__addTradeList()")
 
+        # TODO:
+        # поле таблицы не такое примитивное как name...
+        # не удобно с такой таблицей работать будет
+        # лучше разделить, как минимум - strategy version
+        # а может еще и тип добавить... user list...
+        # или просто где strategy / version NULL - те считать
+        # пользовательскими...
+        # и вообще стоит ли хранить стратегиям вот так свои
+        # ассет листы... не думаю...
+        # может у каждой стратегии завести по массиву -
+        # short_list long_list - в котором будут тупо фиги?
+
         # Format trades in postges array
         if tlist.count > 0:
             pg_array = "ARRAY["
@@ -532,12 +548,13 @@ class Keeper:
             price, s_price, e_price = "NULL", "NULL", "NULL"
         elif order.type.name == "LIMIT":
             price, s_price, e_price = order.price, "NULL", "NULL"
-        elif order.type.name == "STOP":
+        elif order.type.name in ("STOP", "STOP_LOSS", "TAKE_PROFIT"):
             price, s_price, e_price = (
                 "NULL",
                 order.stop_price,
                 order.exec_price,
             )
+            e_price = e_price if e_price else "NULL"
         else:
             assert False, f"WTF??? Order type='{order.type}'"
 
