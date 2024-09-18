@@ -13,7 +13,7 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, ClassVar, Optional
 
 import tinkoff.invest as ti
 from grpc import StatusCode
@@ -56,18 +56,16 @@ class Tinkoff(Broker):
 
     new_bar = AsyncSignal(NewBarEvent)
     new_transaction = AsyncSignal(TransactionEvent)
-    # order_filled = AsyncSignal(OrderEvent)  # XXX: ?????
-    # order_executed = AsyncSignal(OrderEvent)  # XXX: ?????
 
     __connect_cycle = None
     __connect_cycle_is_active = False
-    __connect = None
-    __accounts = list()
+    __connect: Optional[ti.async_services.AsyncServices] = None
+    __accounts: list[Account] = list()
 
     __data_cycle = None
     __data_cycle_is_active = False
     __data_stream = None
-    __data_subscriptions = list()
+    __data_subscriptions: list[ti.CandleInstrument] = list()
 
     __transaction_cycle = None
     __transaction_cycle_is_active = False
@@ -122,6 +120,7 @@ class Tinkoff(Broker):
     @classmethod  # isMarketOpen  # {{{
     async def isMarketOpen(cls) -> bool:
         logger.debug("Tinkoff.isMarketOpen()")
+        assert cls.__connect is not None
 
         if not cls.__connect_cycle_is_active:
             logger.error(
@@ -160,6 +159,8 @@ class Tinkoff(Broker):
     @classmethod  # getAllAccounts  # {{{
     async def getAllAccounts(cls) -> list[Account]:
         logger.debug("Tinkoff.getAllAccounts()")
+        assert cls.__connect is not None
+
         if cls.__accounts:
             return cls.__accounts
 
@@ -190,6 +191,7 @@ class Tinkoff(Broker):
         )
         """  # }}}
         logger.debug(f"Tinkoff.getMoney({account.name})")
+        assert cls.__connect is not None
 
         response: ti.PositionsResponse = (
             await cls.__connect.operations.get_positions(
@@ -202,12 +204,12 @@ class Tinkoff(Broker):
         # тоже currency, units, nano. И здесь
         # response.money[0]
         # работает только пока на счете из валют лежат только рубли
-        money = float(quotation_to_decimal(response.money[0]))
+        money = float(money_to_decimal(response.money[0]))
         return money
 
     # }}}
     @classmethod  # getLimitOrders  # {{{
-    async def getLimitOrders(cls, account: Account) -> list[Order]:
+    async def getLimitOrders(cls, account: Account) -> list[LimitOrder]:
         """Response example# {{{
         GetOrdersResponse(
             orders=[
@@ -257,6 +259,7 @@ class Tinkoff(Broker):
         )
         """  # }}}
         logger.debug(f"Tinkoff.getLimitOrders({account.name})")
+        assert cls.__connect is not None
 
         response: ti.GetOrdersResponse = (
             await cls.__connect.orders.get_orders(account_id=account.meta.id)
@@ -288,7 +291,7 @@ class Tinkoff(Broker):
 
     # }}}
     @classmethod  # getStopOrders  # {{{
-    async def getStopOrders(cls, account: Account) -> list[Order]:
+    async def getStopOrders(cls, account: Account) -> list[StopOrder]:
         """Response example# {{{
         GetStopOrdersResponse(
             stop_orders=[
@@ -296,7 +299,8 @@ class Tinkoff(Broker):
                     stop_order_id='5dfa66c8-090e-4594-9bac-5a3eef0a0873',
                     lots_requested=1,
                     figi='BBG004S68CP5',
-                    direction=<StopOrderDirection.STOP_ORDER_DIRECTION_BUY: 1>,
+                    direction=
+                        <StopOrderDirection.STOP_ORDER_DIRECTION_BUY: 1>,
                     currency='rub',
                     order_type=<StopOrderType.STOP_ORDER_TYPE_TAKE_PROFIT: 1>,
                     create_date=datetime.datetime(
@@ -318,7 +322,8 @@ class Tinkoff(Broker):
                         currency='rub ', units=90, nano=400000000
                     ),
                     instrument_uid='cf1c6158-a303-43ac-89eb-9b1db8f96043',
-                    take_profit_type=<TakeProfitType.TAKE_PROFIT_TYPE_REGULAR: 1>,
+                    take_profit_type=
+                        <TakeProfitType.TAKE_PROFIT_TYPE_REGULAR: 1>,
                     trailing_data=StopOrderTrailingData(
                         indent=Quotation(units=0, nano=0),
                         indent_type=
@@ -326,10 +331,12 @@ class Tinkoff(Broker):
                         spread=Quotation(units=0, nano=0),
                         spread_type=
                             <TrailingValueType.TRAILING_VALUE_UNSPECIFIED: 0>,
-                        status=<TrailingStopStatus.TRAILING_STOP_UNSPECIFIED: 0>,
+                        status=
+                            <TrailingStopStatus.TRAILING_STOP_UNSPECIFIED: 0>,
                     price=Quotation(units=0, nano=0),
                     extr=Quotation(units=0, nano=0)),
-                    status=<StopOrderStatusOption.STOP_ORDER_STATUS_ACTIVE: 2>,
+                    status=
+                        <StopOrderStatusOption.STOP_ORDER_STATUS_ACTIVE: 2>,
                     exchange_order_type=
                         <ExchangeOrderType.EXCHANGE_ORDER_TYPE_LIMIT: 2>,
                     exchange_order_id=None
@@ -338,15 +345,16 @@ class Tinkoff(Broker):
         )
         """  # }}}
         logger.debug(f"Tinkoff.getStopOrders(account={account})")
+        assert cls.__connect is not None
 
         try:
             response = await cls.__connect.stop_orders.get_stop_orders(
                 account_id=account.meta.id
             )
             logger.debug(f"Tinkoff.getStopOrders: Response='{response}'")
-        except ti.exceptions.InvestError:
-            logger.error("Tinkoff.getStopOrders: Error={err}")
-            return None
+        except ti.exceptions.InvestError as err:
+            logger.error(f"Tinkoff.getStopOrders: Error={err}")
+            return list()
 
         orders = list()
         for i in response.stop_orders:
@@ -411,6 +419,7 @@ class Tinkoff(Broker):
         )
         """  # }}}
         logger.debug(f"Tinkoff.getOperations({account}, {from_}, {to})")
+        assert cls.__connect is not None
         assert isinstance(from_, datetime)
         assert isinstance(to, datetime)
 
@@ -439,6 +448,7 @@ class Tinkoff(Broker):
             ):
                 assert i.instrument_type == "share"
                 asset_id = await InstrumentId.byUid(i.instrument_uid)
+                assert asset_id is not None
                 await asset_id.cacheInfo()
 
                 op = Operation(
@@ -464,6 +474,8 @@ class Tinkoff(Broker):
     @classmethod  # getPositions  # {{{
     async def getPositions(cls, account: Account) -> list[Postition]:
         logger.debug(f"Tinkoff.getPositions({account})")
+        assert cls.__connect is not None
+
         response: ti.PositionsResponse = (
             await cls.__connect.operations.get_positions(
                 account_id=account.meta.id
@@ -476,6 +488,8 @@ class Tinkoff(Broker):
     @classmethod  # getPortfolio  # {{{
     async def getDetailedPortfolio(cls, account: Account) -> Portfolio:
         logger.debug(f"Tinkoff.getDetailedPortfolio({account})")
+        assert cls.__connect is not None
+
         response: ti.PortfolioResponse = (
             await cls.__connect.operations.get_portfolio(
                 account_id=account.meta.id
@@ -488,6 +502,8 @@ class Tinkoff(Broker):
     @classmethod  # getWithdrawLimits  # {{{
     async def getWithdrawLimits(cls, account: Account):
         logger.debug(f"Tinkoff.getWithdrawLimits({account})")
+        assert cls.__connect is not None
+
         response: ti.WithdrawLimitsResponse = (
             await cls.__connect.operations.get_withdraw_limits(
                 account_id=account.meta.id
@@ -500,7 +516,7 @@ class Tinkoff(Broker):
     @classmethod  # getOrderOperation  # {{{
     async def getOrderOperation(
         cls, account: Account, order: Order
-    ) -> Order.Status:
+    ) -> Operation:
         response: ti.OrderState = await cls.__getOrderState(account, order)
         assert (
             response.execution_report_status
@@ -548,11 +564,23 @@ class Tinkoff(Broker):
         begin: datetime,
         end: datetime,
     ) -> list[Bar]:
-        pass
-        assert False
-        # TODO: me
+        logger.debug(f"Tinkoff.getHistoricalBars({asset.ticker})")
 
-        ...
+        new_bars = list()
+        try:
+            async for candle in cls.__connect.get_all_candles(
+                figi=asset.figi,
+                from_=begin,
+                to=end,
+                interval=cls.__av_to_ti(timeframe, ti.CandleInterval),
+            ):
+                if candle.is_complete:
+                    bar = cls.__ti_to_av(candle)
+                    new_bars.append(bar)
+        except ti.exceptions.AioRequestError as err:
+            logger.exception(err)
+
+        return new_bars
 
     # }}}
     @classmethod  # getLastPrice  # {{{
@@ -567,8 +595,7 @@ class Tinkoff(Broker):
                         asset_id.figi,
                     ]
                 )
-                last_price = response.last_prices[0].price
-                last_price = float(quotation_to_decimal(last_price))
+                last_price = cls.__ti_to_av(response.last_prices[0].price)
             except ti.exceptions.AioRequestError as err:
                 logger.error(err)
                 return None
@@ -586,22 +613,38 @@ class Tinkoff(Broker):
             <OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_FILL: 1>,
         lots_requested=1,
         lots_executed=1,
-        initial_order_price=MoneyValue(currency='rub', units=161, nano=400000000),
-        executed_order_price=MoneyValue(currency='rub', units=160, nano=890000000),
-        total_order_amount=MoneyValue(currency='rub', units=160, nano=890000000),
-        average_position_price=MoneyValue(currency='rub', units=160, nano=890000000),
-        initial_commission=MoneyValue(currency='rub', units=0, nano=90000000),
-        executed_commission=MoneyValue(currency='rub', units=0, nano=80000000),
+        initial_order_price=MoneyValue(
+            currency='rub', units=161, nano=400000000
+            ),
+        executed_order_price=MoneyValue(
+            currency='rub', units=160, nano=890000000
+            ),
+        total_order_amount=MoneyValue(
+            currency='rub', units=160, nano=890000000
+            ),
+        average_position_price=MoneyValue(
+            currency='rub', units=160, nano=890000000
+            ),
+        initial_commission=MoneyValue(
+            currency='rub', units=0, nano=90000000
+            ),
+        executed_commission=MoneyValue(
+            currency='rub', units=0, nano=80000000
+            ),
         figi='BBG004S68CP5',
         direction=<OrderDirection.ORDER_DIRECTION_BUY: 1>,
-        initial_security_price=MoneyValue(currency='rub', units=161, nano=400000000),
+        initial_security_price=MoneyValue(
+            currency='rub', units=161, nano=400000000
+            ),
         stages=[
             OrderStage(
                 price=MoneyValue(currency='rub', units=160, nano=890000000),
                 quantity=1,
                 trade_id='D134612622',
                 execution_time=datetime.datetime(
-                    2024, 7, 4, 12, 39, 26, 373816, tzinfo=datetime.timezone.utc)
+                    2024, 7, 4, 12, 39, 26, 373816,
+                    tzinfo=datetime.timezone.utc
+                    )
                 )
             ],
         service_commission=MoneyValue(currenc y='rub', units=290, nano=0),
@@ -676,12 +719,14 @@ class Tinkoff(Broker):
             response_metadata=ResponseMetadata(
                 tracking_id='2431d8eeb71bf472 300d096a1ea7b43e',
                 server_time=datetime.datetime(
-                    2024, 7, 4, 12, 39, 26, 693922, tzinfo=datetime.timezone.utc
+                    2024, 7, 4, 12, 39, 26, 693922,
+                    tzinfo=datetime.timezone.utc
                 )
             )
         )'
         """  # }}}
         logger.debug(f"Tinkoff.postMarketOrder({order})")
+        assert cls.__connect is not None
 
         try:
             response: ti.PostOrderResponse = (
@@ -750,6 +795,7 @@ class Tinkoff(Broker):
         )
         """  # }}}
         logger.debug(f"Tinkoff.postLimitOrder({order})")
+        assert cls.__connect is not None
 
         try:
             response: ti.PostOrderResponse = (
@@ -788,8 +834,9 @@ class Tinkoff(Broker):
             )
         )
         """  # }}}
-
         logger.debug(f"Tinkoff.postStopOrder({order})")
+        assert cls.__connect is not None
+
         try:
             response = await cls.__connect.stop_orders.post_stop_order(
                 stop_order_type=cls.__av_to_ti(order, ti.StopOrderType),
@@ -845,6 +892,7 @@ class Tinkoff(Broker):
         )
         """  # }}}
         logger.debug(f"Tinkoff.cancelLimitOrder({account}, {order})")
+        assert cls.__connect is not None
 
         try:
             response: ti.CancelOrderResponse = (
@@ -886,6 +934,7 @@ class Tinkoff(Broker):
         )
         """  # }}}
         logger.debug(f"Tinkoff.cancelStopOrder({account}, {order})")
+        assert cls.__connect is not None
 
         try:
             response = await cls.__connect.stop_orders.cancel_stop_order(
@@ -898,17 +947,17 @@ class Tinkoff(Broker):
             if err.code == StatusCode.NOT_FOUND:
                 raise BrokerError(
                     f"Tinkoff stop-order '{order.order_id}' - not found"
-                )
+                ) from err
             return False
 
         await order.setStatus(Order.Status.CANCELED)
         return True
 
     # }}}
-
     @classmethod  # createBarStream  # {{{
     async def createBarStream(cls, asset: Asset, timeframe: TimeFrame):
         logger.info(f"  - Tinkoff.subscribe({asset}, {timeframe})")
+        assert cls.__connect is not None
 
         if not cls.__data_stream:
             cls.__data_stream = cls.__connect.create_market_data_stream()
@@ -929,6 +978,7 @@ class Tinkoff(Broker):
         logger.info(
             f":: Tinkoff create transaction stream (account='{account}')"
         )
+        assert cls.__connect is not None
 
         cls.__transaction_stream = cls.__connect.orders_stream.trades_stream(
             accounts=[
@@ -1045,8 +1095,12 @@ class Tinkoff(Broker):
         average_position_price=MoneyValue(
             currency='rub', units=160, nano=890000000
         ),
-        initial_commission=MoneyValue(currency='rub', units=0, nano=90000000),
-        executed_commission=MoneyValue(currency='rub', units=0, nano=80000000),
+        initial_commission=MoneyValue(
+            currency='rub', units=0, nano=90000000
+            ),
+        executed_commission=MoneyValue(
+            currency='rub', units=0, nano=80000000
+            ),
         figi='BBG004S68CP5',
         direction=<OrderDirection.ORDER_DIRECTION_BUY: 1>,
         initial_security_price=MoneyValue(
@@ -1078,6 +1132,7 @@ class Tinkoff(Broker):
         """
         # }}}
         logger.debug(f"Tinkoff.__getOrderState({order})")
+        assert cls.__connect is not None
 
         response: ti.OrderState = await cls.__connect.orders.get_order_state(
             account_id=account.meta.id,
@@ -1100,7 +1155,7 @@ class Tinkoff(Broker):
             candle=Candle(
                 figi='BBG004S68CP5',
                 interval=
-                    <SubscriptionInterval.SUBSCRIPTION_INTERVAL_ONE_MINUTE: 1>,
+                  <SubscriptionInterval.SUBSCRIPTION_INTERVAL_ONE_MINUTE: 1>,
                 open=Quotation(units=101, nano=700000000),
                 high=Quotation(units=101, nano=900000000),
                 low=Quotation(units=101, nano=700000000),
@@ -1200,6 +1255,8 @@ class Tinkoff(Broker):
         match class_name:
             case "MoneyValue":
                 return Tinkoff.__tiMoneyValue_to_avPrice(obj)
+            case "Quotation":
+                return Tinkoff.__tiQuotation_to_avPrice(obj)
             case "OrderType":
                 return Tinkoff.__tiOrderType_to_avType(obj)
             case "StopOrderType":
@@ -1218,6 +1275,8 @@ class Tinkoff(Broker):
                 return Tinkoff.__tiSubscriptionInterval_to_avTimeFrame(obj)
             case "Candle":
                 return Tinkoff.__tiCandle_to_avBar(obj)
+            case "HistoricCandle":
+                return Tinkoff.__tiCandle_to_avBar(obj)
             case "OrderTrades":
                 return Tinkoff.__tiOrderTrades_to_avTransactionEvent(obj)
             case _:
@@ -1230,6 +1289,12 @@ class Tinkoff(Broker):
     @staticmethod  # __tiMoneyValue_to_avPrice  # {{{
     def __tiMoneyValue_to_avPrice(ti_money_value):
         price = float(money_to_decimal(ti_money_value))
+        return price
+
+    # }}}
+    @staticmethod  # __tiQuotation_to_avPrice  # {{{
+    def __tiQuotation_to_avPrice(ti_quotation):
+        price = float(quotation_to_decimal(ti_quotation))
         return price
 
     # }}}
@@ -1321,8 +1386,10 @@ class Tinkoff(Broker):
         t = ti.StopOrderStatusOption
         statuses = {
             t.STOP_ORDER_STATUS_UNSPECIFIED: Order.Status.UNDEFINE,
-            t.STOP_ORDER_STATUS_ALL: Order.Status.UNDEFINE,  # XXX: что это?
-            t.STOP_ORDER_STATUS_ACTIVE: Order.Status.PENDING,  # XXX: rename ACTIVE?
+            # XXX: что это?
+            t.STOP_ORDER_STATUS_ALL: Order.Status.UNDEFINE,
+            # XXX: rename ACTIVE?
+            t.STOP_ORDER_STATUS_ACTIVE: Order.Status.PENDING,
             t.STOP_ORDER_STATUS_EXECUTED: Order.Status.EXECUTED,  # TEST:
             t.STOP_ORDER_STATUS_CANCELED: Order.Status.CANCELED,
             t.STOP_ORDER_STATUS_EXPIRED: Order.Status.EXPIRED,
@@ -1438,7 +1505,7 @@ class Tinkoff(Broker):
     # }}}
     @staticmethod  # __av_to_ti  # {{{
     def __av_to_ti(av_obj: Any, ti_class: ClassVar):
-        logger.debug(f"Tinkoff.__av_to_ti({ti_class}, {av_obj})")
+        logger.debug(f"Tinkoff.__av_to_ti({av_obj}, {ti_class})")
 
         class_name = ti_class.__name__
         match class_name:
@@ -1456,6 +1523,8 @@ class Tinkoff(Broker):
                 return Tinkoff.__avOrder_to_tiStopOrderExpirationType(av_obj)
             case "SubscriptionInterval":
                 return Tinkoff.__avTimeFrame_to_tiSubscriptionInterval(av_obj)
+            case "CandleInterval":
+                return Tinkoff.__avTimeFrame_to_tiCandleInterval(av_obj)
             case _:
                 raise BrokerError(
                     f"Tinkoff fail extract: ti_class='{ti_class}', "
@@ -1544,7 +1613,7 @@ class Tinkoff(Broker):
         if order.direction == Order.Direction.SELL:
             return t.STOP_ORDER_DIRECTION_SELL
 
-        return StopOrderDirection.STOP_ORDER_DIRECTION_UNSPECIFIED
+        return t.STOP_ORDER_DIRECTION_UNSPECIFIED
 
     # }}}
     @staticmethod  # __avOrder_to_tiStopOrderExpirationType  # {{{
@@ -1573,6 +1642,24 @@ class Tinkoff(Broker):
             "D": t.SUBSCRIPTION_INTERVAL_ONE_DAY,
             "W": t.SUBSCRIPTION_INTERVAL_WEEK,
             "M": t.SUBSCRIPTION_INTERVAL_MONTH,
+        }
+        ti_interval = intervals[str(av_timeframe)]
+        return ti_interval
+
+    # }}}
+    @staticmethod  # __avTimeFrame_to_tiCandleInterval  # {{{
+    def __avTimeFrame_to_tiCandleInterval(av_timeframe):
+        logger.debug("Tinkoff.__avTimeFrame_to_tiCandleInterval()")
+
+        t = ti.CandleInterval
+        intervals = {
+            "1M": t.CANDLE_INTERVAL_1_MIN,
+            "5M": t.CANDLE_INTERVAL_5_MIN,
+            "10M": t.CANDLE_INTERVAL_10_MIN,
+            "1H": t.CANDLE_INTERVAL_HOUR,
+            "D": t.CANDLE_INTERVAL_DAY,
+            "W": t.CANDLE_INTERVAL_WEEK,
+            "M": t.CANDLE_INTERVAL_MONTH,
         }
         ti_interval = intervals[str(av_timeframe)]
         return ti_interval
