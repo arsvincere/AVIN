@@ -34,7 +34,6 @@ from avin.utils import AsyncSignal, logger
 
 
 class Order(metaclass=abc.ABCMeta):  # {{{
-    # }}}
     class Type(enum.Enum):  # {{{
         UNDEFINE = 0
         MARKET = 1
@@ -276,6 +275,8 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             "MARKET": Order.__marketOrderFromRecord,
             "LIMIT": Order.__limitOrderFromRecord,
             "STOP": Order.__stopOrderFromRecord,
+            "STOP_LOSS": Order.__stopLossFromRecord,
+            "TAKE_PROFIT": Order.__takeProfitFromRecord,
         }
         method = methods[record["type"]]
         order = await method(record)
@@ -350,12 +351,59 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         )
         return order
 
+    # }}}
+    @classmethod  # __stopLossFromRecord{{{
+    async def __stopLossFromRecord(cls, record):
+        logger.debug(f"Order.__stopLossFromRecord({record})")
+
+        ID = await InstrumentId.byFigi(figi=record["figi"])
+        order = StopLoss(
+            account_name=record["account"],
+            direction=Order.Direction.fromStr(record["direction"]),
+            asset_id=ID,
+            lots=record["lots"],
+            quantity=record["quantity"],
+            stop_price=record["stop_price"],
+            exec_price=record["exec_price"],
+            status=Order.Status.fromStr(record["status"]),
+            order_id=record["order_id"],
+            trade_id=record["trade_id"],
+            exec_lots=record["exec_lots"],
+            exec_quantity=record["exec_quantity"],
+            meta=record["meta"],
+            broker_id=record["broker_id"],
+        )
+        return order
+
+    # }}}
+    @classmethod  # __takeProfitFromRecord{{{
+    async def __takeProfitFromRecord(cls, record):
+        logger.debug(f"Order.__takeProfitFromRecord({record})")
+
+        ID = await InstrumentId.byFigi(figi=record["figi"])
+        order = TakeProfit(
+            account_name=record["account"],
+            direction=Order.Direction.fromStr(record["direction"]),
+            asset_id=ID,
+            lots=record["lots"],
+            quantity=record["quantity"],
+            stop_price=record["stop_price"],
+            exec_price=record["exec_price"],
+            status=Order.Status.fromStr(record["status"]),
+            order_id=record["order_id"],
+            trade_id=record["trade_id"],
+            exec_lots=record["exec_lots"],
+            exec_quantity=record["exec_quantity"],
+            meta=record["meta"],
+            broker_id=record["broker_id"],
+        )
+        return order
+
 
 # }}}
 
+
 # }}}
-
-
 class MarketOrder(Order):  # {{{
     def __init__(
         self,
@@ -373,6 +421,10 @@ class MarketOrder(Order):  # {{{
         broker_id: str = "",
         transactions=Optional[list],
     ):
+        # TODO: в базовом классе значения по умолчанию пожалуй не нужны
+        # наоборот пусть явно все передается. Явное лучше неявного.
+        # А вот в производных классах для удобства можно в конструкторах
+        # поставить значения по умолчанию.
         super().__init__(
             Order.Type.MARKET,
             account_name,
@@ -470,6 +522,96 @@ class StopOrder(Order):  # {{{
 
 
 # }}}
+class StopLoss(Order):  # {{{
+    def __init__(
+        self,
+        account_name: str,
+        direction: Order.Direction,
+        asset_id: InstrumentId,
+        lots: int,
+        quantity: int,
+        stop_price: float,
+        exec_price: float,
+        status: Order.Status = Order.Status.NEW,
+        order_id: Optional[Id] = None,
+        trade_id: Optional[Id] = None,
+        exec_lots: int = 0,
+        exec_quantity: int = 0,
+        meta: str = "",
+        broker_id: str = "",
+        transactions=Optional[list],
+    ):
+        super().__init__(
+            Order.Type.STOP_LOSS,
+            account_name,
+            direction,
+            asset_id,
+            lots,
+            quantity,
+            status,
+            order_id,
+            trade_id,
+            exec_lots,
+            exec_quantity,
+            meta=meta,
+            broker_id=broker_id,
+            transactions=transactions,
+        )
+        self.stop_price = stop_price
+        self.exec_price = exec_price
+
+
+# }}}
+class TakeProfit(Order):  # {{{
+    def __init__(
+        self,
+        account_name: str,
+        direction: Order.Direction,
+        asset_id: InstrumentId,
+        lots: int,
+        quantity: int,
+        stop_price: float,
+        exec_price: float,
+        status: Order.Status = Order.Status.NEW,
+        order_id: Optional[Id] = None,
+        trade_id: Optional[Id] = None,
+        exec_lots: int = 0,
+        exec_quantity: int = 0,
+        meta: str = "",
+        broker_id: str = "",
+        transactions=Optional[list],
+    ):
+        # TODO: InstrumentId.min_price_step - все таки надо грузить
+        # сразу при создании из базы, иначе тут жопа, каждый раз загружать
+        # эту хуйню...
+        # инфо же один хер загружается - так вот пусть к инфо полю
+        # и лепится в конструкторе сразу. Будут проблемы с памятью, тогда
+        # и буду решать, а то пока проблемы только с тем что везде
+        # это количество лотов и мин прайс степ приходится грузить.
+
+        super().__init__(
+            Order.Type.TAKE_PROFIT,
+            account_name,
+            direction,
+            asset_id,
+            lots,
+            quantity,
+            status,
+            order_id,
+            trade_id,
+            exec_lots,
+            exec_quantity,
+            meta=meta,
+            broker_id=broker_id,
+            transactions=transactions,
+        )
+        self.stop_price = stop_price
+        self.exec_price = exec_price
+
+
+#
+#
+# # }}}
 class WaitOrder(Order):  # {{{
     ...
 
@@ -480,29 +622,3 @@ class TrailingOrder(Order):  # {{{
 
 
 # }}}
-# class StopLoss(Order):  # {{{
-#     def __init__(
-#         self,
-#         position: Position,  # ??? XXX: подумай еще раз
-#         stop_price: float,
-#         exec_price: float,
-#         trade_id: Id = None,
-#         status: Order.Status = None,
-#     ):
-#         assert False
-#
-#
-# # }}}
-# class TakeProfit(Order):  # {{{
-#     def __init__(
-#         self,
-#         position: Position,  # ??? XXX: подумай еще раз
-#         stop_price: float,
-#         exec_price: float,
-#         trade_id: Id = None,
-#         status: Order.Status = None,
-#     ):
-#         assert False
-#
-#
-# # }}}
