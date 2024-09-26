@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional, Union
+from typing import Optional
 
 from avin.config import Usr
 from avin.data.data_source import DataSource
@@ -22,18 +22,13 @@ from avin.utils import logger
 
 @dataclass  # _Bar# {{{
 class _Bar:
-    dt: Union[datetime | str]
+    dt: datetime
     open: float
     high: float
     low: float
     close: float
     vol: int
 
-    def __post_init__(self):  # {{{
-        if isinstance(self.dt, str):
-            self.dt = datetime.fromisoformat(self.dt)
-
-    # }}}
     def __str__(self):
         usr_dt = self.dt + Usr.TIME_DIF
         str_dt = usr_dt.strftime("%Y-%m-%d %H:%M")
