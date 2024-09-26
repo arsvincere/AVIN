@@ -17,10 +17,10 @@ from avin.core.bar import Bar
 from avin.core.timeframe import TimeFrame
 from avin.data import InstrumentId
 from avin.keeper import Keeper
-from avin.utils import Signal, findLeft, logger
+from avin.utils import find_left, logger
 
 
-class Chart:  # {{{
+class Chart:
     """Const"""  # {{{
 
     DEFAULT_BARS_COUNT = 5000
@@ -47,8 +47,6 @@ class Chart:  # {{{
 
         self.__head = len(self.__bars)  # index of HEAD bar
         self.__now: Optional[Bar] = None  # realtime bar
-
-        self.updated = Signal(object)
 
     # }}}
     def __getitem__(self, index: int):  # {{{
@@ -121,13 +119,12 @@ class Chart:  # {{{
         return self.__now
 
     # }}}
-    def update(self, new_bar: Bar) -> None:  # {{{
+    def addNewBar(self, new_bar: Bar) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.update()")
         new_bar.setChart(self)
         self.__bars.append(new_bar)
-        self.__head += 1
+        self.__head = len(self.__bars)
         self.__now = None
-        self.updated.emit(self)
 
     # }}}
     def getBars(self) -> list[Bar]:  # {{{
@@ -167,7 +164,7 @@ class Chart:  # {{{
         logger.debug(f"{self.__class__.__name__}.setHeadDatetime()")
         assert isinstance(dt, datetime)
 
-        index = findLeft(self.__bars, dt, lambda x: x.dt)
+        index = find_left(self.__bars, dt, lambda x: x.dt)
         if index is not None:
             self.__head = index
             self.__now = self.__bars[index]
@@ -311,10 +308,3 @@ class Chart:  # {{{
             raise ValueError(end)
 
     # }}}
-
-
-# }}}
-
-
-if __name__ == "__main__":
-    ...

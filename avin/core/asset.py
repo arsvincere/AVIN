@@ -194,7 +194,7 @@ class Asset(metaclass=abc.ABCMeta):  # {{{
         chart = self.chart(timeframe)
 
         # add new bar in this chart
-        chart.update(new_bar_event.bar)
+        chart.addNewBar(new_bar_event.bar)
 
         # emiting special signal for the bar timeframe
         signals = {
