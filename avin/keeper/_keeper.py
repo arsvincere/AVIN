@@ -27,7 +27,7 @@ import asyncpg
 
 from avin.config import Usr
 from avin.const import Dir
-from avin.utils import Cmd, askUser, logger
+from avin.utils import Cmd, ask_user, logger
 
 __all__ = ("Keeper",)
 
@@ -69,10 +69,10 @@ class Keeper:
     async def dropDataBase(cls) -> None:
         logger.debug(f"{cls.__name__}.dropDataBase()")
 
-        if not askUser("Delete database?"):
+        if not ask_user("Delete database?"):
             return
 
-        if not askUser("Double confirmation. Are you sure?"):
+        if not ask_user("Double confirmation. Are you sure?"):
             return
 
         os.system(f"dropdb {cls.DATABASE}")
