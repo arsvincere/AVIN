@@ -7,7 +7,7 @@
 # ============================================================================
 
 
-class Test:  # {{{
+class Test:
     class Status(enum.Enum):  # {{{
         UNDEFINE = 0
         NEW = 1
@@ -87,7 +87,9 @@ class Test:  # {{{
     # }}}
     @property  # timeframe# {{{
     def timeframe(self):
-        # XXX: time_steop???
+        # XXX: time_step???
+        # или вообще впизду, пусть всегда на шаге 1 мин
+        # работает?
         return self._cfg["timeframe"]
 
     @timeframe.setter
@@ -298,6 +300,3 @@ class Test:  # {{{
             return False
 
     # }}}
-
-
-# }}}
