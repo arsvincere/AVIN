@@ -7,3 +7,4 @@ pyqt6
 qasync
 asyncpg
 pgadmin4
+cython
