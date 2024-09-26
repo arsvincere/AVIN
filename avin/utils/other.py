@@ -17,13 +17,14 @@ def now():  # {{{
 
 
 # }}}
-def round_price(price: float, min_price_step: float):
+def round_price(price: float, min_price_step: float):  # {{{
     price = Decimal(price)
     price -= price % Decimal(min_price_step)
     return float(price)
 
 
-def binarySearch(vector, x, key=None):  # {{{
+# }}}
+def binary_search(vector, x, key=None):  # {{{
     left = 0
     right = len(vector) - 1
     while left <= right:
@@ -39,7 +40,7 @@ def binarySearch(vector, x, key=None):  # {{{
 
 
 # }}}
-def findLeft(vector, x, key=None):  # {{{
+def find_left(vector, x, key=None):  # {{{
     """Возвращает индекс элемента меньше или равного 'x'
     Если 'x', меньше самого левого элемента в векторе, возвращает None
     """
@@ -50,7 +51,7 @@ def findLeft(vector, x, key=None):  # {{{
 
 
 # }}}
-def findRight(vector, x, key=None):  # {{{
+def find_right(vector, x, key=None):  # {{{
     """Возвращает индекс элемента больше или равного 'x'
     Если 'x', больше самого правого элемента в векторе, возвращает None
     """
@@ -61,7 +62,7 @@ def findRight(vector, x, key=None):  # {{{
 
 
 # }}}
-def encodeJSON(obj):  # {{{
+def encode_json(obj):  # {{{
     assert False
     if isinstance(obj, (datetime, date)):
         return obj.isoformat()
@@ -74,7 +75,7 @@ def encodeJSON(obj):  # {{{
 
 
 # }}}
-def decodeJSON(obj):  # {{{
+def decode_json(obj):  # {{{
     assert False
     for k, v in obj.items():
         if isinstance(v, str) and "+00:00" in v:
@@ -97,10 +98,10 @@ def decodeJSON(obj):  # {{{
 
 
 # }}}
-def codeCounter(dir_path):  # {{{
+def code_counter(dir_path):  # {{{
     count_file = 0
     count_str = 0
-    for root, dirs, files in os.walk(dir_path):
+    for root, _, files in os.walk(dir_path):
         for file in files:
             if file.endswith(".py"):
                 file_path = os.path.join(root, file)
@@ -112,7 +113,7 @@ def codeCounter(dir_path):  # {{{
 
 
 # }}}
-def askUser(message: str) -> bool:  # {{{
+def ask_user(message: str) -> bool:  # {{{
     while True:
         answer = input(f"> {message} (y/n): ")
         if answer in "yY":

@@ -8,18 +8,14 @@
 
 from avin.utils.cmd import Cmd
 from avin.utils.logger import logger
-
-# TODO: привести к одному регистру
-# TODO: сделать доступ к функциям через имя модуля, а не прямой импорт ???
-# util.round_price  ????
 from avin.utils.other import (
-    askUser,
-    binarySearch,
-    codeCounter,
-    decodeJSON,
-    encodeJSON,
-    findLeft,
-    findRight,
+    ask_user,
+    binary_search,
+    code_counter,
+    decode_json,
+    encode_json,
+    find_left,
+    find_right,
     now,
     round_price,
 )
@@ -28,13 +24,13 @@ from avin.utils.signal import AsyncSignal, Signal
 __all__ = (
     "Cmd",
     "logger",
-    "askUser",
-    "binarySearch",
-    "codeCounter",
-    "decodeJSON",
-    "encodeJSON",
-    "findLeft",
-    "findRight",
+    "ask_user",
+    "binary_search",
+    "code_counter",
+    "decode_json",
+    "encode_json",
+    "find_left",
+    "find_right",
     "now",
     "round_price",
     "Signal",
