@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from avin.data import DataType
 
