@@ -966,6 +966,7 @@ class Tinkoff(Broker):
         return True
 
     # }}}
+
     @classmethod  # createBarStream  # {{{
     async def createBarStream(
         cls, asset: Asset, timeframe: TimeFrame
@@ -1021,7 +1022,6 @@ class Tinkoff(Broker):
         )
 
     # }}}
-
     @classmethod  # startDataStream  # {{{
     async def startDataStream(cls) -> bool:
         logger.info("  Tinkoff try start data stream")
