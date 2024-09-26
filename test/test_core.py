@@ -205,7 +205,7 @@ async def test_Chart(event_loop):
 
     # add new bars in chart
     bar = Bar(now(), 1, 1, 1, 1, 5000)
-    chart.update(bar)
+    chart.addNewBar(bar)
     bars = chart.getBars()
     assert bars[-1] == bar
     assert bars[-1].vol == 5000
