@@ -21,7 +21,7 @@ from avin.data.instrument_id import InstrumentId
 from avin.utils import logger
 
 
-class Data:  # {{{
+class Data:
     @classmethod  # cache# {{{
     async def cache(cls) -> None:
         """Make cache of assets info"""
@@ -90,7 +90,7 @@ class Data:  # {{{
     # }}}
     @classmethod  # firstDateTime# {{{
     async def firstDateTime(
-        cls, source: DataSource, data_type: DataType, ID: InstrumentId
+        cls, source: DataSource, ID: InstrumentId, data_type: DataType
     ) -> datetime:
         logger.debug(f"{cls.__name__}.firstDateTime()")
         check = cls.__checkArgs(
@@ -113,8 +113,8 @@ class Data:  # {{{
     async def download(
         cls,
         source: DataSource,
-        data_type: DataType,
         ID: InstrumentId,
+        data_type: DataType,
         year: int,
     ) -> None:
         logger.debug(f"{cls.__name__}.download()")
@@ -128,7 +128,7 @@ class Data:  # {{{
         if not check:
             return
 
-        await _Manager.download(ID, data_type, year)
+        await _Manager.download(source, ID, data_type, year)
 
     # }}}
     @classmethod  # convert# {{{
@@ -375,6 +375,3 @@ class Data:  # {{{
         assert end.tzinfo == UTC
 
     # }}}
-
-
-# }}}

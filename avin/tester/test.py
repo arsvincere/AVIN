@@ -6,59 +6,77 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
+from __future__ import annotations
+
+import enum
+
+from avin.core import Report, TradeList
+from avin.keeper import Keeper
+from avin.utils import logger
+
 
 class Test:
     class Status(enum.Enum):  # {{{
         UNDEFINE = 0
         NEW = 1
         EDITED = 2
-        PROCESS = 3
+        ACTIVE = 3
         COMPLETE = 4
+
+        @classmethod  # fromStr
+        def fromStr(cls, string):
+            statuses = {
+                "NEW": Test.Status.NEW,
+                "EDITED": Test.Status.EDITED,
+                "ACTIVE": Test.Status.ACTIVE,
+                "COMPLETE": Test.Status.COMPLETE,
+            }
+            return statuses[string]
 
     # }}}
     def __init__(self, name):  # {{{
-        self._status = Test.Status.NEW
-        self._name = name
-        self._cfg = collections.defaultdict(str)
-        self._alist = AssetList(name="alist", parent=self)
-        self._tlist = TradeList(name="tlist", parent=self)
-        self._report = Report(test=self)
+        logger.debug(f"Test.__init__({name})")
+        self.__status = Test.Status.NEW
+        self.__name = name
+        self.__cfg = dict()
+        self.__tlist = TradeList(name="tlist")
+        self.__report = Report(test=self)
 
     # }}}
     @property  # status# {{{
     def status(self):
-        return self._status
+        return self.__status
 
     @status.setter
     def status(self, new_status) -> bool:
-        self._status = new_status
+        self.__status = new_status
 
     # }}}
     @property  # name# {{{
     def name(self):
-        return self._name
+        return self.__name
 
     @name.setter
     def name(self, new_name) -> bool:
-        self._name = new_name
+        self.__name = new_name
 
     # }}}
     @property  # description# {{{
     def description(self):
-        return self._cfg["description"]
+        return self.__cfg["description"]
 
     @description.setter
     def description(self, description):
-        self._cfg["description"] = description
+        self.__cfg["description"] = description
 
     # }}}
     @property  # strategy# {{{
     def strategy(self):
-        return self._cfg["strategy"]
+        return self.__cfg["strategy"]
 
     @strategy.setter
     def strategy(self, strategy):
-        self._cfg["strategy"] = strategy
+        self.__cfg["strategy"] = strategy
 
     # }}}
     @property  # version# {{{
@@ -78,225 +96,108 @@ class Test:
         #       - long
         #       - 2018
         #       - 2019
-        return self._cfg["version"]
+        return self.__cfg["version"]
 
     @version.setter
     def version(self, version):
-        self._cfg["version"] = version
-
-    # }}}
-    @property  # timeframe# {{{
-    def timeframe(self):
-        # XXX: time_step???
-        # или вообще впизду, пусть всегда на шаге 1 мин
-        # работает?
-        return self._cfg["timeframe"]
-
-    @timeframe.setter
-    def timeframe(self, timeframe):
-        self._cfg["timeframe"] = timeframe
+        self.__cfg["version"] = version
 
     # }}}
     @property  # deposit# {{{
     def deposit(self):
-        return self._cfg["deposit"]
+        return self.__cfg["deposit"]
 
     @deposit.setter
     def deposit(self, deposit):
-        self._cfg["deposit"] = deposit
+        self.__cfg["deposit"] = deposit
 
     # }}}
     @property  # commission# {{{
     def commission(self):
-        return self._cfg["commission"]
+        return self.__cfg["commission"]
 
     @commission.setter
     def commission(self, commission):
-        self._cfg["commission"] = commission
+        self.__cfg["commission"] = commission
 
     # }}}
     @property  # begin# {{{
     def begin(self):
-        dt = datetime.fromisoformat(self._cfg["begin"])
+        dt = datetime.fromisoformat(self.__cfg["begin"])
         return dt.replace(tzinfo=UTC)
 
     @begin.setter
     def begin(self, begin):
-        self._cfg["begin"] = begin
+        self.__cfg["begin"] = begin
 
     # }}}
     @property  # end# {{{
     def end(self):
-        dt = datetime.fromisoformat(self._cfg["end"])
+        dt = datetime.fromisoformat(self.__cfg["end"])
         return dt.replace(tzinfo=UTC)
 
     @end.setter
     def end(self, end):
-        self._cfg["end"] = end
-
-    # }}}
-    @property  # alist# {{{
-    def alist(self):
-        return self._alist
-
-    @alist.setter
-    def alist(self, alist):
-        self._alist = alist
+        self.__cfg["end"] = end
 
     # }}}
     @property  # tlist# {{{
     def tlist(self):
-        return self._tlist
+        return self.__tlist
 
     # }}}
-    @property  # peropt# {{{
+    @property  # report# {{{
     def report(self):
-        return self._report
-
-    # }}}
-    @property  # dir_path# {{{
-    def dir_path(self):
-        assert self._name != ""
-        path = Cmd.join(TEST_DIR, self.name)
-        Cmd.createDirs(path)
-        return path
+        return self.__report
 
     # }}}
     def updateReport(self):  # {{{
-        self._report = Report(test=self)
+        logger.debug("Test.updateReport()")
+        self.__report = Report(test=self)
 
     # }}}
     def clear(self):  # {{{
-        TradeList.delete(self._tlist)
-        Report.delete(self._report)
-        self._tlist.clear()
-        self._report.clear()
-        self._status = Test.Status.NEW
+        logger.debug("Test.clear()")
+        self.__tlist.clear()
+        self.__report.clear()
+        self.__status = Test.Status.NEW
 
     # }}}
-    @staticmethod  # save# {{{
-    def save(test) -> bool:
-        test.__saveConfig()
-        test.__saveAssetList()
-        test.__saveTrades()
-        test.__saveStatus()
-        test.__saveReport()
-        return True
-
-    # }}}
-    @staticmethod  # load#{{{
-    def load(dir_path: str) -> Test:
-        if not Cmd.isExist(dir_path):
-            logger.error(f"Test.load: dir not found '{dir_path}'")
-            return None
-        name = Cmd.name(dir_path)
-        test = Test(name)
-        test._loadConfig()
-        test._loadAssetList()
-        test._loadTrades()
-        test._loadStatus()
-        test._loadReport()
+    @classmethod  # fromRecord# {{{
+    async def record(cls, record) -> Test:
+        test = Test(record["name"])
+        test.status = Test.Status.fromStr(record["status"])
+        test.description = record["description"]
+        test.strategy = record["strategy"]
+        test.version = record["version"]
+        test.deposit = record["deposit"]
+        test.commission = record["commission"]
+        test.begin = record["begin_date"]
+        test.end = record["end_date"]
         return test
 
     # }}}
-    @staticmethod  # rename# {{{
-    def rename(test, new_name: str):
-        old_path = test.dir_path
-        if Cmd.isExist(test.dir_path):
-            Cmd.deleteDir(test.dir_path)
-            test._name = new_name
-            Test.save(test)
-        else:
-            test._name = new_name
+    @classmethod  # save# {{{
+    async def save(cls, test) -> None:
+        await Keeper.add(self)
 
     # }}}
-    @staticmethod  # delete# {{{
-    def delete(test) -> bool:
-        Cmd.deleteDir(test.dir_path)
-        return True
+    @classmethod  # load#{{{
+    async def load(cls, name: str) -> Test:
+        test_list = await Keeper.get(cls, name=name)
+        assert len(test_list) == 1
+        return test_list[0]
 
     # }}}
-    def __saveConfig(self):  # {{{
-        path = Cmd.join(self.dir_path, "config.cfg")
-        Cmd.saveJSON(self._cfg, path)
-        return True
+    @classmethod  # delete# {{{
+    async def delete(cls, test) -> None:
+        await Keeper.delete(test)
 
     # }}}
-    def __saveAssetList(self):  # {{{
-        file_path = Cmd.join(self.dir_path, "alist.al")
-        AssetList.save(self._alist, file_path)
-        return True
-
-    # }}}
-    def __saveTrades(self):  # {{{
-        file_path = Cmd.join(self.dir_path, "tlist.tl")
-        TradeList.save(self._tlist, file_path)
-        return True
-
-    # }}}
-    def __saveStatus(self):  # {{{
-        file_path = Cmd.join(self.dir_path, "status")
-        text = str(self._status)
-        Cmd.save(text, file_path)
-        return True
-
-    # }}}
-    def __saveReport(self):  # {{{
-        file_path = Cmd.join(self.dir_path, "report.csv")
-        Report.save(self._report, file_path)
-        return True
-
-    # }}}
-    def _loadConfig(self):  # {{{
-        path = Cmd.join(self.dir_path, "config.cfg")
-        if Cmd.isExist(path):
-            self._cfg = Cmd.loadJSON(path)
-            return True
-        else:
-            logger.warning(f"Test._loadConfig: config not found '{path}'")
-            self._cfg = collections.defaultdict(str)
-            assert False
-
-    # }}}
-    def _loadAssetList(self):  # {{{
-        file_path = Cmd.join(self.dir_path, "alist.al")
-        if Cmd.isExist(file_path):
-            self._alist = AssetList.load(file_path)
-            return True
-        else:
-            logger.warning(f"Asset list not found: test={self.name}")
-            assert False
-
-    # }}}
-    def _loadTrades(self):  # {{{
-        file_path = Cmd.join(self.dir_path, "tlist.tl")
-        if Cmd.isExist(file_path):
-            self._tlist = TradeList.load(file_path, parent=self)
-            return True
-        else:
-            self._tlist = TradeList(name="tlist", parent=self)
-            return False
-
-    # }}}
-    def _loadStatus(self):  # {{{
-        file_path = Cmd.join(self.dir_path, "status")
-        if Cmd.isExist(file_path):
-            text = Cmd.read(file_path)
-            status = "Test." + text
-            self._status = eval(status)
-            return True
-        else:
-            logger.warning(f"Test._loadStatus: not found '{file_path}'")
-            self._status = Test.Status.UNDEFINE
-
-    # }}}
-    def _loadReport(self):  # {{{
-        file_path = Cmd.join(self.dir_path, "report.csv")
-        if Cmd.isExist(file_path):
-            self._report = Report.load(file_path, parent=self)
-            return True
-        else:
-            self._report = Report(test=self)
-            return False
+    @classmethod  # rename# {{{
+    async def rename(cls, test, new_name: str) -> None:
+        await Keeper.delete(test)
+        test.name = new_name
+        await Keeper.add(test)
 
     # }}}

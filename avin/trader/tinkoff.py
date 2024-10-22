@@ -387,6 +387,9 @@ class Tinkoff(Broker):
     async def getOperations(
         cls, account: Account, from_: datetime, to: datetime
     ) -> list[Operation]:
+        # TODO: здесь в респонсе же есть figi, нахер тогда использовал
+        # instrument_uid ???
+        # можно тогда вообще выпиливать этот метод
         """Response example# {{{
         Operation(
             id='R270663867',
@@ -548,7 +551,7 @@ class Tinkoff(Broker):
     @classmethod  # getExecutedCommission  # {{{
     async def getExecutedCommission(
         cls, account: Account, order: Order
-    ) -> Order.Status:
+    ) -> float:
         logger.debug(f"Tinkoff.getExecutedCommission({account}, {order})")
 
         response: ti.OrderState = await cls.__getOrderState(account, order)
@@ -557,7 +560,8 @@ class Tinkoff(Broker):
             == ti.OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_FILL
         )
 
-        commission = cls.__ti_to_av(response.executed_commission)
+        tinkoff_commission: ti.MoneyValue = response.executed_commission
+        commission = cls.__ti_to_av(tinkoff_commission)
         return commission
 
     # }}}
@@ -592,6 +596,9 @@ class Tinkoff(Broker):
     @classmethod  # getLastPrice  # {{{
     def getLastPrice(cls, asset_id: InstrumentId) -> float | None:
         logger.debug(f"Tinkoff.getLastPrice({asset_id})")
+
+        # TODO: нахера эта функция не асинхронная? ГУИ один хер будет
+        # все асинхронно тоже работать.
 
         with ti.Client(cls.TOKEN) as client:
             try:
@@ -856,9 +863,10 @@ class Tinkoff(Broker):
                 stop_price=cls.__av_to_ti(order.stop_price, ti.Quotation),
                 # order_id=str(order.order_id),
                 expiration_type=cls.__av_to_ti(
-                    order, ti.StopOrderExpirationType
+                    order,
+                    ti.StopOrderExpirationType,
+                    # expire_date=
                 ),
-                # expire_date=
             )
             logger.debug(f"Tinkoff.postStopOrder: Response='{response}'")
         except ti.exceptions.AioRequestError as err:
@@ -1424,7 +1432,7 @@ class Tinkoff(Broker):
             # XXX: что это?
             t.STOP_ORDER_STATUS_ALL: Order.Status.UNDEFINE,
             # XXX: rename ACTIVE?
-            t.STOP_ORDER_STATUS_ACTIVE: Order.Status.PENDING,
+            t.STOP_ORDER_STATUS_ACTIVE: Order.Status.ACTIVE,
             t.STOP_ORDER_STATUS_EXECUTED: Order.Status.EXECUTED,  # TEST:
             t.STOP_ORDER_STATUS_CANCELED: Order.Status.CANCELED,
             t.STOP_ORDER_STATUS_EXPIRED: Order.Status.EXPIRED,

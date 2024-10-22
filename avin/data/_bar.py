@@ -29,7 +29,7 @@ class _Bar:
     close: float
     vol: int
 
-    def __str__(self):
+    def __str__(self):  # {{{
         usr_dt = self.dt + Usr.TIME_DIF
         str_dt = usr_dt.strftime("%Y-%m-%d %H:%M")
         string = (
@@ -38,6 +38,7 @@ class _Bar:
         )
         return string
 
+    # }}}
     @classmethod  # fromRecord{{{
     def fromRecord(cls, record):
         bar = cls(
@@ -58,15 +59,25 @@ class _Bar:
 class _BarsData:  # {{{
     def __init__(  # {{{
         self,
-        ID: InstrumentId,
-        data_type: DataType,
-        bars: list[_Bar],
         source: DataSource,
+        data_type: DataType,
+        ID: InstrumentId,
+        bars: list[_Bar],
     ):
-        self.__ID = ID
-        self.__type = data_type
-        self.__bars = bars
         self.__source = source
+        self.__type = data_type
+        self.__ID = ID
+        self.__bars = bars
+
+    # }}}
+    @property  # source# {{{
+    def source(self):
+        return self.__source
+
+    # }}}
+    @property  # type# {{{
+    def type(self):
+        return self.__type
 
     # }}}
     @property  # ID# {{{
@@ -74,19 +85,9 @@ class _BarsData:  # {{{
         return self.__ID
 
     # }}}
-    @property  # data_type# {{{
-    def type(self):
-        return self.__type
-
-    # }}}
     @property  # bars# {{{
     def bars(self):
         return self.__bars
-
-    # }}}
-    @property  # source# {{{
-    def source(self):
-        return self.__source
 
     # }}}
     @property  # first_dt# {{{

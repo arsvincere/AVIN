@@ -71,7 +71,7 @@ class Range:  # {{{
         """doc
         Возвращает диапазон
         [0, 10] - от 0 до 10% исходного диапазона
-        [40, 100] - от 40% до 100% исходного диапазона
+        [40, 60] - от 40% до 60% исходного диапазона
         --
         Example:
         bar.body[0, 5] - нижние 5% тела бара
@@ -82,16 +82,19 @@ class Range:  # {{{
         assert slice_.start >= 0
         assert slice_.stop <= 100
         assert slice_.start < slice_.stop
+
         if slice_.start == 0:
             start = self.__min
         else:
             tmp = (self.__max - self.__min) * slice_.start / 100
             start = self.__min + tmp
+
         if slice_.stop == 0:
             stop = self.__max
         else:
             tmp = (self.__max - self.__min) * slice_.stop / 100
             stop = self.__min + tmp
+
         return Range(start, stop)
 
     # }}}
@@ -99,8 +102,8 @@ class Range:  # {{{
         return self.__min <= price <= self.__max
 
     # }}}
-    def __repr__(self):  # {{{
-        return f"Range({self.min}, {self.max})"
+    def __str__(self):  # {{{
+        return f"Range[{self.min}, {self.max}]"
 
     # }}}
     @property  # min# {{{

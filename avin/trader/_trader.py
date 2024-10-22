@@ -16,15 +16,14 @@ from avin.utils import logger, now
 
 class Trader:
     def __init__(self):  # {{{
-        logger.debug("Genera.__init__()")
-        self.work = False
-        self.event = None
+        logger.debug("Trader.__init__()")
+        self.__work = False
 
     # }}}
     async def __loadConfig(self) -> None:  # {{{
         logger.info(":: Trader load config")
         self.cfg = {
-            "broker": Tinkoff,
+            "broker": Tinkoff,  # TODO: брокер строкой хранится должен
             "account": "Alex",
             "strategy_list": [
                 ("Every", "five"),
@@ -189,8 +188,8 @@ class Trader:
     # }}}
     async def __mainCycle(self) -> None:  # {{{
         logger.info(":: Trader run main cycle")
-        self.work = True
-        while self.work:
+        self.__work = True
+        while self.__work:
             await self.__ensureConnection()
             await self.__ensureMarketOpen()
             await asyncio.sleep(60)
@@ -251,9 +250,44 @@ class Trader:
         # sendTelegram()
         # closeConnection()
         # updateGUI
-        self.work = False
+        self.__work = False
 
     # }}}
+    # TODO: интерфейс у трейдера и тестера должен быть одинаковым
+    # если у тестера
+    # t = Tester()
+    # t.setTest(test)
+    # t.runTest()
+    # То и у трейдера должно быть аналогично
+    # g = General()
+    # g.setTrader(trader)
+    # g.getBABLO()
+    """
+    и еще вопрос Test -> Tester
+                 ???? -> Trader
+    может тогда что-то типо такого:
+        Trader Ruler
+
+        У трейдера есть набор стратегий и счет,
+        и он с ними возится.
+        А вот рулер уже обеспечивает только одно
+        соединение с брокером, даже если там несколько
+        трейдеров работают.
+        брррррр
+        ну это пиздец.
+        зачем еще одна абстракция над 1 единственным объектом
+        погоди пока. Впизду тя.
+        Пока трейдер только один?
+        Ну вот пусть он и будет один.
+        Построить над ним управляющую структуру не проблема
+        когда понадобится надобность во втором трейдере.
+        Тогда будет видно что у них общего, а что разного.
+        Что нужно вынести в отдельный класс общий, что в частные.
+        Все будет видно.
+        А пока - трейдер - это монолит, и торговая система и набор настроек.
+
+    """
+
     async def initialize(self) -> None:  # {{{
         logger.info(":: Trader start initialization")
         await self.__loadConfig()
@@ -283,9 +317,9 @@ class Trader:
 
     # }}}
     async def stop(self) -> None:  # {{{
-        if self.work:
+        if self.__work:
             logger.info(":: Trader shuting down")
-            self.work = False
+            self.__work = False
         else:
             logger.warning("Trader.stop() called, but now he is not work")
 

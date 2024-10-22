@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-import abc
+from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, ClassVar, Optional, Union
 
@@ -29,8 +29,8 @@ from avin.keeper import Keeper
 from avin.utils import AsyncSignal, logger, now
 
 
-class Asset(metaclass=abc.ABCMeta):  # {{{
-    @abc.abstractmethod  # __init__# {{{
+class Asset(ABC):  # {{{
+    @abstractmethod  # __init__# {{{
     def __init__(self, ID: InstrumentId):
         logger.debug(f"{self.__class__.name}.__init__()")
 
@@ -351,7 +351,7 @@ class Share(Asset):  # {{{
 
 # }}}
 class AssetList:  # {{{
-    def __init__(self, name: str = "unnamed"):  # {{{
+    def __init__(self, name: str):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__({name})")
         self.__name = name
         self.__assets: list[Asset] = list()
@@ -368,6 +368,10 @@ class AssetList:  # {{{
     # }}}
     def __contains__(self, asset: Asset) -> bool:  # {{{
         return any(i.ID == asset.ID for i in self.__assets)
+
+    # }}}
+    def __len__(self):  # {{{
+        return len(self.__assets)
 
     # }}}
     @property  # name  # {{{
@@ -392,11 +396,6 @@ class AssetList:  # {{{
         self.__assets = assets
 
     # }}}
-    @property  # count  # {{{
-    def count(self) -> int:
-        return len(self.__assets)
-
-    # }}}
     def add(self, asset: Asset) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.add({asset.ticker})")
         assert isinstance(asset, Asset)
@@ -409,15 +408,14 @@ class AssetList:  # {{{
     # }}}
     def remove(self, asset: Asset) -> None:  # {{{
         logger.debug(f"AssetList.remove({asset.ticker})")
+
         try:
             self.__assets.remove(asset)
-            return
         except ValueError:
             logger.exception(
                 f"AssetList.remove(asset): Fail: "
-                f"инструмент '{asset.ticker}' нет в списке '{self.name}'",
+                f"asset '{asset.ticker}' not in list '{self.name}'",
             )
-            return
 
     # }}}
     def clear(self) -> None:  # {{{
@@ -459,10 +457,19 @@ class AssetList:  # {{{
     @classmethod  # fromRecord  # {{{
     async def fromRecord(cls, record: asyncpg.Record) -> AssetList:
         logger.debug(f"{cls.__name__}.fromRecord()")
+
+        # TODO: Table "AssetList_Asset"
+        # тогда можно будет селектнуть все ассеты относящиеся к этому листу
+        # и объединить их фиги с данными из таблицы Asset
+        # и тогда кипер сможет возвращать name + list[Asset]
+        # и не будет этой кучи одиночных запросов по 1 ассету
+
+        # create asset list
         name = record["name"]
         figi_list = record["assets"]
-
         alist = cls(name)
+
+        # add assets
         for figi in figi_list:
             asset = await Asset.byFigi(figi)
             alist.add(asset)

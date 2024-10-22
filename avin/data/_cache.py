@@ -9,22 +9,38 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import Any
 
 from avin.const import Res
 from avin.keeper import Keeper
 from avin.utils import Cmd, now
 
 
-class _InstrumentInfoCache:  # {{{
+class _InstrumentInfoCache:
     def __init__(  # {{{
         self,
         source: DataSource,
         asset_type: AssetType,
         assets_info: list[dict],
     ):
-        self.source = source
-        self.asset_type = asset_type
-        self.assets_info = assets_info
+        self.__source = source
+        self.__type = asset_type
+        self.__info = assets_info
+
+    # }}}
+    @property  # source{{{
+    def source(self):
+        return self.__source
+
+    # }}}
+    @property  # type{{{
+    def type(self):
+        return self.__type
+
+    # }}}
+    @property  # info{{{
+    def info(self):
+        return self.__info
 
     # }}}
     @classmethod  # save# {{{
@@ -39,7 +55,9 @@ class _InstrumentInfoCache:  # {{{
 
     # }}}
     @classmethod  # load# {{{
-    def load(cls, source: Source, asset_type: AssetType):
+    def load(
+        cls, source: Source, asset_type: AssetType
+    ) -> _InstrumentInfoCache:
         cache_dir = Cmd.path(Res.CACHE, source.name.lower())
         cache_path = Cmd.path(cache_dir, f"{asset_type.name}.json")
         cache = Cmd.loadJson(cache_path, decoder=cls.decoderJson)
@@ -47,7 +65,7 @@ class _InstrumentInfoCache:  # {{{
 
     # }}}
     @classmethod  # checkCachingDate# {{{
-    def checkCachingDate(cls, source: Source):
+    def checkCachingDate(cls, source: Source) -> bool:
         # ckeck file with last update datetime
         file_path = Cmd.path(Res.CACHE, source.name.lower(), "last_update")
         if not Cmd.isExist(file_path):
@@ -60,20 +78,20 @@ class _InstrumentInfoCache:  # {{{
 
     # }}}
     @classmethod  # updateCachingDate# {{{
-    def updateCachingDate(cls, source: Source):
+    def updateCachingDate(cls, source: Source) -> None:
         dt = now().isoformat()
         file_path = Cmd.path(Res.CACHE, source.name.lower(), "last_update")
         Cmd.write(dt, file_path)
 
     # }}}
     @staticmethod  # encoderJson# {{{
-    def encoderJson(obj):
+    def encoderJson(obj) -> Any:
         if isinstance(obj, (datetime, date)):
             return obj.isoformat()
 
     # }}}
     @staticmethod  # decoderJson# {{{
-    def decoderJson(obj):
+    def decoderJson(obj) -> Any:
         # NOTE::
         # см формат файлов кэша, там слишком много деталей спецефичных
         # сейчас в MOEX файлах после чтения остаются строками разные даты:
@@ -91,6 +109,3 @@ class _InstrumentInfoCache:  # {{{
         return obj
 
     # }}}
-
-
-# }}}

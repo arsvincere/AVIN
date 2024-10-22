@@ -12,9 +12,10 @@ import tinkoff.invest as ti
 
 from avin.config import Usr
 from avin.const import Res
+from avin.data._abstract_source import _AbstractDataSource
 from avin.data._cache import _InstrumentInfoCache
 from avin.data.asset_type import AssetType
-from avin.data.data_source import DataSource, _AbstractSource
+from avin.data.data_source import DataSource
 from avin.data.data_type import DataType
 from avin.data.exchange import Exchange
 from avin.data.instrument_id import InstrumentId
@@ -22,7 +23,7 @@ from avin.keeper import Keeper
 from avin.utils import Cmd, logger
 
 
-class _TinkoffData(_AbstractSource):  # {{{
+class _TinkoffData(_AbstractDataSource):
     """const"""  # {{{
 
     source = DataSource.TINKOFF
@@ -77,7 +78,7 @@ class _TinkoffData(_AbstractSource):  # {{{
         ticker: str,
         figi: str,
         name: str,
-    ) -> InstrumentId:
+    ) -> list[InstrumentId]:
         logger.debug(f"{cls.__name__}.find()")
 
         if cls._AUTO_UPDATE:
@@ -529,6 +530,3 @@ class _TinkoffData(_AbstractSource):  # {{{
         return ID, data_type
 
     # }}}
-
-
-# }}}

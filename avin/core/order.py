@@ -48,64 +48,39 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     class Status(enum.Enum):  # {{{
         UNDEFINE = enum.auto()
         NEW = enum.auto()
-
         SUBMIT = enum.auto()
 
-        PENDING = enum.auto()
-        TRIGGERED = enum.auto()
-
         POSTED = enum.auto()
-        PARTIAL = enum.auto()
         OFF = enum.auto()
+
+        PARTIAL = enum.auto()
         FILLED = enum.auto()
+
         EXECUTED = enum.auto()
+        TRIGGERED = enum.auto()
 
         CANCELED = enum.auto()
         BLOCKED = enum.auto()
         REJECTED = enum.auto()
         EXPIRED = enum.auto()
 
-        ARCHIVE = enum.auto()
-
         @classmethod  # fromStr
         def fromStr(cls, string: str) -> Order.Status:
             statuses = {
                 "NEW": Order.Status.NEW,
                 "SUBMIT": Order.Status.SUBMIT,
-                "PENDING": Order.Status.PENDING,
-                "TRIGGERED": Order.Status.TRIGGERED,
                 "POSTED": Order.Status.POSTED,
-                "PARTIAL": Order.Status.PARTIAL,
                 "OFF": Order.Status.OFF,
+                "PARTIAL": Order.Status.PARTIAL,
                 "FILLED": Order.Status.FILLED,
                 "EXECUTED": Order.Status.EXECUTED,
+                "TRIGGERED": Order.Status.TRIGGERED,
                 "CANCELED": Order.Status.CANCELED,
+                "BLOCKED": Order.Status.BLOCKED,
                 "REJECTED": Order.Status.REJECTED,
                 "EXPIRED": Order.Status.EXPIRED,
-                "ARCHIVE": Order.Status.ARCHIVE,
             }
             return statuses[string]
-
-    # }}}
-    class Direction(enum.Enum):  # {{{
-        UNDEFINE = 0
-        BUY = 1
-        SELL = 2
-
-        def toOperationDirection(self):
-            if self == Order.Direction.BUY:
-                return Operation.Direction.BUY
-
-            if self == Order.Direction.SELL:
-                return Operation.Direction.SELL
-
-        @classmethod  # fromStr
-        def fromStr(cls, string: str) -> Order.Direction:
-            directions = {
-                "BUY": Order.Direction.BUY,
-                "SELL": Order.Direction.SELL,
-            }
-            return directions[string]
 
     # }}}
 
@@ -239,6 +214,22 @@ class Order(metaclass=abc.ABCMeta):  # {{{
 
     # }}}
 
+    @classmethod  # fromRecord{{{
+    async def fromRecord(cls, record):
+        logger.debug(f"Order.fromRecord({record})")
+
+        methods = {
+            "MARKET": Order.__marketOrderFromRecord,
+            "LIMIT": Order.__limitOrderFromRecord,
+            "STOP": Order.__stopOrderFromRecord,
+            "STOP_LOSS": Order.__stopLossFromRecord,
+            "TAKE_PROFIT": Order.__takeProfitFromRecord,
+        }
+        method = methods[record["type"]]
+        order = await method(record)
+        return order
+
+    # }}}
     @classmethod  # save  # {{{
     async def save(cls, order) -> None:
         logger.debug(f"Order.save({order})")
@@ -267,22 +258,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         await Keeper.update(order)
 
     # }}}
-    @classmethod  # fromRecord{{{
-    async def fromRecord(cls, record):
-        logger.debug(f"Order.fromRecord({record})")
 
-        methods = {
-            "MARKET": Order.__marketOrderFromRecord,
-            "LIMIT": Order.__limitOrderFromRecord,
-            "STOP": Order.__stopOrderFromRecord,
-            "STOP_LOSS": Order.__stopLossFromRecord,
-            "TAKE_PROFIT": Order.__takeProfitFromRecord,
-        }
-        method = methods[record["type"]]
-        order = await method(record)
-        return order
-
-    # }}}
     @classmethod  # __marketOrderFromRecord{{{
     async def __marketOrderFromRecord(cls, record):
         logger.debug(f"Order.__marketOrderFromRecord({record})")

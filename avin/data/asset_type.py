@@ -6,7 +6,11 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
+from __future__ import annotations
+
 import enum
+
+# TODO: в класс InstrumentId можно внести подклассом
 
 
 class AssetType(enum.Enum):  # {{{
@@ -21,7 +25,7 @@ class AssetType(enum.Enum):  # {{{
     ETF = 8
 
     @classmethod  # fromStr# {{{
-    def fromStr(cls, string):
+    def fromStr(cls, string) -> AssetType:
         types = {
             "CASH": AssetType.CASH,
             "INDEX": AssetType.INDEX,
@@ -36,7 +40,7 @@ class AssetType(enum.Enum):  # {{{
 
     # }}}
     @classmethod  # fromRecord# {{{
-    def fromRecord(cls, record):
+    def fromRecord(cls, record) -> AssetType:
         string_name = record["type"]
         asset_type = cls.fromStr(string_name)
         return asset_type

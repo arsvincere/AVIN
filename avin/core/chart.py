@@ -179,7 +179,7 @@ class Chart:
         self.__now = None
 
     # }}}
-    def nextHead(self) -> Optional[Bar]:  # {{{
+    def nextHead(self) -> Bar | None:  # {{{
         logger.debug(f"{self.__class__.__name__}.nextHead()")
         if self.__head < len(self.__bars) - 1:
             self.__head += 1

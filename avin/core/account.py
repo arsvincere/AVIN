@@ -125,7 +125,7 @@ class Account:
         return result
 
     # }}}
-    async def cancel(self, order):  # {{{
+    async def cancel(self, order) -> bool:  # {{{
         logger.debug("Account.cancel()")
         logger.info(f":: Account {self.__name} cancel order: {order}")
 
@@ -160,16 +160,6 @@ class Account:
         await self.broker.syncOrder(self, order)
         if order.status == Order.Status.FILLED:
             await self.__onOrderFilled(order)
-
-    # }}}
-    @classmethod  # fromRecord  # {{{
-    def fromRecord(cls, record):
-        logger.debug("Account.fromRecord()")
-        assert False
-        # FIX: аккаунт не создается из базы, он создается из брокера,
-        # запросмо getAccount, getAllAccount
-        # выпили старый код который это использовал, он наверное
-        # только в тестах и остался.
 
     # }}}
     async def __onOrderFilled(self, order: Order):  # {{{

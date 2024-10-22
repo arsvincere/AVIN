@@ -158,7 +158,7 @@ async def test_Tinkoff(event_loop):
     posted = await Tinkoff.postStopOrder(account, stop_order)
     assert posted
     await Tinkoff.syncOrder(account, stop_order)
-    assert stop_order.status == Order.Status.PENDING
+    assert stop_order.status == Order.Status.ACTIVE
 
     received_order = await Tinkoff.getStopOrders(account)
     received_order = received_order[0]
@@ -199,7 +199,7 @@ async def test_Tinkoff(event_loop):
     posted = await Tinkoff.postStopOrder(account, stop_order)
     assert posted
     await Tinkoff.syncOrder(account, stop_order)
-    assert stop_order.status == Order.Status.PENDING
+    assert stop_order.status == Order.Status.ACTIVE
 
     canceled = await Tinkoff.cancelStopOrder(account, stop_order)
     assert canceled

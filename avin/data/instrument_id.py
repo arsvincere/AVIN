@@ -8,6 +8,8 @@
 
 from __future__ import annotations
 
+import enum
+
 from avin.data.asset_type import AssetType
 from avin.data.data_source import DataSource
 from avin.data.exchange import Exchange
@@ -19,6 +21,41 @@ class InstrumentId:
     """doc # {{{
     Unified identifier for all assets.
     """
+
+    # }}}
+    class Type(enum.Enum):  # {{{
+        UNDEFINE = 0
+        CASH = 1
+        INDEX = 2
+        SHARE = 3
+        BOND = 4
+        FUTURE = 5
+        OPTION = 6
+        CURRENCY = 7
+        ETF = 8
+
+        @classmethod  # fromStr# {{{
+        def fromStr(cls, string) -> AssetType:
+            types = {
+                "CASH": AssetType.CASH,
+                "INDEX": AssetType.INDEX,
+                "SHARE": AssetType.SHARE,
+                "BOND": AssetType.BOND,
+                "FUTURE": AssetType.FUTURE,
+                "OPTION": AssetType.OPTION,
+                "CURRENCY": AssetType.CURRENCY,
+                "ETF": AssetType.ETF,
+            }
+            return types[string]
+
+        # }}}
+        @classmethod  # fromRecord# {{{
+        def fromRecord(cls, record) -> AssetType:
+            string_name = record["type"]
+            asset_type = cls.fromStr(string_name)
+            return asset_type
+
+        # }}}
 
     # }}}
     def __init__(  # {{{
@@ -87,6 +124,16 @@ class InstrumentId:
     # }}}
     @property  # min_price_step# {{{
     def min_price_step(self):
+        # TODO: все же это надо стандартизировать
+        # все поля которые я реально использую надо стандартизировать
+        # а то у разных источников они по разному в словаре обозначаются
+        # так что надо их заносить в саму таблицу в БД? Но тогда
+        # будет не у всех не все...
+        # получается надо словари стандартизировать?
+        # да... А вот стандартизировать словари - это идея получше
+        # и не хранить вообще лишнюю информацию, выцепить только
+        # реально нужные поля, и стандартизировать названия
+        # Да. Надо InstrumentInfoCache переделать
         return float(self.info["min_price_increment"])
 
     # }}}
@@ -151,6 +198,9 @@ class InstrumentId:
     @classmethod  # byUid# {{{
     async def byUid(cls, uid: str) -> InstrumentId | None:
         logger.debug(f"{cls.__name__}.byUid()")
+        logger.warning(
+            f"DEPRICATED METHOD: {cls.__name__}.byUid(), use 'byFigi()'"
+        )
 
         if not cls.__checkArgs(uid=uid):
             return None

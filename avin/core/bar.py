@@ -95,7 +95,7 @@ class Bar(_Bar):  # {{{
         self.__flags |= flag
 
     # }}}
-    def removeFlag(self, flag) -> None:  # {{{
+    def delFlag(self, flag: Bar.Type) -> None:  # {{{
         assert isinstance(flag, Bar.Type)
         self.__flags &= ~flag
 

@@ -8,16 +8,16 @@
 
 from __future__ import annotations
 
-import abc
 import enum
 
 
 class DataSource(enum.Enum):  # {{{
+    UNDEFINE = 0
     MOEX = 1
     TINKOFF = 2
 
     @classmethod  # fromStr  # {{{
-    def fromStr(cls, string):
+    def fromStr(cls, string) -> DataSource:
         sources = {
             "MOEX": DataSource.MOEX,
             "TINKOFF": DataSource.TINKOFF,
@@ -26,54 +26,10 @@ class DataSource(enum.Enum):  # {{{
 
     # }}}
     @classmethod  # fromRecord  # {{{
-    def fromRecord(cls, record):
+    def fromRecord(cls, record) -> DataSource:
         string = record["source"]
         source = cls.fromStr(string)
         return source
-
-    # }}}
-
-
-# }}}
-class _AbstractSource(metaclass=abc.ABCMeta):  # {{{
-    @abc.abstractmethod  # __init__# {{{
-    def __init__(self): ...
-
-    # }}}
-    @abc.abstractclassmethod  # cacheAssetsInfo# {{{
-    def cacheAssetsInfofind(cls) -> None: ...
-
-    # }}}
-    @abc.abstractclassmethod  # find# {{{
-    def find(
-        cls, exchange: str, asset_type: str, querry: str
-    ) -> InstrumentId: ...
-
-    # }}}
-    @abc.abstractclassmethod  # info# {{{
-    def info(cls, ID: InstrumentId) -> dict: ...
-
-    # }}}
-    @abc.abstractclassmethod  # firstDateTime# {{{
-    def firstDateTime(
-        cls, ID: InstrumentId, data_type: DataType
-    ) -> datetime: ...
-
-    # }}}
-    @abc.abstractclassmethod  # download# {{{
-    def download(
-        cls, ID: InstrumentId, data_type: DataType, year: int
-    ) -> bool: ...
-
-    # }}}
-    @abc.abstractclassmethod  # getHistoricalBars# {{{
-    def getHistoricalBars(
-        cls,
-        ID: InstrumentId,
-        data_type: DataType,
-        begin: datetime,
-        end: datetime,
-    ) -> list[_Bar]: ...
 
     # }}}
 

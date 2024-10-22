@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from avin.data import DataType
 
 
-class TimeFrame:  # {{{
+class TimeFrame:
     """doc# {{{
     Реализует таймфрейм.
 
@@ -199,8 +199,6 @@ class TimeFrame:  # {{{
 
     # }}}
 
-
-# }}}
 
 TimeFrame.ALL = [
     TimeFrame("1M"),

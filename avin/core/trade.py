@@ -41,34 +41,27 @@ class Trade:  # {{{
 
     # }}}
     class Status(enum.Enum):  # {{{
-        UNDEFINE = 0
-        INITIAL = 1
-        PENDING = 2
-        TRIGGERED = 3
+        UNDEFINE = enum.auto()
+        INITIAL = enum.auto()
+        PENDING = enum.auto()
+        TRIGGERED = enum.auto()
 
-        MAKE_ORDER = 10
-        POST_ORDER = 11
-        POSTED = 13
-        OPENED = 14
+        MAKE_ORDER = enum.auto()
+        POST_ORDER = enum.auto()
+        AWAIT_EXEC = enum.auto()
+        OPENED = enum.auto()
 
-        MAKE_STOP = 21
-        MAKE_TAKE = 22
-        POST_STOP = 23
-        POST_TAKE = 24
+        MAKE_STOP = enum.auto()
+        MAKE_TAKE = enum.auto()
+        POST_STOP = enum.auto()
+        POST_TAKE = enum.auto()
 
-        ACTIVE = 30
+        ACTIVE = enum.auto()
+        CLOSING = enum.auto()
 
-        OFF = 40
-
-        FINISH = 50
-        CLOSING = 51
-        REMOVING = 52
-
-        CLOSED = 60
-        ARCHIVE = 70
-
-        CANCELED = 90
-        BLOKED = 91
+        CLOSED = enum.auto()
+        CANCELED = enum.auto()
+        BLOCKED = enum.auto()
 
         @classmethod  # fromStr
         def fromStr(cls, string: str) -> Trade.Status:
@@ -78,21 +71,17 @@ class Trade:  # {{{
                 "TRIGGERED": Trade.Status.TRIGGERED,
                 "MAKE_ORDER": Trade.Status.MAKE_ORDER,
                 "POST_ORDER": Trade.Status.POST_ORDER,
-                "POSTED": Trade.Status.POSTED,
+                "AWAIT_EXEC": Trade.Status.AWAIT_EXEC,
                 "OPENED": Trade.Status.OPENED,
                 "MAKE_STOP": Trade.Status.MAKE_STOP,
                 "MAKE_TAKE": Trade.Status.MAKE_TAKE,
                 "POST_STOP": Trade.Status.POST_STOP,
                 "POST_TAKE": Trade.Status.POST_TAKE,
                 "ACTIVE": Trade.Status.ACTIVE,
-                "OFF": Trade.Status.OFF,
-                "FINISH": Trade.Status.FINISH,
                 "CLOSING": Trade.Status.CLOSING,
-                "REMOVING": Trade.Status.REMOVING,
                 "CLOSED": Trade.Status.CLOSED,
                 "CANCELED": Trade.Status.CANCELED,
-                "BLOKED": Trade.Status.BLOKED,
-                "ARCHIVE": Trade.Status.ARCHIVE,
+                "BLOCKED": Trade.Status.BLOCKED,
             }
             return statuses[string]
 
@@ -103,7 +92,7 @@ class Trade:  # {{{
         strategy: str,
         version: str,
         trade_type: Trate.Type,
-        asset_id: str,
+        asset_id: InstrumentId,
         status: Trade.Status = Status.INITIAL,
         trade_id: Optional[Id] = None,
         orders: Optional[list] = None,
@@ -116,6 +105,8 @@ class Trade:  # {{{
         if operations is None:
             operations = list()
 
+        # TODO: это похоже на пережиток сохранения в json
+        # сейчас это не нужно вообще можно просто поля класса сделать
         self.__info = {
             "trade_id": trade_id,
             "datetime": dt,
@@ -206,8 +197,8 @@ class Trade:  # {{{
     # @async_slot  #onOrderPosted # {{{
     async def onOrderPosted(self, order):
         assert order.trade_id == self.trade_id
-        if self.status.value < Trade.Status.POSTED.value:
-            await self.setStatus(Trade.Status.POSTED)
+        if self.status.value < Trade.Status.AWAIT_EXEC.value:
+            await self.setStatus(Trade.Status.AWAIT_EXEC)
 
         # otherwise trade already open, and this order is stop/take
         # or another. Essence - trade already open - do nothing with status
@@ -396,7 +387,7 @@ class Trade:  # {{{
         return self.sellAmount() / self.sellQuantity()
 
     # }}}
-    def openDatetime(self):  # {{{
+    def openDateTime(self):  # {{{
         assert self.status.value >= Trade.Status.OPENED.value
         return self.__operations[0].dt
 
@@ -411,7 +402,7 @@ class Trade:  # {{{
         return self.sellAverage()
 
     # }}}
-    def closeDatetime(self):  # {{{
+    def closeDateTime(self):  # {{{
         assert self.status in (
             Trade.Status.CLOSED,
             Trade.Status.ARCHIVE,
@@ -561,69 +552,71 @@ class TradeList:  # {{{
     ):
         logger.debug(f"{self.__class__.__name__}.__init__()")
 
-        self._name = name
-        self._trades = trades if trades else list()
-        self._parent = parent
-        self._childs: list[TradeList] = list()
-        self._asset = parent.asset if parent else None
+        self.__name = name
+        self.__trades = trades if trades else list()
+        self.__parent = parent
+        self.__childs: list[TradeList] = list()
+        self.__asset = parent.asset if parent else None
 
     # }}}
     def __iter__(self):  # {{{
-        return iter(self._trades)
+        return iter(self.__trades)
 
     # }}}
     def _createChild(self, trades, suffix):  # {{{
         child_name = f"- {suffix}"
         child = TradeList(name=child_name, trades=trades, parent=self)
-        child._asset = self.asset
-        self._childs.append(child)
+        child.__asset = self.asset
+        self.__childs.append(child)
         return child
 
     # }}}
     @property  # name# {{{
     def name(self):
-        return self._name
+        return self.__name
 
     # }}}
     @property  # trades# {{{
     def trades(self):
-        return self._trades
+        return self.__trades
 
     # }}}
     @property  # count# {{{
     def count(self):
-        return len(self._trades)
+        return len(self.__trades)
 
     # }}}
     @property  # asset# {{{
     def asset(self):
-        return self._asset
+        return self.__asset
 
     # }}}
     def parent(self):  # {{{
+        """Return parent trade list"""
         logger.debug(f"{self.__class__.__name__}.parent()")
-        return self._parent
+
+        return self.__parent
 
     # }}}
     def add(self, trade: Trade) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.add()")
-        self._trades.append(trade)
+        self.__trades.append(trade)
 
     # }}}
     def remove(self, trade: Trade) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.remove()")
-        self._trades.remove(trade)
+        self.__trades.remove(trade)
 
     # }}}
     def clear(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.clear()")
-        self._trades.clear()
+        self.__trades.clear()
 
     # }}}
     def find(self, trade_id: Id) -> Trade | None:  # {{{
         logger.debug(f"{self.__class__.__name__}.find()")
 
-        for trade in self._trades:
+        for trade in self.__trades:
             if trade.trade_id == trade_id:
                 return trade
         return None
@@ -633,7 +626,7 @@ class TradeList:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectLong()")
 
         selected = list()
-        for trade in self._trades:
+        for trade in self.__trades:
             if trade.isLong():
                 selected.append(trade)
         child = self._createChild(selected, "long")
@@ -644,7 +637,7 @@ class TradeList:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectShort()")
 
         selected = list()
-        for trade in self._trades:
+        for trade in self.__trades:
             if trade.isShort():
                 selected.append(trade)
         child = self._createChild(selected, "short")
@@ -655,7 +648,7 @@ class TradeList:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectWin()")
 
         selected = list()
-        for trade in self._trades:
+        for trade in self.__trades:
             if trade.isWin():
                 selected.append(trade)
         child = self._createChild(selected, "win")
@@ -666,7 +659,7 @@ class TradeList:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectLoss()")
 
         selected = list()
-        for trade in self._trades:
+        for trade in self.__trades:
             if trade.isLoss():
                 selected.append(trade)
         child = self._createChild(selected, "loss")
@@ -677,11 +670,11 @@ class TradeList:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectAsset()")
 
         selected = list()
-        for trade in self._trades:
+        for trade in self.__trades:
             if trade.asset_id.figi == asset.figi:
                 selected.append(trade)
         child = self._createChild(selected, suffix=asset.ticker)
-        child._asset = asset
+        child.__asset = asset
         return child
 
     # }}}
@@ -689,7 +682,7 @@ class TradeList:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectStatus()")
 
         selected = list()
-        for trade in self._trades:
+        for trade in self.__trades:
             if trade.status == status:
                 selected.append(trade)
         child = self._createChild(selected, suffix=status.name)

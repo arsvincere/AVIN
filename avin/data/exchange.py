@@ -9,7 +9,7 @@
 from datetime import UTC, time
 
 
-class Exchange:  # {{{
+class Exchange:
     class MOEX:
         name = "MOEX"
         SESSION_BEGIN = time(7, 0, tzinfo=UTC)
@@ -31,9 +31,6 @@ class Exchange:  # {{{
             "_TEST_EXCHANGE": Exchange._TEST_EXCHANGE,
         }
         return types[string]
-
-
-# }}}
 
 
 # }}}

@@ -22,9 +22,10 @@ from avin.keeper import Keeper
 from avin.utils import Cmd, logger, now
 
 # FIX: при конвертации 1М -> 5М, незавершенную 5М свечу собирает...
+# TODO: rename _Manager -> _DataManager
 
 
-class _Manager:  # {{{
+class _Manager:
     _AUTO_UPDATE = Usr.AUTO_UPDATE_MARKET_DATA
     _LAST_UPDATE_FILE = Cmd.path(Res.DATA, "last_update")
     _DATA_IS_UP_TO_DATE = None
@@ -63,11 +64,11 @@ class _Manager:  # {{{
 
     # }}}
     @classmethod  # download{{{
-    async def download(cls, ID: InstrumentId, data_type, year) -> None:
+    async def download(cls, source, ID, data_type, year) -> None:
         logger.debug(f"{cls.__name__}.download()")
         # NOTE:
         # пока грузим все исторические данные только с MOEX
-        # независимо ни от чего
+        # независимо от переменной 'source'
         await _MoexData.download(ID, data_type, year)
 
     # }}}
@@ -369,6 +370,3 @@ class _Manager:  # {{{
         await _BarsData.save(new_data)
 
     # }}}
-
-
-# }}}

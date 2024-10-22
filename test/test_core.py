@@ -101,7 +101,7 @@ def test_Bar():  # {{{
     assert not bar.isOverflow()
     assert not bar.isExtremum()
 
-    bar.removeFlag(Bar.Type.INSIDE)
+    bar.delFlag(Bar.Type.INSIDE)
     assert not bar.isInside()
     assert not bar.isOutside()
     assert not bar.isOverflow()
@@ -800,6 +800,52 @@ async def test_Strategy():
 
 
 # }}}
+@pytest.mark.asyncio  # test_StrategyList  # {{{
+async def test_StrategyList():
+    s1 = await Strategy.load("Every", "minute")
+    s2 = await Strategy.load("Every", "five")
+
+    strategy_list = StrategyList("slist")
+    assert strategy_list.name == "slist"
+
+    # add
+    strategy_list.add(s1)
+    assert len(strategy_list) == 1
+    strategy_list.add(s2)
+    assert len(strategy_list) == 2
+    assert strategy_list.strategys == [s1, s2]
+
+    # remove
+    strategy_list.remove(s1)
+    assert len(strategy_list) == 1
+    strategy_list.remove(s2)
+    assert len(strategy_list) == 0
+
+    # clear
+    strategy_list.clear()
+    assert len(strategy_list) == 0
+
+    # property setter name
+    strategy_list.name = "new_name"
+    assert strategy_list.name == "new_name"
+
+    # property setter strategys
+    strategy_list.strategys = [s2, s1]
+    assert strategy_list.strategys == [s2, s1]
+
+    # iter
+    for i in strategy_list:
+        assert isinstance(i, Strategy)
+
+    # in
+    assert s1 in strategy_list
+    assert s2 in strategy_list
+    strategy_list.clear()
+    assert s1 not in strategy_list
+    assert s2 not in strategy_list
+
+
+# }}}
 
 
 @pytest.mark.asyncio  # test_clear_all_test_vars  # {{{
@@ -864,139 +910,3 @@ async def test_clear_all_test_vars():
 
 
 # }}}
-
-# def test_Position():  # {{{
-# TODO:
-# позиция это чисто позиция в портфолио, как от брокера приходит
-#     ID = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
-#     share = Share(ID)
-#     dt = now()
-#     op = Operation(
-#         dt=dt,
-#         direction=Operation.Direction.BUY,
-#         asset=share,
-#         price=100,
-#         lots=1,
-#         quantity=50,
-#         amount=100 * 50,
-#         commission=10,
-#         meta=None,
-#     )
-#
-#     pos = Position(operations=[op], meta=None)
-#     assert pos.status == Position.Status.OPEN
-#     assert pos.operations[0] == op
-#     assert pos.openPrice() == 100
-#     assert pos.lots() == 1
-#     assert pos.openDatetime() == dt
-#     assert pos.quantity() == 50
-#     assert pos.buyQuantity() == 50
-#     assert pos.sellQuantity() == 0
-#     assert pos.amount() == 5000
-#     assert pos.buyAmount() == 5000
-#     assert pos.sellAmount() == 0
-#     assert pos.commission() == 10
-#     assert pos.buyCommission() == 10
-#     assert pos.sellCommission() == 0
-#     assert pos.average() == 100
-#     assert pos.averageBuy() == 100
-#     assert pos.averageSell() == 0
-
-
-# }}}
-# def test_Cash():  # {{{
-#     rub = Cash(Cash.Type.RUB, 1_000_000)
-#     assert rub.type == Cash.Type.RUB
-#     assert rub.value == 1_000_000
-#
-#
-# # }}}
-# def test_Portfolio():  # {{{
-#     portfolio = Portfolio()
-#
-#     # input cash
-#     rub = Cash(Cash.Type.RUB, 1_000_000)
-#     portfolio.inputCash(rub)
-#     cash_in_p = portfolio.cash(Cash.Type.RUB)
-#     assert cash_in_p.value == rub.value
-#     assert cash_in_p.type == rub.type
-#
-#     # output cash
-#     rub = Cash(Cash.Type.RUB, 100_000)
-#     portfolio.outputCash(rub)
-#     cash_in_p = portfolio.cash(Cash.Type.RUB)
-#     assert cash_in_p.value == 900_000
-#
-#     # add/get position
-#     ID = Data.find(Exchange.MOEX, AssetType.SHARE, "SBER")
-#     share = Share(ID)
-#     dt = now()
-#     op = Operation(
-#         account_name="_unittest",
-#         dt=dt,
-#         direction=Operation.Direction.BUY,
-#         asset=share,
-#         price=100,
-#         lots=1,
-#         quantity=50,
-#         amount=100 * 50,
-#         commission=10,
-#         meta=None,
-#     )
-#     pos = Position(operations=[op], meta=None)
-#
-#     portfolio = Portfolio(
-#         [
-#             rub,
-#         ],
-#         [
-#             pos,
-#         ],
-#     )
-#     shares_pos = portfolio.get(AssetType.SHARE)
-#     assert shares_pos[0] == pos
-#
-#     # TODO: после рефакторинга сигнала это проедалать
-#     # remove position (availible only if position closed)
-#     # op = Operation(
-#     #     dt=         dt,
-#     #     direction=  Operation.Direction.SELL,
-#     #     asset=      share,
-#     #     price=      100,
-#     #     lots=       1,
-#     #     quantity=   50,
-#     #     amount=     100*50,
-#     #     commission= 10,
-#     #     meta=       None
-#     #     )
-#     # pos.add(op)
-#     # assert pos.status == Position.Status.CLOSE
-#     # portfolio.remove(pos)
-#     # shares_pos = portfolio.get(AssetType.SHARE)
-#     # assert len(shares_pos) == 0
-#     #
-#
-#
-# # }}}
-# def test_Filter():  # {{{
-#     code = """
-# def condition(x):
-#     return x * 5
-#     """
-#     f = Filter("example", code)
-#     assert f.check(4) == 20
-#     assert f.name == "example"
-#     assert f.code == code
-#     Filter.save(f)
-#
-#     loaded = Filter.load(f.path)
-#     assert Cmd.isExist(loaded.path)
-#     assert loaded.check(4) == 20
-#     assert loaded.name == "example"
-#
-#     Filter.rename(loaded, "blablabla")
-#     assert Cmd.isExist(loaded.path)
-#     Filter.delete(loaded)
-#
-#
-# # }}}

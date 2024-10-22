@@ -23,7 +23,13 @@ from avin.core.order import (
     TakeProfit,
 )
 from avin.core.range import Range
-from avin.core.strategy import Strategy
+from avin.core.report import Report
+from avin.core.strategy import (
+    Strategy,
+    StrategyList,
+    StrategySet,
+    StrategySetItem,
+)
 from avin.core.timeframe import TimeFrame
 from avin.core.trade import Trade, TradeList
 
@@ -47,9 +53,13 @@ __all__ = (
     "Trade",
     "TradeList",
     "Strategy",
+    "StrategyList",
+    "StrategySet",
+    "StrategySetItem",
     "Event",
     "NewBarEvent",
     "TransactionEvent",
     "Account",
     "Broker",
+    "Report",
 )

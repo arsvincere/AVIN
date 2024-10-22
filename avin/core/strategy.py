@@ -10,34 +10,95 @@
 
 from __future__ import annotations
 
-import abc
 import importlib
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from datetime import datetime
+from typing import Iterator, Optional
 
 from avin.config import Usr
 from avin.core.account import Account
-from avin.core.asset import AssetList
+from avin.core.asset import Asset, AssetList
 from avin.core.id import Id
 from avin.core.order import MarketOrder, Order, StopLoss, TakeProfit
 from avin.core.trade import Trade, TradeList
+from avin.keeper import Keeper
 from avin.utils import AsyncSignal, Cmd, logger, round_price
 
+# TODO: load active TradeList
+# это должна делать все таки сама стратегия, но не автоматом
+# при создании, а просто метод в интерфейсе
+# и когда надо - трейдер его вызывает
+# а когда не надо - в тестере его и не трогают
+# метод обращается к Киперу и делает селект трейдов по статусу
+# ...
+# однако при этом еще надо знать к какому трейдеру мы сейчас
+# относимся...
+# может все таки трейдер будет грузить общий трейд лист
+# а дальше из него селект по стратегиям делать и крепить их к
+# к стратегиям?
 
-class Strategy(metaclass=abc.ABCMeta):
+
+class Strategy(ABC):  # {{{
     """Signal"""  # {{{
 
     tradeOpened = AsyncSignal(Trade)
     tradeClosed = AsyncSignal(Trade)
 
     # }}}
-    @abc.abstractmethod  # __init__  # {{{
+
+    # Abstract
+    @abstractmethod  # __init__  # {{{
     def __init__(self, name: str, version: str):
         self.__name = name
         self.__version = version
+        self.__cfg = None
 
     # }}}
+    @property  # @abstractmethod timeframe_list  # {{{
+    @abstractmethod
+    def timeframe_list() -> list[TimeFrame]:
+        pass
+
+    # }}}
+    @abstractmethod  # start  # {{{
+    async def start(self):
+        logger.info(f":: Strategy {self} started")
+
+    # }}}
+    @abstractmethod  # finish  # {{{
+    async def finish(self):
+        logger.info(f":: Strategy {self} finished")
+
+    # }}}
+    @abstractmethod  # connect  # {{{
+    async def connect(self, asset: Asset, long: bool, short: bool):
+        logger.info(
+            f":: Strategy {self} connect {asset.ticker} "
+            f"long={long} short={short}"
+        )
+
+    # }}}
+    @abstractmethod  # onTradeOpened  # {{{
+    async def onTradeOpened(self, trade: Trade):
+        logger.info(f"Trade opened: '{trade}'")
+        logger.info(f"Trade open dt: '{trade.openDatetime()}'")
+
+    # }}}
+    @abstractmethod  # onTradeClosed  # {{{
+    async def onTradeClosed(self, trade: Trade):
+        logger.info(f"Trade closed: '{trade}'")
+        logger.info(f"Trade closed result: {trade.result()}")
+
+    # }}}
+
     def __str__(self):  # {{{
         return f"{self.name}-{self.version}"
+
+    # }}}
+    def __eq__(self, other: Strategy):  # {{{
+        assert isinstance(other, Strategy)
+        return self.name == other.name and self.version == other.version
 
     # }}}
     @property  # name  # {{{
@@ -68,16 +129,6 @@ class Strategy(metaclass=abc.ABCMeta):
         return self.__cfg["timeframe_list"]
 
     # }}}
-    @property  # long_list  # {{{
-    def long_list(self):
-        return self.__long_list
-
-    # }}}
-    @property  # short_list  # {{{
-    def short_list(self):
-        return self.__short_list
-
-    # }}}
     @property  # active_trades  # {{{
     def active_trades(self):
         return self.__active_trades
@@ -95,21 +146,10 @@ class Strategy(metaclass=abc.ABCMeta):
         return path
 
     # }}}
-    def setAccount(self, account: Account):  # {{{
+
+    def setAccount(self, account: Account) -> None:  # {{{
         logger.info(f":: {self} set account={account.name}")
         self.__account = account
-
-    # }}}
-    async def setLongList(self, asset_list: AssetList):  # {{{
-        asset_list.name = str(self) + "-long"
-        self.__long_list = asset_list
-        await AssetList.save(asset_list)
-
-    # }}}
-    async def setShortList(self, asset_list: AssetList):  # {{{
-        asset_list.name = str(self) + "-short"
-        self.__short_list = asset_list
-        await AssetList.save(asset_list)
 
     # }}}
     async def createTrade(  # {{{
@@ -291,51 +331,20 @@ class Strategy(metaclass=abc.ABCMeta):
 
     # }}}
 
-    @abc.abstractmethod  # start  # {{{
-    async def start(self):
-        logger.info(f":: Strategy {self} started")
-
-    # }}}
-    @abc.abstractmethod  # finish  # {{{
-    async def finish(self):
-        logger.info(f":: Strategy {self} finished")
-
-    # }}}
-    @abc.abstractmethod  # connect  # {{{
-    async def connect(self, asset_list: AssetList):
-        logger.info(f":: Strategy {self} connecting")
-
-    # }}}
-    @abc.abstractmethod  # onTradeOpened  # {{{
-    async def onTradeOpened(self, trade: Trade):
-        logger.info(f"Trade opened: '{trade}'")
-        logger.info(f"Trade open dt: '{trade.openDatetime()}'")
-
-    # }}}
-    @abc.abstractmethod  # onTradeClosed  # {{{
-    async def onTradeClosed(self, trade: Trade):
-        logger.info(f"Trade closed: '{trade}'")
-        logger.info(f"Trade closed result: {trade.result()}")
-
-    # }}}
-
     @classmethod  # load# {{{
-    async def load(cls, name: str, version: str) -> Strategy:
+    async def load(cls, name: str, version: str) -> UStrategy:
         path = f"usr.strategy.{name}.{version}"
         modul = importlib.import_module(path)
         UStrategy = modul.__getattribute__("UStrategy")
         strategy = UStrategy()
 
         await strategy.__loadConfig()
-        await strategy.__loadLongList()
-        await strategy.__loadShortList()
-        await strategy.__loadTradeList()
 
         return strategy
 
     # }}}
     @classmethod  # versions# {{{
-    def versions(cls, strategy_name: str):
+    def versions(cls, strategy_name: str) -> list[str]:
         path = Cmd.path(Usr.STRATEGY, strategy_name)
         files = Cmd.getFiles(path)
         files = Cmd.select(files, extension=".py")
@@ -349,49 +358,10 @@ class Strategy(metaclass=abc.ABCMeta):
 
     async def __loadConfig(self):  # {{{
         path = Cmd.path(self.dir_path, "config.cfg")
-        if Cmd.isExist(path):
-            self.__cfg = Cmd.loadJson(path)
-            return
+        if not Cmd.isExist(path):
+            assert False
 
-        self.__cfg = None
-
-    # }}}
-    async def __loadLongList(self):  # {{{
-        list_name = str(self) + "-long"
-        asset_list = await AssetList.load(list_name)
-
-        if asset_list:
-            self.__long_list = asset_list
-        else:
-            self.__long_list = AssetList(list_name)
-            await AssetList.save(self.__long_list)
-
-    # }}}
-    async def __loadShortList(self):  # {{{
-        list_name = str(self) + "-short"
-        asset_list = await AssetList.load(list_name)
-
-        if asset_list:
-            self.__short_list = asset_list
-        else:
-            self.__short_list = AssetList(list_name)
-            await AssetList.save(self.__short_list)
-
-    # }}}
-    async def __loadTradeList(self):  # {{{
-        # try load trade list or create new empty list
-        list_name = str(self)
-        trade_list = await TradeList.load(list_name)
-
-        if trade_list:
-            self.__active_trades = trade_list
-        else:
-            self.__active_trades = TradeList(list_name)
-            await TradeList.save(self.__active_trades)
-
-        # connect signals
-        for trade in self.__active_trades:
-            await self.__connectTradeSignals(trade)
+        self.__cfg = Cmd.loadJson(path)
 
     # }}}
     async def __connectTradeSignals(self, trade: Trade):  # {{{
@@ -401,5 +371,217 @@ class Strategy(metaclass=abc.ABCMeta):
     # }}}
 
 
-if __name__ == "__main__":
-    ...
+# }}}
+class StrategyList:  # {{{
+    def __init__(self, name: str):  # {{{
+        logger.debug(f"StrategyList.__init__({name})")
+
+        self.__name = name
+        self.__strategys = list()
+
+    # }}}
+    def __iter__(self) -> Iterator:  # {{{
+        return iter(self.__strategys)
+
+    # }}}
+    def __contains__(self, strategy: Strategy) -> bool:  # {{{
+        assert isinstance(strategy, Strategy)
+
+        return strategy in self.__strategys
+
+    # }}}
+    def __len__(self) -> int:  # {{{
+        return len(self.__strategys)
+
+    # }}}
+    @property  # name  # {{{
+    def name(self) -> str:
+        return self.__name
+
+    @name.setter
+    def name(self, name: str):
+        assert isinstance(name, str)
+        self.__name = name
+
+    # }}}
+    @property  # strategys  # {{{
+    def strategys(self) -> list[Strategy]:
+        return self.__strategys
+
+    @strategys.setter
+    def strategys(self, strategys):
+        assert isinstance(strategys, list)
+        for i in strategys:
+            assert isinstance(i, Strategy)
+        self.__strategys = strategys
+
+    # }}}
+    def add(self, strategy: Strategy) -> None:  # {{{
+        logger.debug(
+            f"{self.__class__.__name__}.add"
+            f"({strategy.name}-{strategy.version})"
+        )
+        assert isinstance(strategy, Strategy)
+
+        if strategy not in self:
+            self.__strategys.append(strategy)
+            return
+
+        logger.warning(f"{asset} already in list '{self.name}'")
+
+    # }}}
+    def remove(self, strategy: Strategy) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.remove({strategy})")
+
+        try:
+            self.__strategys.remove(strategy)
+        except ValueError as err:
+            logger.exception(err)
+
+    # }}}
+    def clear(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.clear()")
+
+        self.__strategys.clear()
+
+    # }}}
+    def find(self, name: str, version: str) -> Strategy | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.find({name}, {version})")
+
+        for i in self.__strategys:
+            if i.name == name and i.version == version:
+                return i
+
+        return None
+
+    # }}}
+
+
+# }}}
+@dataclass  # StrategySetItem{{{
+class StrategySetItem:
+    strategy: str
+    version: str
+    figi: str
+    long: bool
+    short: bool
+
+
+# }}}
+class StrategySet:  # {{{
+    def __init__(self, name: str, items: Optional[list] = None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__({name}, {items})")
+
+        self.__name: str = name
+        self.__items: list[StrategySetItem] = items if items else list()
+        self.__asset_list = None
+        self.__strategy_list = None
+
+    # }}}
+    def __len__(self):  # {{{
+        return len(self.__items)
+
+    # }}}
+    @property  # name{{{
+    def name(self):
+        return self.__name
+
+    # }}}
+    def add(self, item: StrategySetItem) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.add({item})")
+        assert isinstance(item, StrategySetItem)
+
+        self.__items.append(item)
+
+    # }}}
+    def remove(self, item: StrategySetItem) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.remove({item})")
+        assert isinstance(item, StrategySetItem)
+
+        try:
+            self.__items.remove(item)
+        except ValueError as err:
+            logger.exception(err)
+
+    # }}}
+    def clear(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.clear()")
+        self.__items.clear()
+
+    # }}}
+    async def createCommonAssetList(self) -> AssetList:  # {{{
+        logger.debug(f"{self.__class__.__name__}.getCommonAssetList()")
+
+        # create set of figi without dublicate
+        figis = set()
+        for i in self.__items:
+            figis.add(i.figi)
+
+        # create AssetList
+        self.__asset_list = AssetList(name="")
+        for figi in figis:
+            asset = await Asset.byFigi(figi)
+            asset_list.add(asset)
+
+        return self.__asset_list
+
+    # }}}
+    async def createActiveStrategyList(self) -> StrategyList:  # {{{
+        logger.debug(f"{self.__class__.__name__}.getActiveStrategyList()")
+
+        # ensure self.__asset_list availible
+        if not self.__asset_list:
+            logger.critical(
+                "StrategySet can't create StrategyList, "
+                "need create common asset list before."
+            )
+            exit(4)
+
+        # create StrategyList
+        self.strategy_list = StrategyList(name="")
+        for item in self.__items:
+            strategy = strategy_list.find(item.name, item.version)
+            if not strategy:
+                strategy = await Strategy.load(item.name, item.version)
+                strategy_list.add(strategy)
+
+        return self.strategy_list
+
+    # }}}
+    @classmethod  # fromRecord{{{
+    def fromRecord(cls, record):
+        logger.debug(f"{cls.__name__}.fromRecord()")
+
+        assert False
+
+    # }}}
+    @classmethod  # save{{{
+    async def save(cls, strategy_set: StrategySet):
+        logger.debug(f"{cls.__name__}.save()")
+        assert isinstance(strategy_set, StrategySet)
+        await Keeper.add(strategy_set)
+
+    # }}}
+    @classmethod  # load  # {{{
+    async def load(cls, name: str) -> StrategySet | None:
+        logger.debug(f"{cls.__name__}.load()")
+
+        response = await Keeper.get(cls, name=name)
+        if len(response) == 1:  # response == [ StrategySet, ]
+            return response[0]
+
+        # else: error, asset list not found
+        logger.error(f"Strategy set '{name}' not found!")
+        return None
+
+    # }}}
+    @classmethod  # delete  # {{{
+    async def delete(cls, strategy_set: StrategySet) -> None:
+        logger.debug(f"{cls.__name__}.delete()")
+        assert isinstance(strategy_set, StrategySet)
+        await Keeper.delete(strategy_set)
+
+    # }}}
+
+
+# }}}

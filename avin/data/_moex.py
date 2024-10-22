@@ -14,10 +14,11 @@ import moexalgo
 
 from avin.config import Usr
 from avin.const import ONE_DAY, ONE_WEEK
+from avin.data._abstract_source import _AbstractDataSource
 from avin.data._bar import _Bar, _BarsData
 from avin.data._cache import _InstrumentInfoCache
 from avin.data.asset_type import AssetType
-from avin.data.data_source import DataSource, _AbstractSource
+from avin.data.data_source import DataSource
 from avin.data.data_type import DataType
 from avin.data.exchange import Exchange
 from avin.data.instrument_id import InstrumentId
@@ -25,7 +26,7 @@ from avin.keeper import Keeper
 from avin.utils import Cmd, logger
 
 
-class _MoexData(_AbstractSource):
+class _MoexData(_AbstractDataSource):
     """const"""  # {{{
 
     source = DataSource.MOEX
@@ -79,7 +80,7 @@ class _MoexData(_AbstractSource):
         ticker: str,
         figi: str,
         name: str,
-    ) -> InstrumentId:
+    ) -> list[InstrumentId]:
         logger.debug(f"{cls.__name__}.find()")
 
         # check cache

@@ -11,5 +11,6 @@ from avin.const import *
 from avin.core import *
 from avin.data import *
 from avin.keeper import *
+from avin.tester import *
 from avin.trader import *
 from avin.utils import *
