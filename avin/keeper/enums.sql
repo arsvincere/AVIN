@@ -1,18 +1,13 @@
--- Enums ---------------------------------------------------------------------
--- TODO: enums переименовать, сделать единообразно
--- Data.Source
--- Data.Type
--- Asset.Type - и ассет в модуль дата внести????, да, абстрактный можно
+-- ===========================================================================
+-- URL:          http://arsvincere.com
+-- AUTHOR:       Alex Avin
+-- E-MAIL:       mr.alexavin@gmail.com
+-- LICENSE:      GNU GPLv3
+-- ===========================================================================
 
 DROP TYPE IF EXISTS public."DataSource";--{{{
 CREATE TYPE "DataSource" AS ENUM (
     'MOEX', 'TINKOFF'
-    );
---}}}
-DROP TYPE IF EXISTS public."AssetType";--{{{
-CREATE TYPE "AssetType" AS ENUM (
-    'CASH', 'INDEX', 'SHARE', 'BOND', 'FUTURE',
-    'OPTION', 'CURRENCY', 'ETF'
     );
 --}}}
 DROP TYPE IF EXISTS public."DataType";--{{{
@@ -26,6 +21,17 @@ CREATE TYPE "TimeFrame" AS ENUM (
     '1M', '5M', '10M', '1H', 'D', 'W', 'M', 'Q', 'Y'
     );
 --}}}
+DROP TYPE IF EXISTS public."Instrument.Type";--{{{
+CREATE TYPE "Instrument.Type" AS ENUM (
+    'CASH', 'INDEX', 'SHARE', 'BOND', 'FUTURE',
+    'OPTION', 'CURRENCY', 'ETF'
+    );
+--}}}
+DROP TYPE IF EXISTS public."Direction";--{{{
+CREATE TYPE "Direction" AS ENUM (
+    'BUY', 'SELL'
+    );
+--}}}
 DROP TYPE IF EXISTS public."Order.Type";--{{{
 CREATE TYPE "Order.Type" AS ENUM (
     'MARKET', 'LIMIT', 'STOP',
@@ -33,22 +39,13 @@ CREATE TYPE "Order.Type" AS ENUM (
     'WAIT', 'TRAILING'
     );
 --}}}
-DROP TYPE IF EXISTS public."Order.Direction";--{{{
-CREATE TYPE "Order.Direction" AS ENUM (
-    'BUY', 'SELL'
-    );
---}}}
 DROP TYPE IF EXISTS public."Order.Status";--{{{
 CREATE TYPE "Order.Status" AS ENUM (
-    'NEW', 'PENDING', 'TIMEOUT', 'TRIGGERED',
-    'SUBMIT', 'POSTED', 'PARTIAL', 'OFF', 'FILLED', 'EXECUTED',
-    'CANCELED', 'BLOCKED', 'REJECTED', 'EXPIRED',
-    'ARCHIVE'
-    );
---}}}
-DROP TYPE IF EXISTS public."Operation.Direction";--{{{
-CREATE TYPE "Operation.Direction" AS ENUM (
-    'BUY', 'SELL'
+    'NEW', 'SUBMIT',
+    'POSTED', 'OFF',
+    'PARTIAL', 'FILLED',
+    'EXECUTED', 'TRIGGERED',
+    'CANCELED', 'BLOCKED', 'REJECTED', 'EXPIRED'
     );
 --}}}
 DROP TYPE IF EXISTS public."Trade.Type";--{{{
@@ -59,13 +56,14 @@ CREATE TYPE "Trade.Type" AS ENUM (
 DROP TYPE IF EXISTS public."Trade.Status";--{{{
 CREATE TYPE "Trade.Status" AS ENUM (
     'INITIAL', 'PENDING', 'TRIGGERED',
-    'MAKE_ORDER', 'POST_ORDER', 'POSTED', 'OPENED',
+    'MAKE_ORDER', 'POST_ORDER', 'AWAIT_EXEC', 'OPENED',
     'MAKE_STOP', 'MAKE_TAKE', 'POST_STOP', 'POST_TAKE',
-    'ACTIVE',
-    'OFF',
-    'FINISH', 'CLOSING', 'REMOVING',
-    'CLOSED',
-    'CANCELED', 'BLOCKED',
-    'ARCHIVE'
+    'ACTIVE', 'CLOSING',
+    'CLOSED', 'CANCELED', 'BLOCKED'
+    );
+--}}}
+DROP TYPE IF EXISTS public."Test.Status";--{{{
+CREATE TYPE "Test.Status" AS ENUM (
+    'NEW', 'EDITED', 'PROGRESS', 'COMPLETE'
     );
 --}}}

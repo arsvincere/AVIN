@@ -1,8 +1,13 @@
--- Functions -----------------------------------------------------------------
+-- ===========================================================================
+-- URL:          http://arsvincere.com
+-- AUTHOR:       Alex Avin
+-- E-MAIL:       mr.alexavin@gmail.com
+-- LICENSE:      GNU GPLv3
+-- ===========================================================================
 
 CREATE OR REPLACE FUNCTION add_asset_if_not_exist(
     a_figi text,
-    a_type "AssetType",
+    a_type "Instrument.Type",
     a_exchange text,
     a_ticker text,
     a_name text

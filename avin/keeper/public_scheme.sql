@@ -1,34 +1,75 @@
--- Public scheme -------------------------------------------------------------
+-- ===========================================================================
+-- URL:          http://arsvincere.com
+-- AUTHOR:       Alex Avin
+-- E-MAIL:       mr.alexavin@gmail.com
+-- LICENSE:      GNU GPLv3
+-- ===========================================================================
 
+DROP SCHEMA IF EXISTS public; -- {{{
+CREATE SCHEMA IF NOT EXISTS public
+    AUTHORIZATION pg_database_owner;
+COMMENT ON SCHEMA public
+    IS 'user data';
+GRANT USAGE ON SCHEMA public TO PUBLIC;
+GRANT ALL ON SCHEMA public TO pg_database_owner;
+-- }}}
+CREATE TABLE IF NOT EXISTS "InstrumentInfo" ( -- {{{
+    source "DataSource" NOT NULL,
+    type "Instrument.Type" NOT NULL,
+    info jsonb NOT NULL
+    );
+-- }}}
 CREATE TABLE IF NOT EXISTS "Exchange" ( -- {{{
     name text PRIMARY KEY
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "Asset" ( -- {{{
     figi text PRIMARY KEY,
-    type "AssetType",
+    type "Instrument.Type" NOT NULL,
     exchange text REFERENCES "Exchange"(name),
-    ticker text,
-    name text
+    ticker text NOT NULL,
+    name text NOT NULL
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "AssetList" ( -- {{{
-    name text PRIMARY KEY,
-    assets text ARRAY
+    name text PRIMARY KEY
+    );
+-- }}}
+CREATE TABLE IF NOT EXISTS "AssetList-Asset" ( -- {{{
+    name text REFERENCES "AssetList"(name),
+    figi text REFERENCES "Asset"(figi)
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "Data" ( -- {{{
     figi text REFERENCES "Asset"(figi),
-    type "DataType",
-    source "DataSource",
-    first_dt TIMESTAMP WITH TIME ZONE,
-    last_dt TIMESTAMP WITH TIME ZONE
+    type "DataType" NOT NULL,
+    source "DataSource" NOT NULL,
+    first_dt TIMESTAMP WITH TIME ZONE NOT NULL,
+    last_dt TIMESTAMP WITH TIME ZONE NOT NULL
     );
 -- }}}
-CREATE TABLE IF NOT EXISTS "InstrumentInfoCache" ( -- {{{
-    source "DataSource",
-    type "AssetType",
-    info jsonb
+CREATE TABLE IF NOT EXISTS "Strategy" ( -- {{{
+    strategy_id SERIAL PRIMARY KEY,
+    name text,
+    version text,
+    CONSTRAINT strategy_unique UNIQUE (name, version)
+    );
+    INSERT INTO "Strategy" (name, version)
+    VALUES
+        ('Every', 'minute'),
+        ('Every', 'five'),
+        ('Every', 'day');
+-- }}}
+CREATE TABLE IF NOT EXISTS "StrategySet" ( -- {{{
+    name text PRIMARY KEY
+    );
+-- }}}
+CREATE TABLE IF NOT EXISTS "StrategySet-Strategy" ( -- {{{
+    name        text REFERENCES "StrategySet"(name),
+    strategy    integer REFERENCES "Strategy"(strategy_id),
+    figi        text REFERENCES "Asset"(figi),
+    long        bool NOT NULL,
+    short       bool NOT NULL
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "Broker" ( -- {{{
@@ -46,72 +87,82 @@ CREATE TABLE IF NOT EXISTS "Account" ( -- {{{
     INSERT INTO "Account" (name, broker)
     VALUES
         ('_backtest', '_tester'),
-        ('_unittest', '_tester');
+        ('_unittest', '_tester'),
+        ('Alex', 'Tinkoff'),
+        ('Agni', 'Tinkoff');
 -- }}}
-CREATE TABLE IF NOT EXISTS "Strategy" ( -- {{{
-    name text,
-    version text,
-    CONSTRAINT strategy_pkey PRIMARY KEY (name, version)
-    );
--- }}}
-CREATE TABLE IF NOT EXISTS "Trader" ( -- {{{
-    name        text PRIMARY KEY,
-    broker      text REFERENCES "Broker"(name),
-    account     text REFERENCES "Account"(name),
-    strategyes  text ARRAY
+CREATE TABLE IF NOT EXISTS "TradeList" ( -- {{{
+    name text PRIMARY KEY
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "Trade" ( -- {{{
     trade_id    text PRIMARY KEY,
+    tlist       text REFERENCES "TradeList"(name),
+    strategy    integer REFERENCES "Strategy"(strategy_id),
+    figi        text REFERENCES "Asset"(figi),
     dt          TIMESTAMP WITH TIME ZONE,
     status      "Trade.Status",
-    strategy    text,
-    version     text,
-    type        "Trade.Type",
-    figi        text REFERENCES "Asset"(figi),
-
-    FOREIGN KEY (strategy, version)
-        REFERENCES "Strategy" (name, version)
-    );
--- }}}
-CREATE TABLE IF NOT EXISTS "TradeList" ( -- {{{
-    name        text PRIMARY KEY,
-    trades      text ARRAY
+    type        "Trade.Type"
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "Order" ( -- {{{
     order_id        text PRIMARY KEY,
-    account         text REFERENCES "Account"(name),
+    trade_id        text REFERENCES "Trade"(trade_id) ON DELETE CASCADE,
+
     type            "Order.Type",
     status          "Order.Status",
-    direction       "Order.Direction",
-    figi            text REFERENCES "Asset"(figi),
+    direction       "Direction",
+
     lots            integer,
     quantity        integer,
     price           float,
     stop_price      float,
     exec_price      float,
-
-    trade_id        text REFERENCES "Trade"(trade_id) ON DELETE CASCADE,
     exec_lots       integer,
     exec_quantity   integer,
+
     meta            text,
+    broker_id       text
+    );
+-- }}}
+CREATE TABLE IF NOT EXISTS "Transaction" ( -- {{{
+    order_id        text REFERENCES "Order"(order_id),
+    dt              TIMESTAMP WITH TIME ZONE,
+    price           float,
+    quantity        integer,
     broker_id       text
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "Operation" ( -- {{{
     operation_id    text PRIMARY KEY,
-    account         text REFERENCES "Account"(name),
+    order_id        text REFERENCES "Order"(order_id) ON DELETE CASCADE,
     dt              TIMESTAMP WITH TIME ZONE,
-    direction       "Operation.Direction",
-    figi            text REFERENCES "Asset"(figi),
+    direction       "Direction",
     lots            integer,
     quantity        integer,
     price           float,
     amount          float,
     commission      float,
-    trade_id        text REFERENCES "Trade"(trade_id) ON DELETE CASCADE,
-    order_id        text REFERENCES "Order"(order_id),
     meta            text
+    );
+-- }}}
+CREATE TABLE IF NOT EXISTS "Test" ( -- {{{
+    name            text PRIMARY KEY,
+    account         text REFERENCES "Account"(name),
+    strategy_set    text REFERENCES "StrategySet"(name),
+    tlist           text REFERENCES "TradeList"(name),
+    status          "Test.Status" NOT NULL,
+    deposit         float,
+    commission      float,
+    begin_date      date,
+    end_date        date,
+    description     text
+    );
+-- }}}
+CREATE TABLE IF NOT EXISTS "Trader" ( -- {{{
+    name            text PRIMARY KEY,
+    account         text REFERENCES "Account"(name),
+    strategy_set    text REFERENCES "StrategySet"(name),
+    tlist           text REFERENCES "TradeList"(name)
     );
 -- }}}

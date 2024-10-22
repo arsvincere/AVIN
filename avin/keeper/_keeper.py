@@ -31,11 +31,6 @@ from avin.utils import Cmd, ask_user, logger
 
 __all__ = ("Keeper",)
 
-# TODO: trade order operation - сохранение в базу без ИД запретить.
-# возможно стоит начать падать через exit.
-# а то через асинкио не долетают исключения...
-# или их надо ловить в await наверное...
-
 
 class Keeper:
     """const"""  # {{{
@@ -59,7 +54,6 @@ class Keeper:
         os.system(f"psql -d {cls.DATABASE} < {cls._ENUMS}")
         os.system(f"psql -d {cls.DATABASE} < {cls._DATA_SCHEME}")
         os.system(f"psql -d {cls.DATABASE} < {cls._PUBLIC_SCHEME}")
-        os.system(f"psql -d {cls.DATABASE} < {cls._TESTER_SCHEME}")
         os.system(f"psql -d {cls.DATABASE} < {cls._FUNCTIONS}")
 
         logger.info("Database has been created")
@@ -467,6 +461,7 @@ class Keeper:
     @classmethod  # __addTradeList  # {{{
     async def __addTradeList(cls, tlist: TradeList) -> None:
         logger.debug(f"{cls.__name__}.__addTradeList()")
+        assert False, "тут вообще все переделать надо"
 
         # TODO:
         # поле таблицы не такое примитивное как name...
@@ -489,7 +484,7 @@ class Keeper:
             pg_array = pg_array[0:-2]  # remove ", " after last value
             pg_array += "]"
         else:
-            pg_array = "'{}'::float[]"
+            pg_array = "'{}'::text[]"
 
         # If tlist.name is exist - delete
         request = f"""
@@ -1165,7 +1160,7 @@ class Keeper:
         # Create figi condition
         pg_figi = f"figi = '{ID.figi}'"
 
-        # Create figi condition
+        # Create data type condition
         pg_data_type = f"type = '{data_type.name}'"
 
         # Request data info
