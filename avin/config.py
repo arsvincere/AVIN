@@ -59,7 +59,7 @@ class Usr:  # {{{
     # Postresql settings
     PG_USER = "alex"
     PG_PASSWORD = ""
-    PG_DATABASE = "appdb"
+    PG_DATABASE = "ars_vincere"
     PG_HOST = "127.0.0.1"
 
 
