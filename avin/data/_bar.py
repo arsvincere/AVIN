@@ -15,7 +15,7 @@ from typing import Optional
 from avin.config import Usr
 from avin.data.data_source import DataSource
 from avin.data.data_type import DataType
-from avin.data.instrument_id import InstrumentId
+from avin.data.instrument import Instrument
 from avin.keeper import Keeper
 from avin.utils import logger
 
@@ -40,7 +40,7 @@ class _Bar:
 
     # }}}
     @classmethod  # fromRecord{{{
-    def fromRecord(cls, record):
+    def fromRecord(cls, record: asyncpg.Record):
         bar = cls(
             record["dt"],
             record["open"],
@@ -60,13 +60,13 @@ class _BarsData:  # {{{
     def __init__(  # {{{
         self,
         source: DataSource,
+        instrument: Instrument,
         data_type: DataType,
-        ID: InstrumentId,
         bars: list[_Bar],
     ):
         self.__source = source
+        self.__instrument = instrument
         self.__type = data_type
-        self.__ID = ID
         self.__bars = bars
 
     # }}}
@@ -80,9 +80,9 @@ class _BarsData:  # {{{
         return self.__type
 
     # }}}
-    @property  # ID# {{{
-    def ID(self):
-        return self.__ID
+    @property  # instrument# {{{
+    def instrument(self):
+        return self.__instrument
 
     # }}}
     @property  # bars# {{{
@@ -104,26 +104,33 @@ class _BarsData:  # {{{
     # }}}
     @classmethod  # save  # {{{
     async def save(cls, data: _BarsData):
-        logger.debug(f"{cls.__name__}.save({data.ID.ticker})")
+        logger.debug(f"{cls.__name__}.save({data.instrument.ticker})")
+
         await Keeper.add(data)
 
     # }}}
     @classmethod  # load  # {{{
     async def load(
         cls,
-        ID: InstrumentId,
+        instrument: Instrument,
         data_type: DataType,
         begin: datetime,
         end: datetime,
     ) -> _BarsData:
-        logger.debug(f"{cls.__name__}.load({ID.ticker})")
+        logger.debug(f"{cls.__name__}.load({instrument.ticker})")
 
         # Request source
-        source = await Keeper.get(DataSource, ID=ID, data_type=data_type)
+        source = await Keeper.get(
+            DataSource, instrument=instrument, data_type=data_type
+        )
 
         # Request bars
         records = await Keeper.get(
-            _Bar, ID=ID, data_type=data_type, begin=begin, end=end
+            _Bar,
+            instrument=instrument,
+            data_type=data_type,
+            begin=begin,
+            end=end,
         )
 
         # Create bars from records
@@ -132,30 +139,30 @@ class _BarsData:  # {{{
             bar = _Bar.fromRecord(i)
             bars.append(bar)
 
-        data = _BarsData(ID, data_type, bars, source)
-
+        # Create & return _BarsData object
+        data = _BarsData(source, data_type, instrument, bars)
         return data
 
     # }}}
     @classmethod  # delete  # {{{
     async def delete(
         cls,
-        ID: InstrumentId,
+        instrument: Instrument,
         data_type: DataType,
         begin: Optional[int] = None,
         end: Optional[int] = None,
     ) -> None:
         logger.debug(f"{cls.__name__}.delete()")
 
-        # If begin == end == None, delete all the data
-        # fasade class Data do not provide the ability to delete data
-        # from (begin-end) period, only all the asset data.
-        # In this function, agrs 'begin' 'end' is preserved just in case,
-        # it may be needed later. Class Keeper can remove bars from period,
-        # if they are defined. And it removes all the bars of a given
+        # Class Keeper can remove bars from period, if they are defined.
+        # And it removes all the bars of a given
         # timeframe if it receive begin=None, end=None.
         await Keeper.delete(
-            _Bar, ID=ID, data_type=data_type, begin=begin, end=end
+            _BarsData,
+            instrument=instrument,
+            data_type=data_type,
+            begin=begin,
+            end=end,
         )
 
     # }}}

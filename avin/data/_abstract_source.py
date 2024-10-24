@@ -8,50 +8,53 @@
 
 from __future__ import annotations
 
-import abc
+from abc import ABC, abstractmethod
+from datetime import datetime
+
+from avin.data._bar import _Bar
+from avin.data.data_type import DataType
+from avin.data.instrument import Instrument
 
 
-class _AbstractDataSource(metaclass=abc.ABCMeta):  # {{{
-    @abc.abstractmethod  # __init__# {{{
+class _AbstractDataSource(ABC):
+    @abstractmethod  # __init__# {{{
     def __init__(self): ...
 
     # }}}
-    @abc.abstractclassmethod  # cacheAssetsInfo# {{{
-    def cacheAssetsInfofind(cls) -> None: ...
+    @classmethod  # abstractmethod cacheAssetsInfo# {{{
+    @abstractmethod
+    def cacheInstrumentsInfo(cls) -> None: ...
 
     # }}}
-    @abc.abstractclassmethod  # find# {{{
+    @classmethod  # abstractmethod find# {{{
+    @abstractmethod
     def find(
-        cls, exchange: str, asset_type: str, querry: str
-    ) -> list[InstrumentId]: ...
+        cls, exchange: str, asset_type: str, ticker: str, figi: str, name: str
+    ) -> list[Instrument]: ...
 
     # }}}
-    @abc.abstractclassmethod  # info# {{{
-    def info(cls, ID: InstrumentId) -> dict: ...
-
-    # }}}
-    @abc.abstractclassmethod  # firstDateTime# {{{
+    @classmethod  # abstractmethod firstDateTime# {{{
+    @abstractmethod
     def firstDateTime(
-        cls, ID: InstrumentId, data_type: DataType
+        cls, instrument: Instrument, data_type: DataType
     ) -> datetime: ...
 
     # }}}
-    @abc.abstractclassmethod  # download# {{{
+    @classmethod  # abstractmethod download# {{{
+    @abstractmethod
     def download(
-        cls, ID: InstrumentId, data_type: DataType, year: int
+        cls, instrument: Instrument, data_type: DataType, year: int
     ) -> None: ...
 
     # }}}
-    @abc.abstractclassmethod  # getHistoricalBars# {{{
+    @classmethod  # abstractmethod getHistoricalBars# {{{
+    @abstractmethod
     def getHistoricalBars(
         cls,
-        ID: InstrumentId,
+        instrument: Instrument,
         data_type: DataType,
         begin: datetime,
         end: datetime,
     ) -> list[_Bar]: ...
 
     # }}}
-
-
-# }}}

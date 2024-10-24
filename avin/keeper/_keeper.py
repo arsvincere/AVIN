@@ -33,28 +33,24 @@ __all__ = ("Keeper",)
 
 
 class Keeper:
-    """const"""  # {{{
-
     USER = Usr.PG_USER
     DATABASE = Usr.PG_DATABASE
     HOST = Usr.PG_HOST
 
-    _DATA_SCHEME = Cmd.path(Dir.LIB, "keeper", "data_scheme.sql")
-    _ENUMS = Cmd.path(Dir.LIB, "keeper", "enums.sql")
-    _FUNCTIONS = Cmd.path(Dir.LIB, "keeper", "functions.sql")
-    _PUBLIC_SCHEME = Cmd.path(Dir.LIB, "keeper", "public_scheme.sql")
-    _TESTER_SCHEME = Cmd.path(Dir.LIB, "keeper", "tester_scheme.sql")
-    # }}}
+    __DATA_SCHEME = Cmd.path(Dir.LIB, "keeper", "data_scheme.sql")
+    __ENUMS = Cmd.path(Dir.LIB, "keeper", "enums.sql")
+    __FUNCTIONS = Cmd.path(Dir.LIB, "keeper", "functions.sql")
+    __PUBLIC_SCHEME = Cmd.path(Dir.LIB, "keeper", "public_scheme.sql")
 
     @classmethod  # createDataBase  # {{{
     async def createDataBase(cls) -> None:
         logger.debug(f"{cls.__name__}.createDataBase()")
 
         os.system(f"createdb {cls.DATABASE}")
-        os.system(f"psql -d {cls.DATABASE} < {cls._ENUMS}")
-        os.system(f"psql -d {cls.DATABASE} < {cls._DATA_SCHEME}")
-        os.system(f"psql -d {cls.DATABASE} < {cls._PUBLIC_SCHEME}")
-        os.system(f"psql -d {cls.DATABASE} < {cls._FUNCTIONS}")
+        os.system(f"psql -d {cls.DATABASE} < {cls.__ENUMS}")
+        os.system(f"psql -d {cls.DATABASE} < {cls.__DATA_SCHEME}")
+        os.system(f"psql -d {cls.DATABASE} < {cls.__PUBLIC_SCHEME}")
+        os.system(f"psql -d {cls.DATABASE} < {cls.__FUNCTIONS}")
 
         logger.info("Database has been created")
 
@@ -93,7 +89,10 @@ class Keeper:
     # }}}
     @classmethod  # info  # {{{
     async def info(
-        cls, source: DataSource, asset_type: AssetType, **kwargs
+        cls,
+        source: DataSource,
+        itype: AssetType,
+        **kwargs,
     ) -> list[dict]:
         """Looks for information about the asset in the cache.
 
@@ -103,18 +102,16 @@ class Keeper:
 
         logger.debug(f"{cls.__name__}.info()")
 
-        # Create source condition
+        # Create source, exchange, itype conditions
         pg_source = f"source = '{source.name}'" if source else "TRUE"
+        pg_itype = f"type = '{itype.name}'" if itype else "TRUE"
 
-        # Create asset_type condition
-        pg_asset_type = (
-            f"type = '{asset_type.name}'" if asset_type else "TRUE"
-        )
-
-        # Remove None values & create kwargs condition
+        # Remove None values in kwargs
         none_keys = [key for key in kwargs if kwargs[key] is None]
         for i in none_keys:
             kwargs.pop(i)
+
+        # Create kwargs conditions
         if not kwargs:
             pg_kwargs = "TRUE"
         else:
@@ -125,19 +122,20 @@ class Keeper:
         request = f"""
             SELECT
                 info
-            FROM "Cache"
-            WHERE {pg_source} AND {pg_asset_type} AND {pg_kwargs};
+            FROM "InstrumentInfo"
+            WHERE
+                {pg_source} AND {pg_itype} AND {pg_kwargs};
             """
         records = await cls.transaction(request)
 
         # Create info dicts from records
-        assets_info = list()
+        instruments_info = list()
         for record in records:
             json_string = record["info"]
             info_dict = json.loads(json_string)
-            assets_info.append(info_dict)
+            instruments_info.append(info_dict)
 
-        return assets_info
+        return instruments_info
 
     # }}}
     @classmethod  # add  # {{{
@@ -150,7 +148,7 @@ class Keeper:
             "MOEX": cls.__addExchange,
             "SPB": cls.__addExchange,
             "_TEST_EXCHANGE": cls.__addExchange,
-            "InstrumentId": cls.__addAsset,
+            "Instrument": cls.__addAsset,
             "_BarsData": cls.__addBarsData,
             "Asset": cls.__addAsset,
             "Share": cls.__addAsset,
@@ -174,6 +172,36 @@ class Keeper:
         await add_method(obj)
 
     # }}}
+    @classmethod  # get  # {{{
+    async def get(cls, Class, **kwargs) -> Any:
+        logger.debug(f"{cls.__name__}.get()")
+        assert inspect.isclass(Class)
+
+        # Get class_name & choose method
+        class_name = cls.__getClassName(Class)
+        methods = {
+            "Instrument": cls.__getInstrument,
+            "_DataManager": cls.__getDataInfo,
+            "DataSource": cls.__getDataSource,
+            "DataType": cls.__getDataType,
+            "datetime": cls.__getDateTime,
+            "_Bar": cls.__getBarsRecords,
+            "Bar": cls.__getBars,
+            "Asset": cls.__getAsset,
+            "AssetList": cls.__getAssetList,
+            "Account": cls.__getAccount,
+            "Trade": cls.__getTrade,
+            "TradeList": cls.__getTradeList,
+            "Operation": cls.__getOperations,
+            "Order": cls.__getOrders,
+        }
+        get_method = methods[class_name]
+
+        # Get object(s)
+        result = await get_method(Class, kwargs)
+        return result
+
+    # }}}
     @classmethod  # delete  # {{{
     async def delete(cls, obj, **kwargs) -> None:
         logger.debug(f"{cls.__name__}.delete()")
@@ -181,10 +209,9 @@ class Keeper:
         # Get class_name & choose method
         class_name = cls.__getClassName(obj)
         methods = {
-            "_TEST_EXCHANGE": cls.__deleteExchange,
             "MOEX": cls.__deleteExchange,
             "SPB": cls.__deleteExchange,
-            "InstrumentId": cls.__deleteAsset,
+            "Instrument": cls.__deleteAsset,
             "Asset": cls.__deleteAsset,
             "Share": cls.__deleteAsset,
             "Index": cls.__deleteAsset,
@@ -198,7 +225,8 @@ class Keeper:
             "MarketOrder": cls.__deleteOrder,
             "LimitOrder": cls.__deleteOrder,
             "StopOrder": cls.__deleteOrder,
-            "_Bar": cls.__deleteBarsData,
+            "_BarsData": cls.__deleteBarsData,
+            "_TEST_EXCHANGE": cls.__deleteExchange,
         }
         delete_method = methods[class_name]
 
@@ -221,42 +249,12 @@ class Keeper:
             "StopLoss": cls.__updateOrder,
             "TakeProfit": cls.__updateOrder,
             "Operation": cls.__updateOperation,
-            "_InstrumentInfoCache": cls.__updateCache,
+            "_InstrumentsInfoCache": cls.__updateCache,
         }
 
         # Update object
         update_method = methods[class_name]
         await update_method(obj)
-
-    # }}}
-    @classmethod  # get  # {{{
-    async def get(cls, Class, **kwargs) -> Any:
-        logger.debug(f"{cls.__name__}.get()")
-        assert inspect.isclass(Class)
-
-        # Get class_name & choose method
-        class_name = cls.__getClassName(Class)
-        methods = {
-            "InstrumentId": cls.__getInstrumentId,
-            "_Manager": cls.__getDataInfo,
-            "DataSource": cls.__getDataSource,
-            "DataType": cls.__getDataType,
-            "datetime": cls.__getDateTime,
-            "_Bar": cls.__getBarsRecords,
-            "Bar": cls.__getBars,
-            "Asset": cls.__getAsset,
-            "AssetList": cls.__getAssetList,
-            "Account": cls.__getAccount,
-            "Trade": cls.__getTrade,
-            "TradeList": cls.__getTradeList,
-            "Operation": cls.__getOperations,
-            "Order": cls.__getOrders,
-        }
-        get_method = methods[class_name]
-
-        # Get object(s)
-        result = await get_method(Class, kwargs)
-        return result
 
     # }}}
 
@@ -278,7 +276,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __addAsset  # {{{
-    async def __addAsset(cls, asset: Asset | Id) -> None:
+    async def __addAsset(cls, asset: Instrument) -> None:
         logger.debug(f"{cls.__name__}.__addAsset()")
 
         request = f"""
@@ -345,21 +343,29 @@ class Keeper:
     async def __addBarsData(cls, data: _BarsData) -> None:
         logger.debug(f"{cls.__name__}.__addBarsData()")
 
+        # Format instrument info into postgres format jsonb
+        pg_asset_info = json.dumps(
+            data.instrument.info,
+            ensure_ascii=False,
+            default=cls.encoderJson,
+        )
+
         # Create new Asset if not exist
         request = f"""
             SELECT add_asset_if_not_exist(
-                '{data.ID.figi}',
-                '{data.ID.type.name}',
-                '{data.ID.exchange.name}',
-                '{data.ID.ticker}',
-                '{data.ID.name}'
+                '{data.instrument.figi}',
+                '{data.instrument.type.name}',
+                '{data.instrument.exchange.name}',
+                '{data.instrument.ticker}',
+                '{data.instrument.name}',
+                '{pg_asset_info}'
                 )
             ;
             """
         await cls.transaction(request)
 
         # Create table if not exist
-        bars_table_name = cls.__getTableName(data.ID, data.type)
+        bars_table_name = cls.__getTableName(data.instrument, data.type)
         await cls.__createBarsDataTable(bars_table_name)
 
         # If exist - delete old data at the same period
@@ -392,7 +398,7 @@ class Keeper:
         request = f"""
             DELETE FROM "Data"
             WHERE
-                figi = '{data.ID.figi}' AND
+                figi = '{data.instrument.figi}' AND
                 type = '{data.type.name}'
                 ;
             """
@@ -400,7 +406,7 @@ class Keeper:
         request = f"""
             INSERT INTO "Data"(figi, type, source, first_dt, last_dt)
             VALUES (
-                '{data.ID.figi}',
+                '{data.instrument.figi}',
                 '{data.type.name}',
                 '{data.source.name}',
                 (SELECT min(dt) FROM {bars_table_name}),
@@ -652,340 +658,6 @@ class Keeper:
 
     # }}}
 
-    @classmethod  # __deleteExchange  # {{{
-    async def __deleteExchange(cls, exchange: Exchange, kwargs: dict) -> None:
-        logger.debug(f"{cls.__name__}.__deleteExchange()")
-
-        request = f"""
-        DELETE FROM "Exchange" WHERE name = '{exchange.name}';
-        """
-        await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __deleteAsset  # {{{
-    async def __deleteAsset(cls, asset: Asset, kwargs: dict) -> None:
-        logger.debug(f"{cls.__name__}.__deleteAsset()")
-
-        request = f"""
-        DELETE FROM "Asset" WHERE figi = '{asset.figi}';
-        """
-        await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __deleteAssetList  # {{{
-    async def __deleteAssetList(cls, alist: AssetList, kwargs: dict) -> None:
-        logger.debug(f"{cls.__name__}.__deleteAssetList()")
-
-        request = f"""
-        DELETE FROM "AssetList" WHERE name = '{alist.name}';
-        """
-        await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __deleteBarsData  # {{{
-    async def __deleteBarsData(cls, _Bar, kwargs: dict) -> None:
-        logger.debug(f"{cls.__name__}.__deleteBarsData()")
-
-        ID = kwargs["ID"]
-        data_type = kwargs["data_type"]
-        begin = kwargs.get("begin")
-        end = kwargs.get("end")
-
-        # Create condition for begin-end:
-        if begin and end:
-            pg_period = f"'{begin}' <= dt AND dt < '{end}'"
-        else:
-            pg_period = "TRUE"
-
-        # Delete bars
-        bars_table_name = cls.__getTableName(ID, data_type)
-        request = f"""
-            DELETE FROM {bars_table_name}
-            WHERE
-                {pg_period}
-            """
-        await cls.transaction(request)
-
-        # Update table "Data" - information about availible market data
-        request = f"""
-            UPDATE "Data"
-            SET
-                first_dt = (SELECT min(dt) FROM {bars_table_name}),
-                last_dt = (SELECT max(dt) FROM {bars_table_name})
-			WHERE
-                figi = '{ID.figi}' AND
-                type = '{data_type.name}'
-            ;
-            """
-        await cls.transaction(request)
-
-        # Delete table & info if its empty
-        request = f"""
-            SELECT * FROM {bars_table_name}
-            """
-        records = await cls.transaction(request)
-        if not records:
-            request = f"""
-                DROP TABLE {bars_table_name};
-                """
-            await cls.transaction(request)
-            request = f"""
-                DELETE FROM "Data"
-                WHERE
-                    figi = '{ID.figi}' AND
-                    type = '{data_type.name}'
-                """
-            await cls.transaction(request)
-
-        # Delete asset if its not have market data?
-        # NOTE:
-        # если у этого ассета уже есть трейды, его не получится удалить.
-        # Получается тогда удалять ассет из таблицы ассетов вообще
-        # не имеет смысла, один раз добавили сюда актив - и все, он тут
-        # навсегда. Хотя попытаться удалить его можно, но он удалится
-        # только если по нему нет трейдов нигде в базе. Ок.
-        # NOTE:
-        # тут программа будет падать, когда до этого дойдет, когда
-        # в гуи буду делать виджет, где будет удаление, там и посмотрю
-        # стоит ли вообще этот кусок кода оставлять
-        request = f"""
-            SELECT * FROM "Data"
-            WHERE
-                figi = '{ID.figi}'
-            """
-        records = await cls.transaction(request)
-        if not records:
-            request = f"""
-                DELETE FROM "Asset"
-                WHERE
-                    figi = '{ID.figi}'
-                """
-            await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __deleteAccount  # {{{
-    async def __deleteAccount(cls, account: Account, kwargs: dict) -> None:
-        logger.debug(f"{cls.__name__}.__deleteAccount()")
-
-        request = f"""
-        DELETE FROM "Account" WHERE name = '{account.name}';
-        """
-        await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __deleteStrategy  # {{{
-    async def __deleteStrategy(cls, strategy: Strategy, kwargs: dict) -> None:
-        logger.debug(f"{cls.__name__}.__deleteStrategy()")
-
-        request = f"""
-            DELETE FROM "Strategy"
-            WHERE
-                name = '{strategy.name}' AND version = '{strategy.version}';
-        """
-        await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __deleteTradeList  # {{{
-    async def __deleteTradeList(cls, tlist: TradeList, kwargs: dict) -> None:
-        logger.debug(f"{cls.__name__}.__deleteTradeList()")
-
-        request = f"""
-        DELETE FROM "TradeList" WHERE name = '{tlist.name}';
-        """
-        await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __deleteTrade  # {{{
-    async def __deleteTrade(cls, trade: Trade, kwargs: dict) -> None:
-        logger.debug(f"{cls.__name__}.__deleteTrade()")
-
-        request = f"""
-            DELETE FROM "Trade"
-            WHERE trade_id = '{trade.trade_id}';
-            """
-        await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __deleteOrder  # {{{
-    async def __deleteOrder(cls, order: Order, kwargs: dict) -> None:
-        logger.debug(f"{cls.__name__}.__deleteOrder()")
-
-        request = f"""
-            DELETE FROM "Order"
-            WHERE order_id = '{order.order_id}';
-            """
-        await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __deleteOperation  # {{{
-    async def __deleteOperation(
-        cls, operation: Operation, kwargs: dict
-    ) -> None:
-        logger.debug(f"{cls.__name__}.__deleteOperation()")
-
-        request = f"""
-            DELETE FROM "Operation"
-            WHERE
-                operation_id = '{operation.operation_id}';
-        """
-        await cls.transaction(request)
-
-    # }}}
-
-    @classmethod  # __updateTradeList  # {{{
-    async def __updateTradeList(cls, tlist: TradeList) -> None:
-        logger.debug(f"{cls.__name__}.__updateTradeList()")
-
-        # Format trades in postges array
-        # TODO: remove duplacate code below and in func __addTradeList
-        # use cls.__format, и остальные преобразования туда перетащи.
-        if tlist.count > 0:
-            pg_array = "ARRAY["
-            for trade in tlist:
-                t_id = f"'{trade.trade_id}', "
-                pg_array += t_id
-            pg_array = pg_array[0:-2]  # remove ", " after last value
-            pg_array += "]"
-        else:
-            pg_array = "'{}'::text[]"
-
-        request = f"""
-            UPDATE "TradeList"
-            SET
-                trades = {pg_array}
-            WHERE
-                name = '{tlist.name}';
-            """
-        await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __updateTrade  # {{{
-    async def __updateTrade(cls, trade: Trade) -> None:
-        logger.debug(f"{cls.__name__}.__updateTrade()")
-
-        request = f"""
-            UPDATE "Trade"
-            SET
-                dt = '{trade.dt}',
-                status = '{trade.status.name}',
-                strategy = '{trade.strategy}',
-                version = '{trade.version}',
-                type = '{trade.type.name}',
-                figi = '{trade.asset_id.figi}'
-            WHERE
-                trade_id = '{trade.trade_id}';
-            """
-        await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __updateOrder  # {{{
-    async def __updateOrder(cls, order: Order) -> None:
-        logger.debug(f"{cls.__name__}.__updateOrder()")
-
-        # format meta
-        if order.meta is None:
-            meta = "NULL"
-        else:
-            meta = f"$${order.meta}$$"
-
-        # format trade_id
-        trade_id = f"'{order.trade_id}'" if order.trade_id else "NULL"
-
-        # format broker_id
-        broker_id = f"'{order.broker_id}'" if order.broker_id else "NULL"
-
-        request = f"""
-            UPDATE "Order"
-            SET
-                trade_id = {trade_id},
-                status = '{order.status.name}',
-                exec_lots = {order.exec_lots},
-                exec_quantity = {order.exec_quantity},
-                meta = {meta},
-                broker_id = {broker_id}
-            WHERE
-                order_id = '{order.order_id}';
-            """
-        await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __updateOperation  # {{{
-    async def __updateOperation(cls, operation: Operation) -> None:
-        logger.debug(f"{cls.__name__}.__updateOperation()")
-        request = f"""
-            UPDATE "Operation"
-            SET
-                trade_id = '{operation.trade_id}',
-                commission = {operation.commission}
-            WHERE
-                operation_id = '{operation.operation_id}';
-            """
-        await cls.transaction(request)
-
-    # }}}
-    @classmethod  # __updateCache  # {{{
-    async def __updateCache(cls, cache: _InstrumentInfoCache) -> None:
-        logger.debug(f"{cls.__name__}.__updateCache()")
-
-        # Delete old cache
-        request = f"""
-            DELETE FROM "Cache"
-            WHERE
-                source = '{cache.source.name}' AND
-                type = '{cache.asset_type.name}'
-                ;
-            """
-        await cls.transaction(request)
-
-        # Format cache into postgres values
-        def formatCache(cache: _InstrumentInfoCache) -> str:
-            values = ""
-            for i in cache.assets_info:
-                pg_source = f"'{cache.source.name}'"
-                pg_asset_type = f"'{cache.asset_type.name}'"
-                # TODO: encoderJson наверное надо сюда втащить из класса
-                # _InstrumentInfoCache, там он вообще нигде никак не
-                # используется? или? а нет.. пока кэш в джсон тоже
-                # дублируется на винт, но потом, когда просмотрщик
-                # гуи будет для кэша, тогда этот метод можно будет
-                # сюда втащить?
-                json_string = json.dumps(
-                    i, ensure_ascii=False, default=cache.encoderJson
-                )
-                pg_asset_info = f"'{json_string}'"
-
-                val = f"({pg_source}, {pg_asset_type}, {pg_asset_info}),\n"
-                values += val
-
-            values = values[0:-2]  # remove ",\n" after last value
-            return values
-
-        # save new cache
-        values = formatCache(cache)
-        request = f"""
-            INSERT INTO "Cache" (
-                source,
-                type,
-                info
-                )
-            VALUES
-                {values}
-                ;
-        """
-        await cls.transaction(request)
-
-        # NOTE:
-        # update "last_update" datetime....
-        # Сейчас это хранится в файле ./res/cache/moex/last_update
-        # хотя потом можно будет создать отдельную таблицу и в нее свести
-        # даты всех возможных апдейтов, когдда обновляли последний раз
-        # кэш, исторические данные, когда строили отчеты... когда там еще
-        # что нибудь. Пока это рано. Пока пусть в файлах - это более гибко.
-        # когда выработается понимание какие даты будут храниться, тогда
-        # и делать таблицу
-
-    # }}}
-
     @classmethod  # __getClassName  # {{{
     def __getClassName(cls, obj: object | Class) -> str:
         logger.debug(f"{cls.__name__}.__getClassName()")
@@ -1003,59 +675,59 @@ class Keeper:
     @classmethod  # __getTableName  # {{{
     def __getTableName(
         cls,
-        ID: InstrumentId,
+        instrument: Instrument,
         data_type: DataType,
     ) -> str:
         # table name looks like: data."MOEX_SHARE_SBER_1M"
         logger.debug(f"{cls.__name__}.__getTableName()")
 
         bars_table_name = (
-            f'data."{ID.exchange.name}_{ID.type.name}_{ID.ticker}_'
-            f'{data_type}"'
+            f'data."{instrument.exchange.name}_'
+            f'{instrument.type.name}_{instrument.ticker}_{data_type}"'
         )
         return bars_table_name
 
     # }}}
-    @classmethod  # __getInstrumentId  # {{{
-    async def __getInstrumentId(
+    @classmethod  # __getInstrument  # {{{
+    async def __getInstrument(
         cls,
-        InstrumentId,
+        Instrument,
         kwargs: dict,
-    ) -> list[InstrumentId]:
-        """Search InstrumentId
+    ) -> list[Instrument]:
+        """Search Instrument
 
         Unlike the function Keeper.info(...), this method called from
-        Keeper.get(InstrumentId, kwargs) looks for assets not in cache, but
+        Keeper.get(Instrument, kwargs) looks for assets not in cache, but
         only among those for which exchange data are loaded. They are stored
         in table public."Asset"
 
         See also: __getAsset
 
         Args:
-            InstrumentId (class InstrumentId): reference to class, to provide
-                access to the method InstrumentId.fromRecord(...). It is need
+            Instrument (class Instrument): reference to class, to provide
+                access to the method Instrument.fromRecord(...). It is need
                 for return object of class Asset, instead asyncpg.Record.
                 The title letter in the name of the argument recalls that
                 this is the class.
             kwargs (str): for example: figi="BBG004730N88"
 
         Returns:
-            InstrumentId
+            Instrument
         """
-        logger.debug(f"{cls.__name__}.__getInstrumentId()")
+        logger.debug(f"{cls.__name__}.__getInstrument()")
 
-        asset_type = kwargs.get("asset_type")
         exchange = kwargs.get("exchange")
+        itype = kwargs.get("itype")
         ticker = kwargs.get("ticker")
         figi = kwargs.get("figi")
 
         # create condition
         if figi:
             pg_condition = f"figi = '{figi}'"
-        elif asset_type and exchange and ticker:
+        elif exchange and itype and ticker:
             pg_condition = (
-                f"type = '{asset_type.name}' AND "
                 f"exchange = '{exchange.name}' AND "
+                f"type = '{itype.name}' AND "
                 f"ticker = '{ticker}'"
             )
         else:
@@ -1064,11 +736,7 @@ class Keeper:
         # Request instrument IDs
         request = f"""
             SELECT
-                exchange,
-                type,
-                ticker,
-                name,
-                figi
+                info
             FROM "Asset"
             WHERE
                 {pg_condition}
@@ -1076,23 +744,23 @@ class Keeper:
             """
         records = await cls.transaction(request)
 
-        # Create 'list' of 'InstrumentId' from records
-        id_list = list()
-        for i in records:
-            ID = InstrumentId.fromRecord(i)
-            id_list.append(ID)
-        return id_list
+        # Create 'list' of 'Instrument' from records
+        instr_list = list()
+        for record in records:
+            instrument = Instrument.fromRecord(record)
+            instr_list.append(instrument)
+        return instr_list
 
     # }}}
     @classmethod  # __getDataInfo  # {{{
     async def __getDataInfo(cls, Data, kwargs: dict) -> list[Record]:
         logger.debug(f"{cls.__name__}.__getDataInfo()")
 
-        ID = kwargs.get("ID")
+        instrument = kwargs.get("instrument")
         data_type = kwargs.get("data_type")
 
         # Create figi condition
-        pg_figi = f"figi = '{ID.figi}'" if ID else "TRUE"
+        pg_figi = f"figi = '{instrument.figi}'" if instrument else "TRUE"
 
         # Create figi condition
         pg_data_type = f"type = '{data_type.name}'" if data_type else "TRUE"
@@ -1113,13 +781,13 @@ class Keeper:
     ) -> list[DataType]:
         logger.debug(f"{cls.__name__}.__getDataType()")
 
-        ID = kwargs["ID"]
+        instrument = kwargs["instrument"]
         data_type = kwargs["data_type"]
 
         request = f"""
             SELECT (source) FROM "Data"
             WHERE
-                figi = '{ID.figi}' AND type = '{data_type.name}'
+                figi = '{instrument.figi}' AND type = '{data_type.name}'
                 ;
             """
         records = await cls.transaction(request)
@@ -1133,12 +801,12 @@ class Keeper:
     async def __getDataType(cls, DataType, kwargs: dict) -> list[DataType]:
         logger.debug(f"{cls.__name__}.__getDataType()")
 
-        ID = kwargs["ID"]
+        instrument = kwargs["instrument"]
 
         request = f"""
             SELECT (type) FROM "Data"
             WHERE
-                figi = '{ID.figi}';
+                figi = '{instrument.figi}';
             """
         records = await cls.transaction(request)
 
@@ -1154,11 +822,11 @@ class Keeper:
     async def __getDateTime(cls, datetime, kwargs: dict) -> list[Record]:
         logger.debug(f"{cls.__name__}.__getData()")
 
-        ID = kwargs["ID"]
+        instrument = kwargs["instrument"]
         data_type = kwargs["data_type"]
 
         # Create figi condition
-        pg_figi = f"figi = '{ID.figi}'"
+        pg_figi = f"figi = '{instrument.figi}'"
 
         # Create data type condition
         pg_data_type = f"type = '{data_type.name}'"
@@ -1179,13 +847,13 @@ class Keeper:
     async def __getBarsRecords(cls, _Bar, kwargs: dict) -> list[Record]:
         logger.debug(f"{cls.__name__}.__getBars()")
 
-        ID = kwargs["ID"]
+        instrument = kwargs["instrument"]
         data_type = kwargs.get("data_type")
         begin: datatime = kwargs.get("begin")
         end: datetime = kwargs.get("end")
 
         # create table name
-        bars_table_name = cls.__getTableName(ID, data_type=data_type)
+        bars_table_name = cls.__getTableName(instrument, data_type=data_type)
 
         # create condition for begin-end:
         if begin is None and end is None:
@@ -1235,7 +903,7 @@ class Keeper:
         only among those for which exchange data are loaded. They are stored
         in table public."Asset"
 
-        See also: __getInstrumentId
+        See also: __getInstrument
 
         Args:
             Asset (class Asset): reference to class, to provide access to the
@@ -1251,7 +919,7 @@ class Keeper:
 
         logger.debug(f"{cls.__name__}.__getAsset()")
 
-        asset_type = kwargs.get("asset_type")
+        itype = kwargs.get("itype")
         exchange = kwargs.get("exchange")
         ticker = kwargs.get("ticker")
         figi = kwargs.get("figi")
@@ -1259,9 +927,9 @@ class Keeper:
         # create condition
         if figi:
             pg_condition = f"figi = '{figi}'"
-        elif asset_type and exchange and ticker:
+        elif itype and exchange and ticker:
             pg_condition = (
-                f"type = '{asset_type.name}' AND "
+                f"type = '{itype.name}' AND "
                 f"exchange = '{exchange.name}' AND "
                 f"ticker = '{ticker}'"
             )
@@ -1537,6 +1205,343 @@ class Keeper:
 
     # }}}
 
+    @classmethod  # __deleteExchange  # {{{
+    async def __deleteExchange(cls, exchange: Exchange, kwargs: dict) -> None:
+        logger.debug(f"{cls.__name__}.__deleteExchange()")
+
+        request = f"""
+        DELETE FROM "Exchange" WHERE name = '{exchange.name}';
+        """
+        await cls.transaction(request)
+
+    # }}}
+    @classmethod  # __deleteAsset  # {{{
+    async def __deleteAsset(cls, asset: Asset, kwargs: dict) -> None:
+        logger.debug(f"{cls.__name__}.__deleteAsset()")
+
+        request = f"""
+        DELETE FROM "Asset" WHERE figi = '{asset.figi}';
+        """
+        await cls.transaction(request)
+
+    # }}}
+    @classmethod  # __deleteAssetList  # {{{
+    async def __deleteAssetList(cls, alist: AssetList, kwargs: dict) -> None:
+        logger.debug(f"{cls.__name__}.__deleteAssetList()")
+
+        request = f"""
+        DELETE FROM "AssetList" WHERE name = '{alist.name}';
+        """
+        await cls.transaction(request)
+
+    # }}}
+    @classmethod  # __deleteBarsData  # {{{
+    async def __deleteBarsData(cls, _Bar, kwargs: dict) -> None:
+        logger.debug(f"{cls.__name__}.__deleteBarsData()")
+
+        instrument = kwargs["instrument"]
+        data_type = kwargs["data_type"]
+        begin = kwargs.get("begin")
+        end = kwargs.get("end")
+
+        # Create condition for begin-end:
+        if begin and end:
+            pg_period = f"'{begin}' <= dt AND dt < '{end}'"
+        else:
+            pg_period = "TRUE"
+
+        # Delete bars
+        bars_table_name = cls.__getTableName(instrument, data_type)
+        request = f"""
+            DELETE FROM {bars_table_name}
+            WHERE
+                {pg_period}
+            """
+        await cls.transaction(request)
+
+        # Delete table, data info, and asset if its empty
+        request = f"""
+            SELECT * FROM {bars_table_name}
+            """
+        print(request)
+        input(1)
+        records = await cls.transaction(request)
+        if not records:
+            # Delete bars table
+            request = f"""
+                DROP TABLE {bars_table_name};
+                """
+            await cls.transaction(request)
+            print(request)
+            input(2)
+            # Delete data info
+            request = f"""
+                DELETE FROM "Data"
+                WHERE
+                    figi = '{instrument.figi}' AND
+                    type = '{data_type.name}'
+                """
+            print(request)
+            input(3)
+            await cls.transaction(request)
+            # Delete asset if its not have market data ???
+            request = f"""
+                SELECT * FROM "Data"
+                WHERE
+                    figi = '{instrument.figi}'
+                """
+            records = await cls.transaction(request)
+            if not records:
+                request = f"""
+                    DELETE FROM "Asset"
+                    WHERE
+                        figi = '{instrument.figi}'
+                    """
+                print(request)
+                input(4)
+                await cls.transaction(request)
+            return
+
+        # Update table "Data" - information about availible market data
+        # if after deletion, the bars remained
+        request = f"""
+            UPDATE "Data"
+            SET
+                first_dt = (SELECT min(dt) FROM {bars_table_name}),
+                last_dt = (SELECT max(dt) FROM {bars_table_name})
+            WHERE
+                figi = '{instrument.figi}' AND
+                type = '{data_type.name}'
+            ;
+            """
+        print(request)
+        input(5)
+        await cls.transaction(request)
+
+    # }}}
+    @classmethod  # __deleteAccount  # {{{
+    async def __deleteAccount(cls, account: Account, kwargs: dict) -> None:
+        logger.debug(f"{cls.__name__}.__deleteAccount()")
+
+        request = f"""
+        DELETE FROM "Account" WHERE name = '{account.name}';
+        """
+        await cls.transaction(request)
+
+    # }}}
+    @classmethod  # __deleteStrategy  # {{{
+    async def __deleteStrategy(cls, strategy: Strategy, kwargs: dict) -> None:
+        logger.debug(f"{cls.__name__}.__deleteStrategy()")
+
+        request = f"""
+            DELETE FROM "Strategy"
+            WHERE
+                name = '{strategy.name}' AND version = '{strategy.version}';
+        """
+        await cls.transaction(request)
+
+    # }}}
+    @classmethod  # __deleteTradeList  # {{{
+    async def __deleteTradeList(cls, tlist: TradeList, kwargs: dict) -> None:
+        logger.debug(f"{cls.__name__}.__deleteTradeList()")
+
+        request = f"""
+        DELETE FROM "TradeList" WHERE name = '{tlist.name}';
+        """
+        await cls.transaction(request)
+
+    # }}}
+    @classmethod  # __deleteTrade  # {{{
+    async def __deleteTrade(cls, trade: Trade, kwargs: dict) -> None:
+        logger.debug(f"{cls.__name__}.__deleteTrade()")
+
+        request = f"""
+            DELETE FROM "Trade"
+            WHERE trade_id = '{trade.trade_id}';
+            """
+        await cls.transaction(request)
+
+    # }}}
+    @classmethod  # __deleteOrder  # {{{
+    async def __deleteOrder(cls, order: Order, kwargs: dict) -> None:
+        logger.debug(f"{cls.__name__}.__deleteOrder()")
+
+        request = f"""
+            DELETE FROM "Order"
+            WHERE order_id = '{order.order_id}';
+            """
+        await cls.transaction(request)
+
+    # }}}
+    @classmethod  # __deleteOperation  # {{{
+    async def __deleteOperation(
+        cls, operation: Operation, kwargs: dict
+    ) -> None:
+        logger.debug(f"{cls.__name__}.__deleteOperation()")
+
+        request = f"""
+            DELETE FROM "Operation"
+            WHERE
+                operation_id = '{operation.operation_id}';
+        """
+        await cls.transaction(request)
+
+    # }}}
+
+    @classmethod  # __updateTradeList  # {{{
+    async def __updateTradeList(cls, tlist: TradeList) -> None:
+        logger.debug(f"{cls.__name__}.__updateTradeList()")
+
+        # Format trades in postges array
+        # TODO: remove duplacate code below and in func __addTradeList
+        # use cls.__format, и остальные преобразования туда перетащи.
+        if tlist.count > 0:
+            pg_array = "ARRAY["
+            for trade in tlist:
+                t_id = f"'{trade.trade_id}', "
+                pg_array += t_id
+            pg_array = pg_array[0:-2]  # remove ", " after last value
+            pg_array += "]"
+        else:
+            pg_array = "'{}'::text[]"
+
+        request = f"""
+            UPDATE "TradeList"
+            SET
+                trades = {pg_array}
+            WHERE
+                name = '{tlist.name}';
+            """
+        await cls.transaction(request)
+
+    # }}}
+    @classmethod  # __updateTrade  # {{{
+    async def __updateTrade(cls, trade: Trade) -> None:
+        logger.debug(f"{cls.__name__}.__updateTrade()")
+
+        request = f"""
+            UPDATE "Trade"
+            SET
+                dt = '{trade.dt}',
+                status = '{trade.status.name}',
+                strategy = '{trade.strategy}',
+                version = '{trade.version}',
+                type = '{trade.type.name}',
+                figi = '{trade.asset_id.figi}'
+            WHERE
+                trade_id = '{trade.trade_id}';
+            """
+        await cls.transaction(request)
+
+    # }}}
+    @classmethod  # __updateOrder  # {{{
+    async def __updateOrder(cls, order: Order) -> None:
+        logger.debug(f"{cls.__name__}.__updateOrder()")
+
+        # format meta
+        if order.meta is None:
+            meta = "NULL"
+        else:
+            meta = f"$${order.meta}$$"
+
+        # format trade_id
+        trade_id = f"'{order.trade_id}'" if order.trade_id else "NULL"
+
+        # format broker_id
+        broker_id = f"'{order.broker_id}'" if order.broker_id else "NULL"
+
+        request = f"""
+            UPDATE "Order"
+            SET
+                trade_id = {trade_id},
+                status = '{order.status.name}',
+                exec_lots = {order.exec_lots},
+                exec_quantity = {order.exec_quantity},
+                meta = {meta},
+                broker_id = {broker_id}
+            WHERE
+                order_id = '{order.order_id}';
+            """
+        await cls.transaction(request)
+
+    # }}}
+    @classmethod  # __updateOperation  # {{{
+    async def __updateOperation(cls, operation: Operation) -> None:
+        logger.debug(f"{cls.__name__}.__updateOperation()")
+        request = f"""
+            UPDATE "Operation"
+            SET
+                trade_id = '{operation.trade_id}',
+                commission = {operation.commission}
+            WHERE
+                operation_id = '{operation.operation_id}';
+            """
+        await cls.transaction(request)
+
+    # }}}
+    @classmethod  # __updateCache  # {{{
+    async def __updateCache(cls, cache: _InstrumentsInfoCache) -> None:
+        logger.debug(f"{cls.__name__}.__updateCache()")
+
+        # Delete old cache
+        request = f"""
+            DELETE FROM "InstrumentInfo"
+            WHERE
+                source = '{cache.source.name}' AND
+                type = '{cache.type.name}'
+                ;
+            """
+        await cls.transaction(request)
+
+        # Format cache into postgres values
+        def formatCache(cache: _InstrumentsInfoCache) -> str:
+            values = ""
+            for info in cache.formatted:
+                pg_source = f"'{cache.source.name}'"
+                pg_itype = f"'{cache.type.name}'"
+                # TODO: encoderJson наверное надо сюда втащить из класса
+                # _InstrumentsInfoCache, там он вообще нигде никак не
+                # используется? или? а нет.. пока кэш в джсон тоже
+                # дублируется на винт, но потом, когда просмотрщик
+                # гуи будет для кэша, тогда этот метод можно будет
+                # сюда втащить?
+                json_string = json.dumps(
+                    info, ensure_ascii=False, default=cache.encoderJson
+                )
+                pg_asset_info = f"'{json_string}'"
+
+                val = f"({pg_source}, {pg_itype}, {pg_asset_info}),\n"
+                values += val
+
+            values = values[0:-2]  # remove ",\n" after last value
+            return values
+
+        # save new cache
+        values = formatCache(cache)
+        request = f"""
+            INSERT INTO "InstrumentInfo" (
+                source,
+                type,
+                info
+                )
+            VALUES
+                {values}
+                ;
+        """
+        await cls.transaction(request)
+
+        # NOTE:
+        # update "last_update" datetime....
+        # Сейчас это хранится в файле ./res/cache/moex/last_update
+        # хотя потом можно будет создать отдельную таблицу и в нее свести
+        # даты всех возможных апдейтов, когдда обновляли последний раз
+        # кэш, исторические данные, когда строили отчеты... когда там еще
+        # что нибудь. Пока это рано. Пока пусть в файлах - это более гибко.
+        # когда выработается понимание какие даты будут храниться, тогда
+        # и делать таблицу
+
+    # }}}
+
     @classmethod  # __createBarsDataTable  # {{{
     async def __createBarsDataTable(cls, bars_table_name: str) -> None:
         """Create a separate table for bars
@@ -1562,5 +1567,20 @@ class Keeper:
             );
             """
         await cls.transaction(request)
+
+    # }}}
+
+    @staticmethod  # encoderJson# {{{
+    def encoderJson(obj) -> Any:
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+
+    # }}}
+    @staticmethod  # decoderJson# {{{
+    def decoderJson(obj) -> Any:
+        for k, v in obj.items():
+            if isinstance(v, str) and "+00:00" in v:
+                obj[k] = datetime.fromisoformat(obj[k])
+        return obj
 
     # }}}

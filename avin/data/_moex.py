@@ -16,19 +16,16 @@ from avin.config import Usr
 from avin.const import ONE_DAY, ONE_WEEK
 from avin.data._abstract_source import _AbstractDataSource
 from avin.data._bar import _Bar, _BarsData
-from avin.data._cache import _InstrumentInfoCache
-from avin.data.asset_type import AssetType
+from avin.data._cache import _InstrumentsInfoCache
 from avin.data.data_source import DataSource
 from avin.data.data_type import DataType
 from avin.data.exchange import Exchange
-from avin.data.instrument_id import InstrumentId
+from avin.data.instrument import Instrument
 from avin.keeper import Keeper
 from avin.utils import Cmd, logger
 
 
 class _MoexData(_AbstractDataSource):
-    """const"""  # {{{
-
     source = DataSource.MOEX
 
     MSK_TIME_DIF = timedelta(hours=3)
@@ -41,96 +38,92 @@ class _MoexData(_AbstractDataSource):
         DataType.BAR_M,
     ]
 
-    _SUB_DIR = "moex"
-    _LOGIN = None
-    _PASSWORD = None
-    _AUTHORIZATION = None
-    _AUTO_UPDATE = Usr.AUTO_UPDATE_ASSET_CACHE
+    __SUB_DIR = "moex"
+    __LOGIN = None
+    __PASSWORD = None
+    __AUTHORIZATION = None
+    __AUTO_UPDATE = Usr.AUTO_UPDATE_ASSET_CACHE
 
     # }}}
-    @classmethod  # cacheAssetsInfo  # {{{
-    async def cacheAssetsInfo(cls) -> None:
-        logger.debug(f"{cls.__name__}.cacheAssetsInfo()")
+    @classmethod  # cacheInstrumentsInfo  # {{{
+    async def cacheInstrumentsInfo(cls) -> None:
+        logger.debug(f"{cls.__name__}.cacheInstrumentsInfo()")
 
-        if _InstrumentInfoCache.checkCachingDate(cls.source):
+        if _InstrumentsInfoCache.checkCachingDate(cls.source):
             return
 
-        logger.info(":: Caching assets info from MOEX")
-        await cls.__authorizate()
-        if not cls._AUTHORIZATION:
+        logger.info(":: Caching instruments info info from MOEX")
+        if not await cls.__authorizate():
             return
 
         types = ["index", "shares", "currency", "futures"]
-        for type_ in types:
-            logger.info(f"  - caching {type_}")
-            assets_info = moexalgo.Market(type_).tickers(use_dataframe=False)
-            assets_info = cls.__formatAssetsInfo(assets_info)
-            asset_type = cls.__getStandartAssetType(type_)
-            cache = _InstrumentInfoCache(cls.source, asset_type, assets_info)
-            await _InstrumentInfoCache.save(cache)
+        for t in types:
+            logger.info(f"  - caching {t}")
+            response = cls.__requestAvailibleInstruments(t)
+            original_info = cls.__originalInstrumentInfo(response)
+            formatted_info = cls.__formatInstrumentInfo(response)
+            itype = cls.__getStandartInstrumentType(t)
+            cache = _InstrumentsInfoCache(
+                cls.source,
+                itype,
+                original_info,
+                formatted_info,
+            )
+            await _InstrumentsInfoCache.save(cache)
 
-        _InstrumentInfoCache.updateCachingDate(cls.source)
+        _InstrumentsInfoCache.updateCachingDate(cls.source)
 
     # }}}
     @classmethod  # find  # {{{
     async def find(
         cls,
-        asset_type: AssetType,
         exchange: Exchange,
+        itype: Instrument.Type,
         ticker: str,
         figi: str,
         name: str,
-    ) -> list[InstrumentId]:
+    ) -> list[Instrument]:
         logger.debug(f"{cls.__name__}.find()")
 
         # check cache
-        if cls._AUTO_UPDATE:
-            await _MoexData.cacheAssetsInfo()
+        if cls.__AUTO_UPDATE:
+            await _MoexData.cacheInstrumentsInfo()
             ...
 
         # request info
-        assets_info = await Keeper.info(
+        instruments_info = await Keeper.info(
             cls.source,
-            asset_type,
-            EXCHANGE=exchange.name if exchange else None,
-            SECID=ticker,
-            FIGI=figi,
-            NAME=name,
+            itype,
+            exchange=exchange.name if exchange else None,
+            ticker=ticker,
+            figi=figi,
+            name=name,
         )
 
         # for INDEXes:
         id_list = list()
-        if asset_type == AssetType.INDEX:
-            for i in assets_info:
-                ID = InstrumentId(
-                    asset_type,
-                    Exchange.fromStr(i["EXCHANGE"]),
-                    i["SECID"],
-                    i["FIGI"],  # use my fake figi
-                    i["NAME"],
-                )
-                id_list.append(ID)
+        if itype == Instrument.Type.INDEX:
+            for i in instruments_info:
+                instrument = Instrument(i)
+                id_list.append(instrument)
             return id_list
 
         # for other types, or None:
         # MOEX does not provide instruments 'figi',
-        # load 'figi' from Tinkoff cache
-        # and use 'name' from Tinkoff too
-        for i in assets_info:
+        # load 'figi' and other from Tinkoff cache
+        for i in instruments_info:
             exchange = Exchange.fromStr(i["EXCHANGE"])
-            asset_type = AssetType.fromStr(i["TYPE"])
+            itype = Instrument.Type.fromStr(i["TYPE"])
             ticker = i["SECID"]
             tinkoff_info = await Keeper.info(
                 Source.TINKOFF,
-                asset_type,
-                exchange=exchange.name,
-                ticker=ticker,
+                itype,
+                exchange=i["exchange"],
+                ticker=i["ticker"],
             )
             if tinkoff_info:
-                figi = tinkoff_info[0]["figi"]
-                name = tinkoff_info[0]["name"]
-                ID = InstrumentId(asset_type, exchange, ticker, figi, name)
-                id_list.append(ID)
+                instrument = Instrument(tinkoff_info)
+                id_list.append(instrument)
             else:
                 # NOTE:
                 # если у Тинька нет информации по активу, поторговать
@@ -141,26 +134,15 @@ class _MoexData(_AbstractDataSource):
         return id_list
 
     # }}}
-    @classmethod  # info  # {{{
-    async def info(cls, ID: InstrumentId) -> dict:
-        logger.debug(f"{cls.__name__}.info()")
-        assert ID.type == AssetType.INDEX
-
-        info = await Keeper.info(cls.source, ID.type, FIGI=ID.figi)
-        assert len(info) == 1
-
-        return info[0]
-
-    # }}}
     @classmethod  # firstDateTime  # {{{
     async def firstDateTime(
-        cls, ID: InstrumentId, data_type: DataType
+        cls, instrument: Instrument, data_type: DataType
     ) -> datetime:
         logger.debug(f"{cls.__name__}.firstDateTime()")
 
         date_start = date(1990, 1, 1)
         try:
-            asset = moexalgo.Ticker(ID.ticker)
+            asset = moexalgo.Ticker(instrument.ticker)
             candles = asset.candles(
                 start=date_start,
                 end="today",
@@ -168,7 +150,9 @@ class _MoexData(_AbstractDataSource):
                 use_dataframe=False,
             )
         except LookupError:
-            logger.warning(f"_MoexData: no market data for {ID.ticker}")
+            logger.warning(
+                f"_MoexData: no market data for {instrument.ticker}"
+            )
             return None
 
         candle = candles.send(None)
@@ -179,33 +163,37 @@ class _MoexData(_AbstractDataSource):
     # }}}
     @classmethod  # download  # {{{
     async def download(
-        cls, ID: InstrumentId, data_type: DataType, year: int
+        cls, instrument: Instrument, data_type: DataType, year: int
     ) -> None:
         logger.debug(f"{cls.__name__}.download()")
         assert data_type in cls.AVAILIBLE_DATA
 
-        # Without authorization - delay is more than 15min
-        # for authorized users delay is 2-5 min
+        # Without authorization - delay is 15min
+        # for authorized users delay is 2min
         await cls.__authorizate()
 
-        logger.info(f":: Download {ID.ticker}-{data_type.value} from {year}")
+        logger.info(
+            f":: Download {instrument.ticker}-{data_type.value} from {year}"
+        )
         begin, end = cls.__getPeriod(year)
-        candles = cls.__getHistoricalCandles(ID, data_type, begin, end)
+        candles = cls.__getHistoricalCandles(
+            instrument, data_type, begin, end
+        )
         if len(candles) == 0:
             logger.warning(
-                f"No data received for {ID.ticker}-{data_type.value}-{year}"
+                f"No data received for {instrument.ticker}-{data_type.value}-{year}"
             )
             return
 
         bars = cls.__convertCandlesToBars(candles)
-        data = _BarsData(ID, data_type, bars, cls.source)
+        data = _BarsData(cls.source, instrument, data_type, bars)
         await _BarsData.save(data)
 
     # }}}
     @classmethod  # getHistoricalBars  # {{{
     async def getHistoricalBars(
         cls,
-        ID: InstrumentId,
+        instrument: Instrument,
         data_type: DataType,
         begin: datetime,
         end: datetime,
@@ -213,7 +201,7 @@ class _MoexData(_AbstractDataSource):
         logger.debug(f"{cls.__name__}.getHistoricalBars()")
 
         if data_type not in cls.AVAILIBLE_DATA:
-            logger.error(f"Can't update {ID}-{data_type}")
+            logger.error(f"Can't update {instrument}-{data_type}")
             return list()
 
         # Without authorization - delay is more than 15min
@@ -223,7 +211,9 @@ class _MoexData(_AbstractDataSource):
         begin = cls.__toMSK(begin)
         end = cls.__toMSK(end)
 
-        candles = cls.__getHistoricalCandles(ID, data_type, begin, end)
+        candles = cls.__getHistoricalCandles(
+            instrument, data_type, begin, end
+        )
         bars = cls.__convert(candles)
         return bars
 
@@ -232,10 +222,10 @@ class _MoexData(_AbstractDataSource):
     async def __authorizate(cls) -> None:
         logger.debug(f"{cls.__name__}.__authorizate()")
 
-        if cls._AUTHORIZATION:
-            return
+        if cls.__AUTHORIZATION:
+            return True
 
-        account_path = Cmd.path(Usr.CONNECT, cls._SUB_DIR, Usr.MOEX_ACCOUNT)
+        account_path = Cmd.path(Usr.CONNECT, cls.__SUB_DIR, Usr.MOEX_ACCOUNT)
         if Cmd.isExist(account_path):
             login, password = Cmd.loadText(account_path)
             login, password = login.strip(), password.strip()
@@ -246,49 +236,87 @@ class _MoexData(_AbstractDataSource):
                 f"login and password in '{account_path}'. Read more: "
                 "https://passport.moex.com/registration"
             )
-            return
+            return False
 
-        cls._AUTHORIZATION = moexalgo.session.authorize(login, password)
-        if cls._AUTHORIZATION:
-            _MoexData._LOGIN = login
-            _MoexData._PASSWORD = password
+        cls.__AUTHORIZATION = moexalgo.session.authorize(login, password)
+        if cls.__AUTHORIZATION:
+            _MoexData.__LOGIN = login
+            _MoexData.__PASSWORD = password
             logger.info("MOEX Authorization successful")
+            return True
         else:
             logger.warning(
                 "MOEX authorization fault, check your login and password. "
                 "Operations with real time market data unavailible. "
                 f"Login='{login}' password='{password}'"
             )
+            return False
 
     # }}}
-    @classmethod  # __formatAssetsInfo# {{{
-    def __formatAssetsInfo(cls, assets_info: list[dict]) -> list[dict]:
-        logger.debug(f"{cls.__name__}.__formatAssetsInfo()")
+    @classmethod  # __requestAvailibleInstruments# {{{
+    def __requestAvailibleInstruments(cls, moex_type: str):
+        logger.debug(f"{cls.__name__}.__requestAvailibleInstruments()")
 
+        response = moexalgo.Market(moex_type).tickers(
+            use_dataframe=False,
+        )
+        return response
+
+    # }}}
+    @classmethod  # __originalInstrumentInfo# {{{
+    def __originalInstrumentInfo(cls, response) -> list[str]:
+        logger.debug(f"{cls.__name__}.__originalInstrumentInfo()")
+
+        original_info = list()
+        for i in response:
+            original_info.append(str(i))
+
+        return original_info
+
+    # }}}
+    @classmethod  # __formatInstrumentInfo# {{{
+    def __formatInstrumentInfo(cls, assets_info: list[dict]) -> list[dict]:
+        logger.debug(f"{cls.__name__}.__formatInstrumentInfo()")
+
+        formatted_info = list()
         for i in assets_info:
-            i["EXCHANGE"] = "MOEX"
+            info = {
+                "name": i["SECNAME"] if i.get("SECNAME") else i["NAME"],
+                "exchange": "MOEX",
+                "exchange_specific": None,
+                "type": cls.__getStandartInstrumentType(i["BOARDID"]).name,
+                "ticker": i["SECID"],
+                "figi": None,  # MOEX not provide instruments figi
+                "uid": None,
+                "lot": i.get("LOTSIZE", "0"),
+                "min_price_step": i.get("MINSTEP", "0"),
+                "short_enabled_flag": None,
+                "klong": None,
+                "kshort": None,
+                "first_1m_bar_date": None,
+                "first_d_bar_date": None,
+                "trading_status": None,
+                "trade_available_flag": None,
+                "buy_available_flag": None,
+                "sell_available_flag": None,
+                "country": None,
+                "currency": None,
+                "class_code": None,
+                "qual_investor_flag": None,
+            }
+
             if i["BOARDID"] == "SNDX":
-                i["TYPE"] = AssetType.INDEX.name
                 # NOTE:
-                # Indexes not have 'figi', but I'm use figi in
-                # InstrumentId - unified identificator for all assets
+                # Indexes not have 'figi', but I'm use figi in class
+                # Instrument - base identificator for all assets
                 # for use search by figi, I'm add in to indices
                 # not real global figi, its only my local idea,
-                # figi = <exchane_name>_<ticker>
-                i["FIGI"] = f"_MOEX_{i['SECID']}"
-            elif i["BOARDID"] == "TQBR":
-                i["TYPE"] = AssetType.SHARE.name
-                # NOTE:
-                # "Latname": "Perm 'Energosbyt", and other similar ones ..
-                # a single roll then interferes when transforming
-                # in postgres jsonb, delete thats fucked symbol '
-                i["LATNAME"] = i["LATNAME"].replace("'", "")
-            elif i["BOARDID"] == "RFUD":
-                i["TYPE"] = AssetType.FUTURE.name
-            elif i["BOARDID"] == "CETS":
-                i["TYPE"] = AssetType.CURRENCY.name
+                # figi = "_<exchane_name>_<ticker>"
+                info["figi"] = f"_MOEX_{i['SECID']}"
 
-        return assets_info
+            formatted_info.append(info)
+
+        return formatted_info
 
     # }}}
     @classmethod  # __convert# {{{
@@ -350,7 +378,7 @@ class _MoexData(_AbstractDataSource):
     @classmethod  # __requestCandles# {{{
     def __requestCandles(
         cls,
-        ID: InstrumentId,
+        instrument: Instrument,
         data_type: DataType,
         begin: datetime,
         end: datetime,
@@ -370,13 +398,13 @@ class _MoexData(_AbstractDataSource):
         else:
             method = cls.__requestCandlesBigTimeFrame
 
-        return method(ID, data_type, begin, end)
+        return method(instrument, data_type, begin, end)
 
     # }}}
     @classmethod  # __requestCandlesBigTimeFrame# {{{
     def __requestCandlesBigTimeFrame(
         cls,
-        ID: InstrumentId,
+        instrument: Instrument,
         data_type: DataType,
         begin: datetime,
         end: datetime,
@@ -384,13 +412,13 @@ class _MoexData(_AbstractDataSource):
         logger.debug(f"{cls.__name__}.__requestCandlesBigTimeFrame()")
 
         all_candles = list()
-        asset = moexalgo.Ticker(ID.ticker)
+        asset = moexalgo.Ticker(instrument.ticker)
         period = cls.__convert(data_type)
         current = begin
 
         while current < end:
             logger.info(
-                f"  - request {ID.ticker}-{data_type.value} {current.date()}"
+                f"  - request {instrument.ticker}-{data_type.value} {current.date()}"
             )
             candles = asset.candles(
                 start=current,
@@ -413,7 +441,7 @@ class _MoexData(_AbstractDataSource):
     @classmethod  # __requestCandlesSmallTimeFrame# {{{
     def __requestCandlesSmallTimeFrame(
         cls,
-        ID: InstrumentId,
+        instrument: Instrument,
         data_type: DataType,
         begin: datetime,
         end: datetime,
@@ -421,12 +449,12 @@ class _MoexData(_AbstractDataSource):
         logger.debug(f"{cls.__name__}.__requestCandlesSmallTimeFrame()")
 
         all_candles = list()
-        asset = moexalgo.Ticker(ID.ticker)
+        asset = moexalgo.Ticker(instrument.ticker)
         period = cls.__convert(data_type)
         current = begin
         while current < end:
             logger.info(
-                f"  - request {ID.ticker}-{data_type.value} "
+                f"  - request {instrument.ticker}-{data_type.value} "
                 f"from {current.date()}"
             )
             candles = asset.candles(
@@ -444,14 +472,14 @@ class _MoexData(_AbstractDataSource):
     @classmethod  # __getHistoricalCandles# {{{
     def __getHistoricalCandles(
         cls,
-        ID: InstrumentId,
+        instrument: Instrument,
         data_type: DataType,
         begin: datetime,
         end: datetime,
     ) -> list[Candles]:
         logger.debug(f"{cls.__name__}.__getHistoricalCandles()")
 
-        candles = cls.__requestCandles(ID, data_type, begin, end)
+        candles = cls.__requestCandles(instrument, data_type, begin, end)
         if not candles:
             return list()
 
@@ -503,17 +531,26 @@ class _MoexData(_AbstractDataSource):
             return utc_dt.replace(tzinfo=None)
 
     # }}}
-    @classmethod  # __getStandartAssetType# {{{
-    def __getStandartAssetType(cls, name: str):
-        logger.debug(f"{cls.__name__}.__getStandartAssetType()")
+    @classmethod  # __getStandartInstrumentType# {{{
+    def __getStandartInstrumentType(cls, name: str) -> Instrument.Type:
+        logger.debug(f"{cls.__name__}.__getStandartInstrumentType()")
 
         names = {
-            "index": AssetType.INDEX,
-            "shares": AssetType.SHARE,
-            "currency": AssetType.CURRENCY,
-            "futures": AssetType.FUTURE,
+            "index": Instrument.Type.INDEX,
+            "shares": Instrument.Type.SHARE,
+            "futures": Instrument.Type.FUTURE,
+            "currency": Instrument.Type.CURRENCY,
+            "INDEX": Instrument.Type.INDEX,
+            "SHARE": Instrument.Type.SHARE,
+            "FUTURE": Instrument.Type.FUTURE,
+            "CURRENCY": Instrument.Type.CURRENCY,
+            "SNDX": Instrument.Type.INDEX,
+            "TQBR": Instrument.Type.SHARE,
+            "RFUD": Instrument.Type.FUTURE,
+            "CETS": Instrument.Type.CURRENCY,
         }
         standart_asset_type = names[name]
+
         return standart_asset_type
 
     # }}}

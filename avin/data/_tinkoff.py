@@ -13,19 +13,16 @@ import tinkoff.invest as ti
 from avin.config import Usr
 from avin.const import Res
 from avin.data._abstract_source import _AbstractDataSource
-from avin.data._cache import _InstrumentInfoCache
-from avin.data.asset_type import AssetType
+from avin.data._cache import _InstrumentsInfoCache
 from avin.data.data_source import DataSource
 from avin.data.data_type import DataType
 from avin.data.exchange import Exchange
-from avin.data.instrument_id import InstrumentId
+from avin.data.instrument import Instrument
 from avin.keeper import Keeper
 from avin.utils import Cmd, logger
 
 
 class _TinkoffData(_AbstractDataSource):
-    """const"""  # {{{
-
     source = DataSource.TINKOFF
 
     EXCLUDE_HOLIDAYS = True
@@ -39,98 +36,90 @@ class _TinkoffData(_AbstractDataSource):
         DataType.BAR_M,
     ]
 
-    _SUB_DIR = "tinkoff"
-    _DOWNLOAD = Cmd.path(Res.DOWNLOAD, _SUB_DIR)
-    _TARGET = ti.constants.INVEST_GRPC_API
-    _TOKEN_PATH = Usr.TINKOFF_TOKEN
-    _TOKEN = None
-    _AUTO_UPDATE = Usr.AUTO_UPDATE_ASSET_CACHE
+    __SUB_DIR = "tinkoff"
+    __DOWNLOAD = Cmd.path(Res.DOWNLOAD, __SUB_DIR)
+    __TARGET = ti.constants.INVEST_GRPC_API
+    __TOKEN_PATH = Usr.TINKOFF_TOKEN
+    __TOKEN = None
+    __AUTO_UPDATE = Usr.AUTO_UPDATE_ASSET_CACHE
 
-    # }}}
-    @classmethod  # cacheAssetsInfo# {{{
-    async def cacheAssetsInfo(cls) -> None:
-        logger.debug(f"{cls.__name__}.cacheAssetsInfo()")
+    @classmethod  # cacheInstrumentsInfo# {{{
+    async def cacheInstrumentsInfo(cls) -> None:
+        logger.debug(f"{cls.__name__}.cacheInstrumentsInfo()")
 
-        if _InstrumentInfoCache.checkCachingDate(cls.source):
+        if _InstrumentsInfoCache.checkCachingDate(cls.source):
             return
 
         logger.info(":: Caching assets info from Tinkoff")
-        auth = await cls.__authorizate()
-        if not auth:
+        if not await cls.__authorizate():
             return
 
         types = ["shares", "bonds", "futures", "currencies"]
-        for type_ in types:
-            logger.info(f"  - caching {type_}")
-            assets_info = cls.__requestAvailibleAssets(type_)
-            asset_type = cls.__getStandartAssetType(type_)
-            cache = _InstrumentInfoCache(cls.source, asset_type, assets_info)
-            await _InstrumentInfoCache.save(cache)
+        for t in types:
+            logger.info(f"  - caching {t}")
+            response = cls.__requestAvailibleInstruments(t)
+            original_info = cls.__originalInstrumentInfo(response)
+            formatted_info = cls.__formatInstrumentInfo(response)
+            itype = cls.__getStandartInstrumentType(t)
+            cache = _InstrumentsInfoCache(
+                cls.source,
+                itype,
+                original_info,
+                formatted_info,
+            )
+            await _InstrumentsInfoCache.save(cache)
 
-        _InstrumentInfoCache.updateCachingDate(cls.source)
+        _InstrumentsInfoCache.updateCachingDate(cls.source)
 
     # }}}
     @classmethod  # find  # {{{
     async def find(
         cls,
-        asset_type: AssetType,
         exchange: Exchange,
+        itype: Instrument.Type,
         ticker: str,
         figi: str,
         name: str,
-    ) -> list[InstrumentId]:
+    ) -> list[Instrument]:
         logger.debug(f"{cls.__name__}.find()")
 
-        if cls._AUTO_UPDATE:
-            await cls.cacheAssetsInfo()
+        if cls.__AUTO_UPDATE:
+            await cls.cacheInstrumentsInfo()
 
-        assets_info = await Keeper.info(
+        # request instruments info
+        instruments_info = await Keeper.info(
             cls.source,
-            asset_type,
+            itype,
             exchange=exchange.name if exchange else None,
             ticker=ticker,
             figi=figi,
             name=name,
         )
 
-        id_list = list()
-        for i in assets_info:
-            ID = InstrumentId(
-                AssetType.fromStr(i["type"]),
-                Exchange.fromStr(i["exchange"]),
-                i["ticker"],
-                i["figi"],
-                i["name"],
-            )
-            id_list.append(ID)
-        return id_list
+        # create Instrument objects
+        instr_list = list()
+        for i in instruments_info:
+            instrument = Instrument(i)
+            instr_list.append(instrument)
 
-    # }}}
-    @classmethod  # info  # {{{
-    async def info(cls, ID: InstrumentId) -> dict:
-        logger.debug(f"{cls.__name__}.info()")
-
-        info = await Keeper.info(cls.source, ID.type, figi=ID.figi)
-        assert len(info) == 1
-        return info[0]
+        return instr_list
 
     # }}}
     @classmethod  # firstDateTime  # {{{
     async def firstDateTime(
-        cls, ID: InstrumentId, data_type: DataType
+        cls, instrument: Instrument, data_type: DataType
     ) -> datetime:
         logger.debug(f"{cls.__name__}.firstDateTime()")
 
-        info = await cls.info(ID)
         if data_type.value == "1M":
-            return info["first_1min_candle_date"]
+            return instrument.info["first_1m_bar_date"]
         elif data_type.value == "D":
-            return info["first_1day_candle_date"]
+            return instrument.info["first_d_bar_date"]
 
     # }}}
     @classmethod  # download  # {{{
     async def download(
-        cls, ID: InstrumentId, data_type: DataType, year: int
+        cls, instrument: Instrument, data_type: DataType, year: int
     ) -> None:
         logger.debug(f"{cls.__name__}.download()")
         assert False, "переписать на postgres, пока качаю только с МОЕКС"
@@ -140,8 +129,10 @@ class _TinkoffData(_AbstractDataSource):
         if not auth:
             return
 
-        logger.info(f":: Download {ID.ticker}-{data_type.value} from {year}")
-        cls.__requestHistoricalData(ID, year)
+        logger.info(
+            f":: Download {instrument.ticker}-{data_type.value} from {year}"
+        )
+        cls.__requestHistoricalData(instrument, year)
 
     # }}}
     @classmethod  # export  # {{{
@@ -152,19 +143,19 @@ class _TinkoffData(_AbstractDataSource):
         # FIX: - not exclude holidays files
         logger.info(":: Tinkoff exporting data in standart format")
         files = Cmd.getFiles(
-            cls._DOWNLOAD, full_path=True, include_sub_dir=True
+            cls.__DOWNLOAD, full_path=True, include_sub_dir=True
         )
         archives = sorted(Cmd.select(files, extension=".zip"))
 
         for archive in archives:
             logger.info(f"  - exporting '{archive}'")
-            tmp_dir = Cmd.path(Dir.TMP, cls._SUB_DIR)
+            tmp_dir = Cmd.path(Dir.TMP, cls.__SUB_DIR)
             Cmd.extract(archive, tmp_dir)
 
             bars = cls.__loadDataDir(tmp_dir)
-            ID, data_type = cls.__parseFileName(Cmd.name(archive))
+            instrument, data_type = cls.__parseFileName(Cmd.name(archive))
 
-            data = _BarsData(ID, data_type, bars, Source.TINKOFF)
+            data = _BarsData(instrument, data_type, bars, Source.TINKOFF)
             _BarsData.save(data)
 
             Cmd.deleteDir(tmp_dir)
@@ -178,7 +169,7 @@ class _TinkoffData(_AbstractDataSource):
         assert False, "переписать на postgres, пока качаю только с МОЕКС"
 
         logger.info(":: Clear Tinkoff files")
-        path = cls._DOWNLOAD
+        path = cls.__DOWNLOAD
         if not Cmd.isExist(path):
             logger.info(f"  - no data in '{path}'")
             return
@@ -189,7 +180,7 @@ class _TinkoffData(_AbstractDataSource):
     @classmethod  # getHistoricalBars  # {{{
     async def getHistoricalBars(
         cls,
-        ID: InstrumentId,
+        instrument: Instrument,
         data_type: DataType,
         begin: datetime,
         end: datetime,
@@ -198,21 +189,21 @@ class _TinkoffData(_AbstractDataSource):
         assert False, "переписать на postgres, пока качаю только с МОЕКС"
 
         if data_type not in cls.AVAILIBLE_DATA:
-            logger.error(f"Can't update {ID}-{data_type}")
+            logger.error(f"Can't update {instrument}-{data_type}")
             return
 
         logger.info(
-            f"  - request {ID.ticker}-{data_type.value} from {begin.date()}"
+            f"  - request {instrument.ticker}-{data_type.value} from {begin.date()}"
         )
 
         if not cls.__authorizate():
             return
 
         new_bars = list()
-        with ti.Client(cls._TOKEN) as client:
+        with ti.Client(cls.__TOKEN) as client:
             try:
                 candles = client.get_all_candles(
-                    figi=ID.figi,
+                    figi=instrument.figi,
                     from_=begin,
                     to=end,
                     interval=cls.__CandleIntervalFromTimeFrame(data_type),
@@ -231,28 +222,28 @@ class _TinkoffData(_AbstractDataSource):
     async def __authorizate(cls) -> bool:
         logger.debug(f"{cls.__name__}.__authorizate()")
 
-        # if cls._TOKEN is not None, then it's valid token
-        if cls._TOKEN is not None:
+        # if cls.__TOKEN is not None, then it's valid token
+        if cls.__TOKEN is not None:
             return True
 
         # check token file
-        if not Cmd.isExist(cls._TOKEN_PATH):
+        if not Cmd.isExist(cls.__TOKEN_PATH):
             logger.warning(
                 "Tinkoff not exist token file, operations with market data "
                 "and orders unavailible. Make a token and put it in a "
-                f"'{cls._TOKEN_PATH}'. Read more about token: "
+                f"'{cls.__TOKEN_PATH}'. Read more about token: "
                 "https://developer.tinkoff.ru/docs/intro/"
                 "manuals/self-service-auth"
             )
             return False
 
         # read token from file, and try to connect
-        token = Cmd.read(cls._TOKEN_PATH).strip()
+        token = Cmd.read(cls.__TOKEN_PATH).strip()
         try:
             with ti.Client(token) as client:
                 response = client.users.get_accounts()
                 if response:
-                    cls._TOKEN = token
+                    cls.__TOKEN = token
                     logger.info("Tinkoff Authorization successful")
                     return True
         except ti.exceptions.UnauthenticatedError as err:
@@ -265,98 +256,87 @@ class _TinkoffData(_AbstractDataSource):
             return False
 
     # }}}
-    @classmethod  # __requestAvailibleAssets# {{{
-    def __requestAvailibleAssets(cls, asset_type: str):
-        logger.debug(f"{cls.__name__}.__requestAvailibleAssets()")
+    @classmethod  # __requestAvailibleInstruments# {{{
+    def __requestAvailibleInstruments(cls, tinkoff_type: str):
+        logger.debug(f"{cls.__name__}.__requestAvailibleInstruments()")
 
-        # asset_type must be availible for tinkoff invest API
+        # tinkoff_type must be availible for tinkoff invest API
         # for example: "shares", "bonds", "futures", "currencies"...
-        with ti.Client(cls._TOKEN) as client:
+        with ti.Client(cls.__TOKEN) as client:
             all_info = list()
-            response: list[ti.Instrument] = getattr(
-                client.instruments, asset_type
-            )().instruments
-            for item in response:
-                item_info = cls.__formatAssetsInfo(item)
-                if item_info["exchange"] is None:
-                    continue
-                item_info["type"] = cls.__getStandartAssetType(
-                    asset_type
-                ).name
-                all_info.append(item_info)
-            return all_info
+            method = getattr(client.instruments, tinkoff_type)
+            response: list[ti.Instrument] = method().instruments
+            # response: list[ti.Instrument] = getattr(
+            #     client.instruments, tinkoff_type
+            # )().instruments
+            return response
 
     # }}}
-    @classmethod  # __formatAssetsInfo# {{{
-    def __formatAssetsInfo(cls, instr: ti.Instrument) -> dict:
-        logger.debug(f"{cls.__name__}.__formatAssetsInfo()")
 
-        # set simple exchange name, original exchange name
-        # will saved after in the key 'exchange_specific'
-        if "MOEX" in instr.exchange.upper():
-            # NOTE:
-            # "instr.exchange" contain values as "MOEX_PLUS", "MOEX_WEEKEND"..
-            # set "echange"="MOEX"
-            exchange = "MOEX"
-        elif "SPB" in instr.exchange.upper():
-            # NOTE:
-            # "instr.exchange" contain values as "SPB_RU_MORNING"...
-            # set "echange"="SPB"
-            exchange = "SPB"
-        elif "FORTS" in instr.exchange.upper():
-            # NOTE:
-            # FUTURE - у них биржа указана FORTS_EVENING, но похеру
-            # пока для простоты ставлю им тоже биржу MOEX
-            exchange = "MOEX"
-        elif instr.exchange == "FX":
-            # NOTE:
-            # CURRENCY - у них биржа указана FX, но похеру
-            # пока для простоты ставлю им тоже биржу MOEX
-            exchange = "MOEX"
-        else:
-            # NOTE:
-            # там всякая странная хуйня еще есть в биржах
-            # "otc_ncc", "LSE_MORNING", "moex_close", "Issuance",
-            # "unknown"...
-            # Часть из них по факту американские биржи, по которым сейчас
-            # один хрен торги не доступны, другие хз, внебирживые еще, я всем
-            # этим не торгую, поэтому сейчас ставим всем непонятным активам
-            # биржу None, а потом перед сохранением делаем фильтр
-            # если биржа None - отбрасываем этот ассет из кэша
-            exchange = None
+    @classmethod  # __originalInstrumentInfo# {{{
+    def __originalInstrumentInfo(cls, response) -> list[str]:
+        logger.debug(f"{cls.__name__}.__originalInstrumentInfo()")
 
-        # define short function name
+        original_info = list()
+        for i in response:
+            original_info.append(str(i))
+
+        return original_info
+
+    # }}}
+    @classmethod  # __formatInstrumentInfo# {{{
+    def __formatInstrumentInfo(cls, response: list[ti.Instrument]) -> dict:
+        logger.debug(f"{cls.__name__}.__formatInstrumentInfo()")
+
+        formatted_info = list()
+        for i in response:
+            info = cls.__extractInfoFromResponse(i)
+
+            # skip None exchange
+            if info["exchange"] is None:
+                continue
+
+            formatted_info.append(info)
+
+        return formatted_info
+
+    # }}}
+    @classmethod  # __extractInfoFromResponse  # {{{
+    def __extractInfoFromResponse(cls, instr: ti.Instrument) -> dict:
+        logger.debug(f"{cls.__name__}.__extractInfoFromResponse()")
+
+        # define short alias
         to_decimal = ti.utils.quotation_to_decimal
+        ti_status = ti.SecurityTradingStatus
+
+        # create instrument info dict
         info = {
             # NOTE:
             # "name": "O'Key Group SA", и другие подобные
             # одинарная кавчка потом мешается при преобразовании
-            # в postgres jsonb
+            # в postgres тип "jsonb"
             "name": instr.name.replace("'", ""),  # remove ' in name
+            "exchange": cls.__getStandartExchangeName(instr.exchange),
+            "exchange_specific": instr.exchange,  # original exchange name
+            "type": None,  # set below in this function
             "ticker": instr.ticker,
-            "country_of_risk": instr.country_of_risk,
-            "currency": instr.currency,
-            "exchange": exchange,
-            "exchange_specific": instr.exchange,
-            "class_code": instr.class_code,
             "figi": instr.figi,
             "uid": instr.uid,
             "lot": instr.lot,
-            "min_price_increment": float(
-                to_decimal(instr.min_price_increment)
-            ),
-            "trading_status": ti.SecurityTradingStatus(
-                instr.trading_status
-            ).name,
-            "for_qual_investor_flag": instr.for_qual_investor_flag,
-            "api_trade_available_flag": instr.api_trade_available_flag,
-            "buy_available_flag": instr.buy_available_flag,
-            "sell_available_flag": instr.sell_available_flag,
+            "min_price_step": float(to_decimal(instr.min_price_increment)),
             "short_enabled_flag": instr.short_enabled_flag,
             "klong": float(to_decimal(instr.klong)),
             "kshort": float(to_decimal(instr.kshort)),
-            "first_1min_candle_date": instr.first_1min_candle_date,
-            "first_1day_candle_date": instr.first_1day_candle_date,
+            "first_1m_bar_date": instr.first_1min_candle_date,
+            "first_d_bar_date": instr.first_1day_candle_date,
+            "trading_status": ti_status(instr.trading_status).name,
+            "trade_available_flag": instr.api_trade_available_flag,
+            "buy_available_flag": instr.buy_available_flag,
+            "sell_available_flag": instr.sell_available_flag,
+            "country": instr.country_of_risk,
+            "currency": instr.currency,
+            "class_code": instr.class_code,
+            "qual_investor_flag": instr.for_qual_investor_flag,
         }
 
         # save attributes "isin" & "sector", if availible
@@ -365,24 +345,37 @@ class _TinkoffData(_AbstractDataSource):
         if hasattr(instr, "sector"):
             info["sector"] = instr.sector
 
+        # set standart instrument type
+        if isinstance(instr, ti.Share):
+            info["type"] = Instrument.Type.SHARE.name
+        elif isinstance(instr, ti.Bond):
+            info["type"] = Instrument.Type.BOND.name
+        elif isinstance(instr, ti.Future):
+            info["type"] = Instrument.Type.FUTURE.name
+        elif isinstance(instr, ti.Currency):
+            info["type"] = Instrument.Type.CURRENCY.name
+        else:
+            print(instr)
+            assert False, "Unknown instrument type"
+
         return info
 
     # }}}
     @classmethod  # __requestHistoricalData# {{{
-    def __requestHistoricalData(cls, ID: InstrumentId, year: int):
+    def __requestHistoricalData(cls, instrument: Instrument, year: int):
         logger.debug(f"{cls.__name__}.__requestHistoricalData()")
 
-        exchange = ID.exchange.name
-        type_ = ID.type.name
-        figi = ID.figi
-        ticker = ID.ticker
+        exchange = instrument.exchange.name
+        type_ = instrument.type.name
+        figi = instrument.figi
+        ticker = instrument.ticker
         file_name = f"{exchange}-{type_}-{ticker}-1M-{year}.zip"
-        file_path = Cmd.path(cls._DOWNLOAD, type_, ticker, file_name)
+        file_path = Cmd.path(cls.__DOWNLOAD, type_, ticker, file_name)
         data_url = "https://invest-public-api.tinkoff.ru/history-data"
 
         bash_command = (
             f"curl -s --location '{data_url}?figi={figi}&year={year}' "
-            f"-H 'Authorization: Bearer {cls._TOKEN}' "
+            f"-H 'Authorization: Bearer {cls.__TOKEN}' "
             f"-o {file_name} "
         )
         os.system(bash_command)
@@ -499,34 +492,69 @@ class _TinkoffData(_AbstractDataSource):
         return bar
 
     # }}}
-    @classmethod  # __getStandartAssetType# {{{
-    def __getStandartAssetType(cls, name):
-        logger.debug(f"{cls.__name__}.__getStandartAssetType()")
+    @classmethod  # __getStandartInstrumentType# {{{
+    def __getStandartInstrumentType(cls, name: str) -> Instrument.Type:
+        logger.debug(f"{cls.__name__}.__getStandartInstrumentType()")
 
         names = {
-            "shares": AssetType.SHARE,
-            "bonds": AssetType.BOND,
-            "futures": AssetType.FUTURE,
-            "currencies": AssetType.CURRENCY,
+            "shares": Instrument.Type.SHARE,
+            "bonds": Instrument.Type.BOND,
+            "futures": Instrument.Type.FUTURE,
+            "currencies": Instrument.Type.CURRENCY,
         }
         standart_asset_type = names[name]
         return standart_asset_type
 
     # }}}
+    @classmethod  # __getStandartExchangeName# {{{
+    def __getStandartExchangeName(cls, name: str) -> str | None:
+        logger.debug(f"{cls.__name__}.__getStandartExchangeName()")
+
+        if "MOEX" in name.upper():
+            # values as "MOEX_PLUS", "MOEX_WEEKEND".. set "echange"="MOEX"
+            standart_exchange_name = "MOEX"
+        elif "SPB" in name.upper():
+            # values as "SPB_RU_MORNING"... set "echange"="SPB"
+            standart_exchange_name = "SPB"
+        elif "FORTS" in name.upper():
+            # NOTE:
+            # FUTURE - у них биржа указана FORTS_EVENING, но похеру
+            # пока для простоты ставлю им тоже биржу MOEX
+            standart_exchange_name = "MOEX"
+        elif name == "FX":
+            # NOTE:
+            # CURRENCY - у них биржа указана FX, но похеру
+            # пока для простоты ставлю им тоже биржу MOEX
+            standart_exchange_name = "MOEX"
+        else:
+            # NOTE:
+            # там всякая странная хуйня еще есть в биржах
+            # "otc_ncc", "LSE_MORNING", "moex_close", "Issuance",
+            # "unknown"...
+            # Часть из них по факту американские биржи, по которым сейчас
+            # один хрен торги не доступны, другие хз, внебирживые еще, я всем
+            # этим не торгую, поэтому сейчас ставим всем непонятным активам
+            # биржу None, а потом перед сохранением делаем фильтр
+            # если биржа None - отбрасываем этот ассет из кэша
+            standart_exchange_name = None
+
+        return standart_exchange_name
+
+    # }}}
     @classmethod  # __parseFileName# {{{
     def __parseFileName(cls, file_name):
-        logger.debug(f"{cls.__name__}.__getStandartAssetType()")
+        logger.debug(f"{cls.__name__}.__getStandartInstrumentType()")
 
-        exchange, asset_type, ticker, data_type, _ = file_name.split("-")
+        exchange, itype, ticker, data_type, _ = file_name.split("-")
 
         exchange = Exchange.fromStr(exchange)
-        asset_type = AssetType.fromStr(asset_type)
+        itype = Instrument.Type.fromStr(itype)
         data_type = DataType.fromStr(data_type)
 
         # FIXME выпилить вызов фасадного класса..
         # заменить вызовом кипера
-        ID = Data.find(exchange, asset_type, ticker)
+        instrument = Data.find(exchange, itype, ticker)
 
-        return ID, data_type
+        return instrument, data_type
 
     # }}}

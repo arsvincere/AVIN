@@ -11,8 +11,7 @@ from __future__ import annotations
 import enum
 
 
-class DataSource(enum.Enum):  # {{{
-    UNDEFINE = 0
+class DataSource(enum.Enum):
     MOEX = 1
     TINKOFF = 2
 
@@ -26,12 +25,9 @@ class DataSource(enum.Enum):  # {{{
 
     # }}}
     @classmethod  # fromRecord  # {{{
-    def fromRecord(cls, record) -> DataSource:
+    def fromRecord(cls, record: asyncpg.Record) -> DataSource:
         string = record["source"]
         source = cls.fromStr(string)
         return source
 
     # }}}
-
-
-# }}}

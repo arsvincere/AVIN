@@ -12,20 +12,24 @@ from datetime import date, datetime
 from typing import Any
 
 from avin.const import Res
+from avin.data.data_source import DataSource
+from avin.data.instrument import Instrument
 from avin.keeper import Keeper
-from avin.utils import Cmd, now
+from avin.utils import Cmd, logger, now
 
 
-class _InstrumentInfoCache:
+class _InstrumentsInfoCache:
     def __init__(  # {{{
         self,
         source: DataSource,
-        asset_type: AssetType,
-        assets_info: list[dict],
+        itype: Instrument.Type,
+        original_info: list[str],
+        formatted_info: list[dict],
     ):
         self.__source = source
-        self.__type = asset_type
-        self.__info = assets_info
+        self.__type = itype
+        self.__original = original_info
+        self.__formatted = formatted_info
 
     # }}}
     @property  # source{{{
@@ -38,34 +42,53 @@ class _InstrumentInfoCache:
         return self.__type
 
     # }}}
-    @property  # info{{{
-    def info(self):
-        return self.__info
+    @property  # original{{{
+    def original(self):
+        return self.__original
+
+    # }}}
+    @property  # formatted{{{
+    def formatted(self):
+        return self.__formatted
 
     # }}}
     @classmethod  # save# {{{
-    async def save(cls, cache: _InstrumentInfoCache) -> None:
-        # save cache in res files
-        cache_dir = Cmd.path(Res.CACHE, cache.source.name.lower())
-        file_path = Cmd.path(cache_dir, f"{cache.asset_type.name}.json")
-        Cmd.saveJson(cache.assets_info, file_path, encoder=cls.encoderJson)
+    async def save(cls, cache: _InstrumentsInfoCache) -> None:
+        logger.debug(f"{cls.__name__}.save()")
 
-        # save cache in postgres
+        # save original cache in res files
+        file_path = Cmd.path(
+            Res.CACHE,
+            cache.source.name.lower(),
+            f"{cache.type.name}.json",
+        )
+        Cmd.saveJson(cache.original, file_path, encoder=cls.encoderJson)
+
+        # save formatted cache in postgres
         await Keeper.update(cache)
 
     # }}}
     @classmethod  # load# {{{
     def load(
-        cls, source: Source, asset_type: AssetType
-    ) -> _InstrumentInfoCache:
-        cache_dir = Cmd.path(Res.CACHE, source.name.lower())
-        cache_path = Cmd.path(cache_dir, f"{asset_type.name}.json")
-        cache = Cmd.loadJson(cache_path, decoder=cls.decoderJson)
+        cls, source: DataSource, itype: Instrument.Type
+    ) -> _InstrumentsInfoCache:
+        logger.debug(f"{cls.__name__}.load()")
+
+        cache_path = Cmd.path(
+            Res.CACHE,
+            source.name.lower(),
+            f"{itype.name}.json",
+        )
+        json_info = Cmd.loadJson(cache_path, decoder=cls.decoderJson)
+        cache = _InstrumentsInfoCache(source, itype, json_info, [])
+
         return cache
 
     # }}}
     @classmethod  # checkCachingDate# {{{
-    def checkCachingDate(cls, source: Source) -> bool:
+    def checkCachingDate(cls, source: DataSource) -> bool:
+        logger.debug(f"{cls.__name__}.checkCachingDate()")
+
         # ckeck file with last update datetime
         file_path = Cmd.path(Res.CACHE, source.name.lower(), "last_update")
         if not Cmd.isExist(file_path):
@@ -78,7 +101,9 @@ class _InstrumentInfoCache:
 
     # }}}
     @classmethod  # updateCachingDate# {{{
-    def updateCachingDate(cls, source: Source) -> None:
+    def updateCachingDate(cls, source: DataSource) -> None:
+        logger.debug(f"{cls.__name__}.updateCachingDate()")
+
         dt = now().isoformat()
         file_path = Cmd.path(Res.CACHE, source.name.lower(), "last_update")
         Cmd.write(dt, file_path)

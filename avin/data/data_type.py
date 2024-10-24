@@ -6,16 +6,15 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
+from __future__ import annotations
+
 import enum
 from datetime import timedelta
 
 
-class DataType(enum.Enum):  # {{{
-    """doc# {{{
-    Enum for selet what data type want to download.
-    """
+class DataType(enum.Enum):
+    """Enum for selet what data type to download."""
 
-    # }}}
     BAR_1M = "1M"
     BAR_5M = "5M"
     BAR_10M = "10M"
@@ -73,12 +72,9 @@ class DataType(enum.Enum):  # {{{
 
     # }}}
     @classmethod  # fromRecord#{{{
-    def fromRecord(cls, record):
+    def fromRecord(cls, record: asyncpg.Record):
         type_name = record["type"]
         typ = cls.fromStr(type_name)
         return typ
 
     # }}}
-
-
-# }}}

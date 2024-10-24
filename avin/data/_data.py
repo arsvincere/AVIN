@@ -9,93 +9,67 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Optional
 
-from avin.data._manager import _Manager
-from avin.data._moex import _MoexData
-from avin.data._tinkoff import _TinkoffData
-from avin.data.asset_type import AssetType
+from avin.data._data_manager import _DataManager
 from avin.data.data_source import DataSource
 from avin.data.data_type import DataType
 from avin.data.exchange import Exchange
-from avin.data.instrument_id import InstrumentId
+from avin.data.instrument import Instrument
 from avin.utils import logger
 
 
 class Data:
     @classmethod  # cache# {{{
     async def cache(cls) -> None:
-        """Make cache of assets info"""
+        """Make cache of instruments info"""
 
         logger.debug(f"{cls.__name__}.cache()")
-        await _Manager.cacheAssetsInfo()
+
+        await _DataManager.cacheInstrumentsInfo()
 
     # }}}
     @classmethod  # find# {{{
     async def find(
         cls,
-        asset_type: AssetType = None,
-        exchange: Exchange = None,
-        ticker: str = None,
-        figi: str = None,
-        name: str = None,
-        source: DataSource = None,
-    ) -> list[InstrumentId]:
-        """Find instrument id
+        exchange: Optional[Exchange] = None,
+        itype: Optional[Instrument.Type] = None,
+        ticker: Optional[str] = None,
+        figi: Optional[str] = None,
+        name: Optional[str] = None,
+        source: Optional[DataSource] = None,
+    ) -> list[Instrument]:
+        """Find instrument"""
 
-        Args:
-            asset_type - ...
-        """
         logger.debug(f"{cls.__name__}.find()")
 
         # check args
         check = cls.__checkArgs(
-            asset_type=asset_type,
             exchange=exchange,
+            itype=itype,
             ticker=ticker,
             figi=figi,
             name=name,
             source=source,
         )
         if not check:
-            return
+            return list()
 
-        # select data source
-        if source == DataSource.MOEX:
-            class_ = _MoexData
-        elif source == DataSource.TINKOFF:
-            class_ = _TinkoffData
-        # if source is None,
-        # uses _MoexData for indexes, and _TinkoffData otherwise
-        elif asset_type == AssetType.INDEX:
-            class_ = _MoexData
-        else:
-            class_ = _TinkoffData
-
-        # find instrument IDs
-        id_list = await class_.find(asset_type, exchange, ticker, figi, name)
-        return id_list
-
-    # }}}
-    @classmethod  # info# {{{
-    async def info(cls, ID: InstrumentId) -> dict:
-        logger.debug(f"{cls.__name__}.info()")
-        check = cls.__checkArgs(ID=ID)
-        if not check:
-            return None
-
-        class_ = _MoexData if ID.type == AssetType.INDEX else _TinkoffData
-        info = await class_.info(ID)
-        return info
+        instr_list = await _DataManager.find(
+            exchange, itype, ticker, figi, name, source
+        )
+        return instr_list
 
     # }}}
     @classmethod  # firstDateTime# {{{
     async def firstDateTime(
-        cls, source: DataSource, ID: InstrumentId, data_type: DataType
-    ) -> datetime:
+        cls, source: DataSource, instrument: Instrument, data_type: DataType
+    ) -> datetime | None:
         logger.debug(f"{cls.__name__}.firstDateTime()")
+
         check = cls.__checkArgs(
             source=source,
-            ID=ID,
+            instrument=instrument,
             data_type=data_type,
         )
         if not check:
@@ -105,7 +79,7 @@ class Data:
             logger.error("First datetime availible only for '1M' and 'D'")
             return None
 
-        dt = await _Manager.firstDateTime(source, ID, data_type)
+        dt = await _DataManager.firstDateTime(source, instrument, data_type)
         return dt
 
     # }}}
@@ -113,7 +87,7 @@ class Data:
     async def download(
         cls,
         source: DataSource,
-        ID: InstrumentId,
+        instrument: Instrument,
         data_type: DataType,
         year: int,
     ) -> None:
@@ -121,23 +95,27 @@ class Data:
 
         check = cls.__checkArgs(
             source=source,
-            ID=ID,
+            instrument=instrument,
             data_type=data_type,
             year=year,
         )
         if not check:
             return
 
-        await _Manager.download(source, ID, data_type, year)
+        await _DataManager.download(source, instrument, data_type, year)
 
     # }}}
     @classmethod  # convert# {{{
     async def convert(
-        cls, ID: InstrumentId, in_type: DataType, out_type: DataType
+        cls, instrument: Instrument, in_type: DataType, out_type: DataType
     ) -> None:
         logger.debug(f"{cls.__name__}.convert()")
 
-        check = cls.__checkArgs(ID=ID, in_type=in_type, out_type=out_type)
+        check = cls.__checkArgs(
+            instrument=instrument,
+            in_type=in_type,
+            out_type=out_type,
+        )
         if not check:
             return
 
@@ -148,60 +126,21 @@ class Data:
             )
             return
 
-        await _Manager.convert(ID, in_type, out_type)
+        await _DataManager.convert(instrument, in_type, out_type)
 
     # }}}
     @classmethod  # delete# {{{
     async def delete(
         cls,
-        ID: InstrumentId,
+        instrument: Instrument,
         data_type: DataType,
+        begin: Optional[datetime] = None,
+        end: Optional[datetime] = None,
     ) -> None:
         logger.debug(f"{cls.__name__}.delete()")
 
-        check = cls.__checkArgs(ID=ID, data_type=data_type)
-        if not check:
-            return
-
-        if data_type == DataType.BOOK or data_type == DataType.TIC:
-            assert False
-
-        await _Manager.delete(ID, data_type)
-
-    # }}}
-    @classmethod  # update# {{{
-    async def update(
-        cls, ID: InstrumentId, data_type: DataType = None
-    ) -> None:
-        logger.debug(f"{cls.__name__}.update()")
-        assert ID.exchange == Exchange.MOEX
-        assert data_type != DataType.TIC
-        assert data_type != DataType.BOOK
-
-        check = cls.__checkArgs(ID=ID, data_type=data_type)
-        if not check:
-            return
-
-        await _Manager.update(ID, data_type)
-
-    # }}}
-    @classmethod  # updateAll# {{{
-    async def updateAll(cls) -> None:
-        logger.debug(f"{cls.__name__}.updateAll()")
-        await _Manager.updateAll()
-
-    # }}}
-    @classmethod  # request# {{{
-    async def request(
-        cls,
-        ID: InstrumentId,
-        data_type: DataType,
-        begin: datetime,
-        end: datetime,
-    ) -> list[Record]:
-        logger.debug(f"{cls.__name__}.request()")
         check = cls.__checkArgs(
-            ID=ID,
+            instrument=instrument,
             data_type=data_type,
             begin=begin,
             end=end,
@@ -212,7 +151,57 @@ class Data:
         if data_type == DataType.BOOK or data_type == DataType.TIC:
             assert False
 
-        records = await _Manager.request(ID, data_type, begin, end)
+        await _DataManager.delete(instrument, data_type, begin, end)
+
+    # }}}
+    @classmethod  # update# {{{
+    async def update(
+        cls, instrument: Instrument, data_type: Optional[DataType] = None
+    ) -> None:
+        logger.debug(f"{cls.__name__}.update()")
+        assert instrument.exchange == Exchange.MOEX
+        assert data_type != DataType.TIC
+        assert data_type != DataType.BOOK
+
+        check = cls.__checkArgs(instrument=instrument, data_type=data_type)
+        if not check:
+            return
+
+        await _DataManager.update(instrument, data_type)
+
+    # }}}
+    @classmethod  # updateAll# {{{
+    async def updateAll(cls) -> None:
+        logger.debug(f"{cls.__name__}.updateAll()")
+
+        await _DataManager.updateAll()
+
+    # }}}
+    @classmethod  # request# {{{
+    async def request(
+        cls,
+        instrument: Instrument,
+        data_type: DataType,
+        begin: datetime,
+        end: datetime,
+    ) -> list[asyncpg.Record]:
+        logger.debug(f"{cls.__name__}.request()")
+
+        check = cls.__checkArgs(
+            instrument=instrument,
+            data_type=data_type,
+            begin=begin,
+            end=end,
+        )
+        if not check:
+            return list()
+
+        if data_type == DataType.BOOK or data_type == DataType.TIC:
+            assert False
+
+        records = await _DataManager.request(
+            instrument, data_type, begin, end
+        )
         return records
 
     # }}}
@@ -220,12 +209,12 @@ class Data:
     def __checkArgs(
         cls,
         source=None,
-        asset_type=None,
+        itype=None,
         exchange=None,
         ticker=None,
         figi=None,
         name=None,
-        ID=None,
+        instrument=None,
         data_type=None,
         year=None,
         in_type=None,
@@ -234,20 +223,21 @@ class Data:
         end=None,
     ):
         logger.debug(f"{cls.__name__}.__checkArgs()")
+
         if source:
             cls.__checkDataSource(source)
         if exchange:
             cls.__checkExchange(exchange)
-        if asset_type:
-            cls.__checkAssetType(asset_type)
+        if itype:
+            cls.__checkInstrumentType(itype)
         if ticker:
             cls.__checkTicker(ticker)
         if figi:
             cls.__checkFigi(figi)
         if name:
             cls.__checkName(name)
-        if ID:
-            cls.__checkID(ID)
+        if instrument:
+            cls.__checkInstrument(instrument)
         if data_type:
             cls.__checkDataType(data_type)
         if year:
@@ -256,6 +246,7 @@ class Data:
             cls.__checkIOType(in_type, out_type)
         if begin and end:
             cls.__checkBeginEnd(begin, end)
+
         return True
 
     # }}}
@@ -270,20 +261,19 @@ class Data:
     # }}}
     @classmethod  # __checkExchange# {{{
     def __checkExchange(cls, exchange):
-        # if not isinstance(exchange, Exchange):
-        #     raise TypeError(
-        #         "You stupid monkey, select the 'exchange' from the enum "
-        #         "Exchange."
-        #         )
-        ...
+        if not hasattr(exchange, "name"):
+            raise TypeError(
+                "You stupid monkey, select the 'exchange' "
+                "from the subclasses of class Exchange"
+            )
 
     # }}}
-    @classmethod  # __checkAssetType# {{{
-    def __checkAssetType(cls, asset_type):
-        if not isinstance(asset_type, AssetType):
+    @classmethod  # __checkInstrumentType# {{{
+    def __checkInstrumentType(cls, itype):
+        if not isinstance(itype, Instrument.Type):
             raise TypeError(
-                "You stupid monkey, select the 'asset_type' from the enum "
-                "AssetType."
+                "You stupid monkey, select the 'itype' from the enum "
+                "Instrument.Type."
             )
 
     # }}}
@@ -311,11 +301,12 @@ class Data:
             )
 
     # }}}
-    @classmethod  # __checkID# {{{
-    def __checkID(cls, ID):
-        if not isinstance(ID, InstrumentId):
+    @classmethod  # __checkInstrument# {{{
+    def __checkInstrument(cls, instrument):
+        if not isinstance(instrument, Instrument):
             raise TypeError(
-                "You stupid monkey, use type InstrumentId for argument 'ID'"
+                "You stupid monkey, use type Instrument "
+                "for argument 'instrument'"
             )
 
     # }}}
@@ -355,6 +346,12 @@ class Data:
                 "DataType."
             )
 
+        if in_type.toTimeDelta() >= out_type.toTimeDelta():
+            raise ValueError(
+                f"You're still stupid monkey, how the fuck you want to "
+                f"convert {in_type} -> {out_type} ???"
+            )
+
     # }}}
     @classmethod  # __checkBeginEnd# {{{
     def __checkBeginEnd(cls, begin: datetime, end: datetime):
@@ -368,8 +365,8 @@ class Data:
             )
         if begin > end:
             raise ValueError(
-                f"You're still a stupid monkey, how the fuck you to get data "
-                f"data from '{begin}' to '{end}'?"
+                f"You're still a stupid monkey, how the fuck you want "
+                f"from '{begin}' to '{end}'?"
             )
         assert begin.tzinfo == UTC
         assert end.tzinfo == UTC

@@ -24,7 +24,10 @@ def test_DataSource():  # {{{
 # }}}
 def test_DataType():  # {{{
     data_type = DataType.BAR_D
+    assert data_type.name == "BAR_D"
     assert data_type.value == "D"
+    assert str(data_type) == "D"
+
     assert data_type.toTimeDelta() == timedelta(days=1)
 
     from_str_data_type = DataType.fromStr("1M")
@@ -40,41 +43,63 @@ def test_Exchange():  # {{{
     assert spb.name == "SPB"
     assert moex != spb
 
+    from_str = Exchange.fromStr("MOEX")
+    assert moex == from_str
+
 
 # }}}
-def test_AssetType():  # {{{
-    share = AssetType.SHARE
-    index = AssetType.INDEX
+def test_InstrumentType():  # {{{
+    share = Instrument.Type.SHARE
+    index = Instrument.Type.INDEX
     assert share.name == "SHARE"
     assert index.name == "INDEX"
     assert share != index
     assert share == share
 
+    bond = Instrument.Type.fromStr("BOND")
+    assert bond.name == "BOND"
+
 
 # }}}
 
 
-@pytest.mark.asyncio  # test_InstrumentId  # {{{
-async def test_InstrumentId():
-    sber = InstrumentId(
-        asset_type=AssetType.SHARE,
-        exchange=Exchange.MOEX,
-        ticker="SBER",
-        figi="BBG004730N88",
-        name="Сбер Банк",
-    )
+@pytest.mark.asyncio  # test_Instrument  # {{{
+async def test_Instrument():
+    info = {
+        "exchange": "MOEX",
+        "type": "SHARE",
+        "ticker": "SBER",
+        "figi": "BBG004730N88",
+        "name": "Сбер Банк",
+        "lot": "10",
+        "min_price_step": "0.01",
+    }
 
-    assert sber.type == AssetType.SHARE
+    sber = Instrument(info)
+
     assert sber.exchange == Exchange.MOEX
+    assert sber.type == Instrument.Type.SHARE
     assert sber.ticker == "SBER"
     assert sber.figi == "BBG004730N88"
     assert sber.name == "Сбер Банк"
 
-    by_figi = await InstrumentId.byFigi("BBG004730N88")
+    by_figi = await Instrument.fromFigi("BBG004730N88")
     assert by_figi.name == sber.name
 
-    by_uid = await InstrumentId.byUid("cf1c6158-a303-43ac-89eb-9b1db8f96043")
+    by_uid = await Instrument.fromUid("cf1c6158-a303-43ac-89eb-9b1db8f96043")
     assert by_uid.ticker == "MVID"
+
+    by_ticker = await Instrument.fromTicker(
+        Exchange.MOEX, Instrument.Type.SHARE, "AFKS"
+    )
+    assert by_ticker.ticker == "AFKS"
+
+    # string
+    assert str(sber) == "MOEX-SHARE-SBER"
+
+    # operator ==
+    assert by_figi == sber
+    assert by_figi != by_uid
 
 
 # }}}
@@ -86,13 +111,13 @@ async def test_Data_cache(event_loop):
 # }}}
 @pytest.mark.asyncio  # test_Data_find  # {{{
 async def test_Data_find(event_loop):
-    id_list = await Data.find(AssetType.SHARE, Exchange.MOEX, "SBER")
+    id_list = await Data.find(Exchange.MOEX, Instrument.Type.SHARE, "SBER")
     assert len(id_list) == 1
     sber = id_list[0]
     assert sber.name == "Сбер Банк"
     assert sber.figi == "BBG004730N88"
 
-    id_list = await Data.find(AssetType.INDEX, Exchange.MOEX, "IMOEX")
+    id_list = await Data.find(Exchange.MOEX, Instrument.Type.INDEX, "IMOEX")
     assert len(id_list) == 1
     imoex = id_list[0]
     assert imoex.name == "Индекс МосБиржи"
@@ -100,48 +125,25 @@ async def test_Data_find(event_loop):
 
 
 # }}}
-@pytest.mark.asyncio  # test_Data_info  # {{{
-async def test_Data_info(event_loop):
-    id_list = await Data.find(AssetType.SHARE, Exchange.MOEX, "GAZP")
-    assert len(id_list) == 1
-    gazp_id = id_list[0]
-
-    full_info = await Data.info(gazp_id)
-    assert full_info["uid"] == "962e2a95-02a9-4171-abd7-aa198dbe643a"
-    assert full_info["short_enabled_flag"]
-    assert full_info["lot"] == 10
-    # and more other keys...
-
-    id_list = await Data.find(AssetType.INDEX, Exchange.MOEX, "IMOEX")
-    assert len(id_list) == 1
-    imoex = id_list[0]
-
-    full_info = await Data.info(imoex)
-    assert full_info["CURRENCYID"] == "RUB"
-    assert full_info["BOARDID"] == "SNDX"
-    # and more other keys...
-
-
-# }}}
 @pytest.mark.asyncio  # test_Data_firstDateTime  # {{{
 async def test_Data_firstDateTime(event_loop):
-    id_list = await Data.find(AssetType.SHARE, Exchange.MOEX, "SBER")
+    id_list = await Data.find(Exchange.MOEX, Instrument.Type.SHARE, "SBER")
     assert len(id_list) == 1
     sber = id_list[0]
 
     dt_d_moex = await Data.firstDateTime(
-        DataSource.MOEX, DataType.BAR_D, sber
+        DataSource.MOEX, sber, DataType.BAR_D
     )
     dt_1m_moex = await Data.firstDateTime(
-        DataSource.MOEX, DataType.BAR_1M, sber
+        DataSource.MOEX, sber, DataType.BAR_1M
     )
     assert dt_1m_moex > dt_d_moex
 
     dt_d_tinkoff = await Data.firstDateTime(
-        DataSource.TINKOFF, DataType.BAR_D, sber
+        DataSource.TINKOFF, sber, DataType.BAR_D
     )
     dt_1m_tinkoff = await Data.firstDateTime(
-        DataSource.TINKOFF, DataType.BAR_1M, sber
+        DataSource.TINKOFF, sber, DataType.BAR_1M
     )
     assert dt_1m_tinkoff > dt_d_tinkoff
 
@@ -149,17 +151,17 @@ async def test_Data_firstDateTime(event_loop):
 # }}}
 @pytest.mark.asyncio  # test_Data_download  # {{{
 async def test_Data_download():
-    id_list = await Data.find(AssetType.SHARE, Exchange.MOEX, "ABRD")
+    id_list = await Data.find(Exchange.MOEX, Instrument.Type.SHARE, "ABRD")
     abrd = id_list[0]
 
     # Download one asset, one year, timeframe D, from MOEX
-    await Data.download(DataSource.MOEX, DataType.BAR_D, abrd, 2023)
+    await Data.download(DataSource.MOEX, abrd, DataType.BAR_D, 2023)
 
 
 # }}}
 @pytest.mark.asyncio  # test_Data_convert  # {{{
 async def test_Data_convert():
-    id_list = await Data.find(AssetType.SHARE, Exchange.MOEX, "ABRD")
+    id_list = await Data.find(Exchange.MOEX, Instrument.Type.SHARE, "ABRD")
     abrd = id_list[0]
 
     # convert ABRD D -> M
@@ -169,7 +171,7 @@ async def test_Data_convert():
 # }}}
 @pytest.mark.asyncio  # test_Data_request  # {{{
 async def test_Data_request():
-    id_list = await Data.find(AssetType.SHARE, Exchange.MOEX, "ABRD")
+    id_list = await Data.find(Exchange.MOEX, Instrument.Type.SHARE, "ABRD")
     abrd = id_list[0]
 
     # request period is half open [begin, end)  (august 2023)
@@ -189,7 +191,7 @@ async def test_Data_request():
 # }}}
 @pytest.mark.asyncio  # test_Data_delete  # {{{
 async def test_Data_delete():
-    id_list = await Data.find(AssetType.SHARE, Exchange.MOEX, "ABRD")
+    id_list = await Data.find(Exchange.MOEX, Instrument.Type.SHARE, "ABRD")
     abrd = id_list[0]
 
     await Data.delete(abrd, DataType.BAR_D)

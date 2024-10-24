@@ -22,13 +22,18 @@ CREATE TABLE IF NOT EXISTS "InstrumentInfo" ( -- {{{
 CREATE TABLE IF NOT EXISTS "Exchange" ( -- {{{
     name text PRIMARY KEY
     );
+    INSERT INTO "Exchange" (name)
+    VALUES
+        ('MOEX'),
+        ('SPB');
 -- }}}
 CREATE TABLE IF NOT EXISTS "Asset" ( -- {{{
     figi text PRIMARY KEY,
     type "Instrument.Type" NOT NULL,
     exchange text REFERENCES "Exchange"(name),
     ticker text NOT NULL,
-    name text NOT NULL
+    name text NOT NULL,
+    info jsonb NOT NULL
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "AssetList" ( -- {{{
@@ -36,7 +41,7 @@ CREATE TABLE IF NOT EXISTS "AssetList" ( -- {{{
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "AssetList-Asset" ( -- {{{
-    name text REFERENCES "AssetList"(name),
+    name text REFERENCES "AssetList"(name) ON DELETE CASCADE,
     figi text REFERENCES "Asset"(figi)
     );
 -- }}}
@@ -66,7 +71,7 @@ CREATE TABLE IF NOT EXISTS "StrategySet" ( -- {{{
 -- }}}
 CREATE TABLE IF NOT EXISTS "StrategySet-Strategy" ( -- {{{
     name        text REFERENCES "StrategySet"(name),
-    strategy    integer REFERENCES "Strategy"(strategy_id),
+    strategy    integer REFERENCES "Strategy"(strategy_id) ON DELETE CASCADE,
     figi        text REFERENCES "Asset"(figi),
     long        bool NOT NULL,
     short       bool NOT NULL
@@ -126,7 +131,7 @@ CREATE TABLE IF NOT EXISTS "Order" ( -- {{{
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "Transaction" ( -- {{{
-    order_id        text REFERENCES "Order"(order_id),
+    order_id        text REFERENCES "Order"(order_id) ON DELETE CASCADE,
     dt              TIMESTAMP WITH TIME ZONE,
     price           float,
     quantity        integer,

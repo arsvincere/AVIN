@@ -10,6 +10,9 @@ from datetime import UTC, time
 
 
 class Exchange:
+    class _TEST_EXCHANGE:
+        name = "_TEST_EXCHANGE"
+
     class MOEX:
         name = "MOEX"
         SESSION_BEGIN = time(7, 0, tzinfo=UTC)
@@ -20,15 +23,12 @@ class Exchange:
     class SPB:
         name = "SPB"
 
-    class _TEST_EXCHANGE:
-        name = "_TEST_EXCHANGE"
-
     @classmethod  # fromStr {{{
     def fromStr(cls, string):
         types = {
+            "_TEST_EXCHANGE": Exchange._TEST_EXCHANGE,
             "MOEX": Exchange.MOEX,
             "SPB": Exchange.SPB,
-            "_TEST_EXCHANGE": Exchange._TEST_EXCHANGE,
         }
         return types[string]
 
