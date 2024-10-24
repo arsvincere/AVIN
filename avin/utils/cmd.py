@@ -289,7 +289,7 @@ class Cmd:  # {{{
 
     # }}}
     @staticmethod  # loadJson# {{{
-    def loadJson(file_path, decoder=None) -> object:
+    def loadJson(file_path, decoder=None):
         with open(file_path, encoding="utf-8") as file:
             obj = json.load(
                 fp=file,
