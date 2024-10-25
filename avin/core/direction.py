@@ -19,8 +19,8 @@ class Direction(enum.Enum):  # {{{
     @classmethod  # fromStr
     def fromStr(cls, string: str) -> Direction:
         directions = {
-            "BUY": cls.Direction.BUY,
-            "SELL": cls.Direction.SELL,
+            "BUY": cls.BUY,
+            "SELL": cls.SELL,
         }
         return directions[string]
 

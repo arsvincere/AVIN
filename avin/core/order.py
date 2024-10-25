@@ -12,10 +12,11 @@ import abc
 import enum
 from typing import Optional
 
+from avin.core.direction import Direction
 from avin.core.id import Id
 from avin.core.operation import Operation
 from avin.core.transaction import Transaction
-from avin.data import InstrumentId
+from avin.data import Instrument
 from avin.keeper import Keeper
 from avin.utils import AsyncSignal, logger
 
@@ -90,7 +91,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         order_type,
         account_name,
         direction,
-        asset_id,
+        instrument,
         lots,
         quantity,
         status,
@@ -107,7 +108,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         self.type = order_type
         self.account_name = account_name
         self.direction = direction
-        self.asset_id = asset_id
+        self.instrument = instrument
         self.lots = lots
         self.quantity = quantity
         self.status = status
@@ -137,7 +138,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             f"status={self.status.name} "
             f"acc={self.account_name} "
             f"{self.direction.name} "
-            f"{self.asset_id.ticker} "
+            f"{self.instrument.ticker} "
             f"{self.exec_lots}/{self.lots} lot"
         )
 
@@ -263,11 +264,11 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     async def __marketOrderFromRecord(cls, record):
         logger.debug(f"Order.__marketOrderFromRecord({record})")
 
-        ID = await InstrumentId.byFigi(figi=record["figi"])
+        instrument = await Instrument.fromFigi(figi=record["figi"])
         order = MarketOrder(
             account_name=record["account"],
-            direction=Order.Direction.fromStr(record["direction"]),
-            asset_id=ID,
+            direction=Direction.fromStr(record["direction"]),
+            instrument=instrument,
             lots=record["lots"],
             quantity=record["quantity"],
             status=Order.Status.fromStr(record["status"]),
@@ -285,11 +286,11 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     async def __limitOrderFromRecord(cls, record):
         logger.debug(f"Order.__limitOrderFromRecord({record})")
 
-        ID = await InstrumentId.byFigi(figi=record["figi"])
+        instrument = await Instrument.byFigi(figi=record["figi"])
         order = LimitOrder(
             account_name=record["account"],
-            direction=Order.Direction.fromStr(record["direction"]),
-            asset_id=ID,
+            direction=Direction.fromStr(record["direction"]),
+            instrument=instrument,
             lots=record["lots"],
             quantity=record["quantity"],
             price=record["price"],
@@ -308,11 +309,11 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     async def __stopOrderFromRecord(cls, record):
         logger.debug(f"Order.__stopOrderFromRecord({record})")
 
-        ID = await InstrumentId.byFigi(figi=record["figi"])
+        instrument = await Instrument.byFigi(figi=record["figi"])
         order = StopOrder(
             account_name=record["account"],
-            direction=Order.Direction.fromStr(record["direction"]),
-            asset_id=ID,
+            direction=Direction.fromStr(record["direction"]),
+            instrument=instrument,
             lots=record["lots"],
             quantity=record["quantity"],
             stop_price=record["stop_price"],
@@ -332,11 +333,11 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     async def __stopLossFromRecord(cls, record):
         logger.debug(f"Order.__stopLossFromRecord({record})")
 
-        ID = await InstrumentId.byFigi(figi=record["figi"])
+        instrument = await Instrument.byFigi(figi=record["figi"])
         order = StopLoss(
             account_name=record["account"],
-            direction=Order.Direction.fromStr(record["direction"]),
-            asset_id=ID,
+            direction=Direction.fromStr(record["direction"]),
+            instrument=instrument,
             lots=record["lots"],
             quantity=record["quantity"],
             stop_price=record["stop_price"],
@@ -356,11 +357,11 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     async def __takeProfitFromRecord(cls, record):
         logger.debug(f"Order.__takeProfitFromRecord({record})")
 
-        ID = await InstrumentId.byFigi(figi=record["figi"])
+        instrument = await Instrument.byFigi(figi=record["figi"])
         order = TakeProfit(
             account_name=record["account"],
-            direction=Order.Direction.fromStr(record["direction"]),
-            asset_id=ID,
+            direction=Direction.fromStr(record["direction"]),
+            instrument=instrument,
             lots=record["lots"],
             quantity=record["quantity"],
             stop_price=record["stop_price"],
@@ -384,8 +385,8 @@ class MarketOrder(Order):  # {{{
     def __init__(
         self,
         account_name: str,
-        direction: Order.Direction,
-        asset_id: InstrumentId,
+        direction: Direction,
+        instrument: Instrument,
         lots: int,
         quantity: int,
         status: Order.Status = Order.Status.NEW,
@@ -405,7 +406,7 @@ class MarketOrder(Order):  # {{{
             Order.Type.MARKET,
             account_name,
             direction,
-            asset_id,
+            instrument,
             lots,
             quantity,
             status,
@@ -424,8 +425,8 @@ class LimitOrder(Order):  # {{{
     def __init__(
         self,
         account_name: str,
-        direction: Order.Direction,
-        asset_id: InstrumentId,
+        direction: Direction,
+        instrument: Instrument,
         lots: int,
         quantity: int,
         price: float,
@@ -442,7 +443,7 @@ class LimitOrder(Order):  # {{{
             Order.Type.LIMIT,
             account_name,
             direction,
-            asset_id,
+            instrument,
             lots,
             quantity,
             status,
@@ -462,8 +463,8 @@ class StopOrder(Order):  # {{{
     def __init__(
         self,
         account_name: str,
-        direction: Order.Direction,
-        asset_id: InstrumentId,
+        direction: Direction,
+        instrument: Instrument,
         lots: int,
         quantity: int,
         stop_price: float,
@@ -481,7 +482,7 @@ class StopOrder(Order):  # {{{
             Order.Type.STOP,
             account_name,
             direction,
-            asset_id,
+            instrument,
             lots,
             quantity,
             status,
@@ -502,8 +503,8 @@ class StopLoss(Order):  # {{{
     def __init__(
         self,
         account_name: str,
-        direction: Order.Direction,
-        asset_id: InstrumentId,
+        direction: Direction,
+        instrument: Instrument,
         lots: int,
         quantity: int,
         stop_price: float,
@@ -521,7 +522,7 @@ class StopLoss(Order):  # {{{
             Order.Type.STOP_LOSS,
             account_name,
             direction,
-            asset_id,
+            instrument,
             lots,
             quantity,
             status,
@@ -542,8 +543,8 @@ class TakeProfit(Order):  # {{{
     def __init__(
         self,
         account_name: str,
-        direction: Order.Direction,
-        asset_id: InstrumentId,
+        direction: Direction,
+        instrument: Instrument,
         lots: int,
         quantity: int,
         stop_price: float,
@@ -557,7 +558,7 @@ class TakeProfit(Order):  # {{{
         broker_id: str = "",
         transactions=Optional[list],
     ):
-        # TODO: InstrumentId.min_price_step - все таки надо грузить
+        # TODO: Instrument.min_price_step - все таки надо грузить
         # сразу при создании из базы, иначе тут жопа, каждый раз загружать
         # эту хуйню...
         # инфо же один хер загружается - так вот пусть к инфо полю
@@ -569,7 +570,7 @@ class TakeProfit(Order):  # {{{
             Order.Type.TAKE_PROFIT,
             account_name,
             direction,
-            asset_id,
+            instrument,
             lots,
             quantity,
             status,

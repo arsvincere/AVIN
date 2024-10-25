@@ -36,7 +36,7 @@ async def test_Tinkoff(event_loop):
     assert money > 0
     # }}}
     # post MarketOrder buy then sell{{{
-    mvid = await Asset.byTicker(AssetType.SHARE, Exchange.MOEX, "MVID")
+    mvid = await Asset.byTicker(Instrument.Type.SHARE, Exchange.MOEX, "MVID")
     await mvid.cacheInfo()
     order_id = Id.newId()
     order = MarketOrder(

@@ -11,6 +11,7 @@ from avin.core.asset import Asset, AssetList, Index, Share
 from avin.core.bar import Bar
 from avin.core.broker import Broker
 from avin.core.chart import Chart
+from avin.core.direction import Direction
 from avin.core.event import Event, NewBarEvent, TransactionEvent
 from avin.core.id import Id
 from avin.core.operation import Operation
@@ -43,6 +44,7 @@ __all__ = (
     "Index",
     "Share",
     "AssetList",
+    "Direction",
     "Order",
     "MarketOrder",
     "LimitOrder",

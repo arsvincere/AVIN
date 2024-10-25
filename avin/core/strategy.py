@@ -19,6 +19,7 @@ from typing import Iterator, Optional
 from avin.config import Usr
 from avin.core.account import Account
 from avin.core.asset import Asset, AssetList
+from avin.core.direction import Direction
 from avin.core.id import Id
 from avin.core.order import MarketOrder, Order, StopLoss, TakeProfit
 from avin.core.trade import Trade, TradeList
@@ -53,6 +54,8 @@ class Strategy(ABC):  # {{{
         self.__name = name
         self.__version = version
         self.__cfg = None
+        self.__account = None
+        self.__active_trades = TradeList(name="")
 
     # }}}
     @property  # @abstractmethod timeframe_list  # {{{
@@ -82,7 +85,7 @@ class Strategy(ABC):  # {{{
     @abstractmethod  # onTradeOpened  # {{{
     async def onTradeOpened(self, trade: Trade):
         logger.info(f"Trade opened: '{trade}'")
-        logger.info(f"Trade open dt: '{trade.openDatetime()}'")
+        logger.info(f"Trade open dt: '{trade.openDateTime()}'")
 
     # }}}
     @abstractmethod  # onTradeClosed  # {{{
@@ -121,14 +124,6 @@ class Strategy(ABC):  # {{{
         return self.__cfg
 
     # }}}
-    @property  # timeframe_list  # {{{
-    def timeframe_list(self):
-        # TODO: здесь нужно преобразование в таймфреймы делать
-        # а не в трейдере. Манипулировать данными - Чем ближе к источнику
-        # тем лучше.
-        return self.__cfg["timeframe_list"]
-
-    # }}}
     @property  # active_trades  # {{{
     def active_trades(self):
         return self.__active_trades
@@ -152,8 +147,23 @@ class Strategy(ABC):  # {{{
         self.__account = account
 
     # }}}
+    def setTradeList(self, tlist: TradeList) -> None:  # {{{
+        logger.info(f":: {self} set {tlist}")
+        self.__active_trades = tlist
+        # TODO: active trades - а самое ли это удачное название
+        # что вообще делает эта переменная?
+        # Трейды - должны иметь трейд лист куда они сохраняются
+        # для этого стратегии нужно знать название трейд листа
+        # с которым она работает, но допустим пусть она вообще
+        # сам трейд лист принимает как аргрумент, аналогично как
+        # и аккаунт.. хотя использует только имя трейд листа
+        # ок.
+        # Стратегия должна иметь доступ к своим активным трейдам...
+        #
+
+    # }}}
     async def createTrade(  # {{{
-        self, dt: datetime, trade_type: Trade.Type, asset_id: InstrumentId
+        self, dt: datetime, trade_type: Trade.Type, instrument: Instrument
     ):
         logger.debug("Strategy.createTrade()")
 
@@ -162,7 +172,7 @@ class Strategy(ABC):  # {{{
             strategy=self.name,
             version=self.version,
             trade_type=trade_type,
-            asset_id=asset_id,
+            instrument=instrument,
             status=Trade.Status.INITIAL,
             trade_id=Id.newId(),
         )
@@ -178,19 +188,19 @@ class Strategy(ABC):  # {{{
 
     # }}}
     async def createMarketOrder(  # {{{
-        self, direction: Order.Direction, asset_id: InstrumentId, lots: int
+        self, direction: Direction, instrument: Instrument, lots: int
     ) -> MarketOrder:
         logger.debug("Strategy.createMarketOrder()")
 
-        if not asset_id.info:
-            await asset_id.cacheInfo()
+        if not instrument.info:
+            await instrument.cacheInfo()
 
         order = MarketOrder(
             account_name=self.account.name,
             direction=direction,
-            asset_id=asset_id,
+            instrument=instrument,
             lots=lots,
-            quantity=lots * asset_id.lot,
+            quantity=lots * instrument.lot,
             status=Order.Status.NEW,
             order_id=Id.newId(),
         )
@@ -207,25 +217,25 @@ class Strategy(ABC):  # {{{
 
         # TODO:
         # блять надо с этим что то делать
-        if not trade.asset_id.info:
-            await trade.asset_id.cacheInfo()
+        if not trade.instrument.info:
+            await trade.instrument.cacheInfo()
 
         if trade.type == Trade.Type.LONG:
-            direction = Order.Direction.SELL
+            direction = Direction.SELL
         else:
-            direction = Order.Direction.BUY
+            direction = Direction.BUY
 
         if trade.type == Trade.Type.LONG:
             stop = trade.average() * (1 - stop_percent / 100)
-            stop = round_price(stop, trade.asset_id.min_price_step)
+            stop = round_price(stop, trade.instrument.min_price_step)
         else:
             stop = trade.average() * (1 + stop_percent / 100)
-            stop = round_price(stop, trade.asset_id.min_price_step)
+            stop = round_price(stop, trade.instrument.min_price_step)
 
         stop_loss = StopLoss(
             account_name=self.account.name,
             direction=direction,
-            asset_id=trade.asset_id,
+            instrument=trade.instrument,
             lots=trade.lots(),
             quantity=trade.quantity(),
             stop_price=stop,
@@ -246,25 +256,25 @@ class Strategy(ABC):  # {{{
     ) -> TakeProfit:
         logger.debug("Strategy.createStopLoss()")
 
-        if not trade.asset_id.info:
-            await trade.asset_id.cacheInfo()
+        if not trade.instrument.info:
+            await trade.instrument.cacheInfo()
 
         if trade.type == Trade.Type.LONG:
-            direction = Order.Direction.SELL
+            direction = Direction.SELL
         else:
-            direction = Order.Direction.BUY
+            direction = Direction.BUY
 
         if trade.type == Trade.Type.LONG:
             take = trade.average() * (1 + take_percent / 100)
-            take = round_price(take, trade.asset_id.min_price_step)
+            take = round_price(take, trade.instrument.min_price_step)
         else:
             take = trade.average() * (1 - take_percent / 100)
-            take = round_price(take, trade.asset_id.min_price_step)
+            take = round_price(take, trade.instrument.min_price_step)
 
         take_profit = TakeProfit(
             account_name=self.account.name,
             direction=direction,
-            asset_id=trade.asset_id,
+            instrument=trade.instrument,
             lots=trade.lots(),
             quantity=trade.quantity(),
             stop_price=take,
@@ -320,9 +330,9 @@ class Strategy(ABC):  # {{{
 
         # create order
         lots = abs(trade.lots())
-        d = Order.Direction.SELL if trade.lots() > 0 else Order.Direction.BUY
+        d = Direction.SELL if trade.lots() > 0 else Direction.BUY
         order = await self.createMarketOrder(
-            direction=d, asset_id=trade.asset_id, lots=lots
+            direction=d, instrument=trade.instrument, lots=lots
         )
 
         # attach & post this order

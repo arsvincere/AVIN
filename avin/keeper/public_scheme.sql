@@ -54,10 +54,9 @@ CREATE TABLE IF NOT EXISTS "Data" ( -- {{{
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "Strategy" ( -- {{{
-    strategy_id SERIAL PRIMARY KEY,
-    name text,
-    version text,
-    CONSTRAINT strategy_unique UNIQUE (name, version)
+    name text NOT NULL,
+    version text NOT NULL,
+    CONSTRAINT strategy_pkey PRIMARY KEY (name, version)
     );
     INSERT INTO "Strategy" (name, version)
     VALUES
@@ -99,12 +98,17 @@ CREATE TABLE IF NOT EXISTS "Account" ( -- {{{
 CREATE TABLE IF NOT EXISTS "TradeList" ( -- {{{
     name text PRIMARY KEY
     );
+    INSERT INTO "TradeList" (name)
+    VALUES
+        ('_unittest');
+
 -- }}}
 CREATE TABLE IF NOT EXISTS "Trade" ( -- {{{
     trade_id    text PRIMARY KEY,
     tlist       text REFERENCES "TradeList"(name),
-    strategy    integer REFERENCES "Strategy"(strategy_id),
     figi        text REFERENCES "Asset"(figi),
+    strategy    text,
+    version     text,
     dt          TIMESTAMP WITH TIME ZONE,
     status      "Trade.Status",
     type        "Trade.Type"
@@ -113,6 +117,8 @@ CREATE TABLE IF NOT EXISTS "Trade" ( -- {{{
 CREATE TABLE IF NOT EXISTS "Order" ( -- {{{
     order_id        text PRIMARY KEY,
     trade_id        text REFERENCES "Trade"(trade_id) ON DELETE CASCADE,
+    account         text REFERENCES "Account"(name),
+    figi            text REFERENCES "Asset"(figi),
 
     type            "Order.Type",
     status          "Order.Status",
@@ -141,6 +147,9 @@ CREATE TABLE IF NOT EXISTS "Transaction" ( -- {{{
 CREATE TABLE IF NOT EXISTS "Operation" ( -- {{{
     operation_id    text PRIMARY KEY,
     order_id        text REFERENCES "Order"(order_id) ON DELETE CASCADE,
+    trade_id        text REFERENCES "Trade"(trade_id) ON DELETE CASCADE,
+    account         text REFERENCES "Account"(name),
+    figi            text REFERENCES "Asset"(figi),
     dt              TIMESTAMP WITH TIME ZONE,
     direction       "Direction",
     lots            integer,

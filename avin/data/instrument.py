@@ -121,7 +121,7 @@ class Instrument:
     # }}}
     @property  # min_price_step# {{{
     def min_price_step(self):
-        return float(self.info["min_price_increment"])
+        return float(self.info["min_price_step"])
 
     # }}}
     @classmethod  # fromRecord# {{{
@@ -130,7 +130,7 @@ class Instrument:
 
         json_string = record["info"]
         info_dict = json.loads(json_string)
-        instrument = Instrument(info_dict)
+        instrument = cls(info_dict)
         return instrument
 
     # }}}
@@ -141,7 +141,7 @@ class Instrument:
         if not cls.__checkArgs(figi=figi):
             assert False
 
-        instr_list = await Keeper.get(Instrument, figi=figi)
+        instr_list = await Keeper.get(cls, figi=figi)
 
         assert len(instr_list) == 1
         instrument = instr_list[0]
@@ -158,7 +158,7 @@ class Instrument:
             assert False
 
         instr_list = await Keeper.get(
-            Instrument,
+            cls,
             exchange=exchange,
             itype=itype,
             ticker=ticker,
@@ -170,7 +170,7 @@ class Instrument:
 
     # }}}
     @classmethod  # fromUid# {{{
-    async def fromUid(cls, uid: str) -> Instrument | None:
+    async def fromUid(cls, uid: str) -> Instrument:
         logger.debug(f"{cls.__name__}.fromUid()")
         logger.warning(f"DEPRICATED: {cls.__name__}.byUid(), use 'byFigi()'")
 
@@ -181,7 +181,7 @@ class Instrument:
         assert len(info_list) == 1
         info = info_list[0]
 
-        instrument = Instrument(info)
+        instrument = cls(info)
         return instrument
 
     # }}}

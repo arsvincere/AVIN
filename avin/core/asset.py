@@ -8,9 +8,10 @@
 
 from __future__ import annotations
 
+import json
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, ClassVar, Optional, Union
+from typing import Optional, Union
 
 import pandas as pd
 
@@ -18,26 +19,23 @@ from avin.core.chart import Chart
 from avin.core.event import NewBarEvent
 from avin.core.timeframe import TimeFrame
 from avin.data import (
-    AssetType,
     Data,
     DataType,
-    Exchange,
-    InstrumentId,
+    Instrument,
 )
 from avin.exceptions import AssetError
 from avin.keeper import Keeper
 from avin.utils import AsyncSignal, logger, now
 
 
-class Asset(ABC):  # {{{
+class Asset(Instrument, ABC):  # {{{
     @abstractmethod  # __init__# {{{
-    def __init__(self, ID: InstrumentId):
+    def __init__(self, info: dict):
         logger.debug(f"{self.__class__.name}.__init__()")
+        Instrument.__init__(self, info)
 
         # private fields
-        self.__ID: InstrumentId = ID
         self.__charts: dict[TimeFrame, Chart] = dict()
-        self.__info: dict[str, Any] | None = None
 
         # signals
         self.newBar1m = AsyncSignal(Asset, Chart)
@@ -48,59 +46,6 @@ class Asset(ABC):  # {{{
         self.newBarW = AsyncSignal(Asset, Chart)
         self.newBarM = AsyncSignal(Asset, Chart)
         self.updated = AsyncSignal(Asset)
-
-    # }}}
-    def __str__(self):  # {{{
-        return str(self.__ID)
-
-    # }}}
-    def __eq__(self, other):  # {{{
-        return self.__ID == other.__ID
-
-    # }}}
-    @property  # ID# {{{
-    def ID(self):
-        return self.__ID
-
-    # }}}
-    @property  # exchange# {{{
-    def exchange(self):
-        return self.__ID.exchange
-
-    # }}}
-    @property  # type# {{{
-    def type(self):
-        return self.__ID.type
-
-    # }}}
-    @property  # ticker# {{{
-    def ticker(self):
-        return self.__ID.ticker
-
-    # }}}
-    @property  # figi# {{{
-    def figi(self):
-        return self.__ID.figi
-
-    # }}}
-    @property  # name# {{{
-    def name(self):
-        return self.__ID.name
-
-    # }}}
-    @property  # info# {{{
-    def info(self):
-        return self.__ID.info
-
-    # }}}
-    @property  # lot# {{{
-    def lot(self):
-        return self.__ID.lot
-
-    # }}}
-    @property  # min_price_step# {{{
-    def min_price_step(self):
-        return self.__ID.min_price_step
 
     # }}}
     def chart(self, timeframe: Union[TimeFrame, str]) -> Chart:  # {{{
@@ -141,7 +86,7 @@ class Asset(ABC):  # {{{
         timeframe, begin, end = self.__formatArgs(timeframe, begin, end)
 
         # load chart and keep it
-        chart = await Chart.load(self.ID, timeframe, begin, end)
+        chart = await Chart.load(self, timeframe, begin, end)
         self.__charts[timeframe] = chart
 
     # }}}
@@ -157,7 +102,7 @@ class Asset(ABC):  # {{{
         timeframe, begin, end = self.__formatArgs(timeframe, begin, end)
 
         # load chart and return it
-        chart = await Chart.load(self.ID, timeframe, begin, end)
+        chart = await Chart.load(self, timeframe, begin, end)
         return chart
 
     # }}}
@@ -179,7 +124,7 @@ class Asset(ABC):  # {{{
             raise TypeError(f"Invalid timeframe='{timeframe}'")
 
         # request bars records
-        records = await Data.request(self.ID, data_type, begin, end)
+        records = await Data.request(self, data_type, begin, end)
 
         # create & return DataFrame
         df = pd.DataFrame([dict(r) for r in records])
@@ -217,32 +162,35 @@ class Asset(ABC):  # {{{
     def fromRecord(cls, record: asyncpg.Record) -> Asset:
         logger.debug(f"{cls.__name__}.fromRecord()")
 
-        ID = InstrumentId(
-            asset_type=AssetType.fromStr(record["type"]),
-            exchange=Exchange.fromStr(record["exchange"]),
-            ticker=record["ticker"],
-            figi=record["figi"],
-            name=record["name"],
-        )
+        json_string = record["info"]
+        info_dict = json.loads(json_string)
 
-        asset = Asset.byId(ID)
+        asset = cls.__getCertainAssetClass(info_dict)
         return asset
 
     # }}}
-    @classmethod  # byId #{{{
-    def byId(cls, ID: InstrumentId) -> Asset:
-        logger.debug(f"{cls.__name__}.byId()")
+    @classmethod  # fromInfo# {{{
+    def fromInfo(cls, info: dict) -> Asset:
+        logger.debug(f"{cls.__name__}.fromInfo()")
 
-        asset = cls.__getCertainTypeAsset(ID)
+        asset = cls.__getCertainAssetClass(info)
         return asset
 
     # }}}
-    @classmethod  # byTicker# {{{
-    async def byTicker(
-        cls, asset_type: AssetType, exchange: ClassVar, ticker: str
+    @classmethod  # fromInstrument# {{{
+    def fromInstrument(cls, instrument: Instrument) -> Asset:
+        logger.debug(f"{cls.__name__}.fromInstrument()")
+
+        asset = cls.__getCertainAssetClass(instrument.info)
+        return asset
+
+    # }}}
+    @classmethod  # fromTicker# {{{
+    async def fromTicker(
+        cls, exchange: ClassVar, asset_type: Asset.Type, ticker: str
     ) -> Asset:
-        logger.debug(f"{cls.__name__}.byTicker()")
-        assert isinstance(asset_type, AssetType)
+        logger.debug(f"{cls.__name__}.fromTicker()")
+        assert isinstance(asset_type, cls.Type)
         assert hasattr(exchange, "name")
         assert isinstance(ticker, str)
 
@@ -252,20 +200,20 @@ class Asset(ABC):  # {{{
         return asset
 
     # }}}
-    @classmethod  # byFigi# {{{
-    async def byFigi(cls, figi: str) -> Asset:
-        logger.debug(f"{cls.__name__}.byFigi()")
+    @classmethod  # fromFigi# {{{
+    async def fromFigi(cls, figi: str) -> Asset:
+        logger.debug(f"{cls.__name__}.fromFigi()")
 
         asset = await Keeper.get(Asset, figi=figi)
         return asset
 
     # }}}
-    @classmethod  # byUid# {{{
-    async def byUid(cls, uid: str) -> Asset:
-        logger.debug(f"{cls.__name__}.byUid()")
+    @classmethod  # fromUid# {{{
+    async def fromUid(cls, uid: str) -> Asset:
+        logger.debug(f"{cls.__name__}.fromUid()")
 
-        ID = await InstrumentId.byUid(uid)
-        asset = Asset.byId(ID)
+        instrument = await Instrument.fromUid(uid)
+        asset = cls.__getCertainAssetClass(instrument.info)
         return asset
 
     # }}}
@@ -302,16 +250,17 @@ class Asset(ABC):  # {{{
         return timeframe, begin, end
 
     # }}}
-    @classmethod  # __getCertainTypeAsset# {{{
-    def __getCertainTypeAsset(cls, ID: InstrumentId):
-        logger.debug(f"{cls.__name__}.__getCertainTypeAsset()")
+    @classmethod  # __getCertainAssetClass# {{{
+    def __getCertainAssetClass(cls, info: dict):
+        logger.debug(f"{cls.__name__}.__getCertainAssetClass()")
 
-        if ID.type == AssetType.INDEX:
-            return Index(ID)
-        elif ID.type == AssetType.SHARE:
-            return Share(ID)
+        t = info["type"]
+        if t == cls.Type.INDEX.name:
+            return Index(info)
+        elif t == cls.Type.SHARE.name:
+            return Share(info)
 
-        logger.critical(f"Unknown asset type={ID.type}")
+        logger.critical(f"Unknown asset type={t}")
         assert False
 
     # }}}
@@ -319,10 +268,11 @@ class Asset(ABC):  # {{{
 
 # }}}
 class Index(Asset):  # {{{
-    def __init__(self, ID: InstrumentId):  # {{{
+    def __init__(self, info: dict):  # {{{
         logger.debug(f"{self.__class__.name}.__init__()")
-        assert ID.type == AssetType.INDEX
-        super().__init__(ID)
+        assert info["type"] == Asset.Type.INDEX
+
+        super().__init__(info)
 
     # }}}
 
@@ -334,10 +284,11 @@ class Share(Asset):  # {{{
 
     # }}}
 
-    def __init__(self, ID: InstrumentId):  # {{{
+    def __init__(self, info: dict):  # {{{
         logger.debug(f"{self.__class__.name}.__init__()")
-        assert ID.type == AssetType.SHARE
-        super().__init__(ID)
+        assert info["type"] == Asset.Type.SHARE.name
+
+        super().__init__(info)
         self.__book = None
         self.__tic = None
 
@@ -367,7 +318,7 @@ class AssetList:  # {{{
 
     # }}}
     def __contains__(self, asset: Asset) -> bool:  # {{{
-        return any(i.ID == asset.ID for i in self.__assets)
+        return any(i == asset for i in self.__assets)
 
     # }}}
     def __len__(self):  # {{{
@@ -424,11 +375,11 @@ class AssetList:  # {{{
 
     # }}}
     def find(  # {{{
-        self, ID: InstrumentId | None = None, figi: str | None = None
+        self, instrument: Instrument | None = None, figi: str | None = None
     ) -> Asset | None:
         logger.debug(f"{self.__class__.__name__}.find()")
-        if ID:
-            return self.__findById(ID)
+        if instrument:
+            return self.__findById(instrument)
         if figi:
             asset = self.__findByFigi(figi)
             return asset
@@ -436,10 +387,10 @@ class AssetList:  # {{{
         assert False, "Bad arguments"
 
     # }}}
-    def __findById(self, ID: InstrumentId) -> Asset | None:  # {{{
+    def __findById(self, instrument: Instrument) -> Asset | None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__findById()")
         for i in self.__assets:
-            if i.ID == ID:
+            if i == instrument:
                 return i
 
         return None
@@ -455,23 +406,12 @@ class AssetList:  # {{{
 
     # }}}
     @classmethod  # fromRecord  # {{{
-    async def fromRecord(cls, record: asyncpg.Record) -> AssetList:
+    async def fromRecord(cls, name: str, record: asyncpg.Record) -> AssetList:
         logger.debug(f"{cls.__name__}.fromRecord()")
 
-        # TODO: Table "AssetList_Asset"
-        # тогда можно будет селектнуть все ассеты относящиеся к этому листу
-        # и объединить их фиги с данными из таблицы Asset
-        # и тогда кипер сможет возвращать name + list[Asset]
-        # и не будет этой кучи одиночных запросов по 1 ассету
-
-        # create asset list
-        name = record["name"]
-        figi_list = record["assets"]
         alist = cls(name)
-
-        # add assets
-        for figi in figi_list:
-            asset = await Asset.byFigi(figi)
+        for i in record:
+            asset = Asset.fromRecord(i)
             alist.add(asset)
 
         return alist
@@ -488,13 +428,8 @@ class AssetList:  # {{{
     async def load(cls, name: str) -> AssetList | None:
         logger.debug(f"{cls.__name__}.load()")
 
-        response = await Keeper.get(cls, name=name)
-        if len(response) == 1:  # response == [ AssetList, ]
-            return response[0]
-
-        # else: error, asset list not found
-        logger.error(f"Asset list '{name}' not found!")
-        return None
+        alist = await Keeper.get(cls, name=name)
+        return alist
 
     # }}}
     @classmethod  # delete  # {{{

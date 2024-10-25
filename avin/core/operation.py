@@ -8,41 +8,24 @@
 
 from __future__ import annotations
 
-import enum
 from datetime import datetime
 from typing import Optional
 
 from avin.config import Usr
+from avin.core.direction import Direction
 from avin.core.id import Id
-from avin.data import InstrumentId
+from avin.data import Instrument
 from avin.keeper import Keeper
 from avin.utils import logger
 
 
 class Operation:
-    class Direction(enum.Enum):  # {{{
-        UNDEFINE = 0
-        BUY = 1
-        SELL = 2
-
-        @classmethod  # fromStr# {{{
-        def fromStr(cls, string):
-            directions = {
-                "UNDEFINE": Operation.Direction.UNDEFINE,
-                "BUY": Operation.Direction.BUY,
-                "SELL": Operation.Direction.SELL,
-            }
-            return directions[string]
-
-        # }}}
-
-    # }}}
     def __init__(  # {{{
         self,
         account_name: str,
         dt: datetime,
         direction: Direction,
-        asset_id: InstrumentId,
+        instrument: Instrument,
         lots: int,
         quantity: int,
         price: float,
@@ -58,7 +41,7 @@ class Operation:
         self.account_name = account_name
         self.dt = dt
         self.direction = direction
-        self.asset_id = asset_id
+        self.instrument = instrument
         self.price = price
         self.lots = lots
         self.quantity = quantity
@@ -74,7 +57,7 @@ class Operation:
         usr_dt = self.dt + Usr.TIME_DIF
         str_dt = usr_dt.strftime("%Y-%m-%d %H:%M")
         string = (
-            f"{str_dt} {self.direction.name} {self.asset_id.ticker} "
+            f"{str_dt} {self.direction.name} {self.instrument.ticker} "
             f"{self.quantity} * {self.price} = {self.amount} "
             f"+ {self.commission}"
         )
@@ -91,13 +74,13 @@ class Operation:
     async def fromRecord(cls, record: asyncpg.Record) -> Operation:
         logger.debug(f"Operation.fromRecord({record})")
 
-        ID = await InstrumentId.byFigi(record["figi"])
+        instrument = await Instrument.fromFigi(record["figi"])
 
         op = Operation(
             account_name=record["account"],
             dt=record["dt"],
-            direction=Operation.Direction.fromStr(record["direction"]),
-            asset_id=ID,
+            direction=Direction.fromStr(record["direction"]),
+            instrument=instrument,
             lots=record["lots"],
             quantity=record["quantity"],
             price=record["price"],

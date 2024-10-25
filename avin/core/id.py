@@ -54,6 +54,7 @@ class Id:
         return ID
 
     # }}}
+
     @classmethod  # fromStr# {{{
     def fromStr(cls, id_value: str) -> Id:
         ID = Id(id_value)

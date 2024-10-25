@@ -65,8 +65,9 @@ def test_Range():  # {{{
 
 # }}}
 def test_Bar():  # {{{
-    bar = Bar("2023-01-01", 10, 12, 9, 11, 1000, chart=None)
-    assert bar.dt == datetime.fromisoformat("2023-01-01")
+    dt = datetime.fromisoformat("2023-01-01")
+    bar = Bar(dt, 10, 12, 9, 11, 1000, chart=None)
+    assert bar.dt == dt
     assert bar.open == 10
     assert bar.high == 12
     assert bar.low == 9
@@ -158,16 +159,20 @@ def test_NewBarEvent():  # {{{
 
 @pytest.mark.asyncio  # test_Chart  # {{{
 async def test_Chart(event_loop):
-    sber = await Asset.byTicker(AssetType.SHARE, Exchange.MOEX, "SBER")
+    sber = await Asset.fromTicker(
+        Exchange.MOEX, Instrument.Type.SHARE, "SBER"
+    )
     tf = TimeFrame("1M")
     begin = datetime(2023, 8, 1, 0, 0, tzinfo=UTC)
     end = datetime(2023, 9, 1, 0, 0, tzinfo=UTC)
-    bars = await Keeper.get(Bar, ID=sber, timeframe=tf, begin=begin, end=end)
+    bars = await Keeper.get(
+        Bar, instrument=sber, timeframe=tf, begin=begin, end=end
+    )
 
     # create chart
-    chart = Chart(sber.ID, tf, bars)
-    assert chart.ID == sber.ID
-    assert chart.ID.ticker == "SBER"
+    chart = Chart(sber, tf, bars)
+    assert chart.instrument == sber
+    assert chart.instrument.ticker == "SBER"
     assert chart.timeframe == tf
 
     assert chart.first.dt == datetime(2023, 8, 1, 6, 59, tzinfo=UTC)
@@ -214,36 +219,51 @@ async def test_Chart(event_loop):
 # }}}
 @pytest.mark.asyncio  # test_Asset  # {{{
 async def test_Asset(event_loop):
-    exchange = Exchange.MOEX
-    asset_type = AssetType.SHARE
-    ticker = "SBER"
-    figi = "BBG004730N88"
-    name = "Сбер Банк"
-    ID = InstrumentId(asset_type, exchange, ticker, figi, name)
+    info = {
+        "exchange": "MOEX",
+        "type": "SHARE",
+        "ticker": "SBER",
+        "figi": "BBG004730N88",
+        "name": "Сбер Банк",
+        "lot": "10",
+        "min_price_step": "0.01",
+    }
+    instrument = Instrument(info)
 
-    asset = Asset.byId(ID)
-    assert asset.exchange == exchange
-    assert asset.type == asset_type
-    assert asset.ticker == ticker
-    assert asset.figi == figi
-    assert asset.name == name
+    asset = Asset.fromInstrument(instrument)
+    assert asset.exchange == Exchange.MOEX
+    assert asset.type == Asset.Type.SHARE
+    assert asset.ticker == "SBER"
+    assert asset.figi == "BBG004730N88"
+    assert asset.name == "Сбер Банк"
+    assert asset.lot == 10
+    assert asset.min_price_step == 0.01
+    assert isinstance(asset, Share)
 
-    asset = await Asset.byFigi(figi)
-    assert asset.exchange == exchange
-    assert asset.type == asset_type
-    assert asset.ticker == ticker
-    assert asset.figi == figi
-    assert asset.name == name
+    asset = await Asset.fromFigi("BBG004730N88")
+    assert asset.exchange == Exchange.MOEX
+    assert asset.type == Asset.Type.SHARE
+    assert asset.ticker == "SBER"
+    assert asset.figi == "BBG004730N88"
+    assert asset.name == "Сбер Банк"
+    assert asset.lot == 10
+    assert asset.min_price_step == 0.01
+    assert isinstance(asset, Share)
 
-    asset = await Asset.byTicker(asset_type, exchange, ticker)
-    assert asset.exchange == exchange
-    assert asset.type == asset_type
-    assert asset.ticker == ticker
-    assert asset.figi == figi
-    assert asset.name == name
+    asset = await Asset.fromTicker(Exchange.MOEX, Asset.Type.SHARE, "SBER")
+    assert asset.exchange == Exchange.MOEX
+    assert asset.type == Asset.Type.SHARE
+    assert asset.ticker == "SBER"
+    assert asset.figi == "BBG004730N88"
+    assert asset.name == "Сбер Банк"
+    assert asset.lot == 10
+    assert asset.min_price_step == 0.01
+    assert isinstance(asset, Share)
 
     # load bars data as DataFrame
-    sber = await Asset.byTicker(AssetType.SHARE, Exchange.MOEX, "SBER")
+    sber = await Asset.fromTicker(
+        Exchange.MOEX, Instrument.Type.SHARE, "SBER"
+    )
     begin = datetime(2023, 1, 1, tzinfo=UTC)
     end = datetime(2023, 2, 1, tzinfo=UTC)
     dataframe = await sber.loadData(TimeFrame("D"), begin, end)
@@ -254,41 +274,33 @@ async def test_Asset(event_loop):
 @pytest.mark.asyncio  # test_Share  # {{{
 async def test_Share(event_loop):
     exchange = Exchange.MOEX
-    asset_type = AssetType.SHARE
-    id_list = await Data.find(asset_type, exchange, "SBER")
-    assert len(id_list) == 1
-    sber_id = id_list[0]
-    sber = Share(id_list[0])
+    asset_type = Asset.Type.SHARE
+    instr_list = await Data.find(exchange, asset_type, "SBER")
+    assert len(instr_list) == 1
+    instrument = instr_list[0]
+    sber = Share(instrument.info)
 
-    assert sber_id == sber.ID
+    assert instrument == sber
+    assert sber.info is not None
     assert sber.exchange == exchange
     assert sber.type == asset_type
     assert sber.ticker == "SBER"
     assert sber.name == "Сбер Банк"
     assert sber.figi == "BBG004730N88"
-
-    # info
-    # assert sber.info is None  # logger - error
-    await sber.ID.cacheInfo()
-    assert sber.info is not None
     assert sber.uid == "e6123145-9665-43e0-8413-cd61b8aa9b13"
     assert sber.min_price_step == 0.01
     assert sber.lot == 10
 
     await sber.cacheChart("D")
     assert sber.chart("D").timeframe == TimeFrame("D")
-    # assert sber.chart("1H")  # AssetError
 
     await sber.cacheChart("1H")
     assert sber.chart("1H").timeframe == TimeFrame("1H")
 
     sber.clearCache()
-    # assert sber.chart("1H")  # AssetError
-    # assert sber.chart("D")  # AssetError
 
     chart = await sber.loadChart("1M")
     assert chart.timeframe == TimeFrame("1M")
-    # assert sber.chart("1M")  # AssetError (loading not caching)
 
 
 # }}}
@@ -297,24 +309,33 @@ async def test_AssetList(event_loop):
     alist = AssetList(name="_unittest")
     assert alist.name == "_unittest"
     assert alist.assets == []
-    assert alist.count == 0
+    assert len(alist) == 0
 
-    afks = await Asset.byTicker(AssetType.SHARE, Exchange.MOEX, "AFKS")
-    sber = await Asset.byTicker(AssetType.SHARE, Exchange.MOEX, "SBER")
+    afks = await Asset.fromTicker(
+        Exchange.MOEX, Instrument.Type.SHARE, "AFKS"
+    )
+    aflt = await Asset.fromTicker(
+        Exchange.MOEX, Instrument.Type.SHARE, "AFLT"
+    )
+    sber = await Asset.fromTicker(
+        Exchange.MOEX, Instrument.Type.SHARE, "SBER"
+    )
 
     # add
     alist.add(afks)
-    assert alist.count == 1
+    assert len(alist) == 1
+    alist.add(aflt)
+    assert len(alist) == 2
 
     # no duplicating items
     alist.add(sber)
     # alist.add(sber)  # logger - warning
     # alist.add(sber)  # logger - warning
-    assert alist.count == 2
+    assert len(alist) == 3
 
     # getitem
     assert alist[0].ticker == "AFKS"
-    assert alist[1].ticker == "SBER"
+    assert alist[1].ticker == "AFLT"
 
     # iter
     for i in alist:
@@ -327,12 +348,12 @@ async def test_AssetList(event_loop):
     # remove
     alist.remove(sber)
     assert sber not in alist
-    assert alist.count == 1
+    assert len(alist) == 2
 
     # find by ID
-    result = alist.find(afks.ID)
+    result = alist.find(afks)
     assert result == afks
-    result = alist.find(sber.ID)
+    result = alist.find(sber)
     assert result is None
 
     # find by figi
@@ -345,7 +366,7 @@ async def test_AssetList(event_loop):
     # load
     loaded = await AssetList.load("_unittest")
     assert alist.name == loaded.name
-    assert alist.count == loaded.count
+    assert len(alist) == len(loaded)
     assert alist[0].ticker == loaded[0].ticker
 
     # copy
@@ -353,58 +374,58 @@ async def test_AssetList(event_loop):
     alist_copy = await AssetList.load("_unittest_copy")
     assert alist_copy.name != alist.name
     assert alist_copy.name == "_unittest_copy"
+    loaded = await AssetList.load("_unittest_copy")
+    assert loaded.name == "_unittest_copy"
 
     # rename runtime object
     alist_copy.name = "_unittest_copy_rename"  # rename just object, not in db
     assert alist_copy.name == "_unittest_copy_rename"
-    loaded = await AssetList.load("_unittest_copy")
-    assert loaded.name == "_unittest_copy"
-    # loaded = await AssetList.load("_unittest_copy_rename")  # this not in db
-    # assert loaded == []
-    alist_copy.name = "_unittest_copy"  # revert rename object
+    loaded = await AssetList.load("_unittest_copy_rename")  # this not in db
+    assert loaded is None
+    alist_copy.name = "_unittest_copy"  # revert name
 
     # rename runtime object and record in db
     await AssetList.rename(alist_copy, "_unittest_copy_rename_2")
     assert alist_copy.name == "_unittest_copy_rename_2"
     loaded = await AssetList.load("_unittest_copy_rename_2")
     assert loaded.name == alist_copy.name
-    assert loaded.count == alist_copy.count
+    assert len(loaded) == len(alist_copy)
 
     # delete
     await AssetList.delete(alist)  # delete only from db, not current object
     await AssetList.delete(alist_copy)  # delete only from db...
-    # loaded = await AssetList.load("_unittest")
-    # assert loaded == []
-    # loaded = await AssetList.load("_unittest_copy")
-    # assert loaded == []
-    # loaded = await AssetList.load("_unittest_copy_rename_2")
-    # assert loaded == []
+    loaded = await AssetList.load("_unittest")
+    assert loaded is None
+    loaded = await AssetList.load("_unittest_copy")
+    assert loaded is None
+    loaded = await AssetList.load("_unittest_copy_rename_2")
+    assert loaded is None
 
     # clear list
     alist.clear()
     assert alist.name == "_unittest"
     assert alist.assets == []
-    assert alist.count == 0
+    assert len(alist) == 0
 
 
 # }}}
 @pytest.mark.asyncio  # test_Order  # {{{
 async def test_Order(event_loop):
-    sber_id = await InstrumentId.byTicker(
-        AssetType.SHARE, Exchange.MOEX, "SBER"
+    sber = await Instrument.fromTicker(
+        Exchange.MOEX, Instrument.Type.SHARE, "SBER"
     )
     order_id = Id(100500)
     o = MarketOrder(
         "_unittest",
-        Order.Direction.SELL,
-        sber_id,
+        Direction.SELL,
+        sber,
         lots=15,
         quantity=150,
         order_id=order_id,
     )
     assert o.account_name == "_unittest"
-    assert o.direction == Order.Direction.SELL
-    assert o.asset_id == sber_id
+    assert o.direction == Direction.SELL
+    assert o.instrument == sber
     assert o.lots == 15
     assert o.quantity == 150
     assert o.order_id == order_id
@@ -437,15 +458,15 @@ async def test_Order(event_loop):
     # Limit order
     o_limit = LimitOrder(
         "_unittest",
-        Order.Direction.BUY,
-        sber_id,
+        Direction.BUY,
+        sber,
         lots=15,
         quantity=150,
         price=300,
     )
     assert o_limit.account_name == "_unittest"
-    assert o_limit.direction == Order.Direction.BUY
-    assert o_limit.asset_id == sber_id
+    assert o_limit.direction == Direction.BUY
+    assert o_limit.instrument == sber
     assert o_limit.lots == 15
     assert o_limit.quantity == 150
     assert o_limit.price == 300
@@ -458,16 +479,16 @@ async def test_Order(event_loop):
     # Stop order
     o_stop = StopOrder(
         "_unittest",
-        Order.Direction.BUY,
-        sber_id,
+        Direction.BUY,
+        sber,
         lots=15,
         quantity=150,
         stop_price=301,
         exec_price=302,
     )
     assert o_stop.account_name == "_unittest"
-    assert o_stop.direction == Order.Direction.BUY
-    assert o_stop.asset_id == sber_id
+    assert o_stop.direction == Direction.BUY
+    assert o_stop.instrument == sber
     assert o_stop.lots == 15
     assert o_stop.quantity == 150
     assert o_stop.stop_price == 301
@@ -482,15 +503,14 @@ async def test_Order(event_loop):
 # }}}
 @pytest.mark.asyncio  # test_Operation  # {{{
 async def test_Operation():
-    ID = await InstrumentId.byTicker(AssetType.SHARE, Exchange.MOEX, "SBER")
-    share = Share(ID)
+    sber = await Asset.fromTicker(Exchange.MOEX, Asset.Type.SHARE, "SBER")
     dt = datetime(2024, 8, 27, 15, 12, tzinfo=UTC)
 
     op = Operation(
         account_name="_unittest",
         dt=dt,
-        direction=Operation.Direction.SELL,
-        asset_id=share.ID,
+        direction=Direction.SELL,
+        instrument=sber,
         lots=1,
         quantity=50,
         price=100,
@@ -501,15 +521,14 @@ async def test_Operation():
     )
 
     assert op.dt == dt
-    assert op.direction == Operation.Direction.SELL
-    assert op.asset_id == ID
+    assert op.direction == Direction.SELL
+    assert op.instrument == sber
     assert op.price == 100
     assert op.lots == 1
     assert op.quantity == 50
     assert op.amount == 5000
     assert op.commission == 10
     assert op.meta is None
-
     assert str(op) == "2024-08-27 18:12 SELL SBER 50 * 100 = 5000 + 10"
 
 
@@ -519,17 +538,17 @@ async def test_Trade():
     # create strategy and trade
     dt = datetime(2024, 8, 27, 16, 33, tzinfo=UTC)
     strategy = await Strategy.load("Every", "minute")
-    # await Keeper.add(strategy)
     trade_type = Trade.Type.LONG
-    asset = await Asset.byTicker(AssetType.SHARE, Exchange.MOEX, "SBER")
+    sber = await Asset.fromTicker(Exchange.MOEX, Asset.Type.SHARE, "SBER")
     trade_id = Id("1111")
     trade = Trade(
         dt=dt,
         strategy=strategy.name,
         version=strategy.version,
         trade_type=trade_type,
-        asset_id=asset.ID,
+        instrument=sber,
         trade_id=trade_id,
+        trade_list="_unittest",
     )
     assert trade.trade_id == trade_id
     assert trade.dt == dt
@@ -537,19 +556,18 @@ async def test_Trade():
     assert trade.strategy == strategy.name
     assert trade.version == strategy.version
     assert trade.type == trade_type
-    assert trade.asset_id == asset.ID
+    assert trade.instrument == sber
     assert trade.orders == []
     assert trade.operations == []
 
-    await Keeper.add(strategy)
     await Trade.save(trade)
 
     # create order
     order_id = Id("2222")
     order = LimitOrder(
         account_name="_unittest",
-        direction=Order.Direction.BUY,
-        asset_id=asset.ID,
+        direction=Direction.BUY,
+        instrument=sber,
         lots=1,
         quantity=10,
         price=100,
@@ -559,15 +577,17 @@ async def test_Trade():
     assert order.trade_id == trade.trade_id  # and parent trade_id was seted
 
     await order.posted.async_emit(order)
-    assert trade.status == Trade.Status.POSTED  # side effect - status changed
+    assert (
+        trade.status == Trade.Status.AWAIT_EXEC
+    )  # side effect - status changed
 
     # create operation
     operation_id = Id("3333")
     operation = Operation(
         account_name="_unittest",
         dt=dt,
-        direction=Operation.Direction.BUY,
-        asset_id=asset.ID,
+        direction=Direction.BUY,
+        instrument=sber,
         price=100,
         lots=1,
         quantity=10,
@@ -598,15 +618,15 @@ async def test_Trade():
     assert trade.buyAverage() == 100
     assert trade.sellAverage() == 0
     assert trade.openPrice() == 100
-    assert trade.openDatetime() == dt
+    assert trade.openDateTime() == dt
 
     # Add second order and operation
     dt2 = dt + ONE_DAY
     order_id_2 = Id("2223")
     order_2 = LimitOrder(
         account_name="_unittest",
-        direction=Order.Direction.SELL,
-        asset_id=asset.ID,
+        direction=Direction.SELL,
+        instrument=sber,
         lots=1,
         quantity=10,
         price=110,
@@ -616,8 +636,8 @@ async def test_Trade():
     operation_2 = Operation(
         account_name="_unittest",
         dt=dt2,
-        direction=Operation.Direction.SELL,
-        asset_id=asset.ID,
+        direction=Direction.SELL,
+        instrument=sber,
         price=110,
         lots=1,
         quantity=10,
@@ -647,9 +667,9 @@ async def test_Trade():
     assert trade.average() == 0
     assert trade.buyAverage() == 100
     assert trade.sellAverage() == 110
-    assert trade.openDatetime() == dt
+    assert trade.openDateTime() == dt
     assert trade.openPrice() == 100
-    assert trade.closeDatetime() == dt2
+    assert trade.closeDateTime() == dt2
     assert trade.closePrice() == 110
 
     # members availible for closed trade
@@ -676,25 +696,28 @@ async def test_Trade():
 @pytest.mark.asyncio  # test_TradeList  # {{{
 async def test_TradeList():
     # create trade list
-    tlist_name = "_name"
+    tlist_name = "_unittest"
     tlist = TradeList(tlist_name)
+    assert tlist.name == tlist_name
 
     # create strategy
     strategy = await Strategy.load("Every", "minute")
-    # await Keeper.add(strategy)
 
     # create trades
     dt = datetime(2024, 8, 27, 16, 33, tzinfo=UTC)
     trade_type = Trade.Type.LONG
-    asset = await Asset.byTicker(AssetType.SHARE, Exchange.MOEX, "SBER")
+    asset = await Asset.fromTicker(
+        Exchange.MOEX, Instrument.Type.SHARE, "SBER"
+    )
     trade_id_1 = Id(1111.0)
     trade_1 = Trade(
         dt=dt,
         strategy=strategy.name,
         version=strategy.version,
         trade_type=trade_type,
-        asset_id=asset.ID,
+        instrument=asset,
         trade_id=trade_id_1,
+        trade_list=tlist_name,
     )
     trade_id_2 = Id(1112.0)
     trade_2 = Trade(
@@ -702,37 +725,31 @@ async def test_TradeList():
         strategy=strategy.name,
         version=strategy.version,
         trade_type=trade_type,
-        asset_id=asset.ID,
+        instrument=asset,
         trade_id=trade_id_2,
+        trade_list=tlist_name,
     )
     tlist.add(trade_1)  # only add in TradeList, not in db
     tlist.add(trade_2)  # only add in TradeList, not in db
-    await Trade.save(trade_1)  # save in db
-    await Trade.save(trade_2)  # save in db
-
-    assert tlist.name == "_name"
-    assert tlist.count == 2
+    assert len(tlist) == 2
 
     # save
-    await TradeList.save(tlist)
+    await TradeList.save(tlist)  # save only TradeList name in db
+    await Trade.save(trade_1)  # save trade in db
+    await Trade.save(trade_2)  # save trade in db
 
     # load
     loaded = await TradeList.load(tlist_name)
     assert loaded.name == tlist.name
-    assert loaded.count == tlist.count
+    assert len(loaded) == len(tlist)
 
     # clear
-    tlist.clear()
-
-    # update
-    await TradeList.update(tlist)
-    loaded = await TradeList.load(tlist_name)
-    assert loaded.count == 0
-
+    tlist.clear()  # only in RAM, not in db
     # delete
-    await TradeList.delete(tlist)
-    await Trade.delete(trade_1)
-    await Trade.delete(trade_2)
+    await TradeList.delete(tlist)  # del in db tlist & del trades too
+
+    # revert trade list "_unittest" in db, but without trades
+    await TradeList.save(tlist)
 
 
 # }}}
@@ -743,10 +760,18 @@ async def test_Strategy():
         print("Fail to connect")
         return
 
-    asset = await Asset.byTicker(AssetType.SHARE, Exchange.MOEX, "MVID")
+    # create asset, account, trade list with active trades
+    asset = await Asset.fromTicker(
+        Exchange.MOEX, Instrument.Type.SHARE, "MVID"
+    )
     account = await Tinkoff.getAccount("Alex")
+    tlist = TradeList("_unittest")
+    active_trades = tlist.selectStrategy("Every", "minute")
+
     strategy = await Strategy.load("Every", "minute")
     strategy.setAccount(account)
+    strategy.setTradeList(active_trades)
+
     await Tinkoff.createTransactionStream(account)
     await Tinkoff.startTransactionStream()
 
@@ -755,11 +780,9 @@ async def test_Strategy():
     assert strategy.account == account
     assert strategy.config is not None
     assert strategy.timeframe_list is not None
-    assert strategy.long_list is not None
-    assert strategy.short_list is not None
     assert strategy.active_trades is not None
-    assert strategy.path == Usr.STRATEGY + "/Every/minute.py"
-    assert strategy.dir_path == Usr.STRATEGY + "/Every"
+    assert strategy.path == Cmd.path(Usr.STRATEGY, "Every", "minute.py")
+    assert strategy.dir_path == Cmd.path(Usr.STRATEGY, "Every")
 
     # создаем трейд
     trade = await strategy.createTrade(
@@ -770,8 +793,8 @@ async def test_Strategy():
 
     # создаем ордер
     order = await strategy.createMarketOrder(
-        direction=Order.Direction.BUY,
-        asset_id=asset.ID,
+        direction=Direction.BUY,
+        instrument=asset,
         lots=1,
     )
 
@@ -818,8 +841,6 @@ async def test_StrategyList():
     # remove
     strategy_list.remove(s1)
     assert len(strategy_list) == 1
-    strategy_list.remove(s2)
-    assert len(strategy_list) == 0
 
     # clear
     strategy_list.clear()
@@ -843,6 +864,12 @@ async def test_StrategyList():
     strategy_list.clear()
     assert s1 not in strategy_list
     assert s2 not in strategy_list
+
+
+# }}}
+@pytest.mark.asyncio  # test_StrategySet  # {{{
+async def test_StrategySet():
+    pass
 
 
 # }}}

@@ -11,6 +11,8 @@ import os
 from datetime import datetime, timezone
 from decimal import Decimal
 
+from avin.utils.cmd import Cmd
+
 
 def now():  # {{{
     return datetime.now(timezone.utc)

@@ -15,7 +15,7 @@ from typing import Optional
 
 from avin.core.bar import Bar
 from avin.core.timeframe import TimeFrame
-from avin.data import InstrumentId
+from avin.data import Instrument
 from avin.keeper import Keeper
 from avin.utils import find_left, logger
 
@@ -28,17 +28,17 @@ class Chart:
     # }}}
     def __init__(  # {{{
         self,
-        ID: InstrumentId,
+        instrument: Instrument,
         timeframe: TimeFrame,
         bars: list[Bar],
     ):
         logger.debug(f"{self.__class__.__name__}.__init__()")
 
-        check = self.__checkArgs(ID, timeframe, bars)
+        check = self.__checkArgs(instrument, timeframe, bars)
         if not check:
             return
 
-        self.__ID = ID
+        self.__instrument = instrument
         self.__timeframe = timeframe
 
         for i in bars:
@@ -83,9 +83,9 @@ class Chart:
         return iter(self.__bars)
 
     # }}}
-    @property  # ID# {{{
-    def ID(self):
-        return self.__ID
+    @property  # instrument  # {{{
+    def instrument(self):
+        return self.__instrument
 
     # }}}
     @property  # timeframe# {{{
@@ -192,7 +192,7 @@ class Chart:
     @classmethod  # load# {{{
     async def load(
         cls,
-        ID: InstrumentId,
+        instrument: Instrument,
         timeframe: TimeFrame,
         begin: datetime,
         end: datetime,
@@ -200,7 +200,7 @@ class Chart:
         logger.debug(f"{cls.__name__}.load()")
         # check args, may be raise TypeError, ValueError
         cls.__checkArgs(
-            ID=ID,
+            instrument=instrument,
             timeframe=timeframe,
             begin=begin,
             end=end,
@@ -209,29 +209,29 @@ class Chart:
         # request bars
         bars = await Keeper.get(
             Bar,
-            ID=ID,
+            instrument=instrument,
             timeframe=timeframe,
             begin=begin,
             end=end,
         )
 
         # create and return chart
-        chart = Chart(ID, timeframe, bars)
+        chart = Chart(instrument, timeframe, bars)
         return chart
 
     # }}}
     @classmethod  # __checkArgs  # {{{
     def __checkArgs(
         cls,
-        ID=None,
+        instrument=None,
         timeframe=None,
         bars=None,
         begin=None,
         end=None,
     ):
         logger.debug(f"{cls.__name__}.__checkArgs()")
-        if ID:
-            cls.__checkID(ID)
+        if instrument:
+            cls.__checkID(instrument)
 
         if timeframe:
             cls.__checkTimeFrame(timeframe)
@@ -249,12 +249,12 @@ class Chart:
 
     # }}}
     @classmethod  # __checkAsset  # {{{
-    def __checkID(cls, ID):
+    def __checkID(cls, instrument):
         logger.debug(f"{cls.__name__}.__checkID()")
 
-        if not isinstance(ID, InstrumentId):
-            logger.critical(f"Invalid ID={ID}")
-            raise TypeError(ID)
+        if not isinstance(instrument, Instrument):
+            logger.critical(f"Invalid instrument={instrument}")
+            raise TypeError(instrument)
 
     # }}}
     @classmethod  # __checkTimeFrame  # {{{
