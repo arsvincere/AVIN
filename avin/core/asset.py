@@ -340,7 +340,7 @@ class AssetList:  # {{{
         return self.__assets
 
     @assets.setter
-    def assets(self, assets):
+    def assets(self, assets: list[Asset]):
         assert isinstance(assets, list)
         for i in assets:
             assert isinstance(i, Asset)

@@ -867,9 +867,72 @@ async def test_StrategyList():
 
 
 # }}}
+@pytest.mark.asyncio  # test_StrategySetItem  # {{{
+async def test_StrategySetItem():
+    item = StrategySetItem(
+        "Every", "minute", "BBG004730N88", long=True, short=True
+    )
+    assert item.strategy == "Every"
+    assert item.version == "minute"
+    assert item.figi == "BBG004730N88"
+    assert item.long
+    assert item.short
+
+
+# }}}
 @pytest.mark.asyncio  # test_StrategySet  # {{{
-async def test_StrategySet():
-    pass
+async def test_StrategySetItem():
+    afks = await Asset.fromTicker(Exchange.MOEX, Asset.Type.SHARE, "AFKS")
+    aflt = await Asset.fromTicker(Exchange.MOEX, Asset.Type.SHARE, "AFLT")
+    alrs = await Asset.fromTicker(Exchange.MOEX, Asset.Type.SHARE, "ALRS")
+    sber = await Asset.fromTicker(Exchange.MOEX, Asset.Type.SHARE, "SBER")
+    # view figis
+    # print(afks.figi)
+    # print(aflt.figi)
+    # print(alrs.figi)
+    # print(sber.figi)
+
+    # create items
+    item1 = StrategySetItem(
+        "Every", "minute", "BBG004S68614", long=True, short=False
+    )
+    item2 = StrategySetItem(
+        "Every", "minute", "BBG004S683W7", long=False, short=True
+    )
+    item3 = StrategySetItem(
+        "Every", "five", "BBG004S68B31", long=True, short=True
+    )
+    item4 = StrategySetItem(
+        "Every", "five", "BBG004730N88", long=True, short=True
+    )
+
+    # create strategy set
+    st_set = StrategySet(name="blablabla")
+    assert st_set.name == "blablabla"
+
+    # add items
+    assert len(st_set) == 0
+    st_set.add(item1)
+    assert len(st_set) == 1
+    st_set.add(item2)
+    st_set.add(item3)
+    st_set.add(item4)
+    assert len(st_set) == 4
+
+    # create asset list
+    asset_list = await st_set.createCommonAssetList()
+    assert len(asset_list) == 4
+    assert afks in asset_list
+    assert aflt in asset_list
+    assert alrs in asset_list
+    assert sber in asset_list
+
+    # create strategy list
+    strategy_list = await st_set.createActiveStrategyList()
+    assert len(strategy_list) == 2
+    assert strategy_list.find("Every", "minute")
+    assert strategy_list.find("Every", "five")
+    assert not strategy_list.find("Bugaga", "v5")
 
 
 # }}}

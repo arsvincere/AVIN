@@ -522,16 +522,13 @@ class StrategySet:  # {{{
     async def createCommonAssetList(self) -> AssetList:  # {{{
         logger.debug(f"{self.__class__.__name__}.getCommonAssetList()")
 
-        # create set of figi without dublicate
-        figis = set()
-        for i in self.__items:
-            figis.add(i.figi)
-
-        # create AssetList
         self.__asset_list = AssetList(name="")
-        for figi in figis:
-            asset = await Asset.byFigi(figi)
-            asset_list.add(asset)
+        for i in self.__items:
+            figi = i.figi
+            asset = self.__asset_list.find(figi=figi)
+            if not asset:
+                asset = await Asset.fromFigi(figi)
+                self.__asset_list.add(asset)
 
         return self.__asset_list
 
@@ -548,14 +545,14 @@ class StrategySet:  # {{{
             exit(4)
 
         # create StrategyList
-        self.strategy_list = StrategyList(name="")
+        self.__strategy_list = StrategyList(name="")
         for item in self.__items:
-            strategy = strategy_list.find(item.name, item.version)
+            strategy = self.__strategy_list.find(item.strategy, item.version)
             if not strategy:
-                strategy = await Strategy.load(item.name, item.version)
-                strategy_list.add(strategy)
+                strategy = await Strategy.load(item.strategy, item.version)
+                self.__strategy_list.add(strategy)
 
-        return self.strategy_list
+        return self.__strategy_list
 
     # }}}
     @classmethod  # fromRecord{{{
