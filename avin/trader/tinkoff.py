@@ -29,6 +29,7 @@ from avin.core import (
     Asset,
     Bar,
     Broker,
+    Direction,
     Id,
     LimitOrder,
     NewBarEvent,
@@ -40,7 +41,7 @@ from avin.core import (
     TimeFrame,
     TransactionEvent,
 )
-from avin.data import AssetType, Exchange, InstrumentId
+from avin.data import Exchange, Instrument
 from avin.exceptions import BrokerError
 from avin.utils import AsyncSignal, Cmd, logger
 
@@ -128,7 +129,9 @@ class Tinkoff(Broker):
             )
             return False
 
-        sber = await Asset.byTicker(AssetType.SHARE, Exchange.MOEX, "SBER")
+        sber = await Asset.byTicker(
+            Instrument.Type.SHARE, Exchange.MOEX, "SBER"
+        )
 
         response = await cls.__connect.market_data.get_trading_status(
             figi=sber.figi
@@ -269,20 +272,19 @@ class Tinkoff(Broker):
 
         orders = list()
         for i in response.orders:
-            asset_id = await InstrumentId.byFigi(i.figi)
-            await asset_id.cacheInfo()
+            instrument = await Instrument.fromFigi(i.figi)
             order = LimitOrder(
                 account_name=account.name,
                 direction=cls.__ti_to_av(i.direction),
-                asset_id=asset_id,
+                instrument=instrument,
                 lots=i.lots_requested,
-                quantity=i.lots_requested * asset_id.lot,
+                quantity=i.lots_requested * instrument.lot,
                 price=cls.__ti_to_av(i.initial_order_price),
                 status=cls.__ti_to_av(i.execution_report_status),
                 order_id=Id.fromStr(i.order_request_id),
                 trade_id=None,
                 exec_lots=i.lots_executed,
-                exec_quantity=i.lots_executed * asset_id.lot,
+                exec_quantity=i.lots_executed * instrument.lot,
                 meta=str(response),
                 broker_id=i.order_id,
                 transactions=list(),  # TODO: transactions
@@ -359,14 +361,13 @@ class Tinkoff(Broker):
 
         orders = list()
         for i in response.stop_orders:
-            asset_id = await InstrumentId.byFigi(i.figi)
-            await asset_id.cacheInfo()
+            instrument = await Instrument.fromFigi(i.figi)
             order = StopOrder(
                 account_name=account.name,
                 direction=cls.__ti_to_av(i.direction),
-                asset_id=asset_id,
+                instrument=instrument,
                 lots=i.lots_requested,
-                quantity=i.lots_requested * asset_id.lot,
+                quantity=i.lots_requested * instrument.lot,
                 stop_price=cls.__ti_to_av(i.stop_price),
                 exec_price=cls.__ti_to_av(i.price),
                 status=cls.__ti_to_av(i.status),
@@ -390,6 +391,11 @@ class Tinkoff(Broker):
         # TODO: здесь в респонсе же есть figi, нахер тогда использовал
         # instrument_uid ???
         # можно тогда вообще выпиливать этот метод
+        # не а, пусть допустим он будет
+        # но он должен быть привязан к классу тиньков, а не к
+        # классу Instrument / Asset
+        # совсем выпиливать не надо, вдруг еще понадобится
+        # но в этом месте можно переписать использую запрос через фиги
         """Response example# {{{
         Operation(
             id='R270663867',
@@ -451,16 +457,15 @@ class Tinkoff(Broker):
                 ti.OperationType.OPERATION_TYPE_SELL,
             ):
                 assert i.instrument_type == "share"
-                asset_id = await InstrumentId.byUid(i.instrument_uid)
-                assert asset_id is not None
-                await asset_id.cacheInfo()
+                instrument = await Instrument.byUid(i.instrument_uid)
+                assert instrument is not None
 
                 op = Operation(
                     account_name=account.name,
                     dt=i.date,
                     direction=cls.__ti_to_av(i.operation_type),
-                    asset_id=asset_id,
-                    lots=int(i.quantity / asset_id.lot),
+                    instrument=instrument,
+                    lots=int(i.quantity / instrument.lot),
                     quantity=i.quantity,
                     price=cls.__ti_to_av(i.price),
                     amount=cls.__ti_to_av(i.price),
@@ -532,8 +537,8 @@ class Tinkoff(Broker):
         operation = Operation(
             account_name=account.name,
             dt=response.order_date,
-            direction=order.direction.toOperationDirection(),
-            asset_id=order.asset_id,
+            direction=order.direction,
+            instrument=order.instrument,
             lots=order.lots,
             quantity=order.quantity,
             price=float(money_to_decimal(response.average_position_price)),
@@ -594,8 +599,8 @@ class Tinkoff(Broker):
 
     # }}}
     @classmethod  # getLastPrice  # {{{
-    def getLastPrice(cls, asset_id: InstrumentId) -> float | None:
-        logger.debug(f"Tinkoff.getLastPrice({asset_id})")
+    def getLastPrice(cls, instrument: Instrument) -> float | None:
+        logger.debug(f"Tinkoff.getLastPrice({instrument})")
 
         # TODO: нахера эта функция не асинхронная? ГУИ один хер будет
         # все асинхронно тоже работать.
@@ -604,7 +609,7 @@ class Tinkoff(Broker):
             try:
                 response = client.market_data.get_last_prices(
                     figi=[
-                        asset_id.figi,
+                        instrument.figi,
                     ]
                 )
                 last_price = cls.__ti_to_av(response.last_prices[0].price)
@@ -747,7 +752,7 @@ class Tinkoff(Broker):
                     account_id=account.meta.id,
                     order_type=cls.__av_to_ti(order, ti.OrderType),
                     direction=cls.__av_to_ti(order, ti.OrderDirection),
-                    figi=order.asset_id.figi,
+                    figi=order.instrument.figi,
                     quantity=order.lots,
                     order_id=str(order.order_id),
                 )
@@ -818,7 +823,7 @@ class Tinkoff(Broker):
                     order_type=cls.__av_to_ti(order, ti.OrderType),
                     account_id=account.meta.id,
                     direction=cls.__av_to_ti(order, ti.OrderDirection),
-                    figi=order.asset_id.figi,
+                    figi=order.instrument.figi,
                     quantity=order.lots,
                     price=Tinkoff.__av_to_ti(order.price, ti.Quotation),
                     order_id=str(order.order_id),
@@ -857,7 +862,7 @@ class Tinkoff(Broker):
                 stop_order_type=cls.__av_to_ti(order, ti.StopOrderType),
                 account_id=account.meta.id,
                 direction=cls.__av_to_ti(order, ti.StopOrderDirection),
-                figi=order.asset_id.figi,
+                figi=order.instrument.figi,
                 quantity=order.lots,
                 price=cls.__av_to_ti(order.exec_price, ti.Quotation),
                 stop_price=cls.__av_to_ti(order.stop_price, ti.Quotation),
@@ -1370,9 +1375,9 @@ class Tinkoff(Broker):
         )
 
         directions = {
-            "ORDER_DIRECTION_UNSPECIFIED": Order.Direction.UNDEFINE,
-            "ORDER_DIRECTION_BUY": Order.Direction.BUY,
-            "ORDER_DIRECTION_SELL": Order.Direction.SELL,
+            "ORDER_DIRECTION_UNSPECIFIED": Direction.UNDEFINE,
+            "ORDER_DIRECTION_BUY": Direction.BUY,
+            "ORDER_DIRECTION_SELL": Direction.SELL,
         }
         avin_direction = directions[tinkoff_direction.name]
 
@@ -1388,9 +1393,9 @@ class Tinkoff(Broker):
 
         t = ti.StopOrderDirection
         directions = {
-            t.STOP_ORDER_DIRECTION_UNSPECIFIED: Order.Direction.UNDEFINE,
-            t.STOP_ORDER_DIRECTION_BUY: Order.Direction.BUY,
-            t.STOP_ORDER_DIRECTION_SELL: Order.Direction.SELL,
+            t.STOP_ORDER_DIRECTION_UNSPECIFIED: Direction.UNDEFINE,
+            t.STOP_ORDER_DIRECTION_BUY: Direction.BUY,
+            t.STOP_ORDER_DIRECTION_SELL: Direction.SELL,
         }
         avin_direction = directions[tinkoff_direction]
 
@@ -1431,8 +1436,7 @@ class Tinkoff(Broker):
             t.STOP_ORDER_STATUS_UNSPECIFIED: Order.Status.UNDEFINE,
             # XXX: что это?
             t.STOP_ORDER_STATUS_ALL: Order.Status.UNDEFINE,
-            # XXX: rename ACTIVE?
-            t.STOP_ORDER_STATUS_ACTIVE: Order.Status.ACTIVE,
+            t.STOP_ORDER_STATUS_ACTIVE: Order.Status.POSTED,
             t.STOP_ORDER_STATUS_EXECUTED: Order.Status.EXECUTED,  # TEST:
             t.STOP_ORDER_STATUS_CANCELED: Order.Status.CANCELED,
             t.STOP_ORDER_STATUS_EXPIRED: Order.Status.EXPIRED,
@@ -1623,13 +1627,13 @@ class Tinkoff(Broker):
             return t.STOP_ORDER_TYPE_TAKE_PROFIT
 
         if order.type == Order.Type.STOP:
-            current_price = Tinkoff.getLastPrice(order.asset_id)
-            if order.direction == Order.Direction.BUY:
+            current_price = Tinkoff.getLastPrice(order.instrument)
+            if order.direction == Direction.BUY:
                 if current_price >= order.stop_price:
                     return t.STOP_ORDER_TYPE_TAKE_PROFIT
                 if current_price < order.stop_price:
                     return t.STOP_ORDER_TYPE_STOP_LIMIT
-            elif order.direction == Order.Direction.SELL:
+            elif order.direction == Direction.SELL:
                 if current_price <= order.stop_price:
                     return t.STOP_ORDER_TYPE_TAKE_PROFIT
                 if current_price > order.stop_price:
@@ -1642,10 +1646,10 @@ class Tinkoff(Broker):
 
         assert order.type in (Order.Type.MARKET, Order.Type.LIMIT)
 
-        if order.direction == Order.Direction.BUY:
+        if order.direction == Direction.BUY:
             return ti.OrderDirection.ORDER_DIRECTION_BUY
 
-        if order.direction == Order.Direction.SELL:
+        if order.direction == Direction.SELL:
             return ti.OrderDirection.ORDER_DIRECTION_SELL
 
         return ti.OrderDirection.ORDER_DIRECTION_UNSPECIFIED
@@ -1662,9 +1666,9 @@ class Tinkoff(Broker):
         )
 
         t = ti.StopOrderDirection
-        if order.direction == Order.Direction.BUY:
+        if order.direction == Direction.BUY:
             return t.STOP_ORDER_DIRECTION_BUY
-        if order.direction == Order.Direction.SELL:
+        if order.direction == Direction.SELL:
             return t.STOP_ORDER_DIRECTION_SELL
 
         return t.STOP_ORDER_DIRECTION_UNSPECIFIED
