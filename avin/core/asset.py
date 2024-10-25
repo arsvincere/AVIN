@@ -421,6 +421,8 @@ class AssetList:  # {{{
     async def save(cls, asset_list: AssetList) -> None:
         logger.debug(f"{cls.__name__}.save()")
         assert isinstance(asset_list, AssetList)
+
+        await Keeper.delete(asset_list)
         await Keeper.add(asset_list)
 
     # }}}

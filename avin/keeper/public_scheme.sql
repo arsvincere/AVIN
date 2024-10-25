@@ -70,7 +70,9 @@ CREATE TABLE IF NOT EXISTS "StrategySet" ( -- {{{
 -- }}}
 CREATE TABLE IF NOT EXISTS "StrategySet-Strategy" ( -- {{{
     name        text REFERENCES "StrategySet"(name),
-    strategy    integer REFERENCES "Strategy"(strategy_id) ON DELETE CASCADE,
+    strategy    text,
+    version     text,
+    FOREIGN KEY (strategy, version) REFERENCES "Strategy" (name, version),
     figi        text REFERENCES "Asset"(figi),
     long        bool NOT NULL,
     short       bool NOT NULL
@@ -109,6 +111,7 @@ CREATE TABLE IF NOT EXISTS "Trade" ( -- {{{
     figi        text REFERENCES "Asset"(figi),
     strategy    text,
     version     text,
+    FOREIGN KEY (strategy, version) REFERENCES "Strategy" (name, version),
     dt          TIMESTAMP WITH TIME ZONE,
     status      "Trade.Status",
     type        "Trade.Type"
@@ -164,7 +167,7 @@ CREATE TABLE IF NOT EXISTS "Test" ( -- {{{
     name            text PRIMARY KEY,
     account         text REFERENCES "Account"(name),
     strategy_set    text REFERENCES "StrategySet"(name),
-    tlist           text REFERENCES "TradeList"(name),
+    trade_list      text REFERENCES "TradeList"(name),
     status          "Test.Status" NOT NULL,
     deposit         float,
     commission      float,

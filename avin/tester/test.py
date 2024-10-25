@@ -9,8 +9,9 @@
 from __future__ import annotations
 
 import enum
+from datetime import date
 
-from avin.core import Report, TradeList
+from avin.core import Report, StrategySet, TradeList
 from avin.keeper import Keeper
 from avin.utils import logger
 
@@ -20,7 +21,7 @@ class Test:
         UNDEFINE = 0
         NEW = 1
         EDITED = 2
-        ACTIVE = 3
+        PROGRESS = 3
         COMPLETE = 4
 
         @classmethod  # fromStr
@@ -28,28 +29,20 @@ class Test:
             statuses = {
                 "NEW": Test.Status.NEW,
                 "EDITED": Test.Status.EDITED,
-                "ACTIVE": Test.Status.ACTIVE,
+                "PROGRESS": Test.Status.PROGRESS,
                 "COMPLETE": Test.Status.COMPLETE,
             }
             return statuses[string]
 
     # }}}
-    def __init__(self, name):  # {{{
+    def __init__(self, name: str):  # {{{
         logger.debug(f"Test.__init__({name})")
-        self.__status = Test.Status.NEW
+
         self.__name = name
-        self.__cfg = dict()
-        self.__tlist = TradeList(name="tlist")
+        self.__status = Test.Status.NEW
+        self.__trade_list = TradeList(f"{name}-tlist")
         self.__report = Report(test=self)
-
-    # }}}
-    @property  # status# {{{
-    def status(self):
-        return self.__status
-
-    @status.setter
-    def status(self, new_status) -> bool:
-        self.__status = new_status
+        self.__cfg = dict()
 
     # }}}
     @property  # name# {{{
@@ -61,6 +54,25 @@ class Test:
         self.__name = new_name
 
     # }}}
+    @property  # status# {{{
+    def status(self):
+        return self.__status
+
+    @status.setter
+    def status(self, new_status) -> bool:
+        self.__status = new_status
+
+    # }}}
+    @property  # trade_list# {{{
+    def trade_list(self):
+        return self.__trade_list
+
+    # }}}
+    @property  # report# {{{
+    def report(self):
+        return self.__report
+
+    # }}}
     @property  # description# {{{
     def description(self):
         return self.__cfg["description"]
@@ -70,37 +82,13 @@ class Test:
         self.__cfg["description"] = description
 
     # }}}
-    @property  # strategy# {{{
-    def strategy(self):
-        return self.__cfg["strategy"]
+    @property  # strategy_set# {{{
+    def strategy_set(self):
+        return self.__cfg["strategy_set"]
 
-    @strategy.setter
-    def strategy(self, strategy):
-        self.__cfg["strategy"] = strategy
-
-    # }}}
-    @property  # version# {{{
-    def version(self):
-        # XXX: vestions list???
-        # тогда можно будет внутри одного теста сравнивать разные версии
-        # и прогонять тест сразу по всем версиям... это удобно будет вроде...
-        # и как то сгруппированы они получаются.
-        # test_smash_day
-        #   - v1_tlist
-        #       - short
-        #       - long
-        #       - 2018
-        #       - 2019
-        #   - v2_tlist
-        #       - short
-        #       - long
-        #       - 2018
-        #       - 2019
-        return self.__cfg["version"]
-
-    @version.setter
-    def version(self, version):
-        self.__cfg["version"] = version
+    @strategy_set.setter
+    def strategy_set(self, strategy_set: StrategySet):
+        self.__cfg["strategy_set"] = strategy_set
 
     # }}}
     @property  # deposit# {{{
@@ -108,7 +96,7 @@ class Test:
         return self.__cfg["deposit"]
 
     @deposit.setter
-    def deposit(self, deposit):
+    def deposit(self, deposit: float):
         self.__cfg["deposit"] = deposit
 
     # }}}
@@ -122,33 +110,28 @@ class Test:
 
     # }}}
     @property  # begin# {{{
-    def begin(self):
-        dt = datetime.fromisoformat(self.__cfg["begin"])
-        return dt.replace(tzinfo=UTC)
+    def begin(self) -> date:
+        return self.__cfg["begin"]
 
     @begin.setter
-    def begin(self, begin):
+    def begin(self, begin: date):
+        assert isinstance(begin, date)
         self.__cfg["begin"] = begin
 
     # }}}
     @property  # end# {{{
-    def end(self):
-        dt = datetime.fromisoformat(self.__cfg["end"])
-        return dt.replace(tzinfo=UTC)
+    def end(self) -> date:
+        return self.__cfg["end"]
 
     @end.setter
-    def end(self, end):
+    def end(self, end: date):
+        assert isinstance(end, date)
         self.__cfg["end"] = end
 
     # }}}
-    @property  # tlist# {{{
-    def tlist(self):
-        return self.__tlist
-
-    # }}}
-    @property  # report# {{{
-    def report(self):
-        return self.__report
+    @property  # account# {{{
+    def account(self):
+        return "_backtest"
 
     # }}}
     def updateReport(self):  # {{{
@@ -158,46 +141,88 @@ class Test:
     # }}}
     def clear(self):  # {{{
         logger.debug("Test.clear()")
-        self.__tlist.clear()
+        self.__trade_list.clear()
         self.__report.clear()
         self.__status = Test.Status.NEW
 
     # }}}
     @classmethod  # fromRecord# {{{
-    async def record(cls, record) -> Test:
+    async def fromRecord(cls, record: asyncpg.Record) -> Test:
+        logger.debug(f"{cls.__name__}.fromRecord()")
+
         test = Test(record["name"])
         test.status = Test.Status.fromStr(record["status"])
+
+        # request strategy set
+        s_set = await Keeper.get(StrategySet, name=record["strategy_set"])
+        test.strategy_set = s_set
+
+        # request trade list
+        tlist = await Keeper.get(TradeList, name=record["trade_list"])
+        test.__trade_list = tlist
+
         test.description = record["description"]
-        test.strategy = record["strategy"]
-        test.version = record["version"]
         test.deposit = record["deposit"]
         test.commission = record["commission"]
         test.begin = record["begin_date"]
         test.end = record["end_date"]
+
+        # create report
+        test.__report = Report(test)
+
         return test
 
     # }}}
     @classmethod  # save# {{{
-    async def save(cls, test) -> None:
-        await Keeper.add(self)
+    async def save(cls, test: Test) -> None:
+        logger.debug(f"{cls.__name__}.save()")
+
+        # remove old if exist
+        await Keeper.delete(test)
+
+        # save StrategySet
+        await StrategySet.save(test.strategy_set)
+
+        # save TradeList
+        await TradeList.save(test.trade_list)
+
+        # TODO:
+        # save Report????
+
+        # save Test
+        await Keeper.add(test)
 
     # }}}
     @classmethod  # load#{{{
-    async def load(cls, name: str) -> Test:
-        test_list = await Keeper.get(cls, name=name)
-        assert len(test_list) == 1
-        return test_list[0]
+    async def load(cls, name: str) -> Test | None:
+        logger.debug(f"{cls.__name__}.load()")
+
+        test = await Keeper.get(cls, name=name)
+        return test
 
     # }}}
     @classmethod  # delete# {{{
     async def delete(cls, test) -> None:
+        logger.debug(f"{cls.__name__}.delete()")
+
         await Keeper.delete(test)
+        await Keeper.delete(test.trade_list)
+        await Keeper.delete(test.strategy_set)
 
     # }}}
     @classmethod  # rename# {{{
     async def rename(cls, test, new_name: str) -> None:
+        logger.debug(f"{cls.__name__}.rename()")
+
         await Keeper.delete(test)
         test.name = new_name
         await Keeper.add(test)
+
+    # }}}
+    @classmethod  # copy# {{{
+    async def copy(cls, test, new_name: str) -> None:
+        logger.debug(f"{cls.__name__}.copy()")
+
+        assert False
 
     # }}}

@@ -157,6 +157,7 @@ class Keeper:
             "Account": cls.__addAccount,
             "Strategy": cls.__addStrategy,
             "UStrategy": cls.__addStrategy,
+            "StrategySet": cls.__addStrategySet,
             "Trade": cls.__addTrade,
             "TradeList": cls.__addTradeList,
             "Operation": cls.__addOperation,
@@ -165,6 +166,7 @@ class Keeper:
             "StopOrder": cls.__addOrder,
             "StopLoss": cls.__addOrder,
             "TakeProfit": cls.__addOrder,
+            "Test": cls.__addTest,
         }
         add_method = methods[class_name]
 
@@ -190,10 +192,12 @@ class Keeper:
             "Asset": cls.__getAsset,
             "AssetList": cls.__getAssetList,
             "Account": cls.__getAccount,
+            "StrategySet": cls.__getStrategySet,
             "Trade": cls.__getTrade,
             "TradeList": cls.__getTradeList,
             "Operation": cls.__getOperations,
             "Order": cls.__getOrders,
+            "Test": cls.__getTest,
         }
         get_method = methods[class_name]
 
@@ -209,6 +213,8 @@ class Keeper:
         # Get class_name & choose method
         class_name = cls.__getClassName(obj)
         methods = {
+            "_BarsData": cls.__deleteBarsData,
+            "_TEST_EXCHANGE": cls.__deleteExchange,
             "MOEX": cls.__deleteExchange,
             "SPB": cls.__deleteExchange,
             "Instrument": cls.__deleteAsset,
@@ -219,14 +225,14 @@ class Keeper:
             "Account": cls.__deleteAccount,
             "Strategy": cls.__deleteStrategy,
             "UStrategy": cls.__deleteStrategy,
+            "StrategySet": cls.__deleteStrategySet,
             "Trade": cls.__deleteTrade,
             "TradeList": cls.__deleteTradeList,
             "Operation": cls.__deleteOperation,
             "MarketOrder": cls.__deleteOrder,
             "LimitOrder": cls.__deleteOrder,
             "StopOrder": cls.__deleteOrder,
-            "_BarsData": cls.__deleteBarsData,
-            "_TEST_EXCHANGE": cls.__deleteExchange,
+            "Test": cls.__deleteTest,
         }
         delete_method = methods[class_name]
 
@@ -310,18 +316,7 @@ class Keeper:
             INSERT INTO "AssetList"(name)
             VALUES ('{alist.name}');
         """
-        try:
-            await cls.transaction(request)
-        except asyncpg.UniqueViolationError:
-            logger.warning(
-                f"AssetList '{alist.name}' already exist in database"
-            )
-            request = f"""
-                DELETE FROM "AssetList-Asset"
-                WHERE
-                    name = '{alist.name}';
-            """
-            await cls.transaction(request)
+        await cls.transaction(request)
 
         # if asset list is empty - return
         if len(alist) == 0:
@@ -332,7 +327,6 @@ class Keeper:
         for asset in alist:
             val = f"('{alist.name}', '{asset.figi}'),\n"
             pg_values += val
-
         pg_values = pg_values[0:-2]  # remove ",\n" after last value
 
         # Add assets
@@ -465,6 +459,40 @@ class Keeper:
             )
 
     # }}}
+    @classmethod  # __addStrategySet  # {{{
+    async def __addStrategySet(cls, s_set: StrategySet) -> None:
+        logger.debug(f"{cls.__name__}.__addStrategySet()")
+
+        # add StrategySet
+        request = f"""
+            INSERT INTO "StrategySet" (name)
+            VALUES ('{s_set.name}');
+        """
+        await cls.transaction(request)
+
+        # ensure not empty
+        if not len(s_set):
+            return
+
+        # create pg_values for items
+        pg_values = ""
+        for i in s_set:
+            val = (
+                f"('{s_set.name}', '{i.strategy}','{i.version}', "
+                f"'{i.figi}', {i.long}, {i.short}),\n"
+            )
+            pg_values += val
+        pg_values = pg_values[0:-2]  # remove ",\n" after last value
+
+        # add StrategySet items
+        request = f"""
+            INSERT INTO "StrategySet-Strategy"
+                (name, strategy, version, figi, long, short)
+            VALUES {pg_values};
+        """
+        await cls.transaction(request)
+
+    # }}}
     @classmethod  # __addTradeList  # {{{
     async def __addTradeList(cls, tlist: TradeList) -> None:
         logger.debug(f"{cls.__name__}.__addTradeList()")
@@ -474,11 +502,7 @@ class Keeper:
             INSERT INTO "TradeList" (name)
             VALUES ('{tlist.name}');
             """
-
-        try:
-            await cls.transaction(request)
-        except asyncpg.UniqueViolationError:
-            logger.warning(f"TradeList '{tlist.name}' already exist")
+        await cls.transaction(request)
 
     # }}}
     @classmethod  # __addTrade  # {{{
@@ -609,6 +633,39 @@ class Keeper:
                 {meta}
             );
         """
+        await cls.transaction(request)
+
+    # }}}
+    @classmethod  # __addTest  # {{{
+    async def __addTest(cls, test: Test) -> None:
+        logger.debug(f"{cls.__name__}.__addTest()")
+
+        request = f"""
+            INSERT INTO "Test" (
+                name,
+                account,
+                strategy_set,
+                trade_list,
+                status,
+                deposit,
+                commission,
+                begin_date,
+                end_date,
+                description
+                )
+            VALUES (
+                '{test.name}',
+                '{test.account}',
+                '{test.strategy_set.name}',
+                '{test.trade_list.name}',
+                '{test.status.name}',
+                {test.deposit},
+                {test.commission},
+                '{test.begin}',
+                '{test.end}',
+                '{test.description}'
+                );
+            """
         await cls.transaction(request)
 
     # }}}
@@ -955,6 +1012,7 @@ class Keeper:
     @classmethod  # __getAccount  # {{{
     async def __getAccount(cls, Account, kwargs: dict) -> list[Account]:
         logger.debug(f"{cls.__name__}.__getAccount()")
+        logger.warning(f"DEPRICATE: {cls.__name__}.__getAccount()")
 
         name = kwargs.get("name")
 
@@ -976,6 +1034,35 @@ class Keeper:
             acc = Account.fromRecord(i)
             accounts.append(acc)
         return accounts
+
+    # }}}
+    @classmethod  # __getStrategySet{{{
+    async def __getStrategySet(cls, StrategySet, kwargs: dict) -> StrategySet:
+        logger.debug(f"{cls.__name__}.__getAccount()")
+
+        name = kwargs["name"]
+
+        # ensure exist
+        request = f"""
+            SELECT name
+            FROM "StrategySet"
+            WHERE name = '{name}';
+            """
+        records = await cls.transaction(request)
+        if not records:
+            return None
+
+        # load items
+        request = f"""
+            SELECT name, strategy, version, figi, long, short
+            FROM "StrategySet-Strategy"
+            WHERE name = '{name}';
+            """
+        records = await cls.transaction(request)
+
+        # create StrategySet from records
+        s_set = StrategySet.fromRecord(name, records)
+        return s_set
 
     # }}}
     @classmethod  # __getTradeList  # {{{
@@ -1179,6 +1266,32 @@ class Keeper:
         return order_list
 
     # }}}
+    @classmethod  # __getTest  # {{{
+    async def __getTest(cls, Test, kwargs: dict) -> Test:
+        logger.debug(f"{cls.__name__}.__getTest()")
+
+        name = kwargs.get("name")
+
+        request = f"""
+            SELECT
+                name, account, strategy_set, trade_list, status,
+                deposit, commission, begin_date, end_date,
+                description
+            FROM "Test"
+            WHERE name = '{name}'
+            ;
+            """
+        records = await cls.transaction(request)
+        if not records:
+            return None
+
+        assert len(records) == 1
+        record = records[0]
+        test = await Test.fromRecord(record)
+
+        return test
+
+    # }}}
 
     @classmethod  # __deleteExchange  # {{{
     async def __deleteExchange(cls, exchange: Exchange, kwargs: dict) -> None:
@@ -1205,13 +1318,15 @@ class Keeper:
         logger.debug(f"{cls.__name__}.__deleteAssetList()")
 
         request = f"""
-        DELETE FROM "AssetList-Asset" WHERE name = '{alist.name}';
-        """
+            DELETE FROM "AssetList-Asset"
+            WHERE name = '{alist.name}';
+            """
         await cls.transaction(request)
 
         request = f"""
-        DELETE FROM "AssetList" WHERE name = '{alist.name}';
-        """
+            DELETE FROM "AssetList"
+            WHERE name = '{alist.name}';
+            """
         await cls.transaction(request)
 
     # }}}
@@ -1311,6 +1426,27 @@ class Keeper:
         await cls.transaction(request)
 
     # }}}
+    @classmethod  # __deleteStrategy  # {{{
+    async def __deleteStrategySet(
+        cls, s_set: StrategySet, kwargs: dict
+    ) -> None:
+        logger.debug(f"{cls.__name__}.__deleteStrategySet()")
+
+        # delete strategy set items
+        request = f"""
+            DELETE FROM "StrategySet-Strategy"
+            WHERE name = '{s_set.name}';
+        """
+        await cls.transaction(request)
+
+        # delete strategy set
+        request = f"""
+            DELETE FROM "StrategySet"
+            WHERE name = '{s_set.name}';
+        """
+        await cls.transaction(request)
+
+    # }}}
     @classmethod  # __deleteTradeList  # {{{
     async def __deleteTradeList(cls, tlist: TradeList, kwargs: dict) -> None:
         logger.debug(f"{cls.__name__}.__deleteTradeList()")
@@ -1362,6 +1498,17 @@ class Keeper:
             DELETE FROM "Operation"
             WHERE
                 operation_id = '{operation.operation_id}';
+        """
+        await cls.transaction(request)
+
+    # }}}
+    @classmethod  # __deleteTest  # {{{
+    async def __deleteTest(cls, test: Test, kwargs: dict) -> None:
+        logger.debug(f"{cls.__name__}.__deleteOperation()")
+
+        request = f"""
+            DELETE FROM "Test"
+            WHERE name = '{test.name}';
         """
         await cls.transaction(request)
 

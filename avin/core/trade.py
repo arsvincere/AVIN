@@ -543,15 +543,19 @@ class TradeList:  # {{{
         return self.__trades
 
     # }}}
+    @property  # childs# {{{
+    def childs(self) -> list[TradeList]:
+        return self.__childs
+
+    # }}}
     @property  # asset# {{{
     def asset(self):
         return self.__asset
 
     # }}}
-    def parent(self):  # {{{
+    @property  # parent# {{{
+    def parent(self) -> TradeList | None:
         """Return parent trade list"""
-        logger.debug(f"{self.__class__.__name__}.parent()")
-
         return self.__parent
 
     # }}}
@@ -662,9 +666,9 @@ class TradeList:  # {{{
         return child
 
     # }}}
-    def selectFilter(f) -> TradeList:  # {{{
+    def selectFilter(self, f) -> TradeList:  # {{{
         logger.debug(f"{self.__class__.__name__}.filter()")
-        assert False
+        assert False, "не написана"
 
     # }}}
     @classmethod  # fromRecord # {{{
@@ -680,9 +684,11 @@ class TradeList:  # {{{
 
     # }}}
     @classmethod  # save# {{{
-    async def save(cls, trade_list) -> None:
+    async def save(cls, tlist) -> None:
         logger.debug(f"{cls.__name__}.save()")
-        await Keeper.add(trade_list)
+
+        await Keeper.delete(tlist)
+        await Keeper.add(tlist)
 
     # }}}
     @classmethod  # load# {{{

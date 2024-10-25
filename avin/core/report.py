@@ -20,7 +20,7 @@ class Report:
     # }}}
     def __init__(self, test: Test):  # {{{
         self._test = test
-        self.__df = Report.calculate(test.tlist)
+        self.__df = Report.calculate(test.trade_list)
 
     # }}}
     def __str__(self):  # {{{
@@ -226,18 +226,14 @@ class Report:
             value = round(function(results), 2)
             dct[column] = value
         df = pd.DataFrame([dct])
-        for tl in tlist._childs:
+        for tl in tlist.childs:
             df_child = Report.calculate(tl)
             df = pd.concat([df, df_child], ignore_index=True)
         return df
 
     # }}}
-    def parent(self):  # {{{
-        return self._parent
-
-    # }}}
     def update(self):  # {{{
-        self.__df = Report.calculate(self._parent.tlist)
+        assert False, "пересделать"
 
     # }}}
     def clear(self):  # {{{

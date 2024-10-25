@@ -26,19 +26,6 @@ from avin.core.trade import Trade, TradeList
 from avin.keeper import Keeper
 from avin.utils import AsyncSignal, Cmd, logger, round_price
 
-# TODO: load active TradeList
-# это должна делать все таки сама стратегия, но не автоматом
-# при создании, а просто метод в интерфейсе
-# и когда надо - трейдер его вызывает
-# а когда не надо - в тестере его и не трогают
-# метод обращается к Киперу и делает селект трейдов по статусу
-# ...
-# однако при этом еще надо знать к какому трейдеру мы сейчас
-# относимся...
-# может все таки трейдер будет грузить общий трейд лист
-# а дальше из него селект по стратегиям делать и крепить их к
-# к стратегиям?
-
 
 class Strategy(ABC):  # {{{
     """Signal"""  # {{{
@@ -182,7 +169,6 @@ class Strategy(ABC):  # {{{
 
         # update db
         await Trade.save(trade)
-        await TradeList.save(self.__active_trades)
 
         return trade
 
@@ -476,6 +462,21 @@ class StrategySetItem:
     long: bool
     short: bool
 
+    @classmethod  # fromRecord{{{
+    def fromRecord(cls, record: asyncpg.Record) -> StrategySetItem:
+        logger.debug(f"{cls.__name__}.fromRecord()")
+
+        item = cls(
+            record["strategy"],
+            record["version"],
+            record["figi"],
+            record["long"],
+            record["short"],
+        )
+        return item
+
+    # }}}
+
 
 # }}}
 class StrategySet:  # {{{
@@ -486,6 +487,10 @@ class StrategySet:  # {{{
         self.__items: list[StrategySetItem] = items if items else list()
         self.__asset_list = None
         self.__strategy_list = None
+
+    # }}}
+    def __iter__(self) -> Iterator:  # {{{
+        return iter(self.__items)
 
     # }}}
     def __len__(self):  # {{{
@@ -556,16 +561,23 @@ class StrategySet:  # {{{
 
     # }}}
     @classmethod  # fromRecord{{{
-    def fromRecord(cls, record):
+    def fromRecord(cls, name: str, records: asyncpg.Record) -> StrategySet:
         logger.debug(f"{cls.__name__}.fromRecord()")
 
-        assert False
+        s_set = cls(name)
+        for i in records:
+            item = StrategySetItem.fromRecord(i)
+            s_set.add(item)
+
+        return s_set
 
     # }}}
     @classmethod  # save{{{
-    async def save(cls, strategy_set: StrategySet):
+    async def save(cls, strategy_set: StrategySet) -> None:
         logger.debug(f"{cls.__name__}.save()")
         assert isinstance(strategy_set, StrategySet)
+
+        await Keeper.delete(strategy_set)
         await Keeper.add(strategy_set)
 
     # }}}
@@ -573,13 +585,8 @@ class StrategySet:  # {{{
     async def load(cls, name: str) -> StrategySet | None:
         logger.debug(f"{cls.__name__}.load()")
 
-        response = await Keeper.get(cls, name=name)
-        if len(response) == 1:  # response == [ StrategySet, ]
-            return response[0]
-
-        # else: error, asset list not found
-        logger.error(f"Strategy set '{name}' not found!")
-        return None
+        s_set = await Keeper.get(cls, name=name)
+        return s_set
 
     # }}}
     @classmethod  # delete  # {{{

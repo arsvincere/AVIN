@@ -535,6 +535,11 @@ async def test_Operation():
 # }}}
 @pytest.mark.asyncio  # test_Trade  # {{{
 async def test_Trade():
+    # create TradeList in db
+    tlist_name = "_unittest"
+    tlist = TradeList(tlist_name)
+    await TradeList.save(tlist)  # save only TradeList name in db
+
     # create strategy and trade
     dt = datetime(2024, 8, 27, 16, 33, tzinfo=UTC)
     strategy = await Strategy.load("Every", "minute")
@@ -548,7 +553,7 @@ async def test_Trade():
         trade_type=trade_type,
         instrument=sber,
         trade_id=trade_id,
-        trade_list="_unittest",
+        trade_list=tlist_name,
     )
     assert trade.trade_id == trade_id
     assert trade.dt == dt
@@ -684,6 +689,7 @@ async def test_Trade():
     await Keeper.delete(order)
     await Keeper.delete(order_2)
     await Keeper.delete(trade)
+    await TradeList.save(tlist)  # save only TradeList name in db
 
     chart = await trade.chart(TimeFrame("D"))
     assert chart.last.dt.date() == dt.date()
@@ -748,9 +754,6 @@ async def test_TradeList():
     # delete
     await TradeList.delete(tlist)  # del in db tlist & del trades too
 
-    # revert trade list "_unittest" in db, but without trades
-    await TradeList.save(tlist)
-
 
 # }}}
 @pytest.mark.asyncio  # test_Strategy  # {{{
@@ -766,6 +769,7 @@ async def test_Strategy():
     )
     account = await Tinkoff.getAccount("Alex")
     tlist = TradeList("_unittest")
+    await TradeList.save(tlist)
     active_trades = tlist.selectStrategy("Every", "minute")
 
     strategy = await Strategy.load("Every", "minute")
@@ -820,6 +824,9 @@ async def test_Strategy():
 
     await asyncio.sleep(5)
     await strategy.closeTrade(trade)
+
+    # delete all
+    await TradeList.delete(tlist)
 
 
 # }}}
@@ -907,20 +914,20 @@ async def test_StrategySetItem():
     )
 
     # create strategy set
-    st_set = StrategySet(name="blablabla")
-    assert st_set.name == "blablabla"
+    s_set = StrategySet(name="blablabla")
+    assert s_set.name == "blablabla"
 
     # add items
-    assert len(st_set) == 0
-    st_set.add(item1)
-    assert len(st_set) == 1
-    st_set.add(item2)
-    st_set.add(item3)
-    st_set.add(item4)
-    assert len(st_set) == 4
+    assert len(s_set) == 0
+    s_set.add(item1)
+    assert len(s_set) == 1
+    s_set.add(item2)
+    s_set.add(item3)
+    s_set.add(item4)
+    assert len(s_set) == 4
 
     # create asset list
-    asset_list = await st_set.createCommonAssetList()
+    asset_list = await s_set.createCommonAssetList()
     assert len(asset_list) == 4
     assert afks in asset_list
     assert aflt in asset_list
@@ -928,11 +935,22 @@ async def test_StrategySetItem():
     assert sber in asset_list
 
     # create strategy list
-    strategy_list = await st_set.createActiveStrategyList()
+    strategy_list = await s_set.createActiveStrategyList()
     assert len(strategy_list) == 2
     assert strategy_list.find("Every", "minute")
     assert strategy_list.find("Every", "five")
     assert not strategy_list.find("Bugaga", "v5")
+
+    # save
+    await StrategySet.save(s_set)
+
+    # load
+    loaded = await StrategySet.load("blablabla")
+    assert loaded.name == s_set.name
+    assert len(loaded) == len(s_set)
+
+    # delete
+    await StrategySet.delete(s_set)
 
 
 # }}}
@@ -976,25 +994,10 @@ async def test_clear_all_test_vars():
     await Keeper.transaction(request)
 
     request = """
-    DELETE FROM "Trade"
-    WHERE
-        strategy = 'Every'
-    """
-    await Keeper.transaction(request)
-
-    request = """
     DELETE FROM "TradeList"
     WHERE
-        name = 'Every-minute' OR
-        name = 'Every-five' OR
-        name = 'Every-day';
-    """
-    await Keeper.transaction(request)
-
-    request = """
-    DELETE FROM "TradeList"
-    WHERE
-        name = '_name';
+        name = '_name' OR
+        name = '_unittest';
     """
     await Keeper.transaction(request)
 
