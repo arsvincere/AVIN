@@ -119,13 +119,6 @@ class Data:
         if not check:
             return
 
-        if in_type.toTimeDelta() > out_type.toTimeDelta():
-            logger.error(
-                f"You're still a stupid monkey, how the fuck do you convert "
-                f"'{in_type}' to '{out_type}'?"
-            )
-            return
-
         await _DataManager.convert(instrument, in_type, out_type)
 
     # }}}
@@ -243,7 +236,7 @@ class Data:
         if year:
             cls.__checkYear(year)
         if in_type and out_type:
-            cls.__checkIOType(in_type, out_type)
+            cls.__checkInOutDataType(in_type, out_type)
         if begin and end:
             cls.__checkBeginEnd(begin, end)
 
@@ -252,6 +245,8 @@ class Data:
     # }}}
     @classmethod  # __checkDataSource# {{{
     def __checkDataSource(cls, source):
+        logger.debug(f"{cls.__name__}.__checkDataSource()")
+
         if not isinstance(source, DataSource):
             raise TypeError(
                 "You stupid monkey, select the 'source' from the enum "
@@ -261,6 +256,8 @@ class Data:
     # }}}
     @classmethod  # __checkExchange# {{{
     def __checkExchange(cls, exchange):
+        logger.debug(f"{cls.__name__}.__checkExchange()")
+
         if not hasattr(exchange, "name"):
             raise TypeError(
                 "You stupid monkey, select the 'exchange' "
@@ -270,6 +267,8 @@ class Data:
     # }}}
     @classmethod  # __checkInstrumentType# {{{
     def __checkInstrumentType(cls, itype):
+        logger.debug(f"{cls.__name__}.__checkInstrumentType()")
+
         if not isinstance(itype, Instrument.Type):
             raise TypeError(
                 "You stupid monkey, select the 'itype' from the enum "
@@ -279,6 +278,8 @@ class Data:
     # }}}
     @classmethod  # __checkTicker# {{{
     def __checkTicker(cls, ticker):
+        logger.debug(f"{cls.__name__}.__checkTicker()")
+
         if not isinstance(ticker, str):
             raise TypeError(
                 "You stupid monkey, use type str for argument 'ticker'"
@@ -287,6 +288,8 @@ class Data:
     # }}}
     @classmethod  # __checkFigi# {{{
     def __checkFigi(cls, figi):
+        logger.debug(f"{cls.__name__}.__checkFigi()")
+
         if not isinstance(figi, str):
             raise TypeError(
                 "You stupid monkey, use type str for argument 'figi'"
@@ -295,6 +298,8 @@ class Data:
     # }}}
     @classmethod  # __checkName# {{{
     def __checkName(cls, name):
+        logger.debug(f"{cls.__name__}.__checkName()")
+
         if not isinstance(name, str):
             raise TypeError(
                 "You stupid monkey, use type str for argument 'name'"
@@ -303,6 +308,8 @@ class Data:
     # }}}
     @classmethod  # __checkInstrument# {{{
     def __checkInstrument(cls, instrument):
+        logger.debug(f"{cls.__name__}.__checkInstrument()")
+
         if not isinstance(instrument, Instrument):
             raise TypeError(
                 "You stupid monkey, use type Instrument "
@@ -312,6 +319,8 @@ class Data:
     # }}}
     @classmethod  # __checkDataType# {{{
     def __checkDataType(cls, data_type):
+        logger.debug(f"{cls.__name__}.__checkDataType()")
+
         assert data_type != DataType.BOOK
         assert data_type != DataType.TIC
         if not isinstance(data_type, DataType):
@@ -323,14 +332,18 @@ class Data:
     # }}}
     @classmethod  # __checkYear# {{{
     def __checkYear(cls, year):
+        logger.debug(f"{cls.__name__}.__checkYear()")
+
         if not isinstance(year, int):
             raise TypeError(
                 "You stupid monkey, use type int for argument 'year'"
             )
 
     # }}}
-    @classmethod  # __checkIOType# {{{
-    def __checkIOType(cls, in_type, out_type):
+    @classmethod  # __checkInOutDataType# {{{
+    def __checkInOutDataType(cls, in_type, out_type):
+        logger.debug(f"{cls.__name__}.__checkInOutDataType()")
+
         assert in_type != DataType.BOOK
         assert in_type != DataType.TIC
         assert out_type != DataType.BOOK
@@ -355,6 +368,8 @@ class Data:
     # }}}
     @classmethod  # __checkBeginEnd# {{{
     def __checkBeginEnd(cls, begin: datetime, end: datetime):
+        logger.debug(f"{cls.__name__}.__checkBeginEnd()")
+
         if not isinstance(begin, datetime):
             raise TypeError(
                 "You stupid monkey, use type <datetime> for argument 'begin'"

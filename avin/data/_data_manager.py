@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from avin.config import Usr
 from avin.const import DAY_BEGIN, DAY_END, Res, WeekDays
@@ -89,30 +89,24 @@ class _DataManager:
 
     # }}}
     @classmethod  # convert# {{{
-    async def convert(
-        cls, instr: Instrument, in_type: DataType, out_type: DataType
-    ) -> None:
-        logger.info(
-            f":: Convert {instr.ticker}-{in_type.value} -> {out_type.value}"
-        )
+    async def convert(cls, instr, in_type, out_type) -> None:
+        logger.debug(f"{cls.__name__}.convert()")
+        logger.info(f":: Convert {instr.ticker}-{in_type} -> {out_type}")
 
-        converter = cls.__choseConverter(out_type)
+        # Надо сначала проверить какие данные уже есть
+        record = await Keeper.get(cls, instrument=instr, data_type=out_type)
+        if not record:
+            begin = None  # выбрать с самого начала
+            end = datetime.combine(date.today(), DAY_BEGIN, UTC)  # до сегодня
+        else:
+            out_last_dt = record["last_dt"]
+            begin = out_last_dt  # выбрать с последнего сконвертированного
+            end = datetime.combine(date.today(), DAY_BEGIN, UTC)  # до сегодня
 
-        # load 'in' data
-        # TODO: ну не надо же все подряд конвертить...
-        # Надо сначала проверить какие данные уже
-        # сконвертированы и есть ли они
-        # и доставать не все пачкой а по годам
-        # пока сделаю закладку begin end на будущее
-        # или
-        # можно на уровне БД сделать запрос баров которых нет в таблице
-        # аут таймфрейм, и сконверить эту выборку... подумать
-        # FIX: при конвертации 1М -> 5М, незавершенную 5М свечу собирает...
-        # может быть конвертить кусками по дням, так проще всего?
-        # да, давай пока по дням, пока достаточно такого решения
-        in_data = await _BarsData.load(instr, in_type, begin=None, end=None)
+        in_data = await _BarsData.load(instr, in_type, begin, end)
 
         # convert bars
+        converter = cls.__choseConverter(out_type)
         out_bars = converter(in_data.bars, in_type, out_type)
 
         # save converted data

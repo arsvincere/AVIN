@@ -765,7 +765,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __getDataInfo  # {{{
-    async def __getDataInfo(cls, Data, kwargs: dict) -> list[Record]:
+    async def __getDataInfo(cls, _DataManager, kwargs: dict) -> list[Record]:
         logger.debug(f"{cls.__name__}.__getDataInfo()")
 
         instrument = kwargs.get("instrument")
@@ -779,12 +779,18 @@ class Keeper:
 
         # Request data info
         request = f"""
-            SELECT * FROM "Data"
+            SELECT figi, type, source, first_dt, last_dt
+            FROM "Data"
             WHERE
                 {pg_figi} AND {pg_data_type};
             """
         records = await cls.transaction(request)
-        return records
+
+        if not records:
+            return None
+
+        assert len(records) == 1
+        return records[0]
 
     # }}}
     @classmethod  # __getDataSource  # {{{
@@ -870,6 +876,10 @@ class Keeper:
         # create condition for begin-end:
         if begin is None and end is None:
             pg_period = "TRUE"
+        elif begin is not None and end is None:
+            pg_period = f"'{begin}' <= dt"
+        elif begin is None and end is not None:
+            pg_period = f"dt < '{end}'"
         else:
             pg_period = f"'{begin}' <= dt AND dt < '{end}'"
 
