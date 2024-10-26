@@ -31,7 +31,7 @@ from avin.core.strategy import (
     StrategySet,
     StrategySetItem,
 )
-from avin.core.timeframe import TimeFrame
+from avin.core.timeframe import TimeFrame, TimeFrameList
 from avin.core.trade import Trade, TradeList
 
 __all__ = (
@@ -39,6 +39,7 @@ __all__ = (
     "Range",
     "Bar",
     "TimeFrame",
+    "TimeFrameList",
     "Chart",
     "Asset",
     "Index",
