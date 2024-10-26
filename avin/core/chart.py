@@ -17,7 +17,7 @@ from avin.core.bar import Bar
 from avin.core.timeframe import TimeFrame
 from avin.data import Instrument
 from avin.keeper import Keeper
-from avin.utils import find_left, logger
+from avin.utils import AsyncSignal, find_left, logger
 
 
 class Chart:
@@ -48,6 +48,11 @@ class Chart:
         self.__head = len(self.__bars)  # index of HEAD bar
         self.__now: Optional[Bar] = None  # realtime bar
 
+        # signals
+        # TODO: названия бы покороче и попонятнее
+        self.new_historical_bar = AsyncSignal(Chart, Bar)
+        self.updated = AsyncSignal(Chart, Bar)
+
     # }}}
     def __getitem__(self, index: int):  # {{{
         """Доступ к барам графика по индексу
@@ -70,11 +75,13 @@ class Chart:
 
         if index == 0:
             return self.__now  # возвращаем реал тайм бар
+
         index = self.__head - index
         if index < 0:
             return None
         if index >= len(self.__bars):
             return None
+
         return self.__bars[index]
 
     # }}}
@@ -113,18 +120,29 @@ class Chart:
     # }}}
     @property  # now# {{{
     def now(self):
-        """
-        Возвращает реал тайм бар, тоже что chart[0]
-        """
+        """Возвращает реал тайм бар, тоже что chart[0]"""
         return self.__now
 
+    @now.setter
+    def now(self, new_bar: Bar):
+        """Изменяет реал-тайм бар без генерации сигнала chart.updated"""
+        self.__now = new_bar
+
     # }}}
-    def addNewBar(self, new_bar: Bar) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.update()")
+    async def addHistoricalBar(self, new_bar: Bar) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.addNewHistoricalBar()")
+
         new_bar.setChart(self)
         self.__bars.append(new_bar)
-        self.__head = len(self.__bars)
-        self.__now = None
+        await self.new_historical_bar.async_emit(self, new_bar)
+
+    # }}}
+    async def updateNowBar(self, new_bar: Bar) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.updateNowBar()")
+
+        new_bar.setChart(self)
+        self.__now = new_bar
+        await self.updated.async_emit(self, new_bar)
 
     # }}}
     def getBars(self) -> list[Bar]:  # {{{
