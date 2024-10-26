@@ -9,8 +9,18 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from typing import Iterator, Optional
 
 from avin.data import DataType
+from avin.utils import logger
+
+# PERF:
+# тут можно ускориться, не надо хранить таймдельту
+# тут можно хранить просто строку
+# а таймдельту получать только по надобности - для операций сложения и тп
+# тогда этот класс по сути будет расширенной версией строки "1М" "5М"
+# что собственно и нужно
+# а сравнивать везде таймдельты это же бOльшие накладные расходы...
 
 
 class TimeFrame:
@@ -209,3 +219,80 @@ TimeFrame.ALL = [
     TimeFrame("W"),
     TimeFrame("M"),
 ]
+
+
+class TimeFrameList:
+    def __init__(self, timeframes: Optional[list[TimeFrame]] = None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+
+        self.__timeframes = timeframes if timeframes else list()
+
+    # }}}
+    def __str__(self) -> str:  # {{{
+        # if empty
+        if len(self.__timeframes) == 0:
+            return "[]"
+
+        # if not empty
+        s = "["
+        for i in self.__timeframes:
+            s += f"{i}, "
+        s = s[0:-2] + "]"
+
+        return s
+
+    # }}}
+    def __iter__(self) -> Iterator:  # {{{
+        return iter(self.__timeframes)
+
+    # }}}
+    def __contains__(self, timeframe: TimeFrame) -> bool:  # {{{
+        return timeframe in self.__timeframes
+
+    # }}}
+    def __len__(self) -> int:  # {{{
+        return len(self.__timeframes)
+
+    # }}}
+    def __iadd__(self, other: TimeFrameList):  # operator +=  # {{{
+        for i in other:
+            self.add(i)
+        return self
+
+    # }}}
+    def add(self, timeframe: TimeFrame) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.add()")
+
+        if timeframe not in self:
+            self.__timeframes.append(timeframe)
+
+    # }}}
+    def remove(self, timeframe: TimeFrame) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.remove()")
+
+        try:
+            self.__timeframes.remove(timeframe)
+        except ValueError:
+            logger.warning(
+                f"TimeFrameList.remove() failed: "
+                f"timeframe '{timeframe}' not in list",
+            )
+
+    # }}}
+    def clear(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.clear()")
+
+        self.__timeframes.clear()
+
+    # }}}
+    def find(self, timeframe_string: str) -> TimeFrame | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.find()")
+
+        for i in self.__timeframes:
+            if i == timeframe_string:
+                return i
+
+        return None
+
+
+# }}}
