@@ -22,6 +22,7 @@ from avin.core.asset import Asset, AssetList
 from avin.core.direction import Direction
 from avin.core.id import Id
 from avin.core.order import MarketOrder, Order, StopLoss, TakeProfit
+from avin.core.timeframe import TimeFrame, TimeFrameList
 from avin.core.trade import Trade, TradeList
 from avin.keeper import Keeper
 from avin.utils import AsyncSignal, Cmd, logger, round_price
@@ -451,6 +452,14 @@ class StrategyList:  # {{{
         return None
 
     # }}}
+    def createTimeFrameList(self) -> TimeFrameList:
+        logger.debug(f"{self.__class__.__name__}.createTimeFrameList()")
+
+        all_timeframe_list = TimeFrameList()
+        for i in self:
+            all_timeframe_list += i.timeframe_list
+
+        return all_timeframe_list
 
 
 # }}}
@@ -524,8 +533,8 @@ class StrategySet:  # {{{
         self.__items.clear()
 
     # }}}
-    async def createCommonAssetList(self) -> AssetList:  # {{{
-        logger.debug(f"{self.__class__.__name__}.getCommonAssetList()")
+    async def createAssetList(self) -> AssetList:  # {{{
+        logger.debug(f"{self.__class__.__name__}.getAssetList()")
 
         self.__asset_list = AssetList(name="")
         for i in self.__items:
@@ -538,8 +547,8 @@ class StrategySet:  # {{{
         return self.__asset_list
 
     # }}}
-    async def createActiveStrategyList(self) -> StrategyList:  # {{{
-        logger.debug(f"{self.__class__.__name__}.getActiveStrategyList()")
+    async def createStrategyList(self) -> StrategyList:  # {{{
+        logger.debug(f"{self.__class__.__name__}.getStrategyList()")
 
         # ensure self.__asset_list availible
         if not self.__asset_list:
