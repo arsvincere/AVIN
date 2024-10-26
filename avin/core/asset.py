@@ -62,16 +62,15 @@ class Asset(Instrument, ABC):  # {{{
         return chart
 
     # }}}
+    def setChart(self, chart: Chart) -> None:  # {{{
+        logger.debug(f"{self.__class__.name}.setChart()")
+
+        self.__charts[chart.timeframe] = chart
+
+    # }}}
     def clearCache(self) -> None:  # {{{
         logger.debug(f"{self.__class__.name}.clearCache()")
         self.__charts.clear()
-
-    # }}}
-    async def cacheInfo(  # {{{
-        self,
-    ) -> None:
-        logger.debug(f"{self.__class__.__name__}.cacheInfo()")
-        await self.__ID.cacheInfo()
 
     # }}}
     async def cacheChart(  # {{{
@@ -313,7 +312,7 @@ class AssetList:  # {{{
         return self.__assets[index]
 
     # }}}
-    def __iter__(self):  # {{{
+    def __iter__(self) -> Iterator:  # {{{
         return iter(self.__assets)
 
     # }}}
