@@ -142,6 +142,59 @@ def test_TimeFrame():  # {{{
 
 
 # }}}
+def test_TimeFrameList():  # {{{
+    tfl = TimeFrameList()
+    assert str(tfl) == "[]"
+    assert len(tfl) == 0
+    assert TimeFrame("1M") not in tfl
+
+    tfl.add(TimeFrame("1M"))
+    assert str(tfl) == "[1M]"
+    assert len(tfl) == 1
+    assert TimeFrame("1M") in tfl
+
+    tfl.add(TimeFrame("5M"))
+    tfl.add(TimeFrame("1H"))
+    assert str(tfl) == "[1M, 5M, 1H]"
+    assert len(tfl) == 3
+    assert TimeFrame("1M") in tfl
+    assert TimeFrame("5M") in tfl
+    assert TimeFrame("1H") in tfl
+    assert TimeFrame("D") not in tfl
+
+    # no duplicates
+    tfl.add(TimeFrame("5M"))
+    assert len(tfl) == 3
+
+    # remove
+    tfl.remove(TimeFrame("5M"))
+    # tfl.remove(TimeFrame("5M"))  # logger warning
+    assert str(tfl) == "[1M, 1H]"
+    assert len(tfl) == 2
+
+    # operator += to join without duplicates
+    tfl2 = TimeFrameList(
+        [
+            TimeFrame("1M"),
+            TimeFrame("D"),
+            TimeFrame("W"),
+        ]
+    )
+    tfl += tfl2
+    assert len(tfl) == 4
+    assert str(tfl) == "[1M, 1H, D, W]"
+
+    # find
+    finded = tfl.find("D")
+    assert finded == TimeFrame("D")
+
+    # clear
+    tfl.clear()
+    assert len(tfl) == 0
+    assert str(tfl) == "[]"
+
+
+# }}}
 def test_NewBarEvent():  # {{{
     figi = "BBG004730N88"
     timeframe = TimeFrame("1M")
@@ -758,10 +811,13 @@ async def test_TradeList():
 # }}}
 @pytest.mark.asyncio  # test_Strategy  # {{{
 async def test_Strategy():
+    # don't test in holidays
+    if WeekDays.isHoliday(now().weekday()):
+        return
+
     await Tinkoff.connect()
     if not Tinkoff.isConnect():
-        print("Fail to connect")
-        return
+        assert False, "Fail to connect"
 
     # create asset, account, trade list with active trades
     asset = await Asset.fromTicker(
@@ -927,7 +983,7 @@ async def test_StrategySetItem():
     assert len(s_set) == 4
 
     # create asset list
-    asset_list = await s_set.createCommonAssetList()
+    asset_list = await s_set.createAssetList()
     assert len(asset_list) == 4
     assert afks in asset_list
     assert aflt in asset_list
@@ -935,7 +991,7 @@ async def test_StrategySetItem():
     assert sber in asset_list
 
     # create strategy list
-    strategy_list = await s_set.createActiveStrategyList()
+    strategy_list = await s_set.createStrategyList()
     assert len(strategy_list) == 2
     assert strategy_list.find("Every", "minute")
     assert strategy_list.find("Every", "five")
