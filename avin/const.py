@@ -100,6 +100,7 @@ __all__ = (
     "ONE_DAY",
     "ONE_WEEK",
     "ONE_MONTH",
+    "ONE_YEAR",
     "DAY_BEGIN",
     "DAY_END",
 )
