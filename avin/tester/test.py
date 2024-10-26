@@ -11,6 +11,7 @@ from __future__ import annotations
 import enum
 from datetime import date
 
+from avin.const import ONE_MINUTE
 from avin.core import Report, StrategySet, TradeList
 from avin.keeper import Keeper
 from avin.utils import logger
@@ -21,7 +22,7 @@ class Test:
         UNDEFINE = 0
         NEW = 1
         EDITED = 2
-        PROGRESS = 3
+        PROCESS = 3
         COMPLETE = 4
 
         @classmethod  # fromStr
@@ -29,7 +30,7 @@ class Test:
             statuses = {
                 "NEW": Test.Status.NEW,
                 "EDITED": Test.Status.EDITED,
-                "PROGRESS": Test.Status.PROGRESS,
+                "PROCESS": Test.Status.PROCESS,
                 "COMPLETE": Test.Status.COMPLETE,
             }
             return statuses[string]
@@ -45,6 +46,9 @@ class Test:
         self.__cfg = dict()
 
     # }}}
+    def __str__(self):
+        return f"Test='{self.name}'"
+
     @property  # name# {{{
     def name(self):
         return self.__name
@@ -129,9 +133,14 @@ class Test:
         self.__cfg["end"] = end
 
     # }}}
-    @property  # account# {{{
+    @property  # account  # {{{
     def account(self):
         return "_backtest"
+
+    # }}}
+    @property  # time_step  # {{{
+    def time_step(self):
+        return ONE_MINUTE
 
     # }}}
     def updateReport(self):  # {{{

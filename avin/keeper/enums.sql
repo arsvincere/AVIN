@@ -64,6 +64,6 @@ CREATE TYPE "Trade.Status" AS ENUM (
 --}}}
 DROP TYPE IF EXISTS public."Test.Status";--{{{
 CREATE TYPE "Test.Status" AS ENUM (
-    'NEW', 'EDITED', 'PROGRESS', 'COMPLETE'
+    'NEW', 'EDITED', 'PROCESS', 'COMPLETE'
     );
 --}}}
