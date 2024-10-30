@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS "Broker" ( -- {{{
     );
     INSERT INTO "Broker" (name)
     VALUES
-        ('_tester'),
+        ('_VirtualBroker'),
         ('Tinkoff');
 -- }}}
 CREATE TABLE IF NOT EXISTS "Account" ( -- {{{
@@ -92,8 +92,8 @@ CREATE TABLE IF NOT EXISTS "Account" ( -- {{{
     );
     INSERT INTO "Account" (name, broker)
     VALUES
-        ('_backtest', '_tester'),
-        ('_unittest', '_tester'),
+        ('_backtest', '_VirtualBroker'),
+        ('_unittest', '_VirtualBroker'),
         ('Alex', 'Tinkoff'),
         ('Agni', 'Tinkoff');
 -- }}}
