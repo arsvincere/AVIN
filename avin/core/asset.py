@@ -16,7 +16,7 @@ from typing import Optional, Union
 import pandas as pd
 
 from avin.core.chart import Chart
-from avin.core.event import NewBarEvent
+from avin.core.event import Event
 from avin.core.timeframe import TimeFrame
 from avin.data import (
     Data,
@@ -38,18 +38,18 @@ class Asset(Instrument, ABC):  # {{{
         self.__charts: dict[TimeFrame, Chart] = dict()
 
         # signals
-        self.newBar1m = AsyncSignal(Asset, Chart)
-        self.newBar5m = AsyncSignal(Asset, Chart)
-        self.newBar10m = AsyncSignal(Asset, Chart)
-        self.newBar1h = AsyncSignal(Asset, Chart)
+        self.newBar1M = AsyncSignal(Asset, Chart)
+        self.newBar5M = AsyncSignal(Asset, Chart)
+        self.newBar10M = AsyncSignal(Asset, Chart)
+        self.newBar1H = AsyncSignal(Asset, Chart)
         self.newBarD = AsyncSignal(Asset, Chart)
         self.newBarW = AsyncSignal(Asset, Chart)
         self.newBarM = AsyncSignal(Asset, Chart)
-        self.updated = AsyncSignal(Asset)
+        self.updated = AsyncSignal(Asset, Chart)
 
     # }}}
     def chart(self, timeframe: Union[TimeFrame, str]) -> Chart:  # {{{
-        logger.debug(f"{self.__class__.name}.chart()")
+        logger.debug(f"{self.__class__.__name__}.chart()")
 
         # convert type if needed
         if isinstance(timeframe, str):
@@ -130,31 +130,30 @@ class Asset(Instrument, ABC):  # {{{
         return df
 
     # }}}
-    async def receiveNewBar(self, new_bar_event: NewBarEvent) -> None:  # {{{
-        logger.info(f"{self.ticker} receive {new_bar_event.bar}")
+    async def receive(self, event: Event) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.receive({event})")
 
         # select chart
-        timeframe = new_bar_event.timeframe
+        timeframe = event.timeframe
         chart = self.chart(timeframe)
 
-        # add new bar in this chart
-        chart.addNewBar(new_bar_event.bar)
+        if event.type == Event.Type.BAR_CHANGED:
+            chart.updateNowBar(event.bar)
+            await self.updated.async_emit(self, chart)
 
-        # emiting special signal for the bar timeframe
-        signals = {
-            "1M": self.newBar1m,
-            "5M": self.newBar5m,
-            "10M": self.newBar10m,
-            "1H": self.newBar1h,
-            "D": self.newBarD,
-            "W": self.newBarW,
-            "M": self.newBarM,
-        }
-        signal = signals[str(timeframe)]
-        await signal.async_emit(self, chart)
-
-        # emiting common signal
-        await self.updated.async_emit(self)
+        if event.type == Event.Type.NEW_HISTORICAL_BAR:
+            chart.addHistoricalBar(event.bar)
+            signals = {
+                "1M": self.newBar1M,
+                "5M": self.newBar5M,
+                "10M": self.newBar10M,
+                "1H": self.newBar1H,
+                "D": self.newBarD,
+                "W": self.newBarW,
+                "M": self.newBarM,
+            }
+            signal = signals[str(timeframe)]
+            await signal.async_emit(self, chart)
 
     # }}}
     @classmethod  # fromRecord# {{{
@@ -307,6 +306,10 @@ class AssetList:  # {{{
         self.__assets: list[Asset] = list()
 
     # }}}
+    def __str__(self) -> str:  # {{{
+        return f"AssetList={self.__name}"
+
+    # }}}
     def __getitem__(self, index: int) -> Asset:  # {{{
         assert index < len(self.__assets)
         return self.__assets[index]
@@ -363,13 +366,13 @@ class AssetList:  # {{{
             self.__assets.remove(asset)
         except ValueError:
             logger.exception(
-                f"AssetList.remove(asset): Fail: "
-                f"asset '{asset.ticker}' not in list '{self.name}'",
+                f"AssetList.remove(asset) failed: " f"'{asset}' not in list",
             )
 
     # }}}
     def clear(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.clear()")
+
         self.__assets.clear()
 
     # }}}
@@ -468,3 +471,6 @@ class AssetList:  # {{{
 
 
 # }}}
+
+if __name__ == "__main__":
+    ...
