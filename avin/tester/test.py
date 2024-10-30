@@ -14,7 +14,7 @@ from datetime import date
 from avin.const import ONE_MINUTE
 from avin.core import Report, StrategySet, TradeList
 from avin.keeper import Keeper
-from avin.utils import logger
+from avin.utils import Signal, logger
 
 
 class Test:
@@ -44,6 +44,9 @@ class Test:
         self.__trade_list = TradeList(f"{name}-tlist")
         self.__report = Report(test=self)
         self.__cfg = dict()
+
+        # signals
+        self.progress = Signal(int)
 
     # }}}
     def __str__(self):
@@ -148,9 +151,12 @@ class Test:
         self.__report = Report(test=self)
 
     # }}}
-    def clear(self):  # {{{
+    async def clear(self):  # {{{
         logger.debug("Test.clear()")
-        self.__trade_list.clear()
+
+        self.__trade_list.clear()  # clear runtime
+        await Keeper.delete(self.__trade_list, only_trades=True)  # in db
+
         self.__report.clear()
         self.__status = Test.Status.NEW
 
