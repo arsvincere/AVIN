@@ -12,7 +12,12 @@ from avin.core.bar import Bar
 from avin.core.broker import Broker
 from avin.core.chart import Chart
 from avin.core.direction import Direction
-from avin.core.event import Event, NewBarEvent, TransactionEvent
+from avin.core.event import (
+    BarChangedEvent,
+    Event,
+    NewHistoricalBarEvent,
+    TransactionEvent,
+)
 from avin.core.id import Id
 from avin.core.operation import Operation
 from avin.core.order import (
@@ -33,6 +38,7 @@ from avin.core.strategy import (
 )
 from avin.core.timeframe import TimeFrame, TimeFrameList
 from avin.core.trade import Trade, TradeList
+from avin.core.transaction import Transaction, TransactionList
 
 __all__ = (
     "Id",
@@ -52,6 +58,8 @@ __all__ = (
     "StopOrder",
     "StopLoss",
     "TakeProfit",
+    "Transaction",
+    "TransactionList",
     "Operation",
     "Trade",
     "TradeList",
@@ -60,7 +68,8 @@ __all__ = (
     "StrategySet",
     "StrategySetItem",
     "Event",
-    "NewBarEvent",
+    "BarChangedEvent",
+    "NewHistoricalBarEvent",
     "TransactionEvent",
     "Account",
     "Broker",
