@@ -21,6 +21,7 @@ from __future__ import annotations
 import inspect
 import json
 import os
+from datetime import date, datetime
 from typing import Any
 
 import asyncpg
@@ -70,7 +71,7 @@ class Keeper:
 
     # }}}
     @classmethod  # transaction  # {{{
-    async def transaction(cls, sql_request: str) -> list[Record]:
+    async def transaction(cls, sql_request: str) -> list[asyncpg.Record]:
         logger.debug(f"{cls.__name__}.transaction()\n{sql_request}")
 
         try:
@@ -139,7 +140,7 @@ class Keeper:
 
     # }}}
     @classmethod  # add  # {{{
-    async def add(cls, obj: object | Class) -> None:
+    async def add(cls, obj: Any) -> None:
         logger.debug(f"{cls.__name__}.add()")
 
         # Get class_name & choose method
@@ -241,7 +242,7 @@ class Keeper:
 
     # }}}
     @classmethod  # update  # {{{
-    async def update(cls, obj: object | Class) -> None:
+    async def update(cls, obj: Any) -> None:
         logger.debug(f"{cls.__name__}.update()")
 
         # Get class_name & choose method
@@ -596,11 +597,6 @@ class Keeper:
     async def __addOperation(cls, operation: Operation) -> None:
         logger.debug(f"{cls.__name__}.__addOperation()")
 
-        if operation.meta is None:
-            meta = "NULL"
-        else:
-            meta = f"$${operation.meta}$$"
-
         request = f"""
             INSERT INTO "Operation" (
                 operation_id,
@@ -630,7 +626,7 @@ class Keeper:
                 {operation.price},
                 {operation.amount},
                 {operation.commission},
-                {meta}
+                $${operation.meta}$$
             );
         """
         await cls.transaction(request)
@@ -765,7 +761,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __getDataInfo  # {{{
-    async def __getDataInfo(cls, _DataManager, kwargs: dict) -> list[Record]:
+    async def __getDataInfo(cls, _DataManager, kwargs: dict):
         logger.debug(f"{cls.__name__}.__getDataInfo()")
 
         instrument = kwargs.get("instrument")
@@ -789,8 +785,10 @@ class Keeper:
         if not records:
             return None
 
-        assert len(records) == 1
-        return records[0]
+        # if len(records) == 1:
+        #     return records[0]
+        #
+        return records
 
     # }}}
     @classmethod  # __getDataSource  # {{{
@@ -867,8 +865,8 @@ class Keeper:
 
         instrument = kwargs["instrument"]
         data_type = kwargs.get("data_type")
-        begin: datatime = kwargs.get("begin")
-        end: datetime = kwargs.get("end")
+        begin = kwargs.get("begin")
+        end = kwargs.get("end")
 
         # create table name
         bars_table_name = cls.__getTableName(instrument, data_type=data_type)
@@ -981,12 +979,8 @@ class Keeper:
 
         # return list[str_names] if flag 'get_only_names'
         if get_only_names:
-            request = f"""
-                SELECT name
-                FROM "AssetList"
-                WHERE
-                    {pg_condition}
-                ;
+            request = """
+                SELECT name FROM "AssetList";
                 """
             records = await cls.transaction(request)
             all_names = list()
@@ -1076,7 +1070,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __getTradeList  # {{{
-    async def __getTradeList(cls, TradeList, kwargs: dict) -> list[TradeList]:
+    async def __getTradeList(cls, TradeList, kwargs: dict):
         logger.debug(f"{cls.__name__}.__getTradeList()")
 
         name = kwargs["name"]
@@ -1468,7 +1462,10 @@ class Keeper:
             """
         await cls.transaction(request)
 
-        # delete trade list
+        # delete trade list ?
+        only_trades = kwargs.get("only_trades")
+        if only_trades:
+            return
         request = f"""
             DELETE FROM "TradeList"
             WHERE name = '{tlist.name}';
@@ -1547,12 +1544,6 @@ class Keeper:
     async def __updateOrder(cls, order: Order) -> None:
         logger.debug(f"{cls.__name__}.__updateOrder()")
 
-        # format meta
-        if order.meta is None:
-            meta = "NULL"
-        else:
-            meta = f"$${order.meta}$$"
-
         # format trade_id
         trade_id = f"'{order.trade_id}'" if order.trade_id else "NULL"
 
@@ -1566,7 +1557,7 @@ class Keeper:
                 status = '{order.status.name}',
                 exec_lots = {order.exec_lots},
                 exec_quantity = {order.exec_quantity},
-                meta = {meta},
+                meta = $${order.meta}$$,
                 broker_id = {broker_id}
             WHERE
                 order_id = '{order.order_id}';
