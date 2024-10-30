@@ -32,7 +32,7 @@ from avin.core import (
     Direction,
     Id,
     LimitOrder,
-    NewBarEvent,
+    NewHistoricalBarEvent,
     Operation,
     Order,
     StopLoss,
@@ -51,7 +51,7 @@ class Tinkoff(Broker):
     TARGET = ti.constants.INVEST_GRPC_API
     TOKEN = Cmd.read(Usr.TINKOFF_TOKEN).strip()
 
-    new_bar = AsyncSignal(NewBarEvent)
+    new_bar = AsyncSignal(NewHistoricalBarEvent)
     new_transaction = AsyncSignal(TransactionEvent)
 
     __accounts: list[Account] = list()
@@ -457,7 +457,7 @@ class Tinkoff(Broker):
                 ti.OperationType.OPERATION_TYPE_SELL,
             ):
                 assert i.instrument_type == "share"
-                instrument = await Instrument.byUid(i.instrument_uid)
+                instrument = await Instrument.fromFigi(i.figi)
                 assert instrument is not None
 
                 op = Operation(
@@ -1213,7 +1213,7 @@ class Tinkoff(Broker):
                 figi = response.candle.figi
                 timeframe = cls.__ti_to_av(response.candle.interval)
                 bar = cls.__ti_to_av(response.candle)
-                event = NewBarEvent(figi, timeframe, bar)
+                event = NewHistoricalBarEvent(figi, timeframe, bar)
                 await Tinkoff.new_bar.async_emit(event)
 
         # TODO: нет, здесь надо что то более глобальное
@@ -1264,13 +1264,14 @@ class Tinkoff(Broker):
             logger.debug(f"Tinkoff.__transactionCycle: Response='{response}'")
 
             if response.order_trades:
-                event: ti.OrderTrades = cls.__ti_to_av(response.order_trades)
+                event = cls.__ti_to_av(response.order_trades)
                 await Tinkoff.new_transaction.async_emit(event)
 
-                # TODO: выглядит криво, эвент обращается к своему аккаунту
-                # чтобы отправить в него себя же... бред, думай как лучше.
-                await event.account.receiveTransaction(event)
+                for i in cls.__accounts:
+                    if i.name == event.account:
+                        await i.receive(event)
 
+            # if response is ping - do nothing
             if response.ping:
                 pass
 
@@ -1460,8 +1461,8 @@ class Tinkoff(Broker):
 
         t = ti.OperationType
         types = {
-            t.OPERATION_TYPE_BUY: Operation.Direction.BUY,
-            t.OPERATION_TYPE_SELL: Operation.Direction.SELL,
+            t.OPERATION_TYPE_BUY: Direction.BUY,
+            t.OPERATION_TYPE_SELL: Direction.SELL,
         }
         av_direction = types[ti_operation_type]
 
@@ -1548,15 +1549,18 @@ class Tinkoff(Broker):
         figi = order_trades.figi
         direction = Tinkoff.__ti_to_av(order_trades.direction)
         order_broker_id = order_trades.order_id
-        transactions = order_trades.trades  # TODO: convert
+        # FIX:  тут вообще жесть... order_trades содержит список
+        # транзакций, а транзактион эвент ожидает одну транзакцию
+        # надо переделывать тут логику работы
+        transaction = order_trades.trades  # TODO: convert
 
         # create TransactionEvent
         transaction_event = TransactionEvent(
-            account=account,
+            account_name=account.name,
             figi=figi,
             direction=direction,
             order_broker_id=order_broker_id,
-            transactions=transactions,
+            transaction=transaction,
         )
         return transaction_event
 

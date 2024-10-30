@@ -8,7 +8,13 @@
 
 import asyncio
 
-from avin.core import AssetList, Event, NewBarEvent, Strategy, TimeFrame
+from avin.core import (
+    AssetList,
+    Event,
+    NewHistoricalBarEvent,
+    Strategy,
+    TimeFrame,
+)
 from avin.data import Data
 from avin.trader.tinkoff import Tinkoff
 from avin.utils import logger, now
@@ -20,6 +26,44 @@ class Trader:
         self.__work = False
 
     # }}}
+
+    async def initialize(self) -> None:  # {{{
+        logger.info(":: Trader start initialization")
+        await self.__loadConfig()
+        await self.__loadTimeTable()
+        await self.__loadStrategyes()
+        await self.__loadTimeFrameList()
+        await self.__loadBroker()
+        await self.__makeGeneralAssetList()
+        await self.__cacheAssetsInfo()
+        await self.__updateHistoricalData()
+        await self.__updateAnalytic()
+
+    # }}}
+    async def run(self) -> None:  # {{{
+        logger.info(":: Trader run")
+        await self.__ensureConnection()
+        await self.__setAccount()
+        await self.__cacheCharts()
+        await self.__updateRealTimeData()
+        await self.__connectStrategyes()
+        await self.__startStrategyes()
+        await self.__createTransactionStream()
+        await self.__createBarStream()
+        await self.__startTransactionStream()
+        await self.__startBarStream()
+        await self.__mainCycle()
+
+    # }}}
+    async def stop(self) -> None:  # {{{
+        if self.__work:
+            logger.info(":: Trader shuting down")
+            self.__work = False
+        else:
+            logger.warning("Trader.stop() called, but now he is not work")
+
+    # }}}
+
     async def __loadConfig(self) -> None:  # {{{
         logger.info(":: Trader load config")
         self.cfg = {
@@ -136,18 +180,18 @@ class Trader:
                         chart.addNewBar(bar)
 
     # }}}
-    async def __startStrategyes(self) -> None:  # {{{
-        logger.info(":: Trader start strategyes")
-        for strategy in self.strategyes:
-            await strategy.start()
-
-    # }}}
     async def __connectStrategyes(self) -> None:  # {{{
         logger.info(":: Trader connect strategyes")
         assert self.alist is not None
 
         for strategy in self.strategyes:
             await strategy.connect(self.alist)
+
+    # }}}
+    async def __startStrategyes(self) -> None:  # {{{
+        logger.info(":: Trader start strategyes")
+        for strategy in self.strategyes:
+            await strategy.start()
 
     # }}}
     async def __createTransactionStream(self) -> None:  # {{{
@@ -226,7 +270,7 @@ class Trader:
         logger.info("  market is open!")
 
     # }}}
-    async def __onNewBar(self, event: NewBarEvent) -> None:  # {{{
+    async def __onNewBar(self, event: NewHistoricalBarEvent) -> None:  # {{{
         logger.info(f"-> receive bar {event}")
         assert event.type == Event.Type.NEW_BAR
         assert self.alist is not None
@@ -251,76 +295,5 @@ class Trader:
         # closeConnection()
         # updateGUI
         self.__work = False
-
-    # }}}
-    # TODO: интерфейс у трейдера и тестера должен быть одинаковым
-    # если у тестера
-    # t = Tester()
-    # t.setTest(test)
-    # t.runTest()
-    # То и у трейдера должно быть аналогично
-    # g = General()
-    # g.setTrader(trader)
-    # g.getBABLO()
-    """
-    и еще вопрос Test -> Tester
-                 ???? -> Trader
-    может тогда что-то типо такого:
-        Trader Ruler
-
-        У трейдера есть набор стратегий и счет,
-        и он с ними возится.
-        А вот рулер уже обеспечивает только одно
-        соединение с брокером, даже если там несколько
-        трейдеров работают.
-        брррррр
-        ну это пиздец.
-        зачем еще одна абстракция над 1 единственным объектом
-        погоди пока. Впизду тя.
-        Пока трейдер только один?
-        Ну вот пусть он и будет один.
-        Построить над ним управляющую структуру не проблема
-        когда понадобится надобность во втором трейдере.
-        Тогда будет видно что у них общего, а что разного.
-        Что нужно вынести в отдельный класс общий, что в частные.
-        Все будет видно.
-        А пока - трейдер - это монолит, и торговая система и набор настроек.
-
-    """
-
-    async def initialize(self) -> None:  # {{{
-        logger.info(":: Trader start initialization")
-        await self.__loadConfig()
-        await self.__loadTimeTable()
-        await self.__loadStrategyes()
-        await self.__loadTimeFrameList()
-        await self.__loadBroker()
-        await self.__makeGeneralAssetList()
-        await self.__cacheAssetsInfo()
-        await self.__updateHistoricalData()
-        await self.__updateAnalytic()
-
-    # }}}
-    async def run(self) -> None:  # {{{
-        logger.info(":: Trader run")
-        await self.__ensureConnection()
-        await self.__setAccount()
-        await self.__cacheCharts()
-        await self.__updateRealTimeData()
-        await self.__startStrategyes()
-        await self.__connectStrategyes()
-        await self.__createTransactionStream()
-        await self.__createBarStream()
-        await self.__startTransactionStream()
-        await self.__startBarStream()
-        await self.__mainCycle()
-
-    # }}}
-    async def stop(self) -> None:  # {{{
-        if self.__work:
-            logger.info(":: Trader shuting down")
-            self.__work = False
-        else:
-            logger.warning("Trader.stop() called, but now he is not work")
 
     # }}}
