@@ -311,6 +311,8 @@ class Trade:  # {{{
 
     # }}}
     def average(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.average()")
+
         if self.quantity() == 0:
             return 0.0
         return self.amount() / self.quantity()
