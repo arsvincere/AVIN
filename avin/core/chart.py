@@ -17,7 +17,7 @@ from avin.core.bar import Bar
 from avin.core.timeframe import TimeFrame
 from avin.data import Instrument
 from avin.keeper import Keeper
-from avin.utils import AsyncSignal, find_left, logger
+from avin.utils import Signal, find_left, logger
 
 
 class Chart:
@@ -49,9 +49,8 @@ class Chart:
         self.__now: Optional[Bar] = None  # realtime bar
 
         # signals
-        # TODO: названия бы покороче и попонятнее
-        self.new_historical_bar = AsyncSignal(Chart, Bar)
-        self.updated = AsyncSignal(Chart, Bar)
+        self.new_bar = Signal(Chart, Bar)
+        self.updated = Signal(Chart, Bar)
 
     # }}}
     def __getitem__(self, index: int):  # {{{
@@ -129,20 +128,21 @@ class Chart:
         self.__now = new_bar
 
     # }}}
-    async def addHistoricalBar(self, new_bar: Bar) -> None:  # {{{
+    def addHistoricalBar(self, new_bar: Bar) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.addNewHistoricalBar()")
 
         new_bar.setChart(self)
         self.__bars.append(new_bar)
-        await self.new_historical_bar.async_emit(self, new_bar)
+        self.__head = len(self.__bars)
+        self.new_bar.emit(self, new_bar)
 
     # }}}
-    async def updateNowBar(self, new_bar: Bar) -> None:  # {{{
+    def updateNowBar(self, new_bar: Bar) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.updateNowBar()")
 
         new_bar.setChart(self)
         self.__now = new_bar
-        await self.updated.async_emit(self, new_bar)
+        self.updated.emit(self, new_bar)
 
     # }}}
     def getBars(self) -> list[Bar]:  # {{{
