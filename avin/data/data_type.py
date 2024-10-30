@@ -78,3 +78,7 @@ class DataType(enum.Enum):
         return typ
 
     # }}}
+
+
+if __name__ == "__main__":
+    ...

@@ -26,3 +26,7 @@ class Direction(enum.Enum):  # {{{
 
 
 # }}}
+
+
+if __name__ == "__main__":
+    ...

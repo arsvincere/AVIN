@@ -61,3 +61,7 @@ class Id:
         return ID
 
     # }}}
+
+
+if __name__ == "__main__":
+    ...

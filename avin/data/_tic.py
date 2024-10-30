@@ -14,3 +14,7 @@ class _TicData:  # {{{
 
 
 # }}}
+
+
+if __name__ == "__main__":
+    ...

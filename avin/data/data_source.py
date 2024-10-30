@@ -31,3 +31,7 @@ class DataSource(enum.Enum):
         return source
 
     # }}}
+
+
+if __name__ == "__main__":
+    ...

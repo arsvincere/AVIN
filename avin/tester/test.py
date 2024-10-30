@@ -241,3 +241,7 @@ class Test:
         assert False
 
     # }}}
+
+
+if __name__ == "__main__":
+    ...

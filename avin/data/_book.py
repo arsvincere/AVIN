@@ -14,3 +14,7 @@ class _BookData:  # {{{
 
 
 # }}}
+
+
+if __name__ == "__main__":
+    ...

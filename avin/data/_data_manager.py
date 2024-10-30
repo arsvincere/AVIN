@@ -385,3 +385,7 @@ class _DataManager:
         await _BarsData.save(new_data)
 
     # }}}
+
+
+if __name__ == "__main__":
+    ...

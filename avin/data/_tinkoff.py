@@ -558,3 +558,7 @@ class _TinkoffData(_AbstractDataSource):
         return instrument, data_type
 
     # }}}
+
+
+if __name__ == "__main__":
+    ...

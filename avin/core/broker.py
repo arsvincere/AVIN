@@ -12,3 +12,7 @@ import abc
 
 
 class Broker(metaclass=abc.ABCMeta): ...
+
+
+if __name__ == "__main__":
+    ...

@@ -169,3 +169,7 @@ class _BarsData:  # {{{
 
 
 # }}}
+
+
+if __name__ == "__main__":
+    ...

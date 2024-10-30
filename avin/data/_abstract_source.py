@@ -58,3 +58,7 @@ class _AbstractDataSource(ABC):
     ) -> list[_Bar]: ...
 
     # }}}
+
+
+if __name__ == "__main__":
+    ...

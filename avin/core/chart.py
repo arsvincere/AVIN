@@ -326,3 +326,7 @@ class Chart:
             raise ValueError(end)
 
     # }}}
+
+
+if __name__ == "__main__":
+    ...

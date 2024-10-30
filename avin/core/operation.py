@@ -119,3 +119,7 @@ class Operation:
         await Keeper.update(operation)
 
     # }}}
+
+
+if __name__ == "__main__":
+    ...

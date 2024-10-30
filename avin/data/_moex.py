@@ -554,3 +554,7 @@ class _MoexData(_AbstractDataSource):
         return standart_asset_type
 
     # }}}
+
+
+if __name__ == "__main__":
+    ...

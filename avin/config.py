@@ -12,19 +12,12 @@ from datetime import timedelta
 from avin.const import Dir
 
 
-class Usr:  # {{{
+class Usr:
     # User subdirectories
     ANALYTIC = os.path.join(Dir.USR, "analytic")
-    ASSET = os.path.join(Dir.USR, "asset")
-    CONDITION = os.path.join(Dir.USR, "broker")
     CONNECT = os.path.join(Dir.USR, "connect")
     FILTER = os.path.join(Dir.USR, "filter")
-    GENERAL = os.path.join(Dir.USR, "general")
-    MARKER = os.path.join(Dir.USR, "marker")
-    SANDBOX = os.path.join(Dir.USR, "sandbox")
-    SETTINGS = os.path.join(Dir.USR, "settings")
     STRATEGY = os.path.join(Dir.USR, "strategy")
-    TEST = os.path.join(Dir.USR, "test")
 
     # Your local timeshift from UTC+0
     # set it if you want see time with offset-aware
@@ -61,9 +54,6 @@ class Usr:  # {{{
     PG_PASSWORD = ""
     PG_DATABASE = "ars_vincere"
     PG_HOST = "127.0.0.1"
-
-
-# }}}
 
 
 __all__ = ("Usr",)

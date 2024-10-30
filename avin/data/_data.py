@@ -387,3 +387,7 @@ class Data:
         assert end.tzinfo == UTC
 
     # }}}
+
+
+if __name__ == "__main__":
+    ...

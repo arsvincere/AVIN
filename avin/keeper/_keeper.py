@@ -1684,3 +1684,7 @@ class Keeper:
         return obj
 
     # }}}
+
+
+if __name__ == "__main__":
+    ...

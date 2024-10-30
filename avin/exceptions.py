@@ -6,13 +6,14 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-__all__ = (
-    "AssetError",
-    "BrokerError",
-)
-
 
 class AssetError(Exception): ...
 
 
 class BrokerError(Exception): ...
+
+
+__all__ = (
+    "AssetError",
+    "BrokerError",
+)

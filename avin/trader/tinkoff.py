@@ -1733,3 +1733,7 @@ class Tinkoff(Broker):
         return ti_interval
 
     # }}}
+
+
+if __name__ == "__main__":
+    ...
