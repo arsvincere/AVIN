@@ -77,6 +77,10 @@ class Instrument:
         return s
 
     # }}}
+    def __hash__(self):  # {{{
+        return hash(self.figi)
+
+    # }}}
     def __eq__(self, other: Instrument) -> bool:  # {{{
         assert isinstance(other, Instrument)
         return self.figi == other.figi
