@@ -21,7 +21,13 @@ from avin.core.account import Account
 from avin.core.asset import Asset, AssetList
 from avin.core.direction import Direction
 from avin.core.id import Id
-from avin.core.order import MarketOrder, Order, StopLoss, TakeProfit
+from avin.core.order import (
+    LimitOrder,
+    MarketOrder,
+    Order,
+    StopLoss,
+    TakeProfit,
+)
 from avin.core.timeframe import TimeFrame, TimeFrameList
 from avin.core.trade import Trade, TradeList
 from avin.keeper import Keeper
@@ -72,19 +78,29 @@ class Strategy(ABC):  # {{{
     # }}}
     @abstractmethod  # onTradeOpened  # {{{
     async def onTradeOpened(self, trade: Trade):
-        logger.info(f"Trade opened: '{trade}'")
-        logger.info(f"Trade open dt: '{trade.openDateTime()}'")
+        # TODO: похоже эта пара методов
+        # вообще не нужна абстрактной, она как и создание
+        # ордеров просто общая для всех стратегий... но если
+        # уж очень надо то можно и переопределить, а так то
+        # херли, пусть будет не абстрактной
+        logger.info(f"  Trade opened: '{trade}'")
+        logger.info(f"  Trade open dt: '{trade.openDateTime()}'")
+
+        self.active_trades.add(trade)
+        await Trade.update(trade)
 
     # }}}
     @abstractmethod  # onTradeClosed  # {{{
     async def onTradeClosed(self, trade: Trade):
-        logger.info(f"Trade closed: '{trade}'")
-        logger.info(f"Trade closed result: {trade.result()}")
+        logger.info(f"  Trade closed: '{trade}'")
+        logger.info(f"  Trade closed result: {trade.result()}")
+
+        self.active_trades.remove(trade)
 
     # }}}
 
     def __str__(self):  # {{{
-        return f"{self.name}-{self.version}"
+        return f"Strategy={self.name}-{self.version}"
 
     # }}}
     def __eq__(self, other: Strategy):  # {{{
@@ -166,7 +182,7 @@ class Strategy(ABC):  # {{{
         )
         await self.__connectTradeSignals(trade)
         self.__active_trades.add(trade)
-        logger.info(f":: Created trade {trade}")
+        logger.info(f"  {self} created trade {trade}")
 
         # update db
         await Trade.save(trade)
@@ -179,9 +195,6 @@ class Strategy(ABC):  # {{{
     ) -> MarketOrder:
         logger.debug("Strategy.createMarketOrder()")
 
-        if not instrument.info:
-            await instrument.cacheInfo()
-
         order = MarketOrder(
             account_name=self.account.name,
             direction=direction,
@@ -191,7 +204,32 @@ class Strategy(ABC):  # {{{
             status=Order.Status.NEW,
             order_id=Id.newId(),
         )
-        logger.info(f"{self} create order {order}")
+        logger.info(f"  {self} create order {order}")
+
+        await Order.save(order)
+        return order
+
+    # }}}
+    async def createLimitOrder(  # {{{
+        self,
+        direction: Direction,
+        instrument: Instrument,
+        lots: int,
+        price: float,
+    ) -> MarketOrder:
+        logger.debug("Strategy.createMarketOrder()")
+
+        order = LimitOrder(
+            account_name=self.account.name,
+            direction=direction,
+            instrument=instrument,
+            lots=lots,
+            quantity=lots * instrument.lot,
+            price=price,
+            status=Order.Status.NEW,
+            order_id=Id.newId(),
+        )
+        logger.info(f"  {self} create order {order}")
 
         await Order.save(order)
         return order
@@ -231,7 +269,7 @@ class Strategy(ABC):  # {{{
             order_id=Id.newId(),
             trade_id=trade.trade_id,
         )
-        logger.info(f"{self} create order {stop_loss}")
+        logger.info(f"  {self} create order {stop_loss}")
 
         await Order.save(stop_loss)
         await trade.attachOrder(stop_loss)
@@ -270,7 +308,7 @@ class Strategy(ABC):  # {{{
             order_id=Id.newId(),
             trade_id=trade.trade_id,
         )
-        logger.info(f"{self} create order {take_profit}")
+        logger.info(f"  {self} create order {take_profit}")
 
         await Order.save(take_profit)
         await trade.attachOrder(take_profit)
@@ -310,6 +348,12 @@ class Strategy(ABC):  # {{{
     # }}}
     async def closeTrade(self, trade: Trade):  # {{{
         logger.debug(f"Strategy.closeTrade({trade})")
+
+        if trade.status == Trade.Status.CLOSED:
+            # FIX: не понимаю как и почему сюда прилетают иногда
+            # закрытые уже трейды
+            return
+
         await trade.setStatus(Trade.Status.CLOSING)
 
         # TODO: здесь еще надо проверять оставшиеся лимитные и
@@ -496,6 +540,15 @@ class StrategySet:  # {{{
         self.__items: list[StrategySetItem] = items if items else list()
         self.__asset_list = None
         self.__strategy_list = None
+
+    # }}}
+    def __getitem__(self, strategy: Strategy) -> list[StrategySetItem]:  # {{{
+        selected = list()
+        for i in self.__items:
+            if i.strategy == strategy.name and i.version == strategy.version:
+                selected.append(i)
+
+        return selected
 
     # }}}
     def __iter__(self) -> Iterator:  # {{{
