@@ -15,23 +15,28 @@ from typing import Optional
 from avin.core.direction import Direction
 from avin.core.id import Id
 from avin.core.operation import Operation
-from avin.core.transaction import Transaction
+from avin.core.transaction import Transaction, TransactionList
 from avin.data import Instrument
 from avin.keeper import Keeper
 from avin.utils import AsyncSignal, logger
-
-# TODO: а может сюда транзакции подключить.
 
 # TODO: стоп ордер.. POSTED... потом он срабатывает
 # на стороне брокера то он все, считается исчезшим
 # вместо него создает лимит ордер.
 # надо мне тоже такую логику завести,
-# возможно прямо вот так же: StopStatus...
-# ---
-# пока поменял статусы местами немного... пойдет для начала
-# надо синхронизировать с БД только статусы
-# а таймаут вообще пока выпилил, впизду когда понадобится
-# тогда и добавлю.
+
+# FIX:
+# exec_lots после выполнения ордера, не обновляется...
+#            UPDATE "Order"
+#            SET
+#                trade_id = '1730214347.6270878',
+#                status = 'EXECUTED',
+#                exec_lots = 0,
+#                exec_quantity = 0,
+#                meta = $$virtual executed$$,
+#                broker_id = '1730214347.6379766'
+#            WHERE
+#                order_id = '1730214347.6379766';
 
 
 class Order(metaclass=abc.ABCMeta):  # {{{
@@ -101,7 +106,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         exec_quantity,
         meta,
         broker_id,
-        transactions,
+        transacts,
     ):
         logger.debug("Order.__init__()")
 
@@ -120,7 +125,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
 
         self.meta = meta
         self.broker_id = broker_id
-        self.transactions = transactions if transactions else list()
+        self.transactions = transacts if transacts else TransactionList()
 
         # Signals
         self.statusChanged = AsyncSignal(Order)
@@ -204,14 +209,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         logger.debug(f"Order.attachTransaction({transaction})")
 
         assert transaction.order_id == self.order_id
-        self.transactions.append(transaction)
-
-        # TODO: пересчитать на основе транзакций количество
-        # выполненных лотов? или у брокера это все таки
-        # из ордер стэйта просто получать?
-        assert False
-
-        await Order.update(self)
+        self.transactions.add(transaction)
 
     # }}}
 
@@ -396,7 +394,7 @@ class MarketOrder(Order):  # {{{
         exec_quantity: int = 0,
         meta: str = "",
         broker_id: str = "",
-        transactions=Optional[list],
+        transactions: Optional[TransactionList] = None,
     ):
         # TODO: в базовом классе значения по умолчанию пожалуй не нужны
         # наоборот пусть явно все передается. Явное лучше неявного.
@@ -416,7 +414,7 @@ class MarketOrder(Order):  # {{{
             exec_quantity,
             meta=meta,
             broker_id=broker_id,
-            transactions=transactions,
+            transacts=transactions,
         )
 
 
@@ -437,7 +435,7 @@ class LimitOrder(Order):  # {{{
         exec_quantity: int = 0,
         meta: str = "",
         broker_id: str = "",
-        transactions=Optional[list],
+        transactions: Optional[TransactionList] = None,
     ):
         super().__init__(
             Order.Type.LIMIT,
@@ -453,7 +451,7 @@ class LimitOrder(Order):  # {{{
             exec_quantity,
             meta=meta,
             broker_id=broker_id,
-            transactions=transactions,
+            transacts=transactions,
         )
         self.price = price
 
@@ -476,7 +474,7 @@ class StopOrder(Order):  # {{{
         exec_quantity: int = 0,
         meta: str = "",
         broker_id: str = "",
-        transactions=Optional[list],
+        transactions: Optional[TransactionList] = None,
     ):
         super().__init__(
             Order.Type.STOP,
@@ -492,7 +490,7 @@ class StopOrder(Order):  # {{{
             exec_quantity,
             meta=meta,
             broker_id=broker_id,
-            transactions=transactions,
+            transacts=transactions,
         )
         self.stop_price = stop_price
         self.exec_price = exec_price
@@ -516,7 +514,7 @@ class StopLoss(Order):  # {{{
         exec_quantity: int = 0,
         meta: str = "",
         broker_id: str = "",
-        transactions=Optional[list],
+        transactions: Optional[TransactionList] = None,
     ):
         super().__init__(
             Order.Type.STOP_LOSS,
@@ -532,7 +530,7 @@ class StopLoss(Order):  # {{{
             exec_quantity,
             meta=meta,
             broker_id=broker_id,
-            transactions=transactions,
+            transacts=transactions,
         )
         self.stop_price = stop_price
         self.exec_price = exec_price
@@ -556,7 +554,7 @@ class TakeProfit(Order):  # {{{
         exec_quantity: int = 0,
         meta: str = "",
         broker_id: str = "",
-        transactions=Optional[list],
+        transactions: Optional[TransactionList] = None,
     ):
         # TODO: Instrument.min_price_step - все таки надо грузить
         # сразу при создании из базы, иначе тут жопа, каждый раз загружать
@@ -580,7 +578,7 @@ class TakeProfit(Order):  # {{{
             exec_quantity,
             meta=meta,
             broker_id=broker_id,
-            transactions=transactions,
+            transacts=transactions,
         )
         self.stop_price = stop_price
         self.exec_price = exec_price
