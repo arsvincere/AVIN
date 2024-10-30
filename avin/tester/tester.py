@@ -8,53 +8,13 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-
-from avin.const import DAY_BEGIN, ONE_SECOND
-from avin.core import Bar, Broker, Chart
-from avin.keeper import Keeper
+from avin.core import Chart
+from avin.tester._virtual_broker import _VirtualBroker
 from avin.tester.test import Test
-from avin.utils import Signal, logger, now
+from avin.utils import logger
 
 
-class _VirtualBroker(Broker):  # {{{
-    @classmethod  # getAccount
-    def getAccount(cls, account_name: str) -> Account:
-        logger.debug(f"Tinkoff.postStopLoss({account}, {order})")
-
-    @classmethod  # postMarketOrder
-    def postMarketOrder(cls, account: Account, order: Order) -> bool: ...
-
-    @classmethod  # postLimitOrder
-    async def postLimitOrder(
-        cls, account: Account, order: LimitOrder
-    ) -> bool: ...
-
-    @classmethod  # postStopOrder
-    async def postStopOrder(
-        cls, account: Account, order: StopOrder
-    ) -> bool: ...
-
-    @classmethod  # postStopLoss
-    async def postStopLoss(
-        cls, account: Account, order: StopLoss
-    ) -> bool: ...
-
-    @classmethod  # startDataStream
-    async def startDataStream(cls) -> bool: ...
-
-    @classmethod  # startTransactionStream
-    async def startTransactionStream(cls): ...
-
-    @classmethod  # __checkOrders
-    async def __checkOrders(cls): ...
-
-
-# }}}
 class Tester:
-    PROGRESS_EMIT_PERIOD = ONE_SECOND
-    progress = Signal(int)
-
     def __init__(self):  # {{{
         self.__test = None
         self.__slist = None
@@ -72,29 +32,35 @@ class Tester:
         logger.info(f":: Tester run {self.__test}")
         assert self.__test is not None
 
-        self.__test.clear()
+        await self.__test.clear()
         self.__test.status = Test.Status.PROCESS
-        self.__setVirtualBroker()
+
+        await self.__loadBroker()
         await self.__loadAssetList()
         await self.__loadStrategyList()
         self.__createTimeFrameList()
+        self.__setAccount()
+        self.__setTradeList()
 
         for asset in self.__alist:
             self.__setCurrentAsset(asset)
-            await self.__loadMarketData()
-            self.__createCharts()
+            self.__createEmptyCharts()
+            await self.__connectStrategy()
             await self.__startTest()
             await self.__finishTest()
+
+        print("exit 100500")
+        exit(100500)
 
         self.__test.status = Test.Status.COMPLETE
         self.__createReport()
         self.__saveTest()
-        logger.info(f"'{self.test}' complete!")
+        logger.info(f":: '{self.test}' complete!")
         self.__clearAll()
 
     # }}}
 
-    def __clearAll(self):  # {{{
+    def __clearAll(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__clearAll()")
 
         self.__test = None
@@ -108,23 +74,15 @@ class Tester:
         self.__last_emit = None
 
     # }}}
-    def __setTime(self):  # {{{
-        begin = datetime.combine(self.__test.begin, DAY_BEGIN, UTC)
-        end = datetime.combine(self.__test.end, DAY_BEGIN, UTC)
-        total_timedelta = self.__test.end - self.__test.begin
-
-        self.__time = begin
-        self.__begin = begin
-        self.__end = end
-        self.__total_time = total_timedelta.total_seconds()
-        self.__last_emit = now()
-        self.progress.emit(0)
-
-    # }}}
-    def __setVirtualBroker(self):  # {{{
+    async def __loadBroker(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__setVirtualBroker()")
 
         self.__broker = _VirtualBroker
+        self.__broker.setTest(self.__test)
+        await self.__broker.new_bar.async_connect(self.__onNewBar)
+        await self.__broker.bar_changed.async_connect(self.__onNewBar)
+
+        # TODO:
         # self.__broker.reset()  # clear orders, subscriptions...
 
     # }}}
@@ -146,94 +104,88 @@ class Tester:
         self.__tflist = self.__slist.createTimeFrameList()
 
     # }}}
+    def __setAccount(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__setAccount()")
+
+        account = self.__broker.getAccount(self.__test.account)
+        for strategy in self.__slist:
+            strategy.setAccount(account)
+
+    # }}}
+    def __setTradeList(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__setAccount()")
+
+        tlist = self.__test.trade_list
+        for strategy in self.__slist:
+            strategy.setTradeList(tlist)
+
+    # }}}
     def __setCurrentAsset(self, asset: Asset) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__setCurrentAsset()")
 
         self.__current_asset = asset
-
-    # }}}
-    async def __loadMarketData(self) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.__loadMarketData()")
-
-        self.__bars = dict()
         for timeframe in self.__tflist:
-            bars = await Keeper.get(
-                Bar,
-                instrument=self.__current_asset,
-                timeframe=timeframe,
-                begin=self.__test.begin,
-                end=self.__test.end,
-            )
-
-            self.__bars[timeframe] = bars
+            self.__broker.createBarStream(asset, timeframe)
 
     # }}}
-    def __createCharts(self):  # {{{
+    def __createEmptyCharts(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__createCharts()")
 
         for timeframe in self.__tflist:
-            bar = self.__bars[timeframe].pop(0)
             chart = Chart(self.__current_asset, timeframe, [])
-            chart.now = bar
             self.__current_asset.setChart(chart)
 
-        # }}}
+    # }}}
+    async def __connectStrategy(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__connectStrategy()")
 
-    async def __startTest(self):  # {{{
+        for strategy in self.__slist:
+            items = self.__test.strategy_set[strategy]
+            items = filter(
+                lambda x: x.figi == self.__current_asset.figi, items
+            )
+            for i in items:
+                await strategy.connect(self.__current_asset, i.long, i.short)
+
+    # }}}
+
+    async def __startTest(self) -> None:  # {{{
         logger.info(f":: Start testing {self.__current_asset.ticker}")
 
         # initialize strategy
+        for strategy in self.__slist:
+            await strategy.start()
+
+        # start time
+        await self.__broker.startDataStream()
+
+    # }}}
+    async def __onNewBar(  # {{{
+        self, event: NewBarEvent | BarChanged
+    ) -> None:
+        logger.info(f"-> receive {event}")
+
+        # TODO:
+        # сюда теперь приходят и новые исторические бары и
+        # и обновленные реал тайм бары
+        # теперь название функции не очень подходящее
+        # вообще возможно весь этот треш нужно внутри
+        # брокера оставить, я ведь передаю ему ассеты когда подписываюсь
+        # так что список у него есть вот пусть он их там и обновляет
+        # нахер не нужен тут еще один вызов функции
+
+        asset = self.__alist.find(figi=event.figi)
+        await asset.receive(event)
+
+    # }}}
+
+    async def __finishTest(self):  # {{{
+        logger.info(f"Finish test {self.__current_asset.ticker}")
         for i in self.__slist:
-            await i.start()
-
-        # run time
-        self.__setTime()
-        while self.__time < self.__end:
-            ...
-            await self.__timeStep()
-            # self.__emitProgress()
+            await i.finish()
+        self.__current_asset.clearCache()
 
     # }}}
-
-    async def __timeStep(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__timeStep()")
-
-        self.__time += self.__test.time_step
-        for timeframe in self.__tflist:
-            chart = self.__current_asset.chart(timeframe)
-            now_bar = chart.now
-
-            if self.__time < now_bar.dt + timeframe:
-                continue
-
-            last_historical_bar = now_bar
-            new_bar = self.__bars[timeframe].pop(0)
-
-            await chart.addHistoricalBar(last_historical_bar)
-            await chart.updateNowBar(new_bar)
-
-            print(self.__time, chart.timeframe, chart.now.dt)
-            input(3)
-
-    # }}}
-    def __emitProgress(self):  # {{{
-        passed_time = now() - self.last_emit
-        if passed_time > self.PROGRESS_EMIT_PERIOD:
-            complete = (self.__time - self.test.begin).total_seconds()
-            progress = int(complete / self.__total_time * 100)
-            self.progress.emit(progress)
-            self.last_emit = now()
-
-    # }}}
-
-    #     def __finishTest(self):  # {{{
-    #         logger.info(f"Finish test {self.current_asset.ticker}")
-    #         self.strategy.finish()
-    #         self.portfolio.positions.clear()
-    #         self.current_asset.closeAllChart()
-    #         self.signals.clear()
-    #
-    #     # }}}
     #     def __createReport(self):  # {{{
     #         self.test.updateReport()
     #
