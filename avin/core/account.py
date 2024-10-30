@@ -30,6 +30,10 @@ class Account:
         self.__active_orders = list()
 
     # }}}
+    def __str__(self):  # {{{
+        return f"Account={self.__name}"
+
+    # }}}
     @property  # name# {{{
     def name(self):
         return self.__name
@@ -101,7 +105,9 @@ class Account:
     # }}}
     async def post(self, order: Order) -> bool:  # {{{
         logger.debug("Account.post()")
-        logger.info(f":: Account {self.__name} post order: {order}")
+        logger.info(f":: {self} post order: {order}")
+
+        self.__active_orders.append(order)
 
         post_methods = {
             Order.Type.MARKET: self.__broker.postMarketOrder,
@@ -116,7 +122,6 @@ class Account:
         if not result:
             assert False, "чет не палучилась, подумай что делать тогда"
 
-        self.__active_orders.append(order)
         await self.broker.syncOrder(self, order)
 
         # TODO:
@@ -140,23 +145,21 @@ class Account:
         return result
 
     # }}}
-    async def receiveTransaction(self, event: TransactionEvent):  # {{{
-        logger.debug("Account.receiveTransaction()")
+    async def receive(self, event: TransactionEvent):  # {{{
+        logger.debug("Account.receive()")
+        assert isinstance(event, TransactionEvent)
 
         order = None
         for i in self.__active_orders:
             if i.broker_id == event.order_broker_id:
                 order = i
                 break
-
         if not order:
-            logger.warning(
-                f"Account '{self.name}' received event {event}, "
-                f"but order not found"
-            )
+            logger.warning(f"{self} received {event}, but order not found")
             return
 
-        logger.info(f"Account '{self.name}' receive {event}")
+        logger.info(f"-> {self} receive {event}")
+
         await self.broker.syncOrder(self, order)
         if order.status == Order.Status.FILLED:
             await self.__onOrderFilled(order)
@@ -174,10 +177,7 @@ class Account:
         await order.executed.async_emit(order, operation)
 
         # remove order from self.__active_orders
-        i = 0
-        while i < len(self.__active_orders):
-            if self.__active_orders[i].order_id == order.order_id:
-                self.__active_orders.pop(i)
+        self.__active_orders.remove(order)
 
         # await commission for operation
         if operation.commission == 0:
