@@ -6,7 +6,6 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-import asyncio
 
 # посмотри еще раз на либу asyncqt - может от туда форкнуться?
 # или из этих
@@ -15,6 +14,11 @@ import asyncio
 # https://github.com/dgovil/PySignal
 # https://github.com/complynx/qsignal
 # или лучше не форкнуться, а вкурить в код и взять что нужно.
+
+# TODO:
+# async_emit -> aemit
+# async_connect -> aconnect
+# при этом сам коннект не надо делать async
 
 
 class Signal:  # {{{
@@ -62,9 +66,11 @@ class AsyncSignal:  # {{{
         for aslot in self.__async_slots:
             self.__checkTypes(args)
             coro = aslot(*args)
-            task = asyncio.create_task(coro)
-            all_task.append(task)
-        await asyncio.gather(*all_task)
+            #     task = asyncio.create_task(coro)
+            #     all_task.append(task)
+            # await asyncio.gather(*all_task)
+
+            await coro
 
     # }}}
     async def async_connect(self, async_slot):  # {{{
