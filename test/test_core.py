@@ -195,16 +195,94 @@ def test_TimeFrameList():  # {{{
 
 
 # }}}
-def test_NewBarEvent():  # {{{
+def test_BarChangedEvent():  # {{{
     figi = "BBG004730N88"
     timeframe = TimeFrame("1M")
     bar = Bar("2023-01-01", 10, 12, 9, 11, 1000, chart=None)
 
-    event = NewBarEvent(figi, timeframe, bar)
+    event = BarChangedEvent(figi, timeframe, bar)
     assert event.figi == figi
     assert event.timeframe == timeframe
     assert event.bar == bar
-    assert event.type == Event.Type.NEW_BAR
+    assert event.type == Event.Type.BAR_CHANGED
+
+
+# }}}
+def test_NewHistoricalBarEvent():  # {{{
+    figi = "BBG004730N88"
+    timeframe = TimeFrame("1M")
+    bar = Bar("2023-01-01", 10, 12, 9, 11, 1000, chart=None)
+
+    event = NewHistoricalBarEvent(figi, timeframe, bar)
+    assert event.figi == figi
+    assert event.timeframe == timeframe
+    assert event.bar == bar
+    assert event.type == Event.Type.NEW_HISTORICAL_BAR
+
+
+# }}}
+def test_Transaction():  # {{{
+    t1 = Transaction(
+        order_id="111",
+        dt=datetime(2023, 8, 1),
+        quantity=5,
+        price=10.0,
+        broker_id="1111",
+    )
+    assert t1.order_id == "111"
+    assert t1.dt == datetime(2023, 8, 1)
+    assert t1.quantity == 5
+    assert t1.price == 10.0
+    assert t1.broker_id == "1111"
+
+    # TODO: save, load, delete from db
+
+
+# }}}
+def test_TransactionList():  # {{{
+    t1 = Transaction(
+        order_id="111",
+        dt=now(),
+        quantity=5,
+        price=10.0,
+        broker_id="1111",
+    )
+    t2 = Transaction(
+        order_id="222",
+        dt=now(),
+        quantity=6,
+        price=10.0,
+        broker_id="2222",
+    )
+
+    transaction_list = TransactionList()
+    assert len(transaction_list) == 0
+    assert str(transaction_list) == "TransactionList=[]"
+    assert t1 not in transaction_list
+    assert t2 not in transaction_list
+
+    transaction_list.add(t1)
+    transaction_list.add(t2)
+    assert len(transaction_list) == 2
+    assert t1 in transaction_list
+    assert t2 in transaction_list
+    assert transaction_list.first == t1
+    assert transaction_list.last == t2
+
+    assert transaction_list.quantity() == 5 + 6
+    assert transaction_list.amount() == 110.0
+    assert transaction_list.average() == 10.0
+
+    transaction_list.remove(t1)
+    assert len(transaction_list) == 1
+    assert t1 not in transaction_list
+    assert t2 in transaction_list
+
+    transaction_list.clear()
+    assert len(transaction_list) == 0
+    assert str(transaction_list) == "TransactionList=[]"
+    assert t1 not in transaction_list
+    assert t2 not in transaction_list
 
 
 # }}}
@@ -263,7 +341,7 @@ async def test_Chart(event_loop):
 
     # add new bars in chart
     bar = Bar(now(), 1, 1, 1, 1, 5000)
-    chart.addNewBar(bar)
+    chart.addHistoricalBar(bar)
     bars = chart.getBars()
     assert bars[-1] == bar
     assert bars[-1].vol == 5000

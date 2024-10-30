@@ -36,13 +36,12 @@ async def test_Tinkoff(event_loop):
     assert money > 0
     # }}}
     # post MarketOrder buy then sell{{{
-    mvid = await Asset.byTicker(Instrument.Type.SHARE, Exchange.MOEX, "MVID")
-    await mvid.cacheInfo()
+    mvid = await Asset.fromTicker(Exchange.MOEX, Asset.Type.SHARE, "MVID")
     order_id = Id.newId()
     order = MarketOrder(
         account_name=account.name,
-        direction=Order.Direction.BUY,
-        asset_id=mvid.ID,
+        direction=Direction.BUY,
+        instrument=mvid,
         lots=1,
         quantity=1 * mvid.lot,
         status=Order.Status.NEW,
@@ -54,7 +53,7 @@ async def test_Tinkoff(event_loop):
     assert order.status == Order.Status.FILLED
 
     order.order_id = Id.newId()
-    order.direction = Order.Direction.SELL
+    order.direction = Direction.SELL
     posted = await Tinkoff.postMarketOrder(account, order)
     assert posted
     await Tinkoff.syncOrder(account, order)
@@ -62,7 +61,7 @@ async def test_Tinkoff(event_loop):
 
     # get order operation
     operation = await Tinkoff.getOrderOperation(account, order)
-    assert operation.asset_id == order.asset_id
+    assert operation.instrument == order.instrument
     assert operation.lots == order.lots
     # }}}
     # post LimitOrder buy{{{
@@ -70,8 +69,8 @@ async def test_Tinkoff(event_loop):
     order_id = Id.newId()
     limit_order = LimitOrder(
         account_name=account.name,
-        direction=Order.Direction.BUY,
-        asset_id=mvid.ID,
+        direction=Direction.BUY,
+        instrument=mvid,
         lots=1,
         quantity=1 * mvid.lot,
         price=round_price(last_price - 10, mvid.min_price_step),
@@ -89,7 +88,7 @@ async def test_Tinkoff(event_loop):
     assert received_order.type == limit_order.type
     assert received_order.account_name == limit_order.account_name
     assert received_order.direction == limit_order.direction
-    assert received_order.asset_id == limit_order.asset_id
+    assert received_order.instrument == limit_order.instrument
     assert received_order.lots == limit_order.lots
     assert received_order.quantity == limit_order.quantity
     # assert received_order.price == limit_order.price  # TODO: correct round
@@ -107,8 +106,8 @@ async def test_Tinkoff(event_loop):
     order_id = Id.newId()
     limit_order = LimitOrder(
         account_name=account.name,
-        direction=Order.Direction.SELL,
-        asset_id=mvid.ID,
+        direction=Direction.SELL,
+        instrument=mvid,
         lots=1,
         quantity=1 * mvid.lot,
         price=round_price(last_price + 10, mvid.min_price_step),
@@ -126,7 +125,7 @@ async def test_Tinkoff(event_loop):
     assert received_order.type == limit_order.type
     assert received_order.account_name == limit_order.account_name
     assert received_order.direction == limit_order.direction
-    assert received_order.asset_id == limit_order.asset_id
+    assert received_order.instrument == limit_order.instrument
     assert received_order.lots == limit_order.lots
     assert received_order.quantity == limit_order.quantity
     # assert received_order.price == limit_order.price # TODO: correct round
@@ -145,8 +144,8 @@ async def test_Tinkoff(event_loop):
     order_id = Id.newId()
     stop_order = StopOrder(
         account_name=account.name,
-        direction=Order.Direction.BUY,
-        asset_id=mvid.ID,
+        direction=Direction.BUY,
+        instrument=mvid,
         lots=1,
         quantity=1 * mvid.lot,
         stop_price=price,
@@ -158,7 +157,7 @@ async def test_Tinkoff(event_loop):
     posted = await Tinkoff.postStopOrder(account, stop_order)
     assert posted
     await Tinkoff.syncOrder(account, stop_order)
-    assert stop_order.status == Order.Status.ACTIVE
+    assert stop_order.status == Order.Status.POSTED
 
     received_order = await Tinkoff.getStopOrders(account)
     received_order = received_order[0]
@@ -166,7 +165,7 @@ async def test_Tinkoff(event_loop):
     assert received_order.type == stop_order.type
     assert received_order.account_name == stop_order.account_name
     assert received_order.direction == stop_order.direction
-    assert received_order.asset_id == stop_order.asset_id
+    assert received_order.instrument == stop_order.instrument
     assert received_order.lots == stop_order.lots
     assert received_order.quantity == stop_order.quantity
     # assert received_order.stop_price == stop_order.stop_price # TODO: correct round
@@ -186,8 +185,8 @@ async def test_Tinkoff(event_loop):
     order_id = Id.newId()
     stop_order = StopOrder(
         account_name=account.name,
-        direction=Order.Direction.SELL,
-        asset_id=mvid.ID,
+        direction=Direction.SELL,
+        instrument=mvid,
         lots=1,
         quantity=1 * mvid.lot,
         stop_price=price,
@@ -199,7 +198,7 @@ async def test_Tinkoff(event_loop):
     posted = await Tinkoff.postStopOrder(account, stop_order)
     assert posted
     await Tinkoff.syncOrder(account, stop_order)
-    assert stop_order.status == Order.Status.ACTIVE
+    assert stop_order.status == Order.Status.POSTED
 
     canceled = await Tinkoff.cancelStopOrder(account, stop_order)
     assert canceled
@@ -210,8 +209,8 @@ async def test_Tinkoff(event_loop):
     from_ = now() - ONE_MINUTE
     to = now()
     operations = await Tinkoff.getOperations(account, from_, to)
-    assert operations[0].asset_id == mvid.ID
-    assert operations[1].asset_id == mvid.ID
+    assert operations[0].instrument == mvid
+    assert operations[1].instrument == mvid
     # }}}
     # get historical bars{{{
     from_ = datetime.combine(date.today(), DAY_BEGIN, UTC)

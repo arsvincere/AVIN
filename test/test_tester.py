@@ -11,8 +11,29 @@ from datetime import date
 import pytest
 
 from avin import *
+from avin.tester._stream import _BarStream
 
 
+@pytest.mark.asyncio  # test_BarStream  # {{{
+async def test_BarStream():
+    stream = _BarStream()
+
+    afks = await Asset.fromTicker(Exchange.MOEX, Asset.Type.SHARE, "AFKS")
+    aflt = await Asset.fromTicker(Exchange.MOEX, Asset.Type.SHARE, "AFLT")
+    alrs = await Asset.fromTicker(Exchange.MOEX, Asset.Type.SHARE, "ALRS")
+    stream.subscribe(afks, TimeFrame("1M"))
+    stream.subscribe(afks, TimeFrame("D"))
+    stream.subscribe(afks, TimeFrame("5M"))
+
+    begin = date(2023, 8, 1)
+    end = date(2023, 8, 2)
+    await stream.loadData(begin, end)
+
+    for i in stream:
+        isinstance(i, Event)
+
+
+# }}}
 @pytest.mark.asyncio  # test_Test  # {{{
 async def test_Test():
     test_name = "_unittest_test"
@@ -69,6 +90,45 @@ async def test_Test():
 
     # delete
     await Test.delete(test)
+
+
+# }}}
+@pytest.mark.asyncio  # test_Tester  # {{{
+async def test_Tester():
+    tester = Tester()
+
+    test_name = "_unittest_test"
+    test = Test(f"{test_name}")
+
+    # create strategy set
+    item1 = StrategySetItem(
+        "Every", "day", "BBG004S68614", long=True, short=False
+    )
+    # item2 = StrategySetItem(
+    #     "Every", "minute", "BBG004S683W7", long=True, short=True
+    # )
+    # item3 = StrategySetItem(
+    #     "Every", "five", "BBG004S68B31", long=True, short=True
+    # )
+    s_set = StrategySet(
+        name=f"{test_name}-set",
+        # items=[item1, item2, item3],
+        items=[item1],
+    )
+
+    # configure test
+    test.description = "unit test <class Tester>"
+    test.strategy_set = s_set
+    test.deposit = 100_000.0
+    test.commission = 0.0005
+    test.begin = date(2023, 8, 1)
+    test.end = date(2023, 8, 2)
+
+    # save
+    await Test.save(test)
+
+    tester.setTest(test)
+    await tester.runTest()
 
 
 # }}}
