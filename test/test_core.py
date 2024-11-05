@@ -1027,11 +1027,6 @@ async def test_StrategySetItem():
     aflt = await Asset.fromTicker(Exchange.MOEX, Asset.Type.SHARE, "AFLT")
     alrs = await Asset.fromTicker(Exchange.MOEX, Asset.Type.SHARE, "ALRS")
     sber = await Asset.fromTicker(Exchange.MOEX, Asset.Type.SHARE, "SBER")
-    # view figis
-    # print(afks.figi)
-    # print(aflt.figi)
-    # print(alrs.figi)
-    # print(sber.figi)
 
     # create items
     item1 = StrategySetItem(

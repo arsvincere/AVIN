@@ -63,6 +63,24 @@ def test_InstrumentType():  # {{{
 # }}}
 
 
+@pytest.mark.asyncio  # test_DataInfoNode  # {{{
+async def test_DataInfoNode():
+    source = DataSource.MOEX
+    afks = await Instrument.fromTicker(
+        Exchange.MOEX, Instrument.Type.SHARE, "AFKS"
+    )
+    data_type = DataType.BAR_1M
+    begin = datetime(2023, 1, 1)
+    end = datetime(2024, 1, 1)
+    node = DataInfoNode(source, afks, data_type, begin, end)
+    assert node.source == source
+    assert node.instrument == afks
+    assert node.data_type == data_type
+    assert node.first_dt == begin
+    assert node.last_dt == end
+
+
+# }}}
 @pytest.mark.asyncio  # test_Instrument  # {{{
 async def test_Instrument():
     info = {
@@ -122,6 +140,26 @@ async def test_Data_find(event_loop):
     imoex = id_list[0]
     assert imoex.name == "Индекс МосБиржи"
     assert imoex.figi == "_MOEX_IMOEX"  # my fake 'figi'
+
+
+# }}}
+@pytest.mark.asyncio  # test_Data_info  # {{{
+async def test_Data_info(event_loop):
+    info = await Data.info()
+    assert len(info) > 0
+
+    # get list[Instrument]
+    instruments = info.getInstruments()
+
+    # __getitem__ -> info[instrument] -> nodes of instrument
+    for instrument in instruments:
+        assert isinstance(instrument, Instrument)
+        for node in info[instrument]:
+            assert isinstance(node, DataInfoNode)
+
+    # __iter__ -> all nodes
+    for i in info:
+        assert isinstance(i, DataInfoNode)
 
 
 # }}}
