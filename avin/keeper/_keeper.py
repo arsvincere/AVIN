@@ -112,6 +112,10 @@ class Keeper:
         for i in none_keys:
             kwargs.pop(i)
 
+        # convert Exchange -> str
+        if kwargs.get("exchange"):
+            kwargs["exchange"] = kwargs["exchange"].name
+
         # Create kwargs conditions
         if not kwargs:
             pg_kwargs = "TRUE"
@@ -346,7 +350,7 @@ class Keeper:
     async def __addBarsData(cls, data: _BarsData) -> None:
         logger.debug(f"{cls.__name__}.__addBarsData()")
 
-        # Format instrument info into postgres format jsonb
+        # Format instrument info in postgres format jsonb
         pg_asset_info = json.dumps(
             data.instrument.info,
             ensure_ascii=False,
