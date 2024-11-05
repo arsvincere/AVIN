@@ -13,7 +13,11 @@ class AssetError(Exception): ...
 class BrokerError(Exception): ...
 
 
+class GuiError(Exception): ...
+
+
 __all__ = (
     "AssetError",
     "BrokerError",
+    "GuiError",
 )
