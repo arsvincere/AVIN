@@ -184,7 +184,9 @@ class Keeper:
         class_name = cls.__getClassName(Class)
         methods = {
             "Instrument": cls.__getInstrument,
-            "_DataManager": cls.__getDataInfo,
+            "DataInfoNode": cls.__getDataInfoNode,
+            "DataInfo": cls.__getDataInfo,
+            "UIDataInfo": cls.__getDataInfo,
             "DataSource": cls.__getDataSource,
             "DataType": cls.__getDataType,
             "datetime": cls.__getDateTime,
@@ -760,35 +762,77 @@ class Keeper:
         return instr_list
 
     # }}}
+    @classmethod  # __getDataInfoNode  # {{{
+    async def __getDataInfoNode(cls, DataInfoNode, kwargs: dict):
+        logger.debug(f"{cls.__name__}.__getDataInfoNode()")
+
+        instrument = kwargs.get("instrument")
+        data_type = kwargs.get("data_type")
+
+        # Create figi condition
+        pg_figi = (
+            f"\"Data\".figi = '{instrument.figi}'" if instrument else "TRUE"
+        )
+
+        # Create type condition
+        pg_data_type = (
+            f"\"Data\".type = '{data_type.name}'" if data_type else "TRUE"
+        )
+
+        # Request data info
+        request = f"""
+            SELECT
+                "Data".source, "Data".type, "Data".first_dt, "Data".last_dt,
+                "Asset".info
+            FROM "Data"
+            JOIN "Asset" ON "Data".figi = "Asset".figi
+            WHERE
+                {pg_figi} AND {pg_data_type};
+            """
+
+        records = await cls.transaction(request)
+        if not records:
+            return None
+
+        assert len(records) == 1
+        node = DataInfoNode.fromRecord(records[0])
+        return node
+
+    # }}}
     @classmethod  # __getDataInfo  # {{{
-    async def __getDataInfo(cls, _DataManager, kwargs: dict):
+    async def __getDataInfo(cls, DataInfo, kwargs: dict):
         logger.debug(f"{cls.__name__}.__getDataInfo()")
 
         instrument = kwargs.get("instrument")
         data_type = kwargs.get("data_type")
 
         # Create figi condition
-        pg_figi = f"figi = '{instrument.figi}'" if instrument else "TRUE"
+        pg_figi = (
+            f"\"Data\".figi = '{instrument.figi}'" if instrument else "TRUE"
+        )
 
-        # Create figi condition
-        pg_data_type = f"type = '{data_type.name}'" if data_type else "TRUE"
+        # Create type condition
+        pg_data_type = (
+            f"\"Data\".type = '{data_type.name}'" if data_type else "TRUE"
+        )
 
         # Request data info
         request = f"""
-            SELECT figi, type, source, first_dt, last_dt
+            SELECT
+                "Data".source, "Data".type, "Data".first_dt, "Data".last_dt,
+                "Asset".info
             FROM "Data"
+            JOIN "Asset" ON "Data".figi = "Asset".figi
             WHERE
                 {pg_figi} AND {pg_data_type};
             """
-        records = await cls.transaction(request)
 
+        records = await cls.transaction(request)
         if not records:
             return None
 
-        # if len(records) == 1:
-        #     return records[0]
-        #
-        return records
+        data_info = DataInfo.fromRecord(records)
+        return data_info
 
     # }}}
     @classmethod  # __getDataSource  # {{{

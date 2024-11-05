@@ -7,6 +7,7 @@
 # ============================================================================
 
 from avin.data._data import Data
+from avin.data.data_info import DataInfo, DataInfoNode
 from avin.data.data_source import DataSource
 from avin.data.data_type import DataType
 from avin.data.exchange import Exchange
@@ -14,6 +15,8 @@ from avin.data.instrument import Instrument
 
 __all__ = (
     "Data",
+    "DataInfo",
+    "DataInfoNode",
     "DataSource",
     "DataType",
     "Exchange",

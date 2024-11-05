@@ -15,6 +15,7 @@ from avin.const import DAY_BEGIN, DAY_END, Res, WeekDays
 from avin.data._bar import _Bar, _BarsData
 from avin.data._moex import _MoexData
 from avin.data._tinkoff import _TinkoffData
+from avin.data.data_info import DataInfo, DataInfoNode
 from avin.data.data_source import DataSource
 from avin.data.data_type import DataType
 from avin.data.instrument import Instrument
@@ -70,7 +71,15 @@ class _DataManager:
         return id_list
 
     # }}}
-    @classmethod  # firstDateTime{{{
+    @classmethod  # info  # {{{
+    async def info(cls, instr, data_type) -> DataInfo:
+        logger.debug(f"{cls.__name__}.download()")
+
+        info = await DataInfo.load(instr, data_type)
+        return info
+
+    # }}}
+    @classmethod  # firstDateTime  # {{{
     async def firstDateTime(cls, source, instr, data_type) -> datetime:
         logger.debug(f"{cls.__name__}.firstDateTime()")
 
@@ -93,15 +102,14 @@ class _DataManager:
         logger.debug(f"{cls.__name__}.convert()")
         logger.info(f":: Convert {instr.ticker}-{in_type} -> {out_type}")
 
-        # Надо сначала проверить какие данные уже есть
-        record = await Keeper.get(cls, instrument=instr, data_type=out_type)
-        if not record:
-            begin = None  # выбрать с самого начала
-            end = datetime.combine(date.today(), DAY_BEGIN, UTC)  # до сегодня
+        # check availible converted data
+        data_info = await DataInfoNode.load(instr, out_type)
+        if not data_info:
+            begin = None  # select from first availible
+            end = datetime.combine(date.today(), DAY_BEGIN, UTC)  # to today
         else:
-            out_last_dt = record["last_dt"]
-            begin = out_last_dt  # выбрать с последнего сконвертированного
-            end = datetime.combine(date.today(), DAY_BEGIN, UTC)  # до сегодня
+            begin = data_info.last_dt  # select from last converted
+            end = datetime.combine(date.today(), DAY_BEGIN, UTC)  # to today
 
         in_data = await _BarsData.load(instr, in_type, begin, end)
 
@@ -144,9 +152,9 @@ class _DataManager:
     async def updateAll(cls) -> None:
         logger.info(":: Update all market data")
 
-        records = await Keeper.get(cls)
-        for record in records:
-            await cls.__update(record)
+        data_info = await Keeper.get(DataInfo)
+        for node in data_info:
+            await cls.__update(node)
 
     # }}}
     @classmethod  # request# {{{
@@ -355,15 +363,14 @@ class _DataManager:
 
     # }}}
     @classmethod  # __update  # {{{
-    async def __update(cls, record):
+    async def __update(cls, node):
         logger.debug(f"{cls.__name__}.__update()")
 
-        # parse record
-        instr = await Instrument.fromFigi(record["figi"])
-        data_type = DataType.fromRecord(record)
-        source = DataSource.fromRecord(record)
+        instr = node.instrument
+        data_type = node.data_type
+        source = node.source
         source_class = cls.__getDataSourceClass(source)
-        last_dt = record["last_dt"]
+        last_dt = node.last_dt
         logger.info(f"Updating {instr.ticker}-{data_type.value}")
 
         # request new bars

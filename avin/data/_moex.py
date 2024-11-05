@@ -52,7 +52,7 @@ class _MoexData(_AbstractDataSource):
         if _InstrumentsInfoCache.checkCachingDate(cls.source):
             return
 
-        logger.info(":: Caching instruments info info from MOEX")
+        logger.info(":: Caching instruments info from MOEX")
         if not await cls.__authorizate():
             return
 

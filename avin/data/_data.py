@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from typing import Optional
 
 from avin.data._data_manager import _DataManager
+from avin.data.data_info import DataInfo
 from avin.data.data_source import DataSource
 from avin.data.data_type import DataType
 from avin.data.exchange import Exchange
@@ -20,7 +21,7 @@ from avin.utils import logger
 
 
 class Data:
-    @classmethod  # cache# {{{
+    @classmethod  # cache  # {{{
     async def cache(cls) -> None:
         """Make cache of instruments info"""
 
@@ -29,7 +30,7 @@ class Data:
         await _DataManager.cacheInstrumentsInfo()
 
     # }}}
-    @classmethod  # find# {{{
+    @classmethod  # find  # {{{
     async def find(
         cls,
         exchange: Optional[Exchange] = None,
@@ -61,7 +62,26 @@ class Data:
         return instr_list
 
     # }}}
-    @classmethod  # firstDateTime# {{{
+    @classmethod  # info  # {{{
+    async def info(
+        cls,
+        instrument: Optional[Instrument] = None,
+        data_type: Optional[DataType] = None,
+    ) -> DataInfo:
+        logger.debug(f"{cls.__name__}.info()")
+
+        check = cls.__checkArgs(
+            instrument=instrument,
+            data_type=data_type,
+        )
+        if not check:
+            return None
+
+        info = await _DataManager.info(instrument, data_type)
+        return info
+
+    # }}}
+    @classmethod  # firstDateTime  # {{{
     async def firstDateTime(
         cls, source: DataSource, instrument: Instrument, data_type: DataType
     ) -> datetime | None:
@@ -83,7 +103,7 @@ class Data:
         return dt
 
     # }}}
-    @classmethod  # download# {{{
+    @classmethod  # download  # {{{
     async def download(
         cls,
         source: DataSource,
@@ -105,7 +125,7 @@ class Data:
         await _DataManager.download(source, instrument, data_type, year)
 
     # }}}
-    @classmethod  # convert# {{{
+    @classmethod  # convert  # {{{
     async def convert(
         cls, instrument: Instrument, in_type: DataType, out_type: DataType
     ) -> None:
@@ -122,7 +142,7 @@ class Data:
         await _DataManager.convert(instrument, in_type, out_type)
 
     # }}}
-    @classmethod  # delete# {{{
+    @classmethod  # delete  # {{{
     async def delete(
         cls,
         instrument: Instrument,
@@ -147,7 +167,7 @@ class Data:
         await _DataManager.delete(instrument, data_type, begin, end)
 
     # }}}
-    @classmethod  # update# {{{
+    @classmethod  # update  # {{{
     async def update(
         cls, instrument: Instrument, data_type: Optional[DataType] = None
     ) -> None:
@@ -163,14 +183,14 @@ class Data:
         await _DataManager.update(instrument, data_type)
 
     # }}}
-    @classmethod  # updateAll# {{{
+    @classmethod  # updateAll  # {{{
     async def updateAll(cls) -> None:
         logger.debug(f"{cls.__name__}.updateAll()")
 
         await _DataManager.updateAll()
 
     # }}}
-    @classmethod  # request# {{{
+    @classmethod  # request  # {{{
     async def request(
         cls,
         instrument: Instrument,
@@ -198,7 +218,7 @@ class Data:
         return records
 
     # }}}
-    @classmethod  # __checkArgs# {{{
+    @classmethod  # __checkArgs  # {{{
     def __checkArgs(
         cls,
         source=None,
@@ -254,7 +274,7 @@ class Data:
             )
 
     # }}}
-    @classmethod  # __checkExchange# {{{
+    @classmethod  # __checkExchange  # {{{
     def __checkExchange(cls, exchange):
         logger.debug(f"{cls.__name__}.__checkExchange()")
 
@@ -265,7 +285,7 @@ class Data:
             )
 
     # }}}
-    @classmethod  # __checkInstrumentType# {{{
+    @classmethod  # __checkInstrumentType  # {{{
     def __checkInstrumentType(cls, itype):
         logger.debug(f"{cls.__name__}.__checkInstrumentType()")
 
@@ -276,7 +296,7 @@ class Data:
             )
 
     # }}}
-    @classmethod  # __checkTicker# {{{
+    @classmethod  # __checkTicker  # {{{
     def __checkTicker(cls, ticker):
         logger.debug(f"{cls.__name__}.__checkTicker()")
 
@@ -286,7 +306,7 @@ class Data:
             )
 
     # }}}
-    @classmethod  # __checkFigi# {{{
+    @classmethod  # __checkFigi  # {{{
     def __checkFigi(cls, figi):
         logger.debug(f"{cls.__name__}.__checkFigi()")
 
@@ -296,7 +316,7 @@ class Data:
             )
 
     # }}}
-    @classmethod  # __checkName# {{{
+    @classmethod  # __checkName  # {{{
     def __checkName(cls, name):
         logger.debug(f"{cls.__name__}.__checkName()")
 
@@ -306,7 +326,7 @@ class Data:
             )
 
     # }}}
-    @classmethod  # __checkInstrument# {{{
+    @classmethod  # __checkInstrument  # {{{
     def __checkInstrument(cls, instrument):
         logger.debug(f"{cls.__name__}.__checkInstrument()")
 
@@ -317,7 +337,7 @@ class Data:
             )
 
     # }}}
-    @classmethod  # __checkDataType# {{{
+    @classmethod  # __checkDataType  # {{{
     def __checkDataType(cls, data_type):
         logger.debug(f"{cls.__name__}.__checkDataType()")
 
@@ -330,7 +350,7 @@ class Data:
             )
 
     # }}}
-    @classmethod  # __checkYear# {{{
+    @classmethod  # __checkYear  # {{{
     def __checkYear(cls, year):
         logger.debug(f"{cls.__name__}.__checkYear()")
 
@@ -340,7 +360,7 @@ class Data:
             )
 
     # }}}
-    @classmethod  # __checkInOutDataType# {{{
+    @classmethod  # __checkInOutDataType  # {{{
     def __checkInOutDataType(cls, in_type, out_type):
         logger.debug(f"{cls.__name__}.__checkInOutDataType()")
 
@@ -366,7 +386,7 @@ class Data:
             )
 
     # }}}
-    @classmethod  # __checkBeginEnd# {{{
+    @classmethod  # __checkBeginEnd  # {{{
     def __checkBeginEnd(cls, begin: datetime, end: datetime):
         logger.debug(f"{cls.__name__}.__checkBeginEnd()")
 
