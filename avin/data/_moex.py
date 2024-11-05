@@ -99,7 +99,6 @@ class _MoexData(_AbstractDataSource):
             figi=figi,
             name=name,
         )
-
         # for INDEXes:
         id_list = list()
         if itype == Instrument.Type.INDEX:
@@ -112,17 +111,14 @@ class _MoexData(_AbstractDataSource):
         # MOEX does not provide instruments 'figi',
         # load 'figi' and other from Tinkoff cache
         for i in instruments_info:
-            exchange = Exchange.fromStr(i["EXCHANGE"])
-            itype = Instrument.Type.fromStr(i["TYPE"])
-            ticker = i["SECID"]
             tinkoff_info = await Keeper.info(
-                Source.TINKOFF,
-                itype,
-                exchange=i["exchange"],
+                DataSource.TINKOFF,
+                itype=Instrument.Type.fromStr(i["type"]),
+                exchange=Exchange.fromStr(i["exchange"]),
                 ticker=i["ticker"],
             )
             if tinkoff_info:
-                instrument = Instrument(tinkoff_info)
+                instrument = Instrument(tinkoff_info[0])
                 id_list.append(instrument)
             else:
                 # NOTE:
