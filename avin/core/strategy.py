@@ -507,6 +507,9 @@ class StrategyList:  # {{{
 
 
 # }}}
+
+
+# TODO: rename StrategySetItem -> StrategySetNode
 @dataclass  # StrategySetItem{{{
 class StrategySetItem:
     strategy: str
