@@ -11,7 +11,7 @@ from gui.custom.css import Css
 from gui.custom.dialog_fasade import Dialog
 from gui.custom.font import Font
 from gui.custom.icon import Icon
-from gui.custom.label import Label
+from gui.custom.label import Label, SubTitle
 from gui.custom.line_edit import LineEdit
 from gui.custom.logo import Logo
 from gui.custom.menu import Menu
@@ -30,6 +30,7 @@ __all__ = (
     "Font",
     "Icon",
     "Label",
+    "SubTitle",
     "LineEdit",
     "Logo",
     "Menu",

@@ -6,23 +6,50 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
+import asyncio
 import sys
 
 from PyQt6 import QtCore, QtWidgets
-from qasync import asyncSlot
 
-from avin.data import Data
+from avin.data import Data, DataInfo
 from avin.utils import logger
 from gui.custom import Css
+from gui.data.download_dialog import DataDownloadDialog
 from gui.data.toolbar import DataToolBar
 from gui.data.tree import DataInfoTree
+
+
+class _TInfo(QtCore.QThread):  # {{{
+    info = QtCore.pyqtSignal(DataInfo)
+
+    def __init__(  # {{{
+        self, parent=None
+    ):
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtCore.QThread.__init__(self, parent)
+
+    # }}}
+    def run(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.run()")
+        asyncio.run(self.__ainfo())
+
+    # }}}
+    async def __ainfo(self):  # {{{
+        data_info = await Data.info()
+        self.info.emit(data_info)
+
+    # }}}
+
+
+# }}}
 
 
 class DataWidget(QtWidgets.QWidget):
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QWidget.__init__(self, parent)
-        super().__init__()
+
+        self.__thread = None
 
         self.__createWidgets()
         self.__createLayots()
@@ -52,13 +79,61 @@ class DataWidget(QtWidgets.QWidget):
     def __connect(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__connect()")
 
+        self.tool_bar.download.triggered.connect(self.__onDownload)
+
     # }}}
-    @asyncSlot()  # {{{
-    async def __initUI(self):
+    def __initUI(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__initUI()")
 
-        info = await Data.info()
-        self.data_tree.add(info)
+        self.__updateTree()
+
+    # }}}
+    def __isBusy(self) -> bool:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__isBusy()")
+
+        if self.__thread is not None:
+            Dialog.info("Data manager is busy now, wait for complete task")
+            return True
+
+        return False
+
+    # }}}
+    @QtCore.pyqtSlot()  # __updateTree  # {{{
+    def __updateTree(self) -> None:
+        logger.debug(f"{self.__class__.__name__}.__updateTree()")
+
+        if self.__isBusy():
+            return
+
+        self.__thread = _TInfo(parent=self)
+        self.__thread.info.connect(self.__onInfo)
+        self.__thread.finished.connect(self.__onThreadFinished)
+        self.__thread.start()
+
+    # }}}
+    @QtCore.pyqtSlot(DataInfo)  # __onInfo  # {{{
+    def __onInfo(self, data_info: DataInfo) -> None:
+        logger.debug(f"{self.__class__.__name__}.__onInfo()")
+
+        self.data_tree.clear()
+        self.data_tree.add(data_info)
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onDownload  # {{{
+    def __onDownload(self) -> None:
+        logger.debug(f"{self.__class__.__name__}.__onDownload()")
+
+        dialog = DataDownloadDialog()
+        dialog.setWindowTitle("AVIN  -  Widget")
+        dialog.exec()
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onThreadFinished  # {{{
+    def __onThreadFinished(self):
+        logger.debug(f"{self.__class__.__name__}.__onThreadFinished()")
+
+        del self.__thread
+        self.__thread = None
 
     # }}}
 

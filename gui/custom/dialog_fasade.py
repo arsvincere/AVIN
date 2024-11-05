@@ -29,7 +29,7 @@ class Dialog:
         logger.debug("Dialog.info()")
 
         dial = InfoDialog()
-        dial.info(message)
+        dial.info(msg)
 
     # }}}
     @staticmethod  # name  # {{{

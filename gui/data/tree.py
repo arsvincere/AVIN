@@ -85,7 +85,7 @@ class DataInfoTree(QtWidgets.QTreeWidget):
         self.setColumnWidth(column.Figi, 150)
         self.setColumnWidth(column.Exchange, 100)
         self.setColumnWidth(column.AssetType, 100)
-        self.setMinimumWidth(605)
+        self.setMinimumWidth(620)
 
         # other options
         self.setSortingEnabled(True)

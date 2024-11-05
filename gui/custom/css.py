@@ -13,14 +13,14 @@ from gui.custom.theme import Theme
 class Css:
     # Style  # {{{
     STYLE = f"""
-        font-family: Hack;
+        font-family: Monospace;
         background-color: {Theme.bg_normal};
         color: {Theme.fg_normal};
         """
     # }}}
     # Dialog  # {{{
     DIALOG = f"""
-        font-family: Hack;
+        font-family: Monospace;
         background-color: {Theme.bg_normal};
         color: {Theme.fg_normal};
         """
@@ -28,7 +28,7 @@ class Css:
     # Line edit  # {{{
     LINE_EDIT = f"""
         QLineEdit {{
-            font-family: Hack;
+            font-family: Monospace;
             background-color: {Theme.bg_normal};
             selection-background-color: {Theme.hl_hover};
             color: {Theme.fg_high};
@@ -43,7 +43,7 @@ class Css:
     # Tool button  # {{{
     TOOL_BUTTON = f"""
         QToolButton {{
-            font-family: Hack;
+            font-family: Monospace;
             background-color: {Theme.bg_normal};
             border-width: 0px;
             border-radius: 4px;
@@ -87,7 +87,7 @@ class Css:
     # Push button  # {{{
     PUSH_BUTTON = f"""
         QPushButton {{
-            font-family: Hack;
+            font-family: Monospace;
             background-color: {Theme.bg_normal};
             border-color: {Theme.border};
             border-width: 1px;
@@ -113,7 +113,7 @@ class Css:
     # Menu  # {{{
     MENU = f"""
         QMenu {{
-            font-family: Hack;
+            font-family: Monospace;
             background-color: {Theme.bg_mild};
             color: {Theme.fg_normal};
             border-width: 1px;
@@ -129,9 +129,16 @@ class Css:
         }}
         """
     # }}}
-    # FramedLabel{{{
+    # Label  # {{{
+    LABEL = f"""
+        font-family: Sans;
+        background-color: {Theme.bg_normal};
+        color: {Theme.fg_normal};
+    """
+    # }}}
+    # FramedLabel  # {{{
     FRAMED_LABEL = f"""
-        font-family: Hack;
+        font-family: Sans;
         background-color: {Theme.bg_normal};
         color: {Theme.fg_normal};
         border-color: {Theme.border};
@@ -139,6 +146,14 @@ class Css:
         border-width: 1px;
         border-radius: 2px;
         padding: 4px;
+    """
+    # }}}
+    # Sub title label   # {{{
+    SUB_TITLE = f"""
+        font-family: Sans;
+        background-color: {Theme.bg_normal};
+        color: {Theme.fg_high};
+        font-size: 14px;
     """
     # }}}
     BUY_BUTTON = """# {{{

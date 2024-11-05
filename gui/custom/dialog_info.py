@@ -11,7 +11,7 @@ import sys
 from PyQt6 import QtCore, QtWidgets
 
 from avin.utils import logger
-from gui.custom.font import Font
+from gui.custom.css import Css
 from gui.custom.icon import Icon
 from gui.custom.tool_button import ToolButton
 
@@ -30,7 +30,7 @@ class InfoDialog(QtWidgets.QDialog):
     def __createWidgets(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
         self.__message_label = QtWidgets.QLabel(self)
-        self.__btn_ok = ToolButton(Icon.OK, self)
+        self.__btn_ok = ToolButton(Icon.OK, parent=self)
 
     # }}}
     def __createLayots(self) -> None:  # {{{
@@ -51,7 +51,6 @@ class InfoDialog(QtWidgets.QDialog):
 
         self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
         self.setStyleSheet(Css.DIALOG)
-        self.setFont(Font.MONO)
 
         sp = QtWidgets.QSizePolicy.Policy.Minimum
         self.setSizePolicy(sp, sp)

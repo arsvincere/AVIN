@@ -10,7 +10,6 @@
 from PyQt6 import QtWidgets
 
 from gui.custom.css import Css
-from gui.custom.font import Font
 
 
 class Label(QtWidgets.QLabel):
@@ -20,9 +19,17 @@ class Label(QtWidgets.QLabel):
         if string:
             self.setText(string)
 
-        self.setContentsMargins(0, 0, 0, 0)
-        self.setStyleSheet(Css.STYLE)
-        self.setFont(Font.MONO)
+        self.setStyleSheet(Css.LABEL)
+
+
+class SubTitle(QtWidgets.QLabel):
+    def __init__(self, string: str, parent=None):
+        QtWidgets.QLineEdit.__init__(self, parent)
+
+        if string:
+            self.setText(string)
+
+        self.setStyleSheet(Css.SUB_TITLE)
 
 
 if __name__ == "__main__":

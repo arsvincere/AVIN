@@ -110,7 +110,8 @@ class YearWidget(QtWidgets.QWidget):
         logger.debug(f"{self.__class__.__name__}.__onChanged()")
 
         text = self.year_line_edit.text()
-        self.__year = int(text)
+        if text:
+            self.__year = int(text)
 
     # }}}
 

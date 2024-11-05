@@ -33,8 +33,8 @@ class NameDialog(QtWidgets.QDialog):
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
 
         self.__lineedit = LineEdit("Enter name", self)
-        self.__btn_ok = ToolButton(Icon.OK, self)
-        self.__btn_cancel = ToolButton(Icon.CANCEL, self)
+        self.__btn_ok = ToolButton(Icon.OK, parent=self)
+        self.__btn_cancel = ToolButton(Icon.CANCEL, parent=self)
 
     # }}}
     def __createLayots(self) -> None:  # {{{

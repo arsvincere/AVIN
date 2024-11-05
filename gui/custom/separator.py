@@ -9,13 +9,21 @@
 from PyQt6 import QtWidgets
 
 
-class Spacer(QtWidgets.QWidget):
-    def __init__(self, parent=None):
-        QtWidgets.QWidget.__init__(self, parent)
-        self.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Expanding,
-            QtWidgets.QSizePolicy.Policy.Expanding,
-        )
+class Spacer(QtWidgets.QLabel):
+    def __init__(self, width=0, height=0, parent=None):
+        QtWidgets.QLabel.__init__(self, parent)
+
+        if width:
+            self.setFixedWidth(width)
+
+        if height:
+            self.setFixedHeight(height)
+
+        if not width and not height:
+            self.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Expanding,
+                QtWidgets.QSizePolicy.Policy.Expanding,
+            )
 
 
 class HLine(QtWidgets.QFrame):
