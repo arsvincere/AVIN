@@ -88,7 +88,7 @@ class _DataManager:
         return dt
 
     # }}}
-    @classmethod  # download{{{
+    @classmethod  # download  # {{{
     async def download(cls, source, instr, data_type, year) -> None:
         logger.debug(f"{cls.__name__}.download()")
         # NOTE:
@@ -97,7 +97,7 @@ class _DataManager:
         await _MoexData.download(instr, data_type, year)
 
     # }}}
-    @classmethod  # convert# {{{
+    @classmethod  # convert  # {{{
     async def convert(cls, instr, in_type, out_type) -> None:
         logger.debug(f"{cls.__name__}.convert()")
         logger.info(f":: Convert {instr.ticker}-{in_type} -> {out_type}")
@@ -122,7 +122,7 @@ class _DataManager:
         await _BarsData.save(converted_data)
 
     # }}}
-    @classmethod  # delete# {{{
+    @classmethod  # delete  # {{{
     async def delete(
         cls,
         instr: Instrument,
@@ -136,28 +136,24 @@ class _DataManager:
         logger.info("  - complete")
 
     # }}}
-    @classmethod  # update{{{
+    @classmethod  # update  # {{{
     async def update(cls, instr, data_type) -> None:
         logger.debug(f"{cls.__name__}.update()")
 
-        # request info about availible data
-        records = await Keeper.get(cls, instr=instr, data_type=data_type)
-        assert len(records) == 1
-        record = records[0]
-
-        await cls.__update(record)
+        node = await DataInfoNode.load(instr, data_type)
+        await cls.__update(node)
 
     # }}}
-    @classmethod  # updateAll{{{
+    @classmethod  # updateAll  # {{{
     async def updateAll(cls) -> None:
         logger.info(":: Update all market data")
 
-        data_info = await Keeper.get(DataInfo)
+        data_info = await DataInfo.load()  # load all
         for node in data_info:
             await cls.__update(node)
 
     # }}}
-    @classmethod  # request# {{{
+    @classmethod  # request  # {{{
     async def request(
         cls,
         instr: Instrument,
@@ -177,7 +173,7 @@ class _DataManager:
         return records
 
     # }}}
-    @classmethod  # __getDataSourceClass# {{{
+    @classmethod  # __getDataSourceClass  # {{{
     def __getDataSourceClass(cls, source: DataSource) -> object:
         logger.debug(f"{cls.__name__}.__getDataSourceClass()")
 
@@ -190,7 +186,7 @@ class _DataManager:
         return class_
 
     # }}}
-    @classmethod  # __checkUpdate# {{{
+    @classmethod  # __checkUpdate  # {{{
     async def __checkUpdate(cls):
         logger.debug(f"{cls.__name__}.__checkUpdate()")
 
@@ -213,7 +209,7 @@ class _DataManager:
         logger.info("Update complete")
 
     # }}}
-    @classmethod  # __fillVoid# {{{
+    @classmethod  # __fillVoid  # {{{
     def __fillVoid(cls, bars: list[_Bar], data_type: DataType) -> list[_Bar]:
         logger.debug(f"{cls.__name__}.__fillVoid()")
 
@@ -234,7 +230,7 @@ class _DataManager:
         return filled
 
     # }}}
-    @classmethod  # __removeVoid# {{{
+    @classmethod  # __removeVoid  # {{{
     def __removeVoid(cls, bars: list) -> list:
         logger.debug(f"{cls.__name__}.__removeVoid()")
 
@@ -248,7 +244,7 @@ class _DataManager:
         return bars
 
     # }}}
-    @classmethod  # __choseConverter# {{{
+    @classmethod  # __choseConverter  # {{{
     def __choseConverter(cls, out_type: DataType) -> Callable:
         logger.debug(f"{cls.__name__}.__choseConverter()")
 
@@ -262,7 +258,7 @@ class _DataManager:
         return conv
 
     # }}}
-    @classmethod  # __convertSmallTimeFrame# {{{
+    @classmethod  # __convertSmallTimeFrame  # {{{
     def __convertSmallTimeFrame(cls, bars, in_type, out_type):
         logger.debug(f"{cls.__name__}.__convertSmallTimeFrame()")
 
@@ -288,7 +284,7 @@ class _DataManager:
         return converted
 
     # }}}
-    @classmethod  # __convertWeekTimeFrame# {{{
+    @classmethod  # __convertWeekTimeFrame  # {{{
     def __convertWeekTimeFrame(cls, bars, in_type, out_type):
         logger.debug(f"{cls.__name__}.__convertWeekTimeFrame()")
         assert in_type.toTimeDelta() == timedelta(days=1)
@@ -312,7 +308,7 @@ class _DataManager:
         return converted
 
     # }}}
-    @classmethod  # __convertMonthTimeFrame# {{{
+    @classmethod  # __convertMonthTimeFrame  # {{{
     def __convertMonthTimeFrame(cls, bars, in_type, out_type):
         logger.debug(f"{cls.__name__}.__convertMonthTimeFrame()")
         assert in_type.toTimeDelta() == timedelta(days=1)
@@ -335,7 +331,7 @@ class _DataManager:
         return converted
 
     # }}}
-    @classmethod  # __join# {{{
+    @classmethod  # __join  # {{{
     def __join(cls, bars):
         """
         Возвращает объединенный bar из bars, игнорируюя VoidBar

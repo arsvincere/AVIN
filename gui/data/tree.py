@@ -13,6 +13,7 @@ import sys
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt
 
+from avin.data import DataInfo
 from avin.utils import Cmd, logger
 from gui.custom import Css, Font, Icon
 from gui.data.item import DataInfoItem, InstrumentItem
@@ -52,6 +53,24 @@ class DataInfoTree(QtWidgets.QTreeWidget):
                 instr_item.addChild(node_item)
 
     # }}}
+    def selectedData(self) -> DataInfo:  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectedInstruments()")
+
+        selected = list()
+        for i in range(self.topLevelItemCount()):
+            instrument_item = self.topLevelItem(i)
+            for j in range(instrument_item.childCount()):
+                data_item = instrument_item.child(j)
+                if (
+                    data_item.checkState(DataInfoItem.Column.DataType)
+                    == Qt.CheckState.Checked
+                ):
+                    selected.append(data_item.info)
+
+        data_info = DataInfo(selected)
+        return data_info
+
+    # }}}
     def __createActions(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createActions()")
         self.__refresh = QtGui.QAction("Refresh")
@@ -80,12 +99,12 @@ class DataInfoTree(QtWidgets.QTreeWidget):
         self.setHeaderLabels(labels)
 
         # column width
-        self.setColumnWidth(column.Ticker, 100)
+        self.setColumnWidth(column.Ticker, 150)
         self.setColumnWidth(column.Name, 150)
         self.setColumnWidth(column.Figi, 150)
         self.setColumnWidth(column.Exchange, 100)
         self.setColumnWidth(column.AssetType, 100)
-        self.setMinimumWidth(620)
+        self.setMinimumWidth(670)
 
         # other options
         self.setSortingEnabled(True)

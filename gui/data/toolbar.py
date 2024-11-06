@@ -15,7 +15,7 @@ from gui.custom import Css, Icon
 
 
 class DataToolBar(QtWidgets.QToolBar):
-    ICON_SIZE = QtCore.QSize(32, 32)
+    __ICON_SIZE = QtCore.QSize(32, 32)
 
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
@@ -31,13 +31,11 @@ class DataToolBar(QtWidgets.QToolBar):
         self.download = QtGui.QAction(Icon.DOWNLOAD, "Download", self)
         self.convert = QtGui.QAction(Icon.CONVERT, "Convert", self)
         self.delete = QtGui.QAction(Icon.THRASH, "Delete", self)
-        self.view = QtGui.QAction(Icon.THRASH, "View", self)
         self.update = QtGui.QAction(Icon.UPDATE, "Update", self)
 
         self.addAction(self.download)
         self.addAction(self.convert)
         self.addAction(self.delete)
-        self.addAction(self.view)
         self.addAction(self.update)
 
         actions = self.actions()
@@ -49,7 +47,7 @@ class DataToolBar(QtWidgets.QToolBar):
     def __config(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__config()")
 
-        self.setIconSize(self.ICON_SIZE)
+        self.setIconSize(self.__ICON_SIZE)
         self.setContentsMargins(0, 0, 0, 0)
         self.setStyleSheet(Css.STYLE)
 

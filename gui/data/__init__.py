@@ -6,5 +6,6 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
+from gui.data.widget import DataWidget
 
-__all__ = ()
+__all__ = ("DataWidget",)

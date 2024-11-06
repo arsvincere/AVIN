@@ -35,8 +35,65 @@ class _TInfo(QtCore.QThread):  # {{{
 
     # }}}
     async def __ainfo(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__ainfo()")
+
         data_info = await Data.info()
         self.info.emit(data_info)
+
+    # }}}
+
+
+# }}}
+class _TDelete(QtCore.QThread):  # {{{
+    def __init__(  # {{{
+        self, data_info: DataInfo, parent=None
+    ):
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtCore.QThread.__init__(self, parent)
+
+        self.__data_info = data_info
+
+    # }}}
+    def run(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.run()")
+        asyncio.run(self.__adelete())
+
+    # }}}
+    async def __adelete(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__adelete()")
+
+        for i in self.__data_info:
+            await Data.delete(i.instrument, i.data_type)
+
+    # }}}
+
+
+# }}}
+class _TUpdate(QtCore.QThread):  # {{{
+    def __init__(  # {{{
+        self, data_info: DataInfo, parent=None
+    ):
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtCore.QThread.__init__(self, parent)
+
+        self.__data_info = data_info
+
+    # }}}
+    def run(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.run()")
+        asyncio.run(self.__aupdate())
+
+    # }}}
+    async def __aupdate(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__aupdate()")
+
+        # update all if no selected items
+        if len(self.__data_info) == 0:
+            await Data.updateAll()
+
+        # if has selected - update only selected items
+        for i in self.__data_info:
+            await Data.update(i.instrument, i.data_type)
 
     # }}}
 
@@ -80,6 +137,8 @@ class DataWidget(QtWidgets.QWidget):
         logger.debug(f"{self.__class__.__name__}.__connect()")
 
         self.tool_bar.download.triggered.connect(self.__onDownload)
+        self.tool_bar.delete.triggered.connect(self.__onDelete)
+        self.tool_bar.update.triggered.connect(self.__onUpdate)
 
     # }}}
     def __initUI(self):  # {{{
@@ -126,6 +185,34 @@ class DataWidget(QtWidgets.QWidget):
         dialog = DataDownloadDialog()
         dialog.setWindowTitle("AVIN  -  Widget")
         dialog.exec()
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onDelete  # {{{
+    def __onDelete(self) -> None:
+        logger.debug(f"{self.__class__.__name__}.__onDelete()")
+
+        if self.__isBusy():
+            return
+
+        data_info = self.data_tree.selectedData()
+
+        self.__thread = _TDelete(data_info, parent=self)
+        self.__thread.finished.connect(self.__onThreadFinished)
+        self.__thread.start()
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onUpdate  # {{{
+    def __onUpdate(self) -> None:
+        logger.debug(f"{self.__class__.__name__}.__onUpdate()")
+
+        if self.__isBusy():
+            return
+
+        data_info = self.data_tree.selectedData()
+
+        self.__thread = _TUpdate(data_info, parent=self)
+        self.__thread.finished.connect(self.__onThreadFinished)
+        self.__thread.start()
 
     # }}}
     @QtCore.pyqtSlot()  # __onThreadFinished  # {{{

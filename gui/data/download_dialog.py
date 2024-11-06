@@ -533,6 +533,8 @@ class _Tree(QtWidgets.QTreeWidget):  # {{{
 
     # }}}
     def selectedInstruments(self) -> list[Instrument]:  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectedInstruments()")
+
         selected = list()
         for i in range(self.topLevelItemCount()):
             item = self.topLevelItem(i)
