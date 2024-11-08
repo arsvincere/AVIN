@@ -171,6 +171,22 @@ class Css:
             border-top: 1px solid {Theme.hl_active};
             border-bottom: 1px solid {Theme.hl_active};
         }}
+
+        QMenu {{
+            font-family: Monospace;
+            background-color: {Theme.bg_mild};
+            color: {Theme.fg_normal};
+            border-width: 1px;
+            border-radius: 4px;
+            border-style: solid;
+            border-color: {Theme.bg_high};
+        }}
+        QMenu::item {{
+            background-color: transparent;
+        }}
+        QMenu::item:selected {{
+            background-color: {Theme.hl_hover};
+        }}
     """
     # }}}
     # Tree header # {{{

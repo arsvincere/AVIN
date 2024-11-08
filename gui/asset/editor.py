@@ -12,34 +12,33 @@ import sys
 from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import Qt
 
-from avin.const import RES_DIR
-from avin.gui.custom import Icon, ToolButton
-from avin.utils import Cmd
+from avin.core import AssetList
+from avin.utils import logger
+from gui.asset.item import AssetItem
+from gui.asset.tree import AssetListTree
+from gui.custom import Css, Icon, ToolButton
 
 
 class Editor(QtWidgets.QDialog):
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QDialog.__init__(self, parent)
-        self.__config()
         self.__createWidgets()
         self.__createLayots()
         self.__configTree()
+        self.__config()
         self.__connect()
         self.__initUI()
         self.__loadAssets()
 
     # }}}
-    def __config(self):  # {{{
-        self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
-
-    # }}}
     def __createWidgets(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
-        self.tree = Tree(self)
+
+        self.tree = AssetListTree(self)
         self.search_line = QtWidgets.QLineEdit(self)
         self.btn_search = ToolButton(Icon.SEARCH)
-        self.btn_apply = ToolButton(Icon.APPLY)
+        self.btn_ok = ToolButton(Icon.OK)
         self.btn_cancel = ToolButton(Icon.CANCEL)
 
     # }}}
@@ -49,7 +48,7 @@ class Editor(QtWidgets.QDialog):
         hbox.addWidget(self.btn_search)
         hbox.addWidget(self.search_line)
         hbox.addStretch()
-        hbox.addWidget(self.btn_apply)
+        hbox.addWidget(self.btn_ok)
         hbox.addWidget(self.btn_cancel)
         vbox = QtWidgets.QVBoxLayout()
         vbox.addLayout(hbox)
@@ -59,20 +58,27 @@ class Editor(QtWidgets.QDialog):
     # }}}
     def __configTree(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__configTree()")
+
         labels = list()
-        for i in Tree.Column:
+        for i in AssetItem.Column:
             labels.append(i.name)
         self.tree.setHeaderLabels(labels)
-        self.tree.setColumnWidth(Tree.Column.Ticker, 100)
-        self.tree.setColumnWidth(Tree.Column.Name, 300)
-        self.tree.setColumnWidth(Tree.Column.Type, 70)
-        self.tree.setColumnWidth(Tree.Column.Exchange, 70)
+
+        self.tree.setColumnWidth(AssetItem.Column.Ticker, 100)
+        self.tree.setColumnWidth(AssetItem.Column.Name, 300)
+        self.tree.setColumnWidth(AssetItem.Column.Type, 70)
+        self.tree.setColumnWidth(AssetItem.Column.Exchange, 70)
         self.tree.setFixedWidth(600)
         self.tree.setMinimumHeight(400)
 
     # }}}
+    def __config(self):  # {{{
+        self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
+        self.setStyleSheet(Css.DIALOG)
+
+    # }}}
     def __connect(self):  # {{{
-        self.btn_apply.clicked.connect(self.accept)
+        self.btn_ok.clicked.connect(self.accept)
         self.btn_cancel.clicked.connect(self.reject)
 
     # }}}
@@ -83,10 +89,10 @@ class Editor(QtWidgets.QDialog):
     # }}}
     def __loadAssets(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__loadAssets()")
-        path = Cmd.join(RES_DIR, "share", "MOEX_ALL_ASSET_LIST")
+        # path = Cmd.join(RES_DIR, "share", "MOEX_ALL_ASSET_LIST")
         # path = Cmd.join(RES_DIR, "share", "MOEX_TINKOFF_XX5")
-        self.full_alist = IAssetList.load(path)
-        self.tree.setAssetList(self.full_alist)
+        # self.full_alist = IAssetList.load(path)
+        # self.tree.setAssetList(self.full_alist)
 
     # }}}
     def __clearMark(self):  # {{{
@@ -102,7 +108,7 @@ class Editor(QtWidgets.QDialog):
                 asset.setCheckState(Tree.Column.Ticker, Qt.CheckState.Checked)
 
     # }}}
-    def editAssetList(self, editable: IAssetList) -> bool:  # {{{
+    def editAssetList(self, editable: AssetList) -> bool:  # {{{
         logger.debug(f"{self.__class__.__name__}.editAssetList()")
 
         self.__clearMark()
@@ -128,7 +134,7 @@ class Editor(QtWidgets.QDialog):
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     w = Editor()
-    w.setWindowTitle("AVIN  -  Ars  Vincere")
+    w.setWindowTitle("AVIN  -  Widget")
     w.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
     w.show()
     sys.exit(app.exec())

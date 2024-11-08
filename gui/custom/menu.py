@@ -15,6 +15,9 @@ class Menu(QtWidgets.QMenu):
     def __init__(self, title=None, parent=None):
         QtWidgets.QMenu.__init__(self, parent)
 
+        if title:
+            self.setTitle(title)
+
         self.setStyleSheet(Css.MENU)
 
 

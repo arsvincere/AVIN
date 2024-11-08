@@ -111,7 +111,7 @@ class AssetListToolBar(QtWidgets.QToolBar):  # {{{
         self.addWidget(self.__other_btn)
 
         # menu for other_btn
-        menu = Menu(self)
+        menu = Menu(parent=self)
         menu.addAction(self.action_new)
         menu.addAction(self.action_rename)
         menu.addAction(self.action_copy)
@@ -152,10 +152,12 @@ class AssetListToolBar(QtWidgets.QToolBar):  # {{{
 # }}}
 
 
-class _AssetListNameMenu(Menu):  # {{{
+class _AssetListNameMenu(QtWidgets.QMenu):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init()")
-        Menu.__init__(self, parent)
+        QtWidgets.QMenu.__init__(self, parent)
+
+        self.__config()
 
     # }}}
     def __contains__(self, alist_name: str) -> bool:  # {{{
@@ -189,6 +191,8 @@ class _AssetListNameMenu(Menu):  # {{{
         )
 
     # }}}
+    def __config(self):
+        self.setStyleSheet(Css.MENU)
 
 
 # }}}

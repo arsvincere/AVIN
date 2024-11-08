@@ -15,7 +15,7 @@ from PyQt6.QtCore import Qt
 from avin.core import Asset, AssetList
 from avin.utils import logger
 from gui.asset.item import AssetItem
-from gui.custom import Css
+from gui.custom import Css, Menu
 
 
 class AssetListTree(QtWidgets.QTreeWidget):
@@ -57,8 +57,8 @@ class AssetListTree(QtWidgets.QTreeWidget):
         item = self.itemAt(e.pos())
         self.__resetActions()
         self.__setVisibleActions(item)
-        self.menu.exec(QtGui.QCursor.pos())
-        return e.ignore()
+        self.__menu.exec(QtGui.QCursor.pos())
+        # return e.ignore()
 
     # }}}
     def __createMenu(self):  # {{{
@@ -66,10 +66,15 @@ class AssetListTree(QtWidgets.QTreeWidget):
         self.__action_add = QtGui.QAction("Add", self)
         self.__action_remove = QtGui.QAction("Remove", self)
         self.__action_info = QtGui.QAction("Info", self)
-        self.menu = QtWidgets.QMenu(self)
-        self.menu.addAction(self.__action_add)
-        self.menu.addAction(self.__action_remove)
-        self.menu.addAction(self.__action_info)
+        self.__menu = Menu(parent=self)
+        self.__menu.addAction(self.__action_add)
+        self.__menu.addAction(self.__action_remove)
+        self.__menu.addAction(self.__action_info)
+
+        self.addAction(self.__action_add)
+        self.addAction(self.__action_remove)
+        self.addAction(self.__action_info)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
 
     # }}}
     def __config(self):  # {{{
@@ -90,7 +95,7 @@ class AssetListTree(QtWidgets.QTreeWidget):
     # }}}
     def __resetActions(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__resetActions()")
-        for i in self.menu.actions():
+        for i in self.__menu.actions():
             i.setEnabled(False)
 
     # }}}
