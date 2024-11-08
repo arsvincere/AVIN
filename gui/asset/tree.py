@@ -7,35 +7,29 @@
 # ============================================================================
 
 
-import enum
 import sys
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt
 
-from avin.core import Asset
-from gui.custom import Font
+from avin.core import Asset, AssetList
+from avin.utils import logger
+from gui.asset.item import AssetItem
+from gui.custom import Css
 
 
-class Tree(QtWidgets.QTreeWidget):
-    class Column(enum.IntEnum):  # {{{
-        Ticker = 0
-        Name = 1
-        Type = 2
-        Exchange = 3
-        ListName = 0
-        ListCount = 1
-
-    # }}}
+class AssetListTree(QtWidgets.QTreeWidget):
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QTreeWidget.__init__(self, parent)
-        self.__config()
         self.__createMenu()
+        self.__config()
         self.__connect()
 
     # }}}
     def __iter__(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__iter__()")
+
         items = list()
         for i in range(self.topLevelItemCount()):
             item = self.topLevelItem(i)
@@ -43,22 +37,55 @@ class Tree(QtWidgets.QTreeWidget):
         return iter(items)
 
     # }}}
-    def __config(self):  # {{{
-        self.setHeaderLabels(["Ticker"])
-        self.setSortingEnabled(True)
-        self.sortByColumn(Tree.Column.Ticker, Qt.SortOrder.AscendingOrder)
-        self.setFont(Font.MONO)
+    def setAssetList(self, alist: AssetList):  # {{{
+        logger.debug(f"{self.__class__.__name__}.setAssetList()")
+
+        self.clear()
+        for asset in alist:
+            item = AssetItem(asset)
+            self.addTopLevelItem(item)
+
+    # }}}
+    def currentAsset(self) -> Asset:  # {{{
+        item = self.currentItem()
+        return item.asset
+
+    # }}}
+    def contextMenuEvent(self, e):  # {{{
+        logger.debug(f"{self.__class__.__name__}.contextMenuEvent()")
+
+        item = self.itemAt(e.pos())
+        self.__resetActions()
+        self.__setVisibleActions(item)
+        self.menu.exec(QtGui.QCursor.pos())
+        return e.ignore()
 
     # }}}
     def __createMenu(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createContextMenu()")
-        self.action_add = QtGui.QAction("Add", self)
-        self.action_remove = QtGui.QAction("Remove", self)
-        self.action_info = QtGui.QAction("Info", self)
+        self.__action_add = QtGui.QAction("Add", self)
+        self.__action_remove = QtGui.QAction("Remove", self)
+        self.__action_info = QtGui.QAction("Info", self)
         self.menu = QtWidgets.QMenu(self)
-        self.menu.addAction(self.action_add)
-        self.menu.addAction(self.action_remove)
-        self.menu.addAction(self.action_info)
+        self.menu.addAction(self.__action_add)
+        self.menu.addAction(self.__action_remove)
+        self.menu.addAction(self.__action_info)
+
+    # }}}
+    def __config(self):  # {{{
+        self.setHeaderLabels(["Ticker", "Name"])
+        self.setSortingEnabled(True)
+        self.sortByColumn(0, Qt.SortOrder.AscendingOrder)
+        self.setStyleSheet(Css.TREE)
+        self.header().setStyleSheet(Css.TREE_HEADER)
+        self.setContentsMargins(0, 0, 0, 0)
+
+    # }}}
+    def __connect(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__connect()")
+        self.__action_add.triggered.connect(self.__onAdd)
+        self.__action_remove.triggered.connect(self.__onRemove)
+        self.__action_info.triggered.connect(self.__onInfo)
 
     # }}}
     def __resetActions(self):  # {{{
@@ -70,19 +97,11 @@ class Tree(QtWidgets.QTreeWidget):
     def __setVisibleActions(self, item):  # {{{
         logger.debug(f"{self.__class__.__name__}.__setVisibleActions()")
         if item is None:
-            self.action_add.setEnabled(True)
-            self.action_remove.setEnabled(True)
+            self.__action_add.setEnabled(True)
         if isinstance(item, Asset):
-            self.action_add.setEnabled(True)
-            self.action_remove.setEnabled(True)
-            self.action_info.setEnabled(True)
-
-    # }}}
-    def __connect(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__connect()")
-        self.action_add.triggered.connect(self.__onAdd)
-        self.action_remove.triggered.connect(self.__onRemove)
-        self.action_info.triggered.connect(self.__onInfo)
+            self.__action_add.setEnabled(True)
+            self.__action_remove.setEnabled(True)
+            self.__action_info.setEnabled(True)
 
     # }}}
     @QtCore.pyqtSlot()  # __onAdd{{{
@@ -113,40 +132,12 @@ class Tree(QtWidgets.QTreeWidget):
         ...
 
     # }}}
-    def contextMenuEvent(self, e):  # {{{
-        logger.debug(f"{self.__class__.__name__}.contextMenuEvent()")
-        item = self.itemAt(e.pos())
-        self.__resetActions()
-        self.__setVisibleActions(item)
-        self.menu.exec(QtGui.QCursor.pos())
-        return e.ignore()
-
-    # }}}
-    def setAssetList(self, ialist: IAssetList):  # {{{
-        logger.debug("Tree.setAssetList()")
-        """ Если воспользовться функцией
-        self.clear()
-        то заодно будет вызван деструктор QTreeWidgetItem и в следующий
-        раз когда снова выберу тот же самый лист в комбобоксе
-        получится:
-        RuntimeError: wrapped C/C++ object of type IShare has been deleted
-        Aborted (core dumped)
-        --
-        Поэтому очищаю список через takeTopLevelItem
-        """
-        while self.takeTopLevelItem(0):
-            pass
-        for iasset in ialist:
-            self.addTopLevelItem(iasset)
-
-
-# }}}
 
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     w = Tree()
-    w.setWindowTitle("AVIN  -  Ars  Vincere")
+    w.setWindowTitle("AVIN  -  Widget")
     w.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
     w.show()
     sys.exit(app.exec())

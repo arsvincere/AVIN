@@ -277,11 +277,6 @@ class Index(Asset):  # {{{
 
 # }}}
 class Share(Asset):  # {{{
-    # {{{-- doc
-    """ """
-
-    # }}}
-
     def __init__(self, info: dict):  # {{{
         logger.debug(f"{self.__class__.name}.__init__()")
         assert info["type"] == Asset.Type.SHARE.name

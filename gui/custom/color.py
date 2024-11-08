@@ -12,43 +12,45 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 
 
 class Color:
-    # Polar Night.
+    # Nord -------------------------------------------------------------------
+    # polar night.
     nord0 = "#2E3440"
     nord1 = "#3B4252"
     nord2 = "#434C5E"
     nord3 = "#4C566A"
 
-    # Snow storm.
+    # snow storm.
     nord4 = "#D8DEE9"
     nord5 = "#E5E9F0"
     nord6 = "#ECEFF4"
 
-    # Frost.
+    # frost.
     nord7 = "#8FBCBB"
     nord8 = "#88C0D0"
     nord9 = "#81A1C1"
     nord10 = "#5E81AC"
 
-    # Aurora.
+    # aurora.
     nord11 = "#BF616A"
     nord12 = "#D08770"
     nord13 = "#EBCB8B"
     nord14 = "#A3BE8C"
     nord15 = "#B48EAD"
 
-    # Black
+    # black & white ----------------------------------------------------------
+    # black
     black1 = "#000000"
     black2 = "#040404"
     black3 = "#080808"
 
-    # Gray
+    # gray
     gray1 = "#0F0F0F"
     gray2 = "#373737"
     gray3 = "#5D5E60"
     gray4 = "#848388"
     gray5 = "#B7B7AF"
 
-    # White
+    # white
     white1 = "#AAAAAA"
     white2 = "#BBBBBB"
     white3 = "#CCCCCC"
@@ -56,6 +58,7 @@ class Color:
     white5 = "#EEEEEE"
     white6 = "#FFFFFF"
 
+    # Kanagawa ---------------------------------------------------------------
     # Bg Shades
     sumiInk0 = "#16161D"
     sumiInk1 = "#181820"

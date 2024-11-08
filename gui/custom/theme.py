@@ -33,6 +33,11 @@ class Theme:
     # highligh
     hl_hover = Color.gray3  # #5D5E60
     hl_cliked = Color.gray4  # #848388
+    hl_active = Color.dragonBlue  # #658594
+
+    # bars
+    bull = Color.springGreen  # #98BB6C
+    bear = Color.peachRed  # #FF5D62
 
 
 if __name__ == "__main__":

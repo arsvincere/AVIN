@@ -156,6 +156,35 @@ class Css:
         font-size: 14px;
     """
     # }}}
+    # Tree # {{{
+    TREE = f"""
+        QTreeWidget::item {{
+            font-family: Monospace;
+            background-color: {Theme.bg_normal};
+            color: {Theme.fg_normal};
+            padding: 5px;
+        }}
+        QTreeWidget::item:hover {{
+            background-color: {Theme.hl_hover};
+        }}
+        QTreeWidget::item:selected {{
+            border-top: 1px solid {Theme.hl_active};
+            border-bottom: 1px solid {Theme.hl_active};
+        }}
+    """
+    # }}}
+    # Tree header # {{{
+    TREE_HEADER = f"""
+        QHeaderView::section {{
+            font-family: Monospace;
+            background-color: {Theme.bg_normal};
+            color: {Theme.border};
+            border: 1px solid {Theme.border};
+            margin: 0px 1px;
+            padding: 1px 5px;
+        }}
+    """
+    # }}}
     BUY_BUTTON = """# {{{
         QPushButton {
             color: white;

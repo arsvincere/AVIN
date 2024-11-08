@@ -355,9 +355,9 @@ class _InstrumentTypeMenu(Menu):  # {{{
 
 # }}}
 class _ToolBar(QtWidgets.QToolBar):  # {{{
-    __ICON_SIZE = QtCore.QSize(32, 32)
     typeChanged = QtCore.pyqtSignal()
     sourceChanged = QtCore.pyqtSignal()
+    __ICON_SIZE = QtCore.QSize(32, 32)
 
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
