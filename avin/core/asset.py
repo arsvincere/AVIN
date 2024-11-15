@@ -215,6 +215,14 @@ class Asset(Instrument, ABC):  # {{{
         return asset
 
     # }}}
+    @classmethod  # requestAll# {{{
+    async def requestAll(cls) -> list[Asset]:
+        logger.debug(f"{cls.__name__}.requestAll()")
+
+        assets = await Keeper.get(cls)
+        return assets
+
+    # }}}
     @classmethod  # __formatArgs# {{{
     def __formatArgs(
         cls, timeframe, begin, end
@@ -295,10 +303,10 @@ class Share(Asset):  # {{{
 
 # }}}
 class AssetList:  # {{{
-    def __init__(self, name: str):  # {{{
+    def __init__(self, name: str, assets: Optional[list] = None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__({name})")
         self.__name = name
-        self.__assets: list[Asset] = list()
+        self.__assets = assets if assets else list()
 
     # }}}
     def __str__(self) -> str:  # {{{
@@ -339,8 +347,9 @@ class AssetList:  # {{{
     @assets.setter
     def assets(self, assets: list[Asset]):
         assert isinstance(assets, list)
-        for i in assets:
+        for i in self.__assets:
             assert isinstance(i, Asset)
+
         self.__assets = assets
 
     # }}}
@@ -459,6 +468,8 @@ class AssetList:  # {{{
     # }}}
     @classmethod  # requestAll# {{{
     async def requestAll(cls) -> list[str]:
+        logger.debug(f"{cls.__name__}.requestAll()")
+
         names = await Keeper.get(cls, get_only_names=True)
         return names
 

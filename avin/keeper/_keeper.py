@@ -1002,7 +1002,7 @@ class Keeper:
                 f"ticker = '{ticker}'"
             )
         else:
-            assert False
+            pg_condition = "TRUE"
 
         request = f"""
             SELECT
@@ -1014,9 +1014,17 @@ class Keeper:
             """
         asset_records = await cls.transaction(request)
 
-        assert len(asset_records) == 1
-        asset = Asset.fromRecord(asset_records[0])
-        return asset
+        # if one return it
+        if len(asset_records) == 1:
+            asset = Asset.fromRecord(asset_records[0])
+            return asset
+
+        # if several return list
+        all_assets = list()
+        for i in asset_records:
+            asset = Asset.fromRecord(i)
+            all_assets.append(asset)
+        return all_assets
 
     # }}}
     @classmethod  # __getAssetList  # {{{
@@ -1053,9 +1061,6 @@ class Keeper:
             ;
             """
         records = await cls.transaction(request)
-
-        if not records:
-            return None
 
         alist = await AssetList.fromRecord(name, records)
         return alist

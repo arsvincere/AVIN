@@ -16,7 +16,7 @@ from avin.core import Asset, AssetList
 from avin.utils import logger
 
 
-class AssetItem(QtWidgets.QTreeWidgetItem):  # {{{
+class AssetItem(QtWidgets.QTreeWidgetItem):
     class Column(enum.IntEnum):  # {{{
         Ticker = 0
         Name = 1
@@ -45,7 +45,7 @@ class AssetItem(QtWidgets.QTreeWidgetItem):  # {{{
     # }}}
 
 
-class AssetListItem(QtWidgets.QTreeWidgetItem):  # {{{
+class AssetListItem(QtWidgets.QTreeWidgetItem):
     def __init__(self, alist: AssetList, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QTreeWidgetItem.__init__(self, parent)
@@ -59,9 +59,6 @@ class AssetListItem(QtWidgets.QTreeWidgetItem):  # {{{
         )
 
     # }}}
-
-
-# }}}
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@
 
 from gui.custom.color import Color
 from gui.custom.css import Css
-from gui.custom.dialog_fasade import Dialog
+from gui.custom.dialog import Dialog
 from gui.custom.font import Font
 from gui.custom.icon import Icon
 from gui.custom.label import Label, SubTitle
@@ -21,6 +21,7 @@ from gui.custom.separator import HLine, Spacer, VLine
 from gui.custom.theme import Theme
 from gui.custom.timeframe_bar import TimeFrameBar
 from gui.custom.tool_button import ToolButton
+from gui.custom.utils import awaitQThread
 from gui.custom.year_widget import YearWidget
 
 __all__ = (
@@ -42,5 +43,5 @@ __all__ = (
     "Theme",
     "TimeFrameBar",
     "ToolButton",
-    "YearWidget",
+    "awaitQThread" "YearWidget",
 )

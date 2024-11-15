@@ -35,7 +35,7 @@ class AssetListToolBar(QtWidgets.QToolBar):  # {{{
 
         self.__list_menu.add(alist_name)
 
-        # if this is the first, install the current
+        # if this is the first, set the current
         if self.__current_list is None:
             self.setCurrentAssetListName(alist_name)
 
@@ -44,6 +44,12 @@ class AssetListToolBar(QtWidgets.QToolBar):  # {{{
         logger.debug(f"{self.__class__.__name__}.remove()")
 
         self.__list_menu.remove(alist_name)
+
+        # set first list as current if exist
+        actions = self.__list_menu.actions()
+        if len(actions) > 0:
+            alist_name = actions[0].data()
+            self.setCurrentAssetListName(alist_name)
 
     # }}}
     def currentAssetListName(self) -> str:  # {{{
@@ -63,6 +69,13 @@ class AssetListToolBar(QtWidgets.QToolBar):  # {{{
 
         self.__current_list_btn.setText(alist_name)
         self.__current_list = alist_name
+
+    # }}}
+    def isExist(self, alist_name) -> bool:  # {{{
+        logger.debug(f"{self.__class__.__name__}.isExist()")
+
+        existed = alist_name in self.__list_menu
+        return existed
 
     # }}}
     def __createActions(self):  # {{{
@@ -89,7 +102,7 @@ class AssetListToolBar(QtWidgets.QToolBar):  # {{{
         self.addWidget(Spacer())
 
         # create menu for current list
-        self.__list_menu = _AssetListNameMenu(self)
+        self.__list_menu = _AssetListMenu(self)
         self.__current_list_btn.setMenu(self.__list_menu)
         self.__current_list_btn.setPopupMode(
             QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup
@@ -152,7 +165,7 @@ class AssetListToolBar(QtWidgets.QToolBar):  # {{{
 # }}}
 
 
-class _AssetListNameMenu(QtWidgets.QMenu):  # {{{
+class _AssetListMenu(QtWidgets.QMenu):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init()")
         QtWidgets.QMenu.__init__(self, parent)
@@ -186,14 +199,14 @@ class _AssetListNameMenu(QtWidgets.QMenu):  # {{{
                 self.removeAction(i)
                 return
 
-        logger.warning(
-            f"_AssetListNameMenu.remove: '{alist_name}' not found!"
-        )
+        logger.warning(f"_AssetListMenu.remove: '{alist_name}' not found!")
 
     # }}}
-    def __config(self):
+    def __config(self):  # {{{
         self.setStyleSheet(Css.MENU)
 
+
+# }}}
 
 # }}}
 
