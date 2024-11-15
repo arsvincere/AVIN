@@ -126,6 +126,21 @@ def ask_user(message: str) -> bool:  # {{{
 
 
 # }}}
+def dbg(*args):  # {{{
+    print("dbg:", args)
+
+
+# }}}
+def dbg_kv(**kvargs):  # {{{
+    print("dbg:", kvargs)
+
+
+# }}}
+def stop(text: str):  # {{{
+    input(f"stop: {text}")
+
+
+# }}}
 
 if __name__ == "__main__":
     ...
