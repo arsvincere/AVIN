@@ -18,7 +18,7 @@ from collections import deque
 from avin.utils.logger import logger
 
 
-class Cmd:  # {{{
+class Cmd:
     @staticmethod  # path# {{{
     def path(*path_parts):
         logger.debug(f"Cmd.path({path_parts})")
@@ -113,9 +113,7 @@ class Cmd:  # {{{
     # }}}
     @staticmethod  # getDirs# {{{
     def getDirs(dir_path, full_path=False):
-        """-- Doc
-        Возвращает список папок в каталоге 'dir_path' без обхода подпапок
-        """
+        """Возвращает список папок в 'dir_path' без обхода подпапок"""
         logger.debug(f"Cmd.getDirs({dir_path}, full_path={full_path})")
         list_dirs = list()
         names = os.listdir(dir_path)
@@ -404,7 +402,6 @@ class Cmd:  # {{{
             os.makedirs(dir_path)
 
 
-# }}}
 # }}}
 
 
