@@ -48,6 +48,7 @@ class Res:  # {{{
     SOUND = os.path.join(Dir.RES, "sound")
     VOICE = os.path.join(Dir.RES, "voice")
     SPLASH = os.path.join(Dir.RES, "splash.png")
+    TEMPLATE = os.path.join(Dir.RES, "template")
 
 
 # }}}

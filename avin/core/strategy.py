@@ -6,8 +6,6 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-"""Doc"""
-
 from __future__ import annotations
 
 import importlib
@@ -17,6 +15,7 @@ from datetime import datetime
 from typing import Iterator, Optional
 
 from avin.config import Usr
+from avin.const import Res
 from avin.core.account import Account
 from avin.core.asset import Asset, AssetList
 from avin.core.direction import Direction
@@ -108,6 +107,7 @@ class Strategy(ABC):  # {{{
         return self.name == other.name and self.version == other.version
 
     # }}}
+
     @property  # name  # {{{
     def name(self):
         return self.__name
@@ -142,6 +142,12 @@ class Strategy(ABC):  # {{{
     @property  # dir_path  # {{{
     def dir_path(self):
         path = Cmd.path(Usr.STRATEGY, self.name)
+        return path
+
+    # }}}
+    @property  # cfg_path  # {{{
+    def cfg_path(self):
+        path = Cmd.path(self.dir_path, "config.cfg")
         return path
 
     # }}}
@@ -372,20 +378,71 @@ class Strategy(ABC):  # {{{
 
     # }}}
 
+    @classmethod  # new# {{{
+    async def new(cls, name: str) -> UStrategy:
+        logger.debug(f"{cls.__name__}.new()")
+
+        # copy template to user directory
+        template_path = Cmd.path(Res.TEMPLATE, "strategy")
+        user_path = Cmd.path(Usr.STRATEGY, name)
+        Cmd.copyDir(template_path, user_path)
+
+        # load modul
+        modul_path = f"usr.strategy.{name}.v1"
+        modul = importlib.import_module(modul_path)
+        UStrategy = modul.__getattribute__("UStrategy")
+
+        # create
+        strategy = UStrategy()
+        strategy.__loadConfig()
+
+        # save in db
+        await Keeper.add(strategy)
+
+        return strategy
+
+    # }}}
+    @classmethod  # copy# {{{
+    async def copy(cls, strategy: Strategy, new_version: str) -> UStrategy:
+        logger.debug(f"{cls.__name__}.copy()")
+
+        # copy version
+        new_path = Cmd.path(strategy.dir_path, f"{new_version}.py")
+        Cmd.copy(strategy.path, new_path)
+
+        # load modul
+        modul_path = f"usr.strategy.{strategy.name}.{new_version}"
+        modul = importlib.import_module(modul_path)
+        UStrategy = modul.__getattribute__("UStrategy")
+
+        # create
+        strategy_copy = UStrategy()
+        strategy_copy.__loadConfig()
+
+        # save in db
+        await Keeper.add(strategy_copy)
+
+        return strategy_copy
+
+    # }}}
     @classmethod  # load# {{{
     async def load(cls, name: str, version: str) -> UStrategy:
+        logger.debug(f"{cls.__name__}.load()")
+
         path = f"usr.strategy.{name}.{version}"
         modul = importlib.import_module(path)
         UStrategy = modul.__getattribute__("UStrategy")
         strategy = UStrategy()
 
-        await strategy.__loadConfig()
+        strategy.__loadConfig()
 
         return strategy
 
     # }}}
     @classmethod  # versions# {{{
     def versions(cls, strategy_name: str) -> list[str]:
+        logger.debug(f"{cls.__name__}.versions()")
+
         path = Cmd.path(Usr.STRATEGY, strategy_name)
         files = Cmd.getFiles(path)
         files = Cmd.select(files, extension=".py")
@@ -396,9 +453,26 @@ class Strategy(ABC):  # {{{
         return ver_list
 
     # }}}
+    @classmethod  # config# {{{
+    def config(cls, strategy_name: str) -> str:
+        logger.debug(f"{cls.__name__}.config()")
 
-    async def __loadConfig(self):  # {{{
-        path = Cmd.path(self.dir_path, "config.cfg")
+        path = Cmd.path(Usr.STRATEGY, strategy_name, "config.cfg")
+        return path
+
+    # }}}
+    @classmethod  # requestAll # {{{
+    def requestAll(cls) -> list[str]:
+        logger.debug(f"{cls.__name__}.requestAll()")
+
+        dir_names = Cmd.getDirs(Usr.STRATEGY)
+        strategy_names = [i for i in dir_names if not i.startswith(".")]
+        return strategy_names
+
+    # }}}
+
+    def __loadConfig(self):  # {{{
+        path = self.cfg_path
         if not Cmd.isExist(path):
             assert False
 
