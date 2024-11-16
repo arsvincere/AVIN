@@ -79,7 +79,6 @@ class AssetListTree(QtWidgets.QTreeWidget):
         logger.debug(f"{self.__class__.__name__}.contextMenuEvent()")
 
         item = self.itemAt(e.pos())
-        self.__resetActions()
         self.__setVisibleActions(item)
         self.__menu.exec(QtGui.QCursor.pos())
         return e.ignore()
@@ -113,14 +112,14 @@ class AssetListTree(QtWidgets.QTreeWidget):
         self.__action_info.triggered.connect(self.__onInfo)
 
     # }}}
-    def __resetActions(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__resetActions()")
+    def __setVisibleActions(self, item):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__setVisibleActions()")
+
+        # disable all actions
         for i in self.__menu.actions():
             i.setEnabled(False)
 
-    # }}}
-    def __setVisibleActions(self, item):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__setVisibleActions()")
+        # enable availible for this item
         if item is None:
             self.__action_add.setEnabled(True)
         if isinstance(item, AssetItem):

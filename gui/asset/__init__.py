@@ -6,5 +6,6 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
+from gui.asset.widget import AssetWidget
 
-__all__ = ()
+__all__ = ("AssetWidget",)
