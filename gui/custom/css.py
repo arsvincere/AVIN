@@ -162,6 +162,9 @@ class Css:
     # }}}
     # Tree # {{{
     TREE = f"""
+        QTreeWidget {{
+            background-color: {Theme.bg_normal};
+        }}
         QTreeWidget::item {{
             font-family: Monospace;
             background-color: {Theme.bg_normal};
