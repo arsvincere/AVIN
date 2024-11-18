@@ -5,8 +5,9 @@
 -- LICENSE:      GNU GPLv3
 -- ===========================================================================
 
-DROP SCHEMA IF EXISTS public; -- {{{
-CREATE SCHEMA IF NOT EXISTS public
+
+
+CREATE SCHEMA IF NOT EXISTS public -- {{{
     AUTHORIZATION pg_database_owner;
 COMMENT ON SCHEMA public
     IS 'user data';
@@ -41,7 +42,7 @@ CREATE TABLE IF NOT EXISTS "AssetList" ( -- {{{
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "AssetList-Asset" ( -- {{{
-    name text REFERENCES "AssetList"(name) ON DELETE CASCADE,
+    name text REFERENCES "AssetList"(name) ON DELETE CASCADE ON UPDATE CASCADE,
     figi text REFERENCES "Asset"(figi)
     );
 -- }}}
@@ -69,10 +70,10 @@ CREATE TABLE IF NOT EXISTS "StrategySet" ( -- {{{
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "StrategySet-Strategy" ( -- {{{
-    name        text REFERENCES "StrategySet"(name),
+    name        text REFERENCES "StrategySet"(name) ON UPDATE CASCADE,
     strategy    text,
     version     text,
-    FOREIGN KEY (strategy, version) REFERENCES "Strategy" (name, version),
+    FOREIGN KEY (strategy, version) REFERENCES "Strategy" (name, version) ON UPDATE CASCADE,
     figi        text REFERENCES "Asset"(figi),
     long        bool NOT NULL,
     short       bool NOT NULL
@@ -88,7 +89,7 @@ CREATE TABLE IF NOT EXISTS "Broker" ( -- {{{
 -- }}}
 CREATE TABLE IF NOT EXISTS "Account" ( -- {{{
     name text PRIMARY KEY,
-    broker text REFERENCES "Broker"(name)
+    broker text REFERENCES "Broker"(name) ON UPDATE CASCADE
     );
     INSERT INTO "Account" (name, broker)
     VALUES
@@ -107,11 +108,11 @@ CREATE TABLE IF NOT EXISTS "TradeList" ( -- {{{
 -- }}}
 CREATE TABLE IF NOT EXISTS "Trade" ( -- {{{
     trade_id    text PRIMARY KEY,
-    tlist       text REFERENCES "TradeList"(name),
+    tlist       text REFERENCES "TradeList"(name) ON UPDATE CASCADE,
     figi        text REFERENCES "Asset"(figi),
     strategy    text,
     version     text,
-    FOREIGN KEY (strategy, version) REFERENCES "Strategy" (name, version),
+    FOREIGN KEY (strategy, version) REFERENCES "Strategy" (name, version) ON UPDATE CASCADE,
     dt          TIMESTAMP WITH TIME ZONE,
     status      "Trade.Status",
     type        "Trade.Type"
@@ -120,7 +121,7 @@ CREATE TABLE IF NOT EXISTS "Trade" ( -- {{{
 CREATE TABLE IF NOT EXISTS "Order" ( -- {{{
     order_id        text PRIMARY KEY,
     trade_id        text REFERENCES "Trade"(trade_id) ON DELETE CASCADE,
-    account         text REFERENCES "Account"(name),
+    account         text REFERENCES "Account"(name) ON UPDATE CASCADE,
     figi            text REFERENCES "Asset"(figi),
 
     type            "Order.Type",
@@ -151,7 +152,7 @@ CREATE TABLE IF NOT EXISTS "Operation" ( -- {{{
     operation_id    text PRIMARY KEY,
     order_id        text REFERENCES "Order"(order_id) ON DELETE CASCADE,
     trade_id        text REFERENCES "Trade"(trade_id) ON DELETE CASCADE,
-    account         text REFERENCES "Account"(name),
+    account         text REFERENCES "Account"(name) ON UPDATE CASCADE,
     figi            text REFERENCES "Asset"(figi),
     dt              TIMESTAMP WITH TIME ZONE,
     direction       "Direction",
@@ -165,9 +166,9 @@ CREATE TABLE IF NOT EXISTS "Operation" ( -- {{{
 -- }}}
 CREATE TABLE IF NOT EXISTS "Test" ( -- {{{
     name            text PRIMARY KEY,
-    account         text REFERENCES "Account"(name),
-    strategy_set    text REFERENCES "StrategySet"(name),
-    trade_list      text REFERENCES "TradeList"(name),
+    account         text REFERENCES "Account"(name) ON UPDATE CASCADE,
+    strategy_set    text REFERENCES "StrategySet"(name) ON UPDATE CASCADE,
+    trade_list      text REFERENCES "TradeList"(name) ON UPDATE CASCADE,
     status          "Test.Status" NOT NULL,
     deposit         float,
     commission      float,
@@ -178,8 +179,8 @@ CREATE TABLE IF NOT EXISTS "Test" ( -- {{{
 -- }}}
 CREATE TABLE IF NOT EXISTS "Trader" ( -- {{{
     name            text PRIMARY KEY,
-    account         text REFERENCES "Account"(name),
-    strategy_set    text REFERENCES "StrategySet"(name),
-    tlist           text REFERENCES "TradeList"(name)
+    account         text REFERENCES "Account"(name) ON UPDATE CASCADE,
+    strategy_set    text REFERENCES "StrategySet"(name) ON UPDATE CASCADE,
+    tlist           text REFERENCES "TradeList"(name) ON UPDATE CASCADE
     );
 -- }}}

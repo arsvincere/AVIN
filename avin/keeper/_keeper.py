@@ -112,10 +112,6 @@ class Keeper:
         for i in none_keys:
             kwargs.pop(i)
 
-        # convert Exchange -> str
-        if kwargs.get("exchange"):
-            kwargs["exchange"] = kwargs["exchange"].name
-
         # Create kwargs conditions
         if not kwargs:
             pg_kwargs = "TRUE"
@@ -248,12 +244,14 @@ class Keeper:
 
     # }}}
     @classmethod  # update  # {{{
-    async def update(cls, obj: Any) -> None:
+    async def update(cls, obj: Any, **kwargs) -> None:
         logger.debug(f"{cls.__name__}.update()")
 
         # Get class_name & choose method
         class_name = cls.__getClassName(obj)
         methods = {
+            "Strategy": cls.__updateStrategy,
+            "UStrategy": cls.__updateStrategy,
             "Trade": cls.__updateTrade,
             "MarketOrder": cls.__updateOrder,
             "LimitOrder": cls.__updateOrder,
@@ -266,7 +264,7 @@ class Keeper:
 
         # Update object
         update_method = methods[class_name]
-        await update_method(obj)
+        await update_method(obj, kwargs)
 
     # }}}
 
@@ -676,14 +674,12 @@ class Keeper:
     def __getClassName(cls, obj: object | Class) -> str:
         logger.debug(f"{cls.__name__}.__getClassName()")
 
-        # Get object class name, 'obj' may be a class, when its Exchange
+        # Get object class name, 'obj' may be a ClassVar, when its Exchange
         # like class: Exchange.MOEX
         if inspect.isclass(obj):
-            class_name = obj.__name__
-        else:
-            class_name = obj.__class__.__name__
+            return obj.__name__
 
-        return class_name
+        return obj.__class__.__name__
 
     # }}}
     @classmethod  # __getTableName  # {{{
@@ -1472,18 +1468,36 @@ class Keeper:
 
     # }}}
     @classmethod  # __deleteStrategy  # {{{
-    async def __deleteStrategy(cls, strategy: Strategy, kwargs: dict) -> None:
+    async def __deleteStrategy(cls, Strategy, kwargs: dict) -> None:
         logger.debug(f"{cls.__name__}.__deleteStrategy()")
 
-        request = f"""
-            DELETE FROM "Strategy"
-            WHERE
-                name = '{strategy.name}' AND version = '{strategy.version}';
-        """
-        await cls.transaction(request)
+        name = kwargs.get("name")
+        version = kwargs.get("version")
+
+        # delete version
+        if name and version:
+            request = f"""
+                DELETE FROM "Strategy"
+                WHERE
+                    name = '{name}'
+                    AND
+                    version = '{version}';
+            """
+            await cls.transaction(request)
+            return
+
+        # delete all strategy group
+        if version is None:
+            request = f"""
+                DELETE FROM "Strategy"
+                WHERE
+                    name = '{name}';
+            """
+            await cls.transaction(request)
+            return
 
     # }}}
-    @classmethod  # __deleteStrategy  # {{{
+    @classmethod  # __deleteStrategySet  # {{{
     async def __deleteStrategySet(
         cls, s_set: StrategySet, kwargs: dict
     ) -> None:
@@ -1574,8 +1588,45 @@ class Keeper:
 
     # }}}
 
+    @classmethod  # __updateStrategy  # {{{
+    async def __updateStrategy(cls, Strategy, kwargs: dict) -> None:
+        logger.debug(f"{cls.__name__}.__updateStrategy()")
+
+        # rename version name
+        strategy = kwargs.get("strategy")
+        new_version_name = kwargs.get("new_version_name")
+        if strategy and new_version_name:
+            request = f"""
+                UPDATE "Strategy"
+                SET
+                    version = '{new_version_name}'
+                WHERE
+                    name = '{strategy.name}'
+                    AND
+                    version = '{strategy.version}';
+                """
+            await cls.transaction(request)
+            return
+
+        # rename strategy name
+        old_name = kwargs.get("old_strategy_name")
+        new_name = kwargs.get("new_strategy_name")
+        if old_name and new_name:
+            request = f"""
+                UPDATE "Strategy"
+                SET
+                    name = '{new_name}'
+                WHERE
+                    name = '{old_name}'
+                """
+            await cls.transaction(request)
+            return
+
+        assert False, f"undefine behavior for {kwargs} "
+
+    # }}}
     @classmethod  # __updateTrade  # {{{
-    async def __updateTrade(cls, trade: Trade) -> None:
+    async def __updateTrade(cls, trade: Trade, kwargs: dict) -> None:
         logger.debug(f"{cls.__name__}.__updateTrade()")
 
         request = f"""
@@ -1594,7 +1645,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __updateOrder  # {{{
-    async def __updateOrder(cls, order: Order) -> None:
+    async def __updateOrder(cls, order: Order, kwargs: dict) -> None:
         logger.debug(f"{cls.__name__}.__updateOrder()")
 
         # format trade_id
@@ -1619,7 +1670,9 @@ class Keeper:
 
     # }}}
     @classmethod  # __updateOperation  # {{{
-    async def __updateOperation(cls, operation: Operation) -> None:
+    async def __updateOperation(
+        cls, operation: Operation, kwargs: dict
+    ) -> None:
         logger.debug(f"{cls.__name__}.__updateOperation()")
         request = f"""
             UPDATE "Operation"
@@ -1633,7 +1686,9 @@ class Keeper:
 
     # }}}
     @classmethod  # __updateCache  # {{{
-    async def __updateCache(cls, cache: _InstrumentsInfoCache) -> None:
+    async def __updateCache(
+        cls, cache: _InstrumentsInfoCache, kwargs: dict
+    ) -> None:
         logger.debug(f"{cls.__name__}.__updateCache()")
 
         # Delete old cache

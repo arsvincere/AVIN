@@ -5,8 +5,6 @@
 -- LICENSE:      GNU GPLv3
 -- ===========================================================================
 
-DROP SCHEMA IF EXISTS data;
-
 CREATE SCHEMA IF NOT EXISTS data
     AUTHORIZATION pg_database_owner;
 

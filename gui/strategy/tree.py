@@ -11,11 +11,11 @@ import sys
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt
 
-from avin.core import Strategy, StrategyList
+from avin.config import Usr
+from avin.core import StrategyList
 from avin.utils import Cmd, logger
 from gui.custom import Css, Dialog
 from gui.strategy.item import ConfigItem, StrategyItem, VersionItem
-from gui.strategy.thread import Thread
 
 
 class StrategyTree(QtWidgets.QTreeWidget):
@@ -29,6 +29,7 @@ class StrategyTree(QtWidgets.QTreeWidget):
         self.__connect()
 
     # }}}
+
     def contextMenuEvent(self, e: QtGui.QContextMenuEvent):  # {{{
         logger.debug("Tree.contextMenuEvent(e)")
         item = self.itemAt(e.pos())
@@ -109,7 +110,6 @@ class StrategyTree(QtWidgets.QTreeWidget):
         self.__edit.triggered.connect(self.__onEdit)
         self.__rename.triggered.connect(self.__onRename)
         self.__delete.triggered.connect(self.__onDelete)
-        self.itemChanged.connect(self.__onItemChanged)
 
     # }}}
     def __setVisibleActions(self, item):  # {{{
@@ -144,91 +144,82 @@ class StrategyTree(QtWidgets.QTreeWidget):
         if not name:
             return
 
-        existed_names = Strategy.requestAll()
-        if name in existed_names:
+        new_strategy_item = StrategyItem.new(name)
+        if new_strategy_item:
+            self.addTopLevelItem(new_strategy_item)
+        else:
             Dialog.error("Name alreade exist, creation canceled.")
-            return
-
-        strategy = Thread.new(name)
-        item = StrategyItem(name)
-        self.addTopLevelItem(item)
 
     # }}}
     @QtCore.pyqtSlot()  # __onCopy{{{
     def __onCopy(self):
         logger.debug(f"{self.__class__.__name__}.__onCopy()")
 
-        item = self.currentItem()
         new_name = Dialog.name("New name...")
         if not new_name:
             return
 
-        existed_versions = Strategy.versions(item.strategy.name)
-        if new_name in existed_versions:
+        item = self.currentItem()
+        new_version_item = VersionItem.copy(item, new_name)
+        if new_version_item:
+            strategy_item = item.parent()
+            strategy_item.addChild(new_version_item)
+        else:
             Dialog.error("Name alreade exist, coping canceled.")
-            return
-
-        new_strategy = Thread.copy(item.strategy, new_name)
-        new_version_item = VersionItem(new_strategy)
-        item.addChild(new_version_item)
 
     # }}}
     @QtCore.pyqtSlot()  # __onRename{{{
     def __onRename(self):
         logger.debug(f"{self.__class__.__name__}.__onRename()")
-        item = self.currentItem()
-        # FIXME:
-        assert False
 
         new_name = Dialog.name("New name...")
-        if new_name:
-            if isinstance(item, IStrategy):
-                IStrategy.rename(item, new_name)
-            elif isinstance(item, IVersion):
-                IVersion.rename(item, new_name)
+        if not new_name:
+            return
+
+        item = self.currentItem()
+        match item.__class__.__name__:
+            case "StrategyItem":
+                StrategyItem.rename(item, new_name)
+            case "VersionItem":
+                VersionItem.rename(item, new_name)
 
     # }}}
     @QtCore.pyqtSlot()  # __onEdit{{{
     def __onEdit(self):
         logger.debug(f"{self.__class__.__name__}.__onEdit()")
+
         item = self.currentItem()
+        assert isinstance(item, (VersionItem, ConfigItem))
 
-        # FIXME:
-        assert False
-
-        path = item.path
-        command = (TERMINAL, EXEC, EDITOR, path)
+        command = (
+            Usr.TERMINAL,
+            *Usr.OPT,
+            Usr.EXEC,
+            Usr.EDITOR,
+            item.path,
+        )
         Cmd.subprocess(command)
 
     # }}}
     @QtCore.pyqtSlot()  # __onDelete{{{
     def __onDelete(self):
         logger.debug(f"{self.__class__.__name__}.__onDelete()")
-        # FIXME:
-        assert False
+        if not Dialog.confirm():
+            return
 
-        dial = Dialog.confirm()
-        if dial.confirm():
-            item = self.currentItem()
-            if isinstance(item, IStrategy):
+        item = self.currentItem()
+        match item.__class__.__name__:
+            case "StrategyItem":
                 index = self.indexFromItem(item).row()
                 self.takeTopLevelItem(index)
-                IStrategy.delete(item)
-            elif isinstance(item, IVersion):
-                istrategy = item.parent()
-                index = istrategy.indexOfChild(item)
-                istrategy.takeChild(index)
-                IVersion.delete(item)
+                StrategyItem.delete(item)
+            case "VersionItem":
+                strategy_item = item.parent()
+                index = strategy_item.indexOfChild(item)
+                strategy_item.takeChild(index)
+                VersionItem.delete(item)
 
     # }}}
-    @QtCore.pyqtSlot(QtWidgets.QTreeWidgetItem, int)  # __onItemChanged{{{
-    def __onItemChanged(self, item: QtWidgets.QTreeWidgetItem, column: int):
-        logger.debug(f"{self.__class__.__name__}.__onItemChanged()")
-        # if not isinstance(item, IAssetCfg):
-        #     return
-        # # else: item - IAssetCfg с измененным чек-стейт
-        # istrategy = item.parent().parent()
-        # istrategy.saveAssetSettings()
 
 
 # }}}

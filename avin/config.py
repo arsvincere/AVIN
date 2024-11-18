@@ -26,6 +26,7 @@ class Usr:
 
     # Your applications
     TERMINAL = "alacritty"
+    OPT = ["-T", "AlacrittyFloat"]
     EDITOR = "nvim"
     PYTHON = "python3"
 

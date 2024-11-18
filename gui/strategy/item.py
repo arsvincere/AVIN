@@ -6,6 +6,8 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
+from __future__ import annotations
+
 import enum
 
 from PyQt6 import QtWidgets
@@ -31,6 +33,7 @@ class StrategyItem(QtWidgets.QTreeWidgetItem):  # {{{
         self.__loadVersions()
 
     # }}}
+
     def __config(self):  # {{{
         self.setFlags(
             Qt.ItemFlag.ItemIsUserCheckable
@@ -44,7 +47,7 @@ class StrategyItem(QtWidgets.QTreeWidgetItem):  # {{{
     def __loadConfig(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__loadConfig()")
 
-        cfg_path = Strategy.config(self.name)
+        cfg_path = Strategy.cfgPath(self.name)
         item = ConfigItem(cfg_path)
         self.addChild(item)
 
@@ -52,28 +55,76 @@ class StrategyItem(QtWidgets.QTreeWidgetItem):  # {{{
     def __loadVersions(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__loadVersions()")
 
-        self.versions = Strategy.versions(self.name)
-        for ver in self.versions:
+        versions = Strategy.versions(self.name)
+        for ver in versions:
             strategy = Thread.load(self.name, ver)
             item = VersionItem(strategy)
             self.addChild(item)
 
     # }}}
 
+    @classmethod  # new  # {{{
+    def new(cls, name) -> StrategyItem | None:
+        logger.debug(f"{cls.__name__}.new()")
 
-# }}}
-class ConfigItem(QtWidgets.QTreeWidgetItem):  # {{{
-    def __init__(self, path, parent=None):  # {{{
-        QtWidgets.QTreeWidgetItem.__init__(self, parent)
-        logger.debug(f"{self.__class__.__name__}.__init__()")
+        # try create Strategy & save in db
+        strategy = Thread.new(name)
+        if not strategy:
+            return None
 
-        self.path = path
-        self.setFlags(
-            Qt.ItemFlag.ItemIsUserCheckable
-            | Qt.ItemFlag.ItemIsSelectable
-            | Qt.ItemFlag.ItemIsEnabled
-        )
-        self.setText(StrategyItem.Column.Name, "config")
+        # create QTreeWidgetItem
+        item = StrategyItem(name)
+        return item
+
+    # }}}
+    @classmethod  # rename  # {{{
+    def rename(cls, item: StrategyItem, new_name) -> VersionItem | None:
+        logger.debug(f"{cls.__name__}.rename()")
+
+        # try rename strategy & update db
+        renamed = Thread.renameStrategy(item.name, new_name)
+        if not renamed:
+            return None
+
+        # rename QTreeWidgetItem
+        item.name = new_name
+        item.setText(StrategyItem.Column.Name, new_name)
+
+        # remove childs (versions and config)
+        while item.childCount():
+            item.takeChild(0)
+
+        # reload config
+        # TODO: duplicated code below and
+        # func __loadConfig, __loadVersions
+        # тут надо конструктор переделать...  и эти функции
+        # они должны не в селф результат сразу пихать а
+        # возвращать соответствующие значения, а конструктор
+        # уже эти значения добавляет как чайлд итем.
+        # и тут тоже дернуть эти функции тогда и добавить чайлд итемы.
+        # или... передавать этим функциям для какого элемента
+        # загрузить конфиг и версии. То есть сделать их тогда
+        # classmethod-ами
+        # думаю второе предпочтительнее.
+        cfg_path = Strategy.cfgPath(renamed)
+        cfg_item = ConfigItem(cfg_path)
+        item.addChild(cfg_item)
+
+        # reload versions
+        versions = Strategy.versions(renamed)
+        for ver in versions:
+            strategy = Thread.load(renamed, ver)
+            ver_item = VersionItem(strategy)
+            item.addChild(ver_item)
+
+        return item
+
+    # }}}
+    @classmethod  # delete  # {{{
+    def delete(cls, item: StrategyItem) -> None:
+        logger.debug(f"{cls.__name__}.delete()")
+
+        Thread.deleteStrategy(item.name)
 
     # }}}
 
@@ -92,6 +143,63 @@ class VersionItem(QtWidgets.QTreeWidgetItem):  # {{{
         )
         self.setText(StrategyItem.Column.Name, self.strategy.version)
         # self.setCheckState(StrategyItem.Column.Name, Qt.CheckState.Unchecked)
+
+    # }}}
+    @property  # path  # {{{
+    def path(self):
+        return Strategy.path(self.strategy)
+
+    # }}}
+    @classmethod  # copy  # {{{
+    def copy(cls, item, new_name) -> VersionItem | None:
+        logger.debug(f"{cls.__name__}.copy()")
+
+        # try create new version & save in db
+        new_strategy = Thread.copy(item.strategy, new_name)
+        if not new_strategy:
+            return None
+
+        # create QTreeWidgetItem
+        new_item = cls(new_strategy)
+        return new_item
+
+    # }}}
+    @classmethod  # rename  # {{{
+    def rename(cls, item, new_name) -> VersionItem | None:
+        logger.debug(f"{cls.__name__}.rename()")
+
+        # try rename strategy & update db
+        renamed = Thread.renameVersion(item.strategy, new_name)
+        if not renamed:
+            return None
+
+        # rename QTreeWidgetItem
+        item.setText(StrategyItem.Column.Name, new_name)
+        return item
+
+    # }}}
+    @classmethod  # delete  # {{{
+    def delete(cls, item: VersionItem) -> None:
+        logger.debug(f"{cls.__name__}.delete()")
+
+        Thread.deleteVersion(item.strategy)
+
+    # }}}
+
+
+# }}}
+class ConfigItem(QtWidgets.QTreeWidgetItem):  # {{{
+    def __init__(self, path, parent=None):  # {{{
+        QtWidgets.QTreeWidgetItem.__init__(self, parent)
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+
+        self.path = path
+        self.setFlags(
+            Qt.ItemFlag.ItemIsUserCheckable
+            | Qt.ItemFlag.ItemIsSelectable
+            | Qt.ItemFlag.ItemIsEnabled
+        )
+        self.setText(StrategyItem.Column.Name, "config")
 
     # }}}
 

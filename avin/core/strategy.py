@@ -54,6 +54,13 @@ class Strategy(ABC):  # {{{
     @property  # @abstractmethod timeframe_list  # {{{
     @abstractmethod
     def timeframe_list() -> list[TimeFrame]:
+        # TODO:
+        # сделай это просто функцией а не абстрактным свойством.
+        # опять же тупо ради однообразия синтаксиса
+        # в группе абстрактных методов.
+        # и название timeframe_list не канает.
+        # нужно что то типо "нужныеДляРаботыТаймфреймы"
+        # или "используемыеТаймфреймы", "необходимыеТаймфреймы"
         pass
 
     # }}}
@@ -131,24 +138,6 @@ class Strategy(ABC):  # {{{
     @property  # active_trades  # {{{
     def active_trades(self):
         return self.__active_trades
-
-    # }}}
-    @property  # path  # {{{
-    def path(self):
-        path = Cmd.path(self.dir_path, f"{self.version}.py")
-        return path
-
-    # }}}
-    @property  # dir_path  # {{{
-    def dir_path(self):
-        path = Cmd.path(Usr.STRATEGY, self.name)
-        return path
-
-    # }}}
-    @property  # cfg_path  # {{{
-    def cfg_path(self):
-        path = Cmd.path(self.dir_path, "config.cfg")
-        return path
 
     # }}}
 
@@ -378,9 +367,13 @@ class Strategy(ABC):  # {{{
 
     # }}}
 
-    @classmethod  # new# {{{
-    async def new(cls, name: str) -> UStrategy:
+    @classmethod  # new  # {{{
+    async def new(cls, name: str) -> UStrategy | None:
         logger.debug(f"{cls.__name__}.new()")
+
+        # check name
+        if not cls.checkStrategyName(name):
+            return None
 
         # copy template to user directory
         template_path = Cmd.path(Res.TEMPLATE, "strategy")
@@ -402,16 +395,22 @@ class Strategy(ABC):  # {{{
         return strategy
 
     # }}}
-    @classmethod  # copy# {{{
-    async def copy(cls, strategy: Strategy, new_version: str) -> UStrategy:
+    @classmethod  # copyVersion  # {{{
+    async def copy(cls, strategy: Strategy, new_ver: str) -> UStrategy | None:
+        # TODO: copy -> copyVersion
         logger.debug(f"{cls.__name__}.copy()")
 
+        # check new name
+        if not cls.checkVersionName(strategy, new_ver):
+            return None
+
         # copy version
-        new_path = Cmd.path(strategy.dir_path, f"{new_version}.py")
-        Cmd.copy(strategy.path, new_path)
+        old_path = Strategy.path(strategy)
+        new_path = Cmd.path(Strategy.dirPath(strategy.name), f"{new_ver}.py")
+        Cmd.copy(old_path, new_path)
 
         # load modul
-        modul_path = f"usr.strategy.{strategy.name}.{new_version}"
+        modul_path = f"usr.strategy.{strategy.name}.{new_ver}"
         modul = importlib.import_module(modul_path)
         UStrategy = modul.__getattribute__("UStrategy")
 
@@ -425,9 +424,60 @@ class Strategy(ABC):  # {{{
         return strategy_copy
 
     # }}}
-    @classmethod  # load# {{{
+    @classmethod  # renameStrategy  # {{{
+    async def renameStrategy(cls, old_name: str, new_name: str) -> str | None:
+        logger.debug(f"{cls.__name__}.renameVersion()")
+
+        # check names
+        existed_names = cls.requestAll()
+        assert old_name in existed_names
+        if not cls.checkStrategyName(new_name):
+            return None
+
+        # rename dir
+        old_dir = Strategy.dirPath(old_name)
+        new_dir = Strategy.dirPath(new_name)
+        Cmd.rename(old_dir, new_dir)
+
+        # update database
+        await Keeper.update(
+            cls,
+            old_strategy_name=old_name,
+            new_strategy_name=new_name,
+        )
+        return new_name
+
+    # }}}
+    @classmethod  # renameVersion  # {{{
+    async def renameVersion(
+        cls, strategy: Strategy, new_name: str
+    ) -> UStrategy | None:
+        logger.debug(f"{cls.__name__}.renameVersion()")
+
+        # check new name
+        if not cls.checkVersionName(strategy, new_name):
+            return None
+
+        # rename verion file
+        old_path = cls.path(strategy)
+        new_path = Cmd.path(Strategy.dirPath(strategy.name), f"{new_name}.py")
+        Cmd.rename(old_path, new_path)
+
+        # update database
+        await Keeper.update(cls, strategy=strategy, new_version_name=new_name)
+
+        # rename object
+        strategy.__version = new_name
+
+        return strategy
+
+    # }}}
+    @classmethod  # load  # {{{
     async def load(cls, name: str, version: str) -> UStrategy:
         logger.debug(f"{cls.__name__}.load()")
+
+        # TODO: проверка существования файла
+        # ? сделать ли возврат None если нет такого?
 
         path = f"usr.strategy.{name}.{version}"
         modul = importlib.import_module(path)
@@ -439,26 +489,72 @@ class Strategy(ABC):  # {{{
         return strategy
 
     # }}}
-    @classmethod  # versions# {{{
+    @classmethod  # deleteStrategy  # {{{
+    async def deleteStrategy(cls, strategy_name: str) -> None:
+        logger.debug(f"{cls.__name__}.deleteStrategy()")
+
+        # delete dir
+        dir_path = Strategy.dirPath(strategy_name)
+        Cmd.deleteDir(dir_path)
+
+        # delete in db
+        await Keeper.delete(cls, name=strategy_name)
+
+    # }}}
+    @classmethod  # deleteVersion  # {{{
+    async def deleteVersion(cls, strategy: Strategy) -> None:
+        logger.debug(f"{cls.__name__}.deleteVersion()")
+
+        # delete file
+        file_path = Strategy.path(strategy)
+        Cmd.delete(file_path)
+
+        # delete in db
+        await Keeper.delete(cls, name=strategy.name, version=strategy.version)
+
+    # }}}
+
+    @classmethod  # path  # {{{
+    def path(cls, strategy: Strategy) -> str:
+        logger.debug(f"{cls.__name__}.path()")
+
+        path = Cmd.path(
+            Strategy.dirPath(strategy.name),
+            f"{strategy.version}.py",
+        )
+        return path
+
+    # }}}
+    @classmethod  # dirPath  # {{{
+    def dirPath(cls, strategy_name: str) -> str:
+        logger.debug(f"{cls.__name__}.dirPath()")
+
+        path = Cmd.path(Usr.STRATEGY, strategy_name)
+        return path
+
+    # }}}
+    @classmethod  # cfgPath  # {{{
+    def cfgPath(cls, strategy_name: str) -> str:
+        logger.debug(f"{cls.__name__}.cfgPath()")
+
+        path = Cmd.path(Usr.STRATEGY, strategy_name, "config.cfg")
+        return path
+
+    # }}}
+    @classmethod  # versions  # {{{
     def versions(cls, strategy_name: str) -> list[str]:
         logger.debug(f"{cls.__name__}.versions()")
 
         path = Cmd.path(Usr.STRATEGY, strategy_name)
         files = Cmd.getFiles(path)
         files = Cmd.select(files, extension=".py")
+
         ver_list = list()
         for file in files:
             ver = file.replace(".py", "")
             ver_list.append(ver)
+
         return ver_list
-
-    # }}}
-    @classmethod  # config# {{{
-    def config(cls, strategy_name: str) -> str:
-        logger.debug(f"{cls.__name__}.config()")
-
-        path = Cmd.path(Usr.STRATEGY, strategy_name, "config.cfg")
-        return path
 
     # }}}
     @classmethod  # requestAll # {{{
@@ -470,9 +566,31 @@ class Strategy(ABC):  # {{{
         return strategy_names
 
     # }}}
+    @classmethod  # checkStrategyName  # {{{
+    def checkStrategyName(cls, name) -> bool:
+        logger.debug(f"{cls.__name__}.checkStrategyName()")
+
+        existed_names = cls.requestAll()
+        if name in existed_names:
+            return False
+
+        return True
+
+    # }}}
+    @classmethod  # checkVersionName  # {{{
+    def checkVersionName(cls, strategy: Strategy, new_name: str) -> bool:
+        logger.debug(f"{cls.__name__}.checkVersionName()")
+
+        existed_versions = cls.versions(strategy.name)
+        if new_name in existed_versions:
+            return False
+
+        return True
+
+    # }}}
 
     def __loadConfig(self):  # {{{
-        path = self.cfg_path
+        path = Strategy.cfgPath(self.__name)
         if not Cmd.isExist(path):
             assert False
 
@@ -570,7 +688,7 @@ class StrategyList:  # {{{
         return None
 
     # }}}
-    def createTimeFrameList(self) -> TimeFrameList:
+    def createTimeFrameList(self) -> TimeFrameList:  # {{{
         logger.debug(f"{self.__class__.__name__}.createTimeFrameList()")
 
         all_timeframe_list = TimeFrameList()
@@ -579,13 +697,14 @@ class StrategyList:  # {{{
 
         return all_timeframe_list
 
+    # }}}
+
 
 # }}}
 
 
-# TODO: rename StrategySetItem -> StrategySetNode
-@dataclass  # StrategySetItem{{{
-class StrategySetItem:
+@dataclass  # StrategySetNode  # {{{
+class StrategySetNode:
     strategy: str
     version: str
     figi: str
@@ -593,7 +712,7 @@ class StrategySetItem:
     short: bool
 
     @classmethod  # fromRecord{{{
-    def fromRecord(cls, record: asyncpg.Record) -> StrategySetItem:
+    def fromRecord(cls, record: asyncpg.Record) -> StrategySetNode:
         logger.debug(f"{cls.__name__}.fromRecord()")
 
         item = cls(
@@ -614,12 +733,12 @@ class StrategySet:  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__({name}, {items})")
 
         self.__name: str = name
-        self.__items: list[StrategySetItem] = items if items else list()
+        self.__items: list[StrategySetNode] = items if items else list()
         self.__asset_list = None
         self.__strategy_list = None
 
     # }}}
-    def __getitem__(self, strategy: Strategy) -> list[StrategySetItem]:  # {{{
+    def __getitem__(self, strategy: Strategy) -> list[StrategySetNode]:  # {{{
         selected = list()
         for i in self.__items:
             if i.strategy == strategy.name and i.version == strategy.version:
@@ -641,16 +760,16 @@ class StrategySet:  # {{{
         return self.__name
 
     # }}}
-    def add(self, item: StrategySetItem) -> None:  # {{{
+    def add(self, item: StrategySetNode) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.add({item})")
-        assert isinstance(item, StrategySetItem)
+        assert isinstance(item, StrategySetNode)
 
         self.__items.append(item)
 
     # }}}
-    def remove(self, item: StrategySetItem) -> None:  # {{{
+    def remove(self, item: StrategySetNode) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.remove({item})")
-        assert isinstance(item, StrategySetItem)
+        assert isinstance(item, StrategySetNode)
 
         try:
             self.__items.remove(item)
@@ -705,7 +824,7 @@ class StrategySet:  # {{{
 
         s_set = cls(name)
         for i in records:
-            item = StrategySetItem.fromRecord(i)
+            item = StrategySetNode.fromRecord(i)
             s_set.add(item)
 
         return s_set
