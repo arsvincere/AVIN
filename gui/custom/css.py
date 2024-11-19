@@ -11,21 +11,21 @@ from gui.custom.theme import Theme
 
 
 class Css:
-    # Style  # {{{
+    # STYLE  # {{{
     STYLE = f"""
         font-family: Monospace;
         background-color: {Theme.bg_normal};
         color: {Theme.fg_normal};
         """
     # }}}
-    # Dialog  # {{{
+    # DIALOG  # {{{
     DIALOG = f"""
         font-family: Monospace;
         background-color: {Theme.bg_normal};
         color: {Theme.fg_normal};
         """
     # }}}
-    # Line edit  # {{{
+    # LINE_EDIT  # {{{
     LINE_EDIT = f"""
         QLineEdit {{
             font-family: Monospace;
@@ -40,7 +40,7 @@ class Css:
         }}
         """
     # }}}
-    # Tool button  # {{{
+    # TOOL_BUTTON  # {{{
     TOOL_BUTTON = f"""
         QToolButton {{
             font-family: Monospace;
@@ -84,7 +84,7 @@ class Css:
 
         """
     # }}}
-    # Push button  # {{{
+    # PUSH_BUTTON  # {{{
     PUSH_BUTTON = f"""
         QPushButton {{
             font-family: Monospace;
@@ -110,10 +110,11 @@ class Css:
         }}
         """
     # }}}
-    # Menu  # {{{
+    # MENU  # {{{
     MENU = f"""
         QMenu {{
             font-family: Monospace;
+            font-size: 12px;
             background-color: {Theme.bg_mild};
             color: {Theme.fg_normal};
             border-width: 1px;
@@ -131,16 +132,38 @@ class Css:
             background-color: transparent;
             color: {Theme.fg_disabled};
         }}
-        """
+        // QMenu::separator {{
+        //     height: 20px;
+        //     background: lightblue;
+        //     margin-left: 10px;
+        //     margin-right: 5px;
+        // }}
+        // QMenu::indicator {{
+        //     background: red;
+        //     width: 13px;
+        //     height: 13px;
+        // }}
+    """
     # }}}
-    # Label  # {{{
+    # MENU_SECTION  # {{{
+    MENU_SECTION = f"""
+        font-family: Source Code Pro;
+        font-size: 12px;
+        background-color: {Theme.bg_mild};
+        color: {Theme.border};
+        padding-left: 5px;
+        padding-top: 4px;
+        padding-bottom: 1px;
+    """
+    # }}}
+    # LABEL  # {{{
     LABEL = f"""
         font-family: Sans;
         background-color: {Theme.bg_normal};
         color: {Theme.fg_normal};
     """
     # }}}
-    # FramedLabel  # {{{
+    # FRAMED_LABEL  # {{{
     FRAMED_LABEL = f"""
         font-family: Sans;
         background-color: {Theme.bg_normal};
@@ -152,7 +175,16 @@ class Css:
         padding: 4px;
     """
     # }}}
-    # Sub title label   # {{{
+    # TITLE   # {{{
+    TITLE = f"""
+        font-family: Sans;
+        font-weight: 700;
+        background-color: {Theme.bg_normal};
+        color: {Theme.fg_normal};
+        font-size: 14px;
+    """
+    # }}}
+    # SUB_TITLE   # {{{
     SUB_TITLE = f"""
         font-family: Sans;
         background-color: {Theme.bg_normal};
@@ -160,7 +192,7 @@ class Css:
         font-size: 14px;
     """
     # }}}
-    # Tree # {{{
+    # TREE # {{{
     TREE = f"""
         QTreeWidget {{
             background-color: {Theme.bg_normal};
@@ -181,7 +213,7 @@ class Css:
 
     """
     # }}}
-    # Tree header # {{{
+    # TREE_HEADER # {{{
     TREE_HEADER = f"""
         QHeaderView::section {{
             font-family: Monospace;
