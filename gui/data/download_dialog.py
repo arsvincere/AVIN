@@ -693,6 +693,7 @@ class _RightPanel(QtWidgets.QWidget):  # {{{
 ...
 
 
+# old code -------------------------------------------------------------------
 class DialogDataDownload(QtWidgets.QDialog):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
