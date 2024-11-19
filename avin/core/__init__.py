@@ -34,7 +34,7 @@ from avin.core.strategy import (
     Strategy,
     StrategyList,
     StrategySet,
-    StrategySetItem,
+    StrategySetNode,
 )
 from avin.core.timeframe import TimeFrame, TimeFrameList
 from avin.core.trade import Trade, TradeList
@@ -66,7 +66,7 @@ __all__ = (
     "Strategy",
     "StrategyList",
     "StrategySet",
-    "StrategySetItem",
+    "StrategySetNode",
     "Event",
     "BarChangedEvent",
     "NewHistoricalBarEvent",
