@@ -30,6 +30,7 @@ class AssetListToolBar(QtWidgets.QToolBar):  # {{{
         self.__connect()
 
     # }}}
+
     def addAssetListName(self, alist_name: str) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.add()")
 
@@ -78,6 +79,7 @@ class AssetListToolBar(QtWidgets.QToolBar):  # {{{
         return existed
 
     # }}}
+
     def __createActions(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createActions()")
 
@@ -149,6 +151,7 @@ class AssetListToolBar(QtWidgets.QToolBar):  # {{{
         self.__list_menu.triggered.connect(self.__onListTriggered)
 
     # }}}
+
     @QtCore.pyqtSlot(QtGui.QAction)  # __onListTriggered{{{
     def __onListTriggered(self, action: QtGui.QAction):
         logger.debug(f"{self.__class__.__name__}.__onListTriggered()")

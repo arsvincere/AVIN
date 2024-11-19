@@ -108,18 +108,19 @@ class Editor(QtWidgets.QDialog):
         logger.debug(f"{self.__class__.__name__}.editAssetList()")
 
         self.__markExisting(editable)
-        result = self.exec()
-        if result == QtWidgets.QDialog.DialogCode.Accepted:
-            editable.clear()
-            for i in self.__tree:
-                state = i.checkState(AssetItem.Column.Ticker)
-                if state == Qt.CheckState.Checked:
-                    index = self.__tree.indexOfTopLevelItem(i)
-                    item = self.__tree.takeTopLevelItem(index)
-                    editable.add(item.asset)
-            return editable
 
-        return None
+        result = self.exec()
+        if result == QtWidgets.QDialog.DialogCode.Rejected:
+            return None
+
+        editable.clear()
+        for i in self.__tree:
+            state = i.checkState(AssetItem.Column.Ticker)
+            if state == Qt.CheckState.Checked:
+                index = self.__tree.indexOfTopLevelItem(i)
+                item = self.__tree.takeTopLevelItem(index)
+                editable.add(item.asset)
+        return editable
 
 
 # }}}
