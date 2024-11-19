@@ -13,7 +13,7 @@ import enum
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
 
-from avin.core import Strategy
+from avin.core import Asset, Strategy, StrategySetNode
 from avin.utils import logger
 from gui.strategy.thread import Thread
 
@@ -28,14 +28,8 @@ class StrategyItem(QtWidgets.QTreeWidgetItem):  # {{{
         QtWidgets.QTreeWidgetItem.__init__(self, parent)
 
         self.name = name
-        self.__config()
-        self.__loadConfig()
-        self.__loadVersions()
-
-    # }}}
-
-    def __config(self):  # {{{
         self.setFlags(
+            # Qt.ItemFlag.ItemIsAutoTristate
             Qt.ItemFlag.ItemIsUserCheckable
             | Qt.ItemFlag.ItemIsSelectable
             | Qt.ItemFlag.ItemIsEnabled
@@ -44,7 +38,18 @@ class StrategyItem(QtWidgets.QTreeWidgetItem):  # {{{
         # self.setCheckState(self.Column.Name, Qt.CheckState.Unchecked)
 
     # }}}
-    def __loadConfig(self):  # {{{
+    def __iter__(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__iter__()")
+
+        all_childs = list()
+        for i in range(self.childCount()):
+            item = self.child(i)
+            all_childs.append(item)
+
+        return iter(all_childs)
+
+    # }}}
+    def loadConfig(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__loadConfig()")
 
         cfg_path = Strategy.cfgPath(self.name)
@@ -52,13 +57,15 @@ class StrategyItem(QtWidgets.QTreeWidgetItem):  # {{{
         self.addChild(item)
 
     # }}}
-    def __loadVersions(self):  # {{{
+    def loadVersions(self, checkable: bool):  # {{{
         logger.debug(f"{self.__class__.__name__}.__loadVersions()")
 
         versions = Strategy.versions(self.name)
         for ver in versions:
             strategy = Thread.load(self.name, ver)
             item = VersionItem(strategy)
+            if checkable:
+                item.setCheckState(self.Column.Name, Qt.CheckState.Unchecked)
             self.addChild(item)
 
     # }}}
@@ -131,9 +138,13 @@ class StrategyItem(QtWidgets.QTreeWidgetItem):  # {{{
 
 # }}}
 class VersionItem(QtWidgets.QTreeWidgetItem):  # {{{
+    class Column(enum.IntEnum):
+        Name = 0
+        Version = 1
+
     def __init__(self, strategy, parent=None):  # {{{
-        QtWidgets.QTreeWidgetItem.__init__(self, parent)
         logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QTreeWidgetItem.__init__(self, parent)
 
         self.strategy = strategy
         self.setFlags(
@@ -142,7 +153,6 @@ class VersionItem(QtWidgets.QTreeWidgetItem):  # {{{
             | Qt.ItemFlag.ItemIsEnabled
         )
         self.setText(StrategyItem.Column.Name, self.strategy.version)
-        # self.setCheckState(StrategyItem.Column.Name, Qt.CheckState.Unchecked)
 
     # }}}
     @property  # path  # {{{
@@ -150,6 +160,13 @@ class VersionItem(QtWidgets.QTreeWidgetItem):  # {{{
         return Strategy.path(self.strategy)
 
     # }}}
+    def isChecked(self) -> bool:
+        logger.debug(f"{self.__class__.__name__}.isChecked()")
+
+        check_state = self.checkState(self.Column.Name)
+
+        return check_state == Qt.CheckState.Checked
+
     @classmethod  # copy  # {{{
     def copy(cls, item, new_name) -> VersionItem | None:
         logger.debug(f"{cls.__name__}.copy()")
@@ -205,103 +222,188 @@ class ConfigItem(QtWidgets.QTreeWidgetItem):  # {{{
 
 
 # }}}
-
-
-class IAssetCfg(QtWidgets.QTreeWidgetItem):  # {{{
-    def __init__(self, asset, parent=None):  # {{{
-        QtWidgets.QTreeWidgetItem.__init__(self, parent)
-        self.__config()
-        self.__parent = parent
-        self.asset = asset
+class StrategySetNodeItem(QtWidgets.QTreeWidgetItem):  # {{{
+    class Column(enum.IntEnum):  # {{{
+        Name = 0
+        Figi = 1
+        Long = 2
+        Short = 3
 
     # }}}
-    def __config(self):  # {{{
+    def __init__(self, node: StrategySetNode, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QTreeWidgetItem.__init__(self, parent)
+
+        self.__node = node
+        self.__asset: Optional[Asset] = None
+
         self.setFlags(
             Qt.ItemFlag.ItemIsUserCheckable
-            | Qt.ItemFlag.ItemIsDragEnabled
-            | Qt.ItemFlag.ItemIsDropEnabled
             | Qt.ItemFlag.ItemIsSelectable
             | Qt.ItemFlag.ItemIsEnabled
         )
-        self.setText(Tree.Column.Name, self.ticker)
+
+        self.setText(self.Column.Figi, self.__node.figi)
+
+        yes = Qt.CheckState.Checked
+        no = Qt.CheckState.Unchecked
+        long = yes if self.__node.long else no
+        short = yes if self.__node.short else no
+        self.setCheckState(self.Column.Long, long)
+        self.setCheckState(self.Column.Short, short)
+
+    # }}}
+    @property  # node  # {{{
+    def node(self):
+        return self.__node
+
+    # }}}
+    @property  # strategy  # {{{
+    def strategy(self):
+        return self.__node.strategy
+
+    # }}}
+    @property  # version  # {{{
+    def version(self):
+        return self.__node.version
+
+    # }}}
+    @property  # figi  # {{{
+    def figi(self):
+        return self.__node.figi
+
+    # }}}
+    @property  # long  # {{{
+    def long(self):
+        return self.__node.long
+
+    # }}}
+    @property  # short  # {{{
+    def short(self):
+        return self.__node.short
+
+    # }}}
+    def setAsset(self, asset: Asset) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.setAsset()")
+
+        assert asset.figi == self.__node.figi
+        self.__asset = asset
+        self.setText(self.Column.Name, asset.ticker)
+
+    # }}}
+    @classmethod  # new
+    def new(
+        cls,
+        group: StrategySetNodeGroup,
+        asset: Asset,
+        long=False,
+        short=False,
+    ):
+        logger.debug(f"{cls.__name__}.new()")
+
+        node = StrategySetNode(
+            strategy=group.strategy,
+            version=group.version,
+            figi=asset.figi,
+            long=long,
+            short=short,
+        )
+
+        item = cls(node)
+        item.setAsset(asset)
+
+        return item
 
 
 # }}}
+class StrategySetNodeGroup(QtWidgets.QTreeWidgetItem):  # {{{
+    class Column(enum.IntEnum):  # {{{
+        Name = 0
+        Count = 1
+        Long = 2
+        Short = 3
+
+    # }}}
+    def __init__(self, strategy: Strategy, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QTreeWidgetItem.__init__(self, parent)
+
+        self.__strategy = strategy
+        self.__count = 0
+
+        self.setFlags(
+            Qt.ItemFlag.ItemIsAutoTristate
+            | Qt.ItemFlag.ItemIsUserCheckable
+            | Qt.ItemFlag.ItemIsSelectable
+            | Qt.ItemFlag.ItemIsEnabled
+        )
+        self.setText(self.Column.Name, f"{strategy.name}-{strategy.version}")
+        self.setText(self.Column.Count, str(self.__count))
+
+    # }}}
+    def __iter__(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__iter__()")
+
+        all_child = list()
+        for i in range(self.childCount):
+            child = self.child(i)
+            all_child.append(child)
+
+        return iter(all_child)
+
+    # }}}
+    def __contains__(self, asset: Asset) -> bool:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__contains__()")
+
+        for node in self:
+            if node.figi == asset.figi:
+                return True
+
+        return False
+
+    # }}}
+    @property  # strategy  # {{{
+    def strategy(self) -> str:
+        return self.__strategy.name
+
+    # }}}
+    @property  # version  # {{{
+    def version(self) -> str:
+        return self.__strategy.version
+
+    # }}}
+    def addAsset(self, asset: Asset) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.addAsset()")
+
+        if asset in self:
+            return
+
+        node_item = StrategySetNode.new(self, asset)
+        self.addChild(node_item)
+
+    # }}}
+    def removeAsset(self, asset: Asset) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.removeAsset()")
+
+        if asset not in self:
+            return
+
+        for child in self:
+            if child.figi == asset.figi:
+                self.removeChild(child)
+                return
+
+    # }}}
+    def clearAssets(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.clearAssets()")
+
+        while self.childCount():
+            self.takeChild(0)
+
+    # }}}
 
 
 # }}}
-# class IAssetListCfg(AssetList, QtWidgets.QTreeWidgetItem):  # {{{
-#     def __init__(self, name, parent=None):  # {{{
-#         logger.debug(f"{self.__class__.__name__}.__init__()")
-#         QtWidgets.QTreeWidgetItem.__init__(self, parent)
-#         AssetList.__init__(self, name)
-#         self.__parent = parent
-#         self.setFlags(
-#             Qt.ItemFlag.ItemIsAutoTristate
-#             | Qt.ItemFlag.ItemIsUserCheckable
-#             | Qt.ItemFlag.ItemIsDragEnabled
-#             | Qt.ItemFlag.ItemIsDropEnabled
-#             | Qt.ItemFlag.ItemIsSelectable
-#             | Qt.ItemFlag.ItemIsEnabled
-#         )
-#         self.__updateText()
-#
-#     # }}}
-#     def __updateText(self):  # {{{
-#         logger.debug(f"{self.__class__.__name__}.__updateText()")
-#         self.setText(Tree.Column.Name, self.name)
-#
-#     # }}}
-#     @staticmethod  # load{{{
-#     def load(path=None, name=None, parent=None):
-#         logger.debug(f"{__class__.__name__}.load()")
-#         if path:
-#             assert name is None
-#             name = Cmd.name(path, extension=False)
-#         elif name:
-#             assert path is None
-#             path = Cmd.join(ASSET_DIR, f"{name}.al")
-#         ialist_cfg = IAssetListCfg("assets", parent=parent)
-#         obj = Cmd.loadJSON(path)
-#         for ID in obj:
-#             assert eval(ID["type"]) == Type.SHARE
-#             share = Share(ID["ticker"])
-#             cfg = IAssetCfg(share)
-#             ialist_cfg.add(cfg)
-#         return ialist_cfg
-#
-#     # }}}
-#     def parent(self):  # {{{
-#         logger.debug(f"{self.__class__.__name__}.parent()")
-#         return self.__parent
-#
-#     # }}}
-#     def add(self, iasset: IAssetCfg):  # {{{
-#         logger.debug(f"{self.__class__.__name__}.add()")
-#         AssetList.add(self, iasset)
-#         self.addChild(iasset)
-#         self.__updateText()
-#
-#     # }}}
-#     def remove(self, iasset):  # {{{
-#         logger.debug(f"{self.__class__.__name__}.remove()")
-#         AssetList.remove(self, iasset)
-#         self.removeChild(iasset)
-#         self.__updateText()
-#
-#     # }}}
-#     def clear(self):  # {{{
-#         logger.debug(f"{self.__class__.__name__}.clear()")
-#         AssetList.clear(self)
-#         while self.takeChild(0):
-#             pass
-#         self.__updateText()
-#
-#
-# # }}}
-#
-#
-# # }}}
 
 
 if __name__ == "__main__":

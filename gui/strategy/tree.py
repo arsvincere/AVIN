@@ -12,13 +12,20 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt
 
 from avin.config import Usr
-from avin.core import StrategyList
+from avin.core import Strategy, StrategyList, StrategySet
 from avin.utils import Cmd, logger
-from gui.custom import Css, Dialog
-from gui.strategy.item import ConfigItem, StrategyItem, VersionItem
+from gui.custom import Css, Dialog, Menu
+from gui.strategy.dialog import StrategyAddDialog
+from gui.strategy.item import (
+    ConfigItem,
+    StrategyItem,
+    StrategySetNodeGroup,
+    StrategySetNodeItem,
+    VersionItem,
+)
 
 
-class StrategyTree(QtWidgets.QTreeWidget):
+class StrategyTree(QtWidgets.QTreeWidget):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QTreeWidget.__init__(self, parent)
@@ -31,7 +38,7 @@ class StrategyTree(QtWidgets.QTreeWidget):
     # }}}
 
     def contextMenuEvent(self, e: QtGui.QContextMenuEvent):  # {{{
-        logger.debug("Tree.contextMenuEvent(e)")
+        logger.debug(f"{self.__class__.__name__}.contextMenuEvent()")
         item = self.itemAt(e.pos())
         self.__setVisibleActions(item)
         self.menu.exec(QtGui.QCursor.pos())
@@ -223,11 +230,206 @@ class StrategyTree(QtWidgets.QTreeWidget):
 
 
 # }}}
+class StrategySetTree(QtWidgets.QTreeWidget):  # {{{
+    def __init__(self, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QTreeWidget.__init__(self, parent)
+
+        self.__createActions()
+        self.__createMenu()
+        self.__config()
+        self.__connect()
+
+    # }}}
+    def __iter__(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__iter__()")
+
+        all_items = list()
+        for i in range(self.topLevelItemCount()):
+            item = self.topLevelItem(i)
+            all_items.append(item)
+
+        return iter(all_items)
+
+    # }}}
+    def __contains__(self, strategy: Strategy):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__contains__()")
+
+        for group in self:
+            eq_name = group.strategy == strategy.name
+            eq_ver = group.version == strategy.version
+            if eq_name and eq_ver:
+                return True
+
+        return False
+
+    # }}}
+    def contextMenuEvent(self, e: QtGui.QContextMenuEvent):  # {{{
+        logger.debug(f"{self.__class__.__name__}.contextMenuEvent()")
+        item = self.itemAt(e.pos())
+        self.__setVisibleActions(item)
+        self.__menu.exec(QtGui.QCursor.pos())
+        return e.ignore()
+
+    # }}}
+    def setStrategySet(self, strategy_set: StrategySet) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.setStrategySet()")
+
+        # create strategy list
+        slist = strategy_set.createStrategyList()
+
+        # create asset list
+        alist = strategy_set.createAssetList()
+
+        # create items
+        for strategy in slist:
+            group_item = StrategySetNodeGroup(strategy)
+            self.addTopLevelItem(strategy_item)
+            for node in slist[strategy]:
+                asset = alist.find(figi=node.figi)
+                node_item = StrategySetNodeItem(node)
+                node_item.setAsset(asset)
+                group_item.addChild(node_item)
+
+    # }}}
+
+    def __createActions(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createActions()")
+
+        self.__strategy_add = QtGui.QAction("Add", self)
+        self.__strategy_remove = QtGui.QAction("Remove", self)
+
+        self.__asset_add = QtGui.QAction("Add", self)
+        self.__asset_remove = QtGui.QAction("Remove", self)
+        self.__asset_clear = QtGui.QAction("Clear", self)
+        self.__asset_info = QtGui.QAction("Info", self)
+
+    # }}}
+    def __createMenu(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createMenu()")
+
+        self.__menu = Menu(parent=self)
+
+        self.__menu.addTextSeparator("Strategy")
+        self.__menu.addAction(self.__strategy_add)
+        self.__menu.addAction(self.__strategy_remove)
+
+        self.__menu.addTextSeparator("Asset")
+        self.__menu.addAction(self.__asset_add)
+        self.__menu.addAction(self.__asset_remove)
+        self.__menu.addAction(self.__asset_clear)
+        self.__menu.addAction(self.__asset_info)
+
+    # }}}
+    def __config(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__config()")
+
+        # config style
+        self.setStyleSheet(Css.TREE)
+        self.setContentsMargins(0, 0, 0, 0)
+
+        # config header
+        labels = list()
+        for l in StrategySetNodeItem.Column:
+            labels.append(l.name)
+        self.setHeaderLabels(labels)
+        self.header().setStyleSheet(Css.TREE_HEADER)
+
+        # config sorting
+        self.setSortingEnabled(True)
+        self.sortByColumn(
+            StrategySetNodeItem.Column.Name, Qt.SortOrder.AscendingOrder
+        )
+
+        # config width
+        self.setColumnWidth(StrategySetNodeItem.Column.Name, 150)
+        self.setColumnWidth(StrategySetNodeItem.Column.Figi, 150)
+        self.setColumnWidth(StrategySetNodeItem.Column.Long, 50)
+        self.setColumnWidth(StrategySetNodeItem.Column.Short, 50)
+        self.setMinimumWidth(420)
+        self.setMinimumHeight(200)
+
+    # }}}
+    def __connect(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__connect()")
+
+        self.__strategy_add.triggered.connect(self.__onStrategyAdd)
+        self.__strategy_remove.triggered.connect(self.__onStrategyRemove)
+
+        self.__asset_add.triggered.connect(self.__onAssetAdd)
+        self.__asset_remove.triggered.connect(self.__onAssetRemove)
+        self.__asset_clear.triggered.connect(self.__onAssetClear)
+        self.__asset_info.triggered.connect(self.__onAssetInfo)
+
+    # }}}
+    def __setVisibleActions(self, item):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__setVisibleActions()")
+
+        # disable all actions
+        for i in self.__menu.actions():
+            i.setEnabled(False)
+
+        # # enable availible for this item
+        if item is None:
+            self.__strategy_add.setEnabled(True)
+        elif isinstance(item, StrategySetNodeGroup):
+            self.__strategy_add.setEnabled(True)
+            self.__strategy_remove.setEnabled(True)
+            self.__asset_add.setEnabled(True)
+            self.__asset_clear.setEnabled(True)
+        elif isinstance(item, StrategySetNodeItem):
+            self.__asset_add.setEnabled(True)
+            self.__asset_remove.setEnabled(True)
+            self.__asset_clear.setEnabled(True)
+            self.__asset_info.setEnabled(True)
+
+    # }}}
+
+    @QtCore.pyqtSlot()  # __onStrategyAdd  # {{{
+    def __onStrategyAdd(self):
+        logger.debug(f"{self.__class__.__name__}.__onStrategyAdd()")
+
+        dial = StrategyAddDialog()
+        selected = dial.selectStrategys()
+        for strategy in selected:
+            if strategy not in self:
+                group_item = StrategySetNodeGroup(strategy)
+                self.addTopLevelItem(group_item)
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onStrategyRemove  # {{{
+    def __onStrategyRemove(self):
+        logger.debug(f"{self.__class__.__name__}.__onStrategyRemove()")
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onAssetAdd  # {{{
+    def __onAssetAdd(self):
+        logger.debug(f"{self.__class__.__name__}.__onAssetAdd()")
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onAssetRemove  # {{{
+    def __onAssetRemove(self):
+        logger.debug(f"{self.__class__.__name__}.__onAssetRemove()")
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onAssetClear  # {{{
+    def __onAssetClear(self):
+        logger.debug(f"{self.__class__.__name__}.__onAssetClear()")
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onAssetInfo  # {{{
+    def __onAssetInfo(self):
+        logger.debug(f"{self.__class__.__name__}.__onAssetInfo()")
+
+    # }}}
+
+
+# }}}
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    w = StrategyTree()
-    w.setWindowTitle("AVIN  -  Widget")
+    w = StrategySetTree()
+    w.setWindowTitle("AVIN")
     w.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
     w.show()
     sys.exit(app.exec())

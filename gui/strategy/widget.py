@@ -14,12 +14,12 @@ from avin.core import Strategy
 from avin.utils import logger
 from gui.custom import Css
 from gui.strategy.item import StrategyItem
-from gui.strategy.tree import StrategyTree
+from gui.strategy.tree import StrategySetTree, StrategyTree
 
 
-class StrategyWidget(QtWidgets.QWidget):
+class StrategyWidget(QtWidgets.QWidget):  # {{{
     def __init__(self, parent=None):  # {{{
-        logger.debug("UStrategyWidget.__init__()")
+        logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QWidget.__init__(self, parent)
 
         self.__createWidgets()
@@ -55,7 +55,45 @@ class StrategyWidget(QtWidgets.QWidget):
         strategy_names = Strategy.requestAll()
         for name in strategy_names:
             item = StrategyItem(name)
+            item.loadConfig()
+            item.loadVersions(checkable=False)
             self.__tree.addTopLevelItem(item)
+
+    # }}}
+
+
+# }}}
+class StrategySetWidget(QtWidgets.QWidget):  # {{{
+    def __init__(self, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QWidget.__init__(self, parent)
+
+        self.__createWidgets()
+        self.__createLayots()
+        self.__config()
+
+    # }}}
+    def __createWidgets(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createWidgets()")
+
+        self.__tree = StrategySetTree(self)
+
+    # }}}
+    def __createLayots(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createLayots()")
+
+        vbox = QtWidgets.QVBoxLayout()
+        vbox.setContentsMargins(0, 0, 0, 0)
+        vbox.addWidget(self.__tree)
+        self.setLayout(vbox)
+
+    # }}}
+    def __config(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__config()")
+
+        self.setStyleSheet(Css.STYLE)
+
+    # }}}
 
 
 # }}}
@@ -63,8 +101,8 @@ class StrategyWidget(QtWidgets.QWidget):
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    w = StrategyWidget()
-    w.setWindowTitle("AVIN  -  Widget")
+    w = StrategySetWidget()
+    w.setWindowTitle("AVIN")
     w.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
     w.show()
     sys.exit(app.exec())
