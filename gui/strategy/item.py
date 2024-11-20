@@ -284,6 +284,11 @@ class StrategySetNodeItem(QtWidgets.QTreeWidgetItem):  # {{{
         return self.__node.short
 
     # }}}
+    @property  # asset  # {{{
+    def asset(self):
+        return self.__asset
+
+    # }}}
     def setAsset(self, asset: Asset) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.setAsset()")
 
@@ -292,7 +297,7 @@ class StrategySetNodeItem(QtWidgets.QTreeWidgetItem):  # {{{
         self.setText(self.Column.Name, asset.ticker)
 
     # }}}
-    @classmethod  # new
+    @classmethod  # new{{{
     def new(
         cls,
         group: StrategySetNodeGroup,
@@ -314,6 +319,8 @@ class StrategySetNodeItem(QtWidgets.QTreeWidgetItem):  # {{{
         item.setAsset(asset)
 
         return item
+
+    # }}}
 
 
 # }}}

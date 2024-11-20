@@ -14,7 +14,7 @@ from PyQt6.QtCore import Qt
 from avin.config import Usr
 from avin.core import Strategy, StrategyList, StrategySet
 from avin.utils import Cmd, logger
-from gui.asset import AssetSelectDialog
+from gui.asset import AssetInfoDialog, AssetSelectDialog
 from gui.custom import Css, Dialog, Menu
 from gui.strategy.dialog import StrategyAddDialog
 from gui.strategy.item import (
@@ -461,6 +461,10 @@ class StrategySetTree(QtWidgets.QTreeWidget):  # {{{
     @QtCore.pyqtSlot()  # __onAssetInfo  # {{{
     def __onAssetInfo(self):
         logger.debug(f"{self.__class__.__name__}.__onAssetInfo()")
+
+        item = self.currentItem()
+        dial = AssetInfoDialog()
+        dial.showInfo(item.asset)
 
     # }}}
 
