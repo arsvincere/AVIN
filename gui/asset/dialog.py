@@ -17,16 +17,6 @@ from gui.asset.item import AssetItem
 from gui.asset.thread import Thread
 from gui.custom import Css, Icon, LineEdit, ToolButton
 
-# TODO:
-# а что если:
-# Editor -> AssetWidget
-# AssetWidget -> AssetListWidget
-# и у AssetWidget добавить метод
-# чтобы он мог возвращать один ассет - getAsset()
-# и так же сохранить функционал что он может возвращать список - editAssetList
-# тогда этот виджет будет более универсальным, его и график сможет дергать
-# и StrategySet...
-
 
 class AssetSelectDialog(QtWidgets.QDialog):
     def __init__(self, parent=None):  # {{{
