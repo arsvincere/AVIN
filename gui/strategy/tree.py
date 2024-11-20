@@ -16,7 +16,6 @@ from avin.core import Strategy, StrategyList, StrategySet
 from avin.utils import Cmd, logger
 from gui.asset import AssetInfoDialog, AssetSelectDialog
 from gui.custom import Css, Dialog, Menu
-from gui.strategy.dialog import StrategyAddDialog
 from gui.strategy.item import (
     ConfigItem,
     StrategyItem,
@@ -293,7 +292,17 @@ class StrategySetTree(QtWidgets.QTreeWidget):  # {{{
                 group_item.addChild(node_item)
 
     # }}}
+    def currentStrategySet(self) -> StrategySet:  # {{{
+        logger.debug(f"{self.__class__.__name__}.currentStrategySet()")
 
+        sset = StrategySet(name="")
+        for group in self:
+            for item in group:
+                sset.add(item.node)
+
+        return sset
+
+    # }}}
     def __createActions(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createActions()")
 
