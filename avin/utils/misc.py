@@ -101,28 +101,27 @@ def decode_json(obj):  # {{{
 
 # }}}
 def code_counter(dir_path):  # {{{
-    count_file = 0
+    count_files = 0
     count_str = 0
     for root, _, files in os.walk(dir_path):
         for file in files:
             if file.endswith(".py"):
-                file_path = os.path.join(root, file)
+                file_path = Cmd.path(root, file)
                 text = Cmd.loadText(file_path)
-                n = len(text)
-                count_str += n
-                count_file += 1
-    return count_file, count_str
+                count_str += len(text)
+                count_files += 1
+    return count_files, count_str
 
 
 # }}}
 def ask_user(message: str) -> bool:  # {{{
     while True:
         answer = input(f"> {message} (y/n): ")
-        if answer in "yY":
+        if answer.lower() == "y":
             return True
-        if answer in "nN":
+        if answer.lower() == "n":
             return False
-        print("Некорректный ввод. Введите 'y' или 'n': ")
+        print("Are your stupid? Type 'y' or 'n': ")
 
 
 # }}}

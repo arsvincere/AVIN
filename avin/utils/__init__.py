@@ -8,7 +8,7 @@
 
 from avin.utils.cmd import Cmd
 from avin.utils.logger import logger
-from avin.utils.other import (
+from avin.utils.misc import (
     ask_user,
     binary_search,
     code_counter,
