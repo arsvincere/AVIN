@@ -715,14 +715,14 @@ class StrategySetNode:
     def fromRecord(cls, record: asyncpg.Record) -> StrategySetNode:
         logger.debug(f"{cls.__name__}.fromRecord()")
 
-        item = cls(
+        node = cls(
             record["strategy"],
             record["version"],
             record["figi"],
             record["long"],
             record["short"],
         )
-        return item
+        return node
 
     # }}}
 
@@ -733,14 +733,14 @@ class StrategySet:  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__({name}, {items})")
 
         self.__name: str = name
-        self.__items: list[StrategySetNode] = items if items else list()
+        self.__nodes: list[StrategySetNode] = items if items else list()
         self.__asset_list = None
         self.__strategy_list = None
 
     # }}}
     def __getitem__(self, strategy: Strategy) -> list[StrategySetNode]:  # {{{
         selected = list()
-        for i in self.__items:
+        for i in self.__nodes:
             if i.strategy == strategy.name and i.version == strategy.version:
                 selected.append(i)
 
@@ -748,45 +748,45 @@ class StrategySet:  # {{{
 
     # }}}
     def __iter__(self) -> Iterator:  # {{{
-        return iter(self.__items)
+        return iter(self.__nodes)
 
     # }}}
     def __len__(self):  # {{{
-        return len(self.__items)
+        return len(self.__nodes)
 
     # }}}
-    @property  # name{{{
+    @property  # name  # {{{
     def name(self):
         return self.__name
 
     # }}}
-    def add(self, item: StrategySetNode) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.add({item})")
-        assert isinstance(item, StrategySetNode)
+    def add(self, node: StrategySetNode) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.add({node})")
+        assert isinstance(node, StrategySetNode)
 
-        self.__items.append(item)
+        self.__nodes.append(node)
 
     # }}}
-    def remove(self, item: StrategySetNode) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.remove({item})")
-        assert isinstance(item, StrategySetNode)
+    def remove(self, node: StrategySetNode) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.remove({node})")
+        assert isinstance(node, StrategySetNode)
 
         try:
-            self.__items.remove(item)
+            self.__nodes.remove(node)
         except ValueError as err:
             logger.exception(err)
 
     # }}}
     def clear(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.clear()")
-        self.__items.clear()
+        self.__nodes.clear()
 
     # }}}
     async def createAssetList(self) -> AssetList:  # {{{
         logger.debug(f"{self.__class__.__name__}.getAssetList()")
 
         self.__asset_list = AssetList(name="")
-        for i in self.__items:
+        for i in self.__nodes:
             figi = i.figi
             asset = self.__asset_list.find(figi=figi)
             if not asset:
@@ -809,10 +809,10 @@ class StrategySet:  # {{{
 
         # create StrategyList
         self.__strategy_list = StrategyList(name="")
-        for item in self.__items:
-            strategy = self.__strategy_list.find(item.strategy, item.version)
+        for node in self.__nodes:
+            strategy = self.__strategy_list.find(node.strategy, node.version)
             if not strategy:
-                strategy = await Strategy.load(item.strategy, item.version)
+                strategy = await Strategy.load(node.strategy, node.version)
                 self.__strategy_list.add(strategy)
 
         return self.__strategy_list
@@ -824,8 +824,8 @@ class StrategySet:  # {{{
 
         s_set = cls(name)
         for i in records:
-            item = StrategySetNode.fromRecord(i)
-            s_set.add(item)
+            node = StrategySetNode.fromRecord(i)
+            s_set.add(node)
 
         return s_set
 
