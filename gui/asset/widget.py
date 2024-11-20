@@ -415,6 +415,13 @@ class _AssetListTree(QtWidgets.QTreeWidget):  # {{{
         return iter(items)
 
     # }}}
+    def currentAsset(self) -> Asset:  # {{{
+        logger.debug(f"{self.__class__.__name__}.currentAsset()")
+
+        item = self.currentItem()
+        return item.asset
+
+    # }}}
     def setAssetList(self, alist: AssetList):  # {{{
         logger.debug(f"{self.__class__.__name__}.setAssetList()")
 
@@ -423,13 +430,6 @@ class _AssetListTree(QtWidgets.QTreeWidget):  # {{{
         for asset in alist:
             item = AssetItem(asset)
             self.addTopLevelItem(item)
-
-    # }}}
-    def currentAsset(self) -> Asset:  # {{{
-        logger.debug(f"{self.__class__.__name__}.currentAsset()")
-
-        item = self.currentItem()
-        return item.asset
 
     # }}}
     def currentAssetList(self) -> AssetList:  # {{{
