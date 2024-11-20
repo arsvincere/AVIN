@@ -6,7 +6,12 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-from gui.asset.dialog import AssetSelectDialog
-from gui.asset.widget import AssetWidget
+from gui.asset.dialog_info import AssetInfoDialog
+from gui.asset.dialog_select import AssetSelectDialog
+from gui.asset.widget import AssetListWidget
 
-__all__ = ("AssetWidget", "AssetSelectDialog")
+__all__ = (
+    "AssetInfoDialog",
+    "AssetSelectDialog",
+    "AssetListWidget",
+)
