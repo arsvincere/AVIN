@@ -401,6 +401,10 @@ class StrategySetTree(QtWidgets.QTreeWidget):  # {{{
     def __onStrategyRemove(self):
         logger.debug(f"{self.__class__.__name__}.__onStrategyRemove()")
 
+        item = self.currentItem()
+        index = self.indexFromItem(item).row()
+        self.takeTopLevelItem(index)
+
     # }}}
     @QtCore.pyqtSlot()  # __onAssetAdd  # {{{
     def __onAssetAdd(self):
