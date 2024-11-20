@@ -22,7 +22,6 @@ from avin.utils import Cmd, logger
 from gui.custom import (
     Css,
     Dialog,
-    Font,
     Icon,
     Label,
     Menu,
@@ -75,7 +74,6 @@ class DataDownloadDialog(QtWidgets.QDialog):  # {{{
     def __config(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__config()")
         self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
-        self.setFont(Font.MONO)
         self.setStyleSheet(Css.DIALOG)
 
     # }}}
@@ -563,7 +561,6 @@ class _Tree(QtWidgets.QTreeWidget):  # {{{
         # other options
         self.setSortingEnabled(True)
         self.sortByColumn(_Item.Column.Ticker, Qt.SortOrder.AscendingOrder)
-        self.setFont(Font.MONO)
 
         # size policy
         self.setSizePolicy(
