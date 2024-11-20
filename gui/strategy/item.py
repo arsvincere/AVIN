@@ -160,13 +160,14 @@ class VersionItem(QtWidgets.QTreeWidgetItem):  # {{{
         return Strategy.path(self.strategy)
 
     # }}}
-    def isChecked(self) -> bool:
+    def isChecked(self) -> bool:  # {{{
         logger.debug(f"{self.__class__.__name__}.isChecked()")
 
         check_state = self.checkState(self.Column.Name)
 
         return check_state == Qt.CheckState.Checked
 
+    # }}}
     @classmethod  # copy  # {{{
     def copy(cls, item, new_name) -> VersionItem | None:
         logger.debug(f"{cls.__name__}.copy()")
@@ -345,7 +346,7 @@ class StrategySetNodeGroup(QtWidgets.QTreeWidgetItem):  # {{{
         logger.debug(f"{self.__class__.__name__}.__iter__()")
 
         all_child = list()
-        for i in range(self.childCount):
+        for i in range(self.childCount()):
             child = self.child(i)
             all_child.append(child)
 
