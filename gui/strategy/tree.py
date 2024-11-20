@@ -444,6 +444,19 @@ class StrategySetTree(QtWidgets.QTreeWidget):  # {{{
     def __onAssetClear(self):
         logger.debug(f"{self.__class__.__name__}.__onAssetClear()")
 
+        # get current group
+        current_item = self.currentItem()
+        class_name = current_item.__class__.__name__
+        match class_name:
+            case "StrategySetNodeGroup":
+                group = current_item
+            case "StrategySetNodeItem":
+                group = current_item.parent()
+
+        # take all childs
+        while group.childCount():
+            group.takeChild(0)
+
     # }}}
     @QtCore.pyqtSlot()  # __onAssetInfo  # {{{
     def __onAssetInfo(self):
