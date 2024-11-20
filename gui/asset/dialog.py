@@ -28,7 +28,7 @@ from gui.custom import Css, Icon, LineEdit, ToolButton
 # и StrategySet...
 
 
-class Editor(QtWidgets.QDialog):
+class AssetSelectDialog(QtWidgets.QDialog):
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QDialog.__init__(self, parent)
@@ -69,7 +69,7 @@ class Editor(QtWidgets.QDialog):
     def __config(self):  # {{{
         self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
         self.setStyleSheet(Css.DIALOG)
-        self.setWindowTitle("AVIN  -  Widget")
+        self.setWindowTitle("AVIN")
 
     # }}}
     def __connect(self):  # {{{
@@ -121,6 +121,20 @@ class Editor(QtWidgets.QDialog):
                 item = self.__tree.takeTopLevelItem(index)
                 editable.add(item.asset)
         return editable
+
+    # }}}
+    def selectAssets(self) -> AssetList | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.editAssetList()")
+
+        result = self.exec()
+        if result == QtWidgets.QDialog.DialogCode.Rejected:
+            return None
+
+        selected = AssetList("selected")
+        for i in self.__tree:
+            if i.isChecked():
+                selected.add(i.asset)
+        return selected
 
 
 # }}}
@@ -196,8 +210,8 @@ class _Tree(QtWidgets.QTreeWidget):
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    w = Editor()
-    w.setWindowTitle("AVIN  -  Widget")
+    w = AssetSelectDialog()
+    w.setWindowTitle("AVIN")
     w.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
     w.show()
     sys.exit(app.exec())

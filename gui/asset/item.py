@@ -37,10 +37,20 @@ class AssetItem(QtWidgets.QTreeWidgetItem):
             | Qt.ItemFlag.ItemIsSelectable
             | Qt.ItemFlag.ItemIsEnabled
         )
+        self.setCheckState(self.Column.Ticker, Qt.CheckState.Unchecked)
+
         self.setText(self.Column.Ticker, asset.ticker)
         self.setText(self.Column.Name, asset.name)
         self.setText(self.Column.Type, asset.type.name)
         self.setText(self.Column.Exchange, asset.exchange.name)
+
+    # }}}
+    def isChecked(self) -> bool:  # {{{
+        logger.debug(f"{self.__class__.__name__}.isChecked()")
+
+        check_state = self.checkState(self.Column.Ticker)
+
+        return check_state == Qt.CheckState.Checked
 
     # }}}
 

@@ -14,7 +14,7 @@ from PyQt6.QtCore import Qt
 
 from avin.core import Asset, AssetList
 from avin.utils import logger
-from gui.asset.editor import Editor
+from gui.asset.dialog import AssetSelectDialog
 from gui.asset.item import AssetItem
 from gui.asset.thread import Thread
 from gui.custom import Css, Dialog, Menu
@@ -65,8 +65,8 @@ class AssetListTree(QtWidgets.QTreeWidget):
     def editCurrentAssetList(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.editCurrentAssetList()")
 
-        editor = Editor()
-        edited_list = editor.editAssetList(self.__current_alist)
+        dial = AssetSelectDialog()
+        edited_list = dial.editAssetList(self.__current_alist)
         if edited_list:
             Thread.save(edited_list)
             self.setAssetList(edited_list)
