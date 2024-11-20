@@ -128,6 +128,12 @@ class Instrument:
         return float(self.info["min_price_step"])
 
     # }}}
+    def pretty(self) -> str:
+        logger.debug(f"{self.__class__.__name__}.pretty()")
+
+        s = json.dumps(self.__info, indent=4, ensure_ascii=False)
+        return s
+
     @classmethod  # fromRecord# {{{
     def fromRecord(cls, record: asyncpg.Record) -> Instrument:
         logger.debug(f"{cls.__name__}.fromRecord()")
