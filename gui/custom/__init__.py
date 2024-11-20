@@ -11,7 +11,7 @@ from gui.custom.css import Css
 from gui.custom.dialog import Dialog
 from gui.custom.font import Font
 from gui.custom.icon import Icon
-from gui.custom.label import Label, SubTitle
+from gui.custom.label import Label, SubTitleLabel, TitleLabel
 from gui.custom.line_edit import LineEdit
 from gui.custom.logo import Logo
 from gui.custom.menu import Menu
@@ -31,17 +31,19 @@ __all__ = (
     "Font",
     "Icon",
     "Label",
-    "SubTitle",
+    "SubTitleLabel",
+    "TitleLabel",
     "LineEdit",
     "Logo",
     "Menu",
     "Palette",
     "PushButton",
-    "Spacer",
     "HLine",
+    "Spacer",
     "VLine",
     "Theme",
     "TimeFrameBar",
     "ToolButton",
-    "awaitQThread" "YearWidget",
+    "awaitQThread",
+    "YearWidget",
 )
