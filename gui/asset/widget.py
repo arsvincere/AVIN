@@ -19,7 +19,7 @@ from gui.asset.thread import Thread
 from gui.custom import Css, Dialog, Icon, Menu, Spacer, ToolButton
 
 
-class AssetListWidget(QtWidgets.QWidget):
+class AssetListWidget(QtWidgets.QWidget):  # {{{
     assetChanged = QtCore.pyqtSignal(Asset)
 
     def __init__(self, parent=None):  # {{{
@@ -198,6 +198,7 @@ class AssetListWidget(QtWidgets.QWidget):
     # }}}
 
 
+# }}}
 class _AssetListToolBar(QtWidgets.QToolBar):  # {{{
     listChanged = QtCore.pyqtSignal()
     __ICON_SIZE = QtCore.QSize(32, 32)
@@ -395,7 +396,7 @@ class _AssetListMenu(QtWidgets.QMenu):  # {{{
 
 
 # }}}
-class _AssetListTree(QtWidgets.QTreeWidget):
+class _AssetListTree(QtWidgets.QTreeWidget):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QTreeWidget.__init__(self, parent)
@@ -541,6 +542,9 @@ class _AssetListTree(QtWidgets.QTreeWidget):
         Dialog.info("This feature not avalible, its coming soon")
 
     # }}}
+
+
+# }}}
 
 
 if __name__ == "__main__":
