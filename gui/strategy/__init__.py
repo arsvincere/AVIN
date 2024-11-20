@@ -6,6 +6,10 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
+from gui.strategy.dialog_select import StrategySelectDialog
 from gui.strategy.widget import StrategyWidget
 
-__all__ = ("StrategyWidget",)
+__all__ = (
+    "StrategySelectDialog",
+    "StrategyWidget",
+)

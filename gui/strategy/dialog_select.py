@@ -17,7 +17,7 @@ from gui.custom import Css, Icon, Label, Spacer, ToolButton
 from gui.strategy.item import StrategyItem
 
 
-class StrategyAddDialog(QtWidgets.QDialog):  # {{{
+class StrategySelectDialog(QtWidgets.QDialog):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QDialog.__init__(self, parent)
@@ -169,7 +169,7 @@ class _ToolBar(QtWidgets.QToolBar):  # {{{
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    w = StrategyAddDialog()
+    w = StrategySelectDialog()
     w.setWindowTitle("AVIN")
     w.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
     w.show()
