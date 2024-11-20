@@ -43,15 +43,16 @@ class Test:
         self.__status = Test.Status.NEW
         self.__trade_list = TradeList(f"{name}-tlist")
         self.__report = Report(test=self)
-        self.__cfg = dict()
+        self.__cfg = dict()  # TODO: выпили ты нахуй этот cfg, пережитки json
 
         # signals
         self.progress = Signal(int)
 
     # }}}
-    def __str__(self):
+    def __str__(self):  # {{{
         return f"Test='{self.name}'"
 
+    # }}}
     @property  # name# {{{
     def name(self):
         return self.__name
