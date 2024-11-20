@@ -91,7 +91,9 @@ class StrategySetWidget(QtWidgets.QWidget):  # {{{
     def __config(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__config()")
 
+        self.setWindowTitle("AVIN")
         self.setStyleSheet(Css.STYLE)
+        self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
 
     # }}}
 
@@ -102,7 +104,5 @@ class StrategySetWidget(QtWidgets.QWidget):  # {{{
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     w = StrategySetWidget()
-    w.setWindowTitle("AVIN")
-    w.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
     w.show()
     sys.exit(app.exec())
