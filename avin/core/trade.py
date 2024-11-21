@@ -555,9 +555,9 @@ class TradeList:  # {{{
         return self.__asset
 
     # }}}
-    @property  # parent# {{{
-    def parent(self) -> TradeList | None:
-        """Return parent trade list"""
+    @property  # parent_tlist# {{{
+    def parent_tlist(self) -> TradeList | None:
+        """Return parent_tlist trade list"""
         return self.__parent
 
     # }}}
@@ -590,6 +590,18 @@ class TradeList:  # {{{
         return None
 
     # }}}
+    def selectStatus(self, status: Trade.Status) -> TradeList:  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectStatus()")
+
+        selected = list()
+        for trade in self.__trades:
+            if trade.status == status:
+                selected.append(trade)
+
+        child = self._createChild(selected, status.name)
+        return child
+
+    # }}}
     def selectStrategy(self, name: str, version: str) -> TradeList:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectStrategy()")
 
@@ -597,6 +609,7 @@ class TradeList:  # {{{
         for trade in self.__trades:
             if trade.strategy == name and trade.version == version:
                 selected.append(trade)
+
         child = self._createChild(selected, f"{name}-{version}")
         return child
 
@@ -608,6 +621,7 @@ class TradeList:  # {{{
         for trade in self.__trades:
             if trade.isLong():
                 selected.append(trade)
+
         child = self._createChild(selected, "long")
         return child
 
@@ -619,6 +633,7 @@ class TradeList:  # {{{
         for trade in self.__trades:
             if trade.isShort():
                 selected.append(trade)
+
         child = self._createChild(selected, "short")
         return child
 
@@ -630,6 +645,7 @@ class TradeList:  # {{{
         for trade in self.__trades:
             if trade.isWin():
                 selected.append(trade)
+
         child = self._createChild(selected, "win")
         return child
 
@@ -641,6 +657,7 @@ class TradeList:  # {{{
         for trade in self.__trades:
             if trade.isLoss():
                 selected.append(trade)
+
         child = self._createChild(selected, "loss")
         return child
 
@@ -652,19 +669,21 @@ class TradeList:  # {{{
         for trade in self.__trades:
             if trade.instrument.figi == asset.figi:
                 selected.append(trade)
+
         child = self._createChild(selected, asset.ticker)
         child.__asset = asset
         return child
 
     # }}}
-    def selectStatus(self, status: Trade.Status) -> TradeList:  # {{{
-        logger.debug(f"{self.__class__.__name__}.selectStatus()")
+    def selectYear(self, year):  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectYear()")
 
         selected = list()
         for trade in self.__trades:
-            if trade.status == status:
+            if trade.dt.year == year:
                 selected.append(trade)
-        child = self._createChild(selected, status.name)
+
+        child = self._createChild(selected, year)
         return child
 
     # }}}
