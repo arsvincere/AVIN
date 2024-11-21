@@ -6,257 +6,167 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
+import enum
 import sys
 
 from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import Qt
 
-from avin.const import MSK_TIME_DIF
-from avin.core import Asset, Test, Trade, TradeList
-from avin.gui.custom import ProgressBar
-from avin.utils import Cmd, logger
+from avin.config import Usr
+from avin.core import Asset, Trade, TradeList
+from avin.tester import Test
+from avin.utils import logger
+from gui.tester.progress_bar import TestProgressBar
 
 
-class ITrade(Trade, QtWidgets.QTreeWidgetItem):  # {{{
-    def __init__(self, info: dict, parent=None):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__init__()")
-        QtWidgets.QTreeWidgetItem.__init__(self, parent)
-        Trade.__init__(self, info, parent)
-        self.__config()
-        self.gtrade = None  # link to GTrade
+class TradeItem(QtWidgets.QTreeWidgetItem):  # {{{
+    class Column(enum.IntEnum):  # {{{
+        Date = 0
+        Type = 1
+        Ticker = 2
+        Result = 3
+        PPD = 4
 
     # }}}
-    def __config(self):  # {{{
+    def __init__(self, trade: Trade, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QTreeWidgetItem.__init__(self, parent)
+
         self.setFlags(
             Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
         )
-        dt = self.dt + MSK_TIME_DIF
+
+        dt = trade.dt + Usr.TIME_DIF
         dt = dt.strftime("%Y-%m-%d  %H:%M")
-        self.setText(TradeTree.Column.Date, dt)
-        self.setText(TradeTree.Column.Result, str(self.result))
+        self.setText(self.Column.Date, dt)
+        self.setText(self.Column.Type, trade.type.name)
+        self.setText(self.Column.Ticker, trade.instrument.ticker)
+        self.setText(self.Column.Result, str(trade.result()))
+        self.setText(self.Column.PPD, str(trade.percentPerDay()) + "%")
+
+    # }}}
 
 
 # }}}
-# }}}
-class ITradeList(TradeList, QtWidgets.QTreeWidgetItem):  # {{{
-    def __init__(self, name, trades=None, parent=None):  # {{{
+class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
+    class Column(enum.IntEnum):  # {{{
+        Name = 0
+        _ = 1
+        Trades = 2
+        Win = 3
+        Loss = 4
+
+    # }}}
+    def __init__(self, tlist: TradeList, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QTreeWidget.__init__(self, parent)
-        TradeList.__init__(self, name, trades, parent)
-        self.__config()
-        self.updateText()
 
-    # }}}
-    def __config(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__config()")
+        self.tlist = tlist
+
+        # flags
         self.setFlags(
             Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
         )
-        self.setTextAlignment(
-            TestTree.Column.Trades, Qt.AlignmentFlag.AlignRight
-        )
-        self.setTextAlignment(
-            TestTree.Column.Block, Qt.AlignmentFlag.AlignRight
-        )
-        self.setTextAlignment(
-            TestTree.Column.Allow, Qt.AlignmentFlag.AlignRight
-        )
+
+        # text
+        has_parent = tlist.parent_tlist is not None
+        name = tlist.subname if has_parent else tlist.name
+        self.setText(self.Column.Name, name)
+        self.setText(self.Column.Trades, str(len(tlist)))
+        self.setText(self.Column.Win, "???")
+        self.setText(self.Column.Loss, "???")
+
+        # text align
+        right = Qt.AlignmentFlag.AlignRight
+        self.setTextAlignment(self.Column.Trades, right)
+        self.setTextAlignment(self.Column.Block, right)
+        self.setTextAlignment(self.Column.Allow, right)
 
     # }}}
-    def _createChild(self, trades, suffix):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createChild()")
-        child_name = "-" + self.name.replace("tlist", "") + f" {suffix}"
-        child = ITradeList(name=child_name, trades=trades, parent=self)
-        child._asset = self.asset
-        self._childs.append(child)
-        return child
+    def selectStrategy(self, name: str, version: str) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectStrategy()")
+
+        child = self.tlist.selectStrategy(name, version)
+        child_item = TradeListItem(child)
+        self.addChild(child_item)
 
     # }}}
-    @staticmethod  # load# {{{
-    def load(file_path, parent=None):
-        logger.debug(f"{__class__.__name__}.load()")
-        name = Cmd.name(file_path)
-        obj = Cmd.loadJSON(file_path)
-        itlist = ITradeList(name, parent=parent)
-        for info in obj:
-            itrade = ITrade(info)
-            itlist.add(itrade)
-        itlist.updateText()
-        return itlist
-
-    # }}}
-    def updateText(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__updateText()")
-        self.setText(TestTree.Column.Name, self.name)
-        self.setText(TestTree.Column.Trades, str(self.count))
-
-    # }}}
-    def selectAsset(self, asset: Asset):  # {{{
-        logger.debug(f"{self.__class__.__name__}.selectAsset()")
-        selected = list()
-        for trade in self._trades:
-            if trade.asset.figi == asset.figi:
-                selected.append(trade)
-        child = self._createChild(selected, asset.ticker)
-        child._asset = asset
-        return child
-
-    # }}}
-    def selectLong(self):  # {{{
+    def selectLong(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectLong()")
-        selected = list()
-        for trade in self._trades:
-            if trade.isLong():
-                selected.append(trade)
-        child = self._createChild(selected, "long")
-        return child
+
+        child = self.tlist.selectLong()
+        child_item = TradeListItem(child)
+        self.addChild(child_item)
 
     # }}}
-    def selectShort(self):  # {{{
+    def selectShort(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectShort()")
-        selected = list()
-        for trade in self._trades:
-            if trade.isShort():
-                selected.append(trade)
-        child = self._createChild(selected, "short")
-        return child
+
+        child = self.tlist.selectShort()
+        child_item = TradeListItem(child)
+        self.addChild(child_item)
 
     # }}}
-    def selectWin(self):  # {{{
+    def selectWin(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectWin()")
-        selected = list()
-        for trade in self._trades:
-            if trade.isWin():
-                selected.append(trade)
-        child = self._createChild(selected, "win")
-        return child
+
+        child = self.tlist.selectWin()
+        child_item = TradeListItem(child)
+        self.addChild(child_item)
 
     # }}}
-    def selectLoss(self):  # {{{
+    def selectLoss(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectLoss()")
-        selected = list()
-        for trade in self._trades:
-            if trade.isLoss():
-                selected.append(trade)
-        child = self._createChild(selected, "loss")
-        return child
+
+        child = self.tlist.selectLoss()
+        child_item = TradeListItem(child)
+        self.addChild(child_item)
 
     # }}}
-    def selectYear(self, year):  # {{{
+    def selectAsset(self, asset: Asset) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectAsset()")
+
+        child = self.tlist.selectAsset(asset)
+        child_item = TradeListItem(child)
+        self.addChild(child_item)
+
+    # }}}
+    def selectYear(self, year: int) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectYear()")
-        selected = list()
-        for trade in self._trades:
-            trade_year = trade.dt.year
-            if trade_year == year:
-                selected.append(trade)
-        child = self._createChild(selected, year)
-        return child
+
+        child = self.tlist.selectYear(year)
+        child_item = TradeListItem(child)
+        self.addChild(child_item)
 
     # }}}
-    def selectBack(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.selectBack()")
-        selected = list()
-        for trade in self._trades:
-            if trade.isBack():
-                selected.append(trade)
-        child = self._createChild(selected, "back")
-        return child
-
-    # }}}
-    def selectForward(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.selectForward()")
-        selected = list()
-        for trade in self._trades:
-            if trade.isForward():
-                selected.append(trade)
-        child = self._createChild(selected, "forward")
-        return child
 
 
 # }}}
-# }}}
-class ITest(Test, QtWidgets.QTreeWidgetItem):  # {{{
-    def __init__(self, name, parent=None):  # {{{
+class TestItem(QtWidgets.QTreeWidgetItem):  # {{{
+    class Column(enum.IntEnum):  # {{{
+        Name = 0
+        Status = 1
+        Trades = 2
+        Win = 3
+        Loss = 4
+
+    # }}}
+    def __init__(self, test: Test, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QTreeWidgetItem.__init__(self, parent)
-        Test.__init__(self, name)
-        self.__parent = parent
-        self.__createProgressBar()
-        self.__config()
-        self.updateText()
 
-    # }}}
-    def __createProgressBar(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createProgressBar()")
-        self.progress_bar = ProgressBar()
-
-    # }}}
-    def __config(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__config()")
+        self.test = test
+        self.progress_bar = TestProgressBar()
         self.setFlags(
             Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
         )
 
-    # }}}
-    def __createSubgroups(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createSubgroups()")
-        for asset in self.alist:
-            self.tlist.selectAsset(asset)
-
-    # }}}
-    def _loadTrades(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}._loadTrades()")
-        file_path = Cmd.join(self.dir_path, "tlist.tl")
-        if Cmd.isExist(file_path):
-            self._tlist = ITradeList.load(file_path, parent=self)
-            return True
-        else:
-            self._tlist = ITradeList(name="tlist", parent=self)
-            return False
-
-    # }}}
-    @staticmethod  # load# {{{
-    def load(dir_path: str):
-        if not Cmd.isExist(dir_path):
-            logger.error(
-                f"{__class__.__name__}.load:"
-                f"directory not found: '{dir_path}'"
-            )
-            return None
-        name = Cmd.name(dir_path)
-        itest = ITest(name)
-        itest._loadConfig()
-        itest._loadAssetList()
-        itest._loadTrades()
-        itest._loadStatus()
-        itest._loadReport()
-        itest.__createSubgroups()
-        itest.updateText()
-        itest.updateProgressBar()
-        return itest
-
-    # }}}
-    @staticmethod  # rename# {{{
-    def rename(test, new_name):
-        Test.rename(test, new_name)
-        test.updateText()
-        test.updateProgressBar()
-
-    # }}}
-    def parent(self):  # {{{
-        return self.__parent
-
-    # }}}
-    def setParent(self, parent):  # {{{
-        self.__parent = parent
-
-    # }}}
-    def updateText(self):  # {{{
-        self.setText(TestTree.Column.Name, self.name)
+        self.setText(self.Column.Name, self.name)
 
     # }}}
     def updateProgressBar(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.updateProgressBar()")
+
         if self.status == Test.Status.UNDEFINE:
             self.progress_bar.setValue(0)
             self.progress_bar.setFormat("Undefine")
@@ -272,6 +182,7 @@ class ITest(Test, QtWidgets.QTreeWidgetItem):  # {{{
         elif self.status == Test.Status.COMPLETE:
             self.progress_bar.setValue(100)
             self.progress_bar.setFormat("Complete")
+
         tree = self.parent()
         if tree:
             tree.setItemWidget(
@@ -281,6 +192,7 @@ class ITest(Test, QtWidgets.QTreeWidgetItem):  # {{{
 
 # }}}
 # }}}
+
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
