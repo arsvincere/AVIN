@@ -7,9 +7,8 @@
 # ============================================================================
 
 import enum
-import sys
 
-from PyQt6 import QtCore, QtWidgets
+from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
 
 from avin.config import Usr
@@ -195,9 +194,4 @@ class TestItem(QtWidgets.QTreeWidgetItem):  # {{{
 
 
 if __name__ == "__main__":
-    app = QtWidgets.QApplication(sys.argv)
-    w = TestWidget()
-    w.setWindowTitle("AVIN")
-    w.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
-    w.show()
-    sys.exit(app.exec())
+    ...
