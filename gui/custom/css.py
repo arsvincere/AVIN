@@ -25,6 +25,15 @@ class Css:
         color: {Theme.fg_normal};
         """
     # }}}
+    # DOCK_WIDGET  # {{{
+    DOCK_WIDGET = f"""
+        QDockWidget {{
+            font-family: Monospace;
+            background-color: {Theme.bg_normal};
+            color: {Theme.fg_normal};
+        }}
+        """
+    # }}}
     # TAB_WIDGET  # {{{
     # надо на QTabBar переходить
     TAB_WIDGET = f"""
