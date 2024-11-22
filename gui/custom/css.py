@@ -40,6 +40,18 @@ class Css:
         }}
         """
     # }}}
+    # TOOL_BAR  # {{{
+    TOOL_BAR = f"""
+        font-family: Monospace;
+        background-color: {Theme.bg_normal};
+        color: {Theme.fg_normal};
+
+        border-color: transparent;
+        border-width: 2px;
+        border-style: solid;
+
+        """
+    # }}}
     # TOOL_BUTTON  # {{{
     TOOL_BUTTON = f"""
         QToolButton {{
@@ -55,6 +67,7 @@ class Css:
             background-color: {Theme.hl_hover};
         }}
         QToolButton:pressed {{
+            background-color: {Theme.hl_hover};
             background-color: {Theme.hl_cliked};
         }}
         QToolButton:disabled {{
