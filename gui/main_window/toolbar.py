@@ -14,7 +14,7 @@ from avin.utils import logger
 from gui.custom import Css, Icon
 
 
-class LeftToolBar(QtWidgets.QToolBar):
+class LeftToolBar(QtWidgets.QToolBar):  # {{{
     __ICON_SIZE = QtCore.QSize(32, 32)
 
     def __init__(self, parent=None):  # {{{
@@ -44,7 +44,7 @@ class LeftToolBar(QtWidgets.QToolBar):
         self.analytic = QtGui.QAction(Icon.CHART, "Analytic", self)
         self.strategy = QtGui.QAction(Icon.STRATEGY, "Strategy", self)
         self.note = QtGui.QAction(Icon.NO, "Note", self)
-        self.test = QtGui.QAction(Icon.TEST, "Test", self)
+        self.tester = QtGui.QAction(Icon.TESTER, "Tester", self)
         self.summary = QtGui.QAction(Icon.SUMMARY, "Summary", self)
 
         self.console = QtGui.QAction(Icon.CONSOLE, "Console", self)
@@ -57,7 +57,7 @@ class LeftToolBar(QtWidgets.QToolBar):
         self.addAction(self.analytic)
         self.addAction(self.strategy)
         self.addAction(self.note)
-        self.addAction(self.test)
+        self.addAction(self.tester)
         self.addAction(self.summary)
 
         # self.addWidget(Spacer(parent=self))
@@ -88,11 +88,11 @@ class LeftToolBar(QtWidgets.QToolBar):
         state = btn.isChecked()
         btn.setChecked(not state)
 
+    # }}}
+
 
 # }}}
-
-
-class RightToolBar(QtWidgets.QToolBar):
+class RightToolBar(QtWidgets.QToolBar):  # {{{
     __ICON_SIZE = QtCore.QSize(32, 32)
 
     def __init__(self, parent=None):  # {{{
@@ -160,6 +160,8 @@ class RightToolBar(QtWidgets.QToolBar):
         btn = self.widgetForAction(action)
         state = btn.isChecked()
         btn.setChecked(not state)
+
+    # }}}
 
 
 # }}}
