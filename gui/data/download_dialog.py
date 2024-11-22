@@ -27,7 +27,7 @@ from gui.custom import (
     Menu,
     PushButton,
     Spacer,
-    SubTitle,
+    SubTitleLabel,
     TimeFrameBar,
     ToolButton,
     YearWidget,
@@ -641,7 +641,7 @@ class _RightPanel(QtWidgets.QWidget):  # {{{
 
         # panel
         vbox = QtWidgets.QVBoxLayout()
-        vbox.addWidget(SubTitle("Request first date", self))
+        vbox.addWidget(SubTitleLabel("Request first date", self))
         text = (
             "Candles '1M' and 'D' timeframes<br>"
             "are available from different dates,<br>"
@@ -653,11 +653,11 @@ class _RightPanel(QtWidgets.QWidget):  # {{{
         vbox.addWidget(self.request_date)
 
         vbox.addWidget(Spacer(height=16))
-        vbox.addWidget(SubTitle("Select timeframes", self))
+        vbox.addWidget(SubTitleLabel("Select timeframes", self))
         vbox.addWidget(self.__timeframes_bar)
 
         vbox.addWidget(Spacer(height=16))
-        vbox.addWidget(SubTitle("Select period", self))
+        vbox.addWidget(SubTitleLabel("Select period", self))
         vbox.addWidget(self.__begin_year)
         vbox.addWidget(self.__end_year)
 
