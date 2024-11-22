@@ -1,8 +1,8 @@
 #!/usr/bin/env  python3
 # ============================================================================
-# URL:          http://arsvincere.com
 # FILE:         main.py
 # CREATED:      2023.07.23 15:06
+# URL:          http://arsvincere.com
 # AUTHOR:       Alex Avin
 # E-MAIL:       mr.alexavin@gmail.com
 # LICENSE:      GNU GPLv3
