@@ -1,153 +1,21 @@
 #!/usr/bin/env  python3
-# LICENSE:      GNU GPL
+# ============================================================================
+# URL:          http://arsvincere.com
 # AUTHOR:       Alex Avin
 # E-MAIL:       mr.alexavin@gmail.com
-
-"""Doc"""
+# LICENSE:      GNU GPLv3
+# ============================================================================
 
 import sys
 
-sys.path.append("/usr/lib/python3.12/site-packages")
-sys.path.append("/home/alex/.local/lib/python3.12/site-packages/tinkoff/")
-sys.path.append("/home/alex/yandex/avin-dev/")
-import logging
-
-from PyQt6 import QtCore, QtGui, QtWidgets
+from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import Qt
 
 from avin.core import Asset
-from avin.gui.account import AccountWidget, IAccount
-from avin.gui.asset import AssetWidget, IShare
-from avin.gui.broker import BrokerWidget, ISandbox
-from avin.gui.chart import ChartWidget
-from avin.gui.console import ConsoleWidget
-from avin.gui.custom import Icon, Palette, Spacer
-from avin.gui.data import DataWidget
-from avin.gui.general import GeneralWidget
-from avin.gui.order_dialog import OrderDialog
-from avin.gui.report import ReportWidget
-from avin.gui.strategy import StrategyWidget
-from avin.gui.test import ITrade, ITradeList, TestWidget
-
-logger = logging.getLogger("LOGGER")
-
-
-class ToolLeft(QtWidgets.QToolBar):
-    def __init__(self, parent=None):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__init__()")
-        QtWidgets.QToolBar.__init__(self, parent)
-        self.__config()
-        self.__createActions()
-        self.__configButtons()
-        self.__connect()
-
-    # }}}
-    def __config(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__config()")
-        self.setIconSize(QtCore.QSize(32, 32))
-        p = self.palette()
-        p.setColor(QtGui.QPalette.ColorRole.Button, QtGui.QColor("#484848"))
-        self.setPalette(p)
-
-    # }}}
-    def __createActions(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createActions()")
-        self.data = QtGui.QAction(Icon.DATA, "Data", self)
-        self.asset = QtGui.QAction(Icon.LIST, "Asset", self)
-        self.chart = QtGui.QAction(Icon.CHART, "Chart", self)
-        self.strategy = QtGui.QAction(Icon.STRATEGY, "Strategy", self)
-        self.test = QtGui.QAction(Icon.TEST, "Test", self)
-        self.report = QtGui.QAction(Icon.REPORT, "Report", self)
-        self.console = QtGui.QAction(Icon.CONSOLE, "Console", self)
-        self.shutdown = QtGui.QAction(Icon.SHUTDOWN, "Shutdown", self)
-        self.addAction(self.data)
-        self.addAction(self.asset)
-        self.addAction(self.chart)
-        self.addAction(self.strategy)
-        self.addAction(self.test)
-        self.addAction(self.report)
-        self.addAction(self.console)
-        self.addWidget(Spacer(self))
-        self.addAction(self.shutdown)
-
-    # }}}
-    def __configButtons(self):  # {{{
-        self.widgetForAction(self.data).setCheckable(True)
-        self.widgetForAction(self.asset).setCheckable(True)
-        self.widgetForAction(self.chart).setCheckable(True)
-        self.widgetForAction(self.strategy).setCheckable(True)
-        self.widgetForAction(self.test).setCheckable(True)
-        self.widgetForAction(self.report).setCheckable(True)
-        self.widgetForAction(self.console).setCheckable(True)
-        self.widgetForAction(self.shutdown).setCheckable(True)
-
-    # }}}
-    def __connect(self):  # {{{
-        self.actionTriggered.connect(self.__onTriggered)
-
-    # }}}
-    def __onTriggered(self, action: QtGui.QAction):  # {{{
-        btn = self.widgetForAction(action)
-        state = btn.isChecked()
-        btn.setChecked(not state)
-
-
-# }}}
-
-
-class ToolRight(QtWidgets.QToolBar):
-    def __init__(self, parent=None):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__init__()")
-        QtWidgets.QToolBar.__init__(self, parent)
-        self.__config()
-        self.__createActions()
-        self.__configButtons()
-        self.__connect()
-
-    # }}}
-    def __config(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__config()")
-        self.setIconSize(QtCore.QSize(32, 32))
-        p = self.palette()
-        p.setColor(QtGui.QPalette.ColorRole.Button, QtGui.QColor("#484848"))
-        self.setPalette(p)
-
-    # }}}
-    def __createActions(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createActions()")
-        self.broker = QtGui.QAction(Icon.BROKER, "Broker", self)
-        self.account = QtGui.QAction(Icon.ACCOUNT, "Account", self)
-        self.order = QtGui.QAction(Icon.ORDER, "Order", self)
-        self.analytic = QtGui.QAction(Icon.ANALYTIC, "Analytic", self)
-        self.sandbox = QtGui.QAction(Icon.SANDBOX, "Sandbox", self)
-        self.general = QtGui.QAction(Icon.GENERAL, "General", self)
-        self.keeper = QtGui.QAction(Icon.KEEPER, "Keeper", self)
-        self.addAction(self.broker)
-        self.addAction(self.account)
-        self.addAction(self.order)
-        self.addAction(self.analytic)
-        self.addAction(self.sandbox)
-        self.addAction(self.general)
-        self.addAction(self.keeper)
-
-    # }}}
-    def __configButtons(self):  # {{{
-        for i in self.actions():
-            self.widgetForAction(i).setCheckable(True)
-        self.addWidget(Spacer(self))
-
-    # }}}
-    def __connect(self):  # {{{
-        self.actionTriggered.connect(self.__onTriggered)
-
-    # }}}
-    def __onTriggered(self, action: QtGui.QAction):  # {{{
-        btn = self.widgetForAction(action)
-        state = btn.isChecked()
-        btn.setChecked(not state)
-
-
-# }}}
+from gui.asset import AssetListWidget
+from gui.data import DataWidget
+from gui.strategy import StrategyWidget
+from gui.test import TestWidget
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -203,7 +71,7 @@ class MainWindow(QtWidgets.QMainWindow):
         logger.debug(f"{self.__class__.__name__}.__createLeftWidgets()")
         self.widget_data = DataWidget(self)
         self.widget_data.hide()
-        self.widget_asset = AssetWidget(self)
+        self.widget_asset = AssetListWidget(self)
         self.widget_asset.hide()
         self.widget_strategy = StrategyWidget(self)
         self.widget_strategy.hide()
