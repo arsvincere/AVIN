@@ -503,6 +503,10 @@ class TradeList:  # {{{
         self.__childs: list[TradeList] = list()
         self.__asset = parent.asset if parent else None
 
+        # TODO:
+        # self.__owner???
+        # для ссылки на тест или трейдера?
+
     # }}}
     def __str__(self):  # {{{
         return f"TradeList name={self.__name}"
