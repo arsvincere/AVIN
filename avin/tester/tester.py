@@ -23,6 +23,7 @@ class Tester:
         self.__time = None
 
     # }}}
+
     def setTest(self, test: Test):  # {{{
         self.__clearAll()
         self.__test = test
