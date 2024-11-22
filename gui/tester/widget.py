@@ -17,7 +17,7 @@ from gui.custom import Css
 from gui.tester.tree import TestTree, TradeTree
 
 
-class TestWidget(QtWidgets.QWidget):  # {{{
+class TesterWidget(QtWidgets.QWidget):  # {{{
     testChanged = QtCore.pyqtSignal(Test)
     tlistChanged = QtCore.pyqtSignal(TradeList)
     tradeChanged = QtCore.pyqtSignal(Trade)
