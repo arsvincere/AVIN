@@ -42,13 +42,15 @@ class Res:  # {{{
 
     CACHE = os.path.join(Dir.RES, "cache")
     DATA = os.path.join(Dir.RES, "data")
-    DOWNLOAD = os.path.join(Dir.RES, "download")
     ICON = os.path.join(Dir.RES, "icon")
+    LOGO = os.path.join(Dir.RES, "logo")
+    DOWNLOAD = os.path.join(Dir.RES, "download")
     PALETTE = os.path.join(Dir.RES, "palette")
     SOUND = os.path.join(Dir.RES, "sound")
-    VOICE = os.path.join(Dir.RES, "voice")
-    SPLASH = os.path.join(Dir.RES, "splash.png")
+    SPLASH_PIC = os.path.join(Dir.RES, "splash", "splash.png")
+    SPLASH_TXT = os.path.join(Dir.RES, "splash", "splash.txt")
     TEMPLATE = os.path.join(Dir.RES, "template")
+    VOICE = os.path.join(Dir.RES, "voice")
 
 
 # }}}
