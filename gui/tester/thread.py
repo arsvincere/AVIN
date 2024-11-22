@@ -6,32 +6,37 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-import sys
+from PyQt6 import QtCore
 
-from PyQt6 import QtCore, QtWidgets
-
-from avin.company import Tester
+from avin.tester import Test, Tester
 
 
-class Thread(QtCore.QThread):  # {{{
-    def __init__(self, tester: Tester, test: ITest, parent=None):  # {{{
+class TesterThread(QtCore.QThread):  # {{{
+    def __init__(self, test: Test, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
         QtCore.QThread.__init__(self, parent)
-        self.tester = tester
-        self.test = test
-        self.tester.setTest(self.test)
+
+        self.__test = test
 
     # }}}
     def run(self):  # {{{
-        self.tester.runTest()
+        logger.debug(f"{self.__class__.__name__}.run()")
+
+        asyncio.run(self.__arun())
+
+    # }}}
+    async def __arun(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__anew()")
+
+        t = Tester()
+        t.setTest(self.__test)
+        await t.runTest()
+
+    # }}}
 
 
 # }}}
-# }}}
+
 
 if __name__ == "__main__":
-    app = QtWidgets.QApplication(sys.argv)
-    w = TestWidget()
-    w.setWindowTitle("AVIN")
-    w.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
-    w.show()
-    sys.exit(app.exec())
+    ...

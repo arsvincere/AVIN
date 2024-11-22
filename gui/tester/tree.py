@@ -6,193 +6,139 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-import enum
 import sys
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt
 
-from avin.company import Tester
-from avin.const import TEST_DIR
-from avin.core import Test
-from avin.gui.custom import Dialog, Font
-from avin.utils import Cmd, logger
+from avin.core import TradeList
+from avin.tester import Test
+from avin.utils import logger
+from gui.custom import Css, Menu
+from gui.tester.item import TestItem, TradeItem, TradeListItem
 
 
 class TestTree(QtWidgets.QTreeWidget):  # {{{
-    class Column(enum.IntEnum):  # {{{
-        Name = 0
-        Progress = 1
-        Trades = 2
-        Block = 3
-        Allow = 4
-
-    # }}}
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QTreeWidget.__init__(self, parent)
+
         self.__config()
-        self.__createTestActions()
-        self.__createTestMenu()
-        self.__createYearActions()
-        self.__createYearMenu()
-        self.__createTradeListActions()
-        self.__createTradeListMenu()
+        self.__createMenus()
         self.__connect()
-        self.constructor = Editor()
-        self.thread = None
 
     # }}}
+
+    def contextMenuEvent(self, e: QtGui.QContextMenuEvent):  # {{{
+        logger.debug(f"{self.__class__.__name__}.contextMenuEvent(e)")
+
+        item = self.itemAt(e.pos())
+        if item is None:
+            self.test_menu.exec(QtGui.QCursor.pos())
+        if isinstance(item, TestItem):
+            self.test_menu.exec(QtGui.QCursor.pos())
+        elif isinstance(item, TradeListItem):
+            self.trade_list_menu.exec(QtGui.QCursor.pos())
+        return e.ignore()
+
+    # }}}
+    def addTest(self, test: Test):  # {{{
+        logger.debug(f"{self.__class__.__name__}.addTest()")
+
+        assert False, "Write me!!"
+
+    # }}}
+
     def __config(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__config()")
+
+        # config header
         labels = list()
-        for l in self.Column:
+        for l in TestItem.Column:
             labels.append(l.name)
         self.setHeaderLabels(labels)
+        self.header().setStyleSheet(Css.TREE_HEADER)
+
+        # config sorting
         self.setSortingEnabled(True)
-        self.sortByColumn(self.Column.Name, Qt.SortOrder.AscendingOrder)
-        self.setColumnWidth(self.Column.Name, 200)
-        self.setColumnWidth(self.Column.Progress, 80)
-        self.setColumnWidth(self.Column.Trades, 55)
-        self.setColumnWidth(self.Column.Block, 50)
-        self.setColumnWidth(self.Column.Allow, 50)
-        self.setFont(Font.MONO)
+        self.sortByColumn(TestItem.Column.Name, Qt.SortOrder.AscendingOrder)
+
+        # config width
+        self.setColumnWidth(TestItem.Column.Name, 200)
+        self.setColumnWidth(TestItem.Column.Status, 80)
+        self.setColumnWidth(TestItem.Column.Trades, 60)
+        self.setColumnWidth(TestItem.Column.Win, 50)
+        self.setColumnWidth(TestItem.Column.Loss, 50)
+        self.setMinimumWidth(460)
+
+        # config style
+        self.setStyleSheet(Css.TREE)
+        self.setContentsMargins(0, 0, 0, 0)
 
     # }}}
-    def __createTestActions(self):  # {{{
-        self.action_run = QtGui.QAction("Run", self)
-        self.action_pause = QtGui.QAction("Pause", self)
-        self.action_stop = QtGui.QAction("Stop", self)
-        self.action_new = QtGui.QAction("New", self)
-        self.action_copy = QtGui.QAction("Copy", self)
-        self.action_edit = QtGui.QAction("Edit", self)
-        self.action_rename = QtGui.QAction("Rename", self)
-        self.action_delete = QtGui.QAction("Delete", self)
+    def __createMenus(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createMenus()")
 
-    # }}}
-    def __createTestMenu(self):  # {{{
-        self.test_menu = QtWidgets.QMenu(self)
-        self.test_menu.addAction(self.action_run)
-        self.test_menu.addAction(self.action_pause)
-        self.test_menu.addAction(self.action_stop)
-        self.test_menu.addSeparator()
-        self.test_menu.addAction(self.action_new)
-        self.test_menu.addAction(self.action_copy)
-        self.test_menu.addAction(self.action_edit)
-        self.test_menu.addAction(self.action_rename)
-        self.test_menu.addAction(self.action_delete)
-
-    # }}}
-    def __createYearActions(self):  # {{{
-        self.action_select_2018 = QtGui.QAction("Select 2018", self)
-        self.action_select_2019 = QtGui.QAction("Select 2019", self)
-        self.action_select_2020 = QtGui.QAction("Select 2020", self)
-        self.action_select_2021 = QtGui.QAction("Select 2021", self)
-        self.action_select_2022 = QtGui.QAction("Select 2022", self)
-        self.action_select_2023 = QtGui.QAction("Select 2023", self)
-        self.action_select_2024 = QtGui.QAction("Select 2024", self)
-
-    # }}}
-    def __createYearMenu(self):  # {{{
-        self.year_menu = QtWidgets.QMenu("Select year...")
-        self.year_menu.addAction(self.action_select_2018)
-        self.year_menu.addAction(self.action_select_2019)
-        self.year_menu.addAction(self.action_select_2020)
-        self.year_menu.addAction(self.action_select_2021)
-        self.year_menu.addAction(self.action_select_2022)
-        self.year_menu.addAction(self.action_select_2023)
-        self.year_menu.addAction(self.action_select_2024)
-
-    # }}}
-    def __createTradeListActions(self):  # {{{
-        self.action_select_long = QtGui.QAction("Select long", self)
-        self.action_select_short = QtGui.QAction("Select short", self)
-        self.action_select_win = QtGui.QAction("Select win", self)
-        self.action_select_loss = QtGui.QAction("Select loss", self)
-        self.action_select_filter = QtGui.QAction("Select filter", self)
-
-    # }}}
-    def __createTradeListMenu(self):  # {{{
-        self.trade_list_menu = QtWidgets.QMenu(self)
-        self.trade_list_menu.addAction(self.action_select_long)
-        self.trade_list_menu.addAction(self.action_select_short)
-        self.trade_list_menu.addAction(self.action_select_win)
-        self.trade_list_menu.addAction(self.action_select_loss)
-        self.trade_list_menu.addAction(self.action_select_filter)
-        self.trade_list_menu.addMenu(self.year_menu)
+        self.test_menu = _TestMenu(self)
+        self.tlist_menu = _TradeListMenu(self)
 
     # }}}
     def __connect(self):  # {{{
-        self.action_run.triggered.connect(self.__onRun)
-        self.action_pause.triggered.connect(self.__onPause)
-        self.action_stop.triggered.connect(self.__onStop)
-        self.action_new.triggered.connect(self.__onNew)
-        self.action_copy.triggered.connect(self.__onCopy)
-        self.action_edit.triggered.connect(self.__onEdit)
-        self.action_rename.triggered.connect(self.__onRename)
-        self.action_delete.triggered.connect(self.__onDelete)
-        self.action_select_long.triggered.connect(self.__onSelectLong)
-        self.action_select_short.triggered.connect(self.__onSelectShort)
-        self.action_select_win.triggered.connect(self.__onSelectWin)
-        self.action_select_loss.triggered.connect(self.__onSelectLoss)
-        self.action_select_filter.triggered.connect(self.__onSelectFilter)
+        logger.debug(f"{self.__class__.__name__}.__connect()")
 
-    # }}}
-    def __resetActions(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__resetActions()")
-        for i in self.actions():
-            i.setEnabled(False)
+        self.test_menu.run.triggered.connect(self.__onRun)
+        self.test_menu.pause.triggered.connect(self.__onPause)
+        self.test_menu.stop.triggered.connect(self.__onStop)
+        self.test_menu.new.triggered.connect(self.__onNew)
+        self.test_menu.copy.triggered.connect(self.__onCopy)
+        self.test_menu.edit.triggered.connect(self.__onEdit)
+        self.test_menu.rename.triggered.connect(self.__onRename)
+        self.test_menu.delete.triggered.connect(self.__onDelete)
 
-    # }}}
-    def __setVisibleActions(self, item):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__setVisibleActions()")
-        if item is None:
-            self.__new.setEnabled(True)
-        elif isinstance(item, ITest):
-            self.__run.setEnabled(True)
-            self.__pause.setEnabled(True)
-            self.__stop.setEnabled(True)
-            self.__new.setEnabled(True)
-            self.__copy.setEnabled(True)
-            self.__edit.setEnabled(True)
-            self.__rename.setEnabled(True)
-            self.__delete.setEnabled(True)
-        elif isinstance(item, ITradeList):
-            self.__select_year.setEnabled(True)
-            self.__select_long.setEnabled(True)
-            self.__select_short.setEnabled(True)
-            self.__select_win.setEnabled(True)
-            self.__select_loss.setEnabled(True)
-            self.__select_filter.setEnabled(True)
+        self.tlist_menu.filter.triggered.connect(self.__onSelectFilter)
+        self.tlist_menu.strategy.triggered.connect(self.__onSelectStrategy)
+        self.tlist_menu.long.triggered.connect(self.__onSelectLong)
+        self.tlist_menu.short.triggered.connect(self.__onSelectShort)
+        self.tlist_menu.win.triggered.connect(self.__onSelectWin)
+        self.tlist_menu.loss.triggered.connect(self.__onSelectLoss)
+        self.tlist_menu.assets.triggered.connect(self.__onSelectAssets)
+        self.tlist_menu.years.triggered.connect(self.__onSelectYears)
 
     # }}}
     def __reloadTest(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__reloadTest()")
-        itest = self.thread.test
+
+        # FIX: write me!
+        assert False
+
+    # }}}
+    def __removeTest(self, test: Test):  # {{{
+        logger.debug(f"{self.__class__.__name__}.removeTest()")
         index = self.indexFromItem(itest).row()
         self.takeTopLevelItem(index)
-        path = itest.dir_path
-        reloaded = ITest.load(path)
-        self.addTest(reloaded)
 
     # }}}
-    def __updateProgressBar(self, val):  # {{{
-        self.thread.test.progress_bar.setValue(val)
+    @QtCore.pyqtSlot()  # __threadFinished# {{{
+    def __threadFinished(self):
+        logger.debug(f"{self.__class__.__name__}.__threadFinished()")
+        self.__reloadTest()
+        self.thread = None
 
     # }}}
+
     @QtCore.pyqtSlot()  # __onRun# {{{
     def __onRun(self):
         logger.debug(f"{self.__class__.__name__}.__onRun()")
-        if self.thread is not None:
-            Dialog.info("Tester is busy now, wait for complete test")
-            return
-        itest = self.currentItem()
-        tester = Tester()
-        tester.progress.connect(self.__updateProgressBar)
-        self.thread = Thread(tester, itest)
-        self.thread.finished.connect(self.__threadFinished)
-        itest.updateProgressBar()
-        self.thread.start()
+        # if self.thread is not None:
+        #     Dialog.info("Tester is busy now, wait for complete test")
+        #     return
+        # itest = self.currentItem()
+        # tester = Tester()
+        # tester.progress.connect(self.__updateProgressBar)
+        # self.thread = Thread(tester, itest)
+        # self.thread.finished.connect(self.__threadFinished)
+        # itest.updateProgressBar()
+        # self.thread.start()
 
     # }}}
     @QtCore.pyqtSlot()  # __onPause# {{{
@@ -205,203 +151,306 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         logger.debug(f"{self.__class__.__name__}.__onStop()")
 
     # }}}
-    @QtCore.pyqtSlot()  # __threadFinished# {{{
-    def __threadFinished(self):
-        logger.debug(f"{self.__class__.__name__}.__threadFinished()")
-        self.__reloadTest()
-        self.thread = None
-
-    # }}}
     @QtCore.pyqtSlot()  # __onNew# {{{
     def __onNew(self):
         logger.debug(f"{self.__class__.__name__}.__onNew()")
-        test = self.constructor.newTest()
-        if test:
-            self.addTest(test)
+
+        # test = self.constructor.newTest()
+        # if test:
+        #     self.addTest(test)
 
     # }}}
     @QtCore.pyqtSlot()  # __onCopy# {{{
     def __onCopy(self):
         logger.debug(f"{self.__class__.__name__}.__onCopy()")
-        itest = self.currentItem()
-        new_name = Dialog.name(default=itest.name)
-        if new_name:
-            path = Cmd.join(TEST_DIR, new_name)
-            Cmd.copyDir(itest.dir_path, path)
-            copy = ITest.load(path)
-            copy.name = new_name
-            self.addTopLevelItem(copy)
+
+        # itest = self.currentItem()
+        # new_name = Dialog.name(default=itest.name)
+        # if new_name:
+        #     path = Cmd.join(TEST_DIR, new_name)
+        #     Cmd.copyDir(itest.dir_path, path)
+        #     copy = ITest.load(path)
+        #     copy.name = new_name
+        #     self.addTopLevelItem(copy)
 
     # }}}
     @QtCore.pyqtSlot()  # __onEdit# {{{
     def __onEdit(self):
         logger.debug(f"{self.__class__.__name__}.__onEdit()")
-        itest: ITest = self.currentItem()
-        edited = self.constructor.editTest(itest)
-        if edited:
-            self.removeTest(itest)
-            self.addTest(edited)
+
+        # itest: ITest = self.currentItem()
+        # edited = self.constructor.editTest(itest)
+        # if edited:
+        #     self.removeTest(itest)
+        #     self.addTest(edited)
 
     # }}}
     @QtCore.pyqtSlot()  # __onRename# {{{
     def __onRename(self):
         logger.debug(f"{self.__class__.__name__}.__onRename()")
-        itest: ITest = self.currentItem()
-        new_name = Dialog.name(default=itest.name)
-        if new_name:
-            ITest.rename(itest, new_name)
+
+        # itest: ITest = self.currentItem()
+        # new_name = Dialog.name(default=itest.name)
+        # if new_name:
+        #     ITest.rename(itest, new_name)
 
     # }}}
     @QtCore.pyqtSlot()  # __onDelete# {{{
     def __onDelete(self):
         logger.debug(f"{self.__class__.__name__}.delete()")
-        result = Dialog.confirm()
-        if result:
-            itest = self.currentItem()
-            logger.info(f"Delete test '{itest.name}'")
-            Test.delete(itest)
-            self.removeTest(itest)
-        else:
-            logger.info("Cancel delete")
+
+        # result = Dialog.confirm()
+        # if result:
+        #     itest = self.currentItem()
+        #     logger.info(f"Delete test '{itest.name}'")
+        #     Test.delete(itest)
+        #     self.removeTest(itest)
+        # else:
+        #     logger.info("Cancel delete")
+
+    # }}}
+
+    @QtCore.pyqtSlot()  # __onSelectFilter# {{{
+    def __onSelectFilter(self):
+        logger.debug(f"{self.__class__.__name__}.__onSelectFilter()")
+
+        # itlist = self.currentItem()
+        # itlist.selectFilter()
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onSelectStrategy# {{{
+    def __onSelectStrategy(self):
+        logger.debug(f"{self.__class__.__name__}.__onSelectStrategy()")
+
+        # itlist = self.currentItem()
+        # itlist.selectFilter()
 
     # }}}
     @QtCore.pyqtSlot()  # __onSelectLong# {{{
     def __onSelectLong(self):
-        logger.debug(f"{self.__class__.__name__}.selectLong()")
-        itlist = self.currentItem()
-        itlist.selectLong()
+        logger.debug(f"{self.__class__.__name__}.__onSelectLong()")
+
+        # itlist = self.currentItem()
+        # itlist.selectLong()
 
     # }}}
     @QtCore.pyqtSlot()  # __onSelectShort# {{{
     def __onSelectShort(self):
-        logger.debug(f"{self.__class__.__name__}.selectShort()")
-        itlist = self.currentItem()
-        itlist.selectShort()
+        logger.debug(f"{self.__class__.__name__}.__onSelectShort()")
+
+        # itlist = self.currentItem()
+        # itlist.selectShort()
 
     # }}}
     @QtCore.pyqtSlot()  # __onSelectWin# {{{
     def __onSelectWin(self):
-        logger.debug(f"{self.__class__.__name__}.selectWin()")
-        itlist = self.currentItem()
-        itlist.selectWin()
+        logger.debug(f"{self.__class__.__name__}.__onSelectWin()")
+
+        # itlist = self.currentItem()
+        # itlist.selectWin()
 
     # }}}
     @QtCore.pyqtSlot()  # __onSelectLoss# {{{
     def __onSelectLoss(self):
-        logger.debug(f"{self.__class__.__name__}.selectWin()")
-        itlist = self.currentItem()
-        itlist.selectLoss()
+        logger.debug(f"{self.__class__.__name__}.__onSelectLoss()")
+
+        # itlist = self.currentItem()
+        # itlist.selectLoss()
 
     # }}}
-    @QtCore.pyqtSlot()  # __onSelectFilter# {{{
-    def __onSelectFilter(self):
-        logger.debug(f"{self.__class__.__name__}.selectWin()")
-        itlist = self.currentItem()
-        itlist.selectFilter()
+    @QtCore.pyqtSlot()  # __onSelectAssets# {{{
+    def __onSelectAssets(self):
+        logger.debug(f"{self.__class__.__name__}.__onSelectAssets()")
 
     # }}}
-    def contextMenuEvent(self, e: QtGui.QContextMenuEvent):  # {{{
-        logger.debug(f"{self.__class__.__name__}.contextMenuEvent(e)")
-        item = self.itemAt(e.pos())
-        # if item is None:
-        #     self.test_menu.exec()
-        if isinstance(item, ITest):
-            self.test_menu.exec(QtGui.QCursor.pos())
-        elif isinstance(item, ITradeList):
-            self.trade_list_menu.exec(QtGui.QCursor.pos())
-        return e.ignore()
+    @QtCore.pyqtSlot()  # __onSelectYears# {{{
+    def __onSelectYears(self):
+        logger.debug(f"{self.__class__.__name__}.__onSelectYears()")
 
     # }}}
-    def addTest(self, itest: ITest):  # {{{
-        logger.debug(f"{self.__class__.__name__}.addTest()")
-        self.addTopLevelItem(itest)
-        itest.setParent(self)
-        itest.updateProgressBar()
+
+
+# }}}
+class _TestMenu(Menu):  # {{{
+    def __init__(self, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        Menu.__init__(self, parent=parent)
+
+        self.run = QtGui.QAction("Run", self)
+        self.pause = QtGui.QAction("Pause", self)
+        self.stop = QtGui.QAction("Stop", self)
+        self.new = QtGui.QAction("New", self)
+        self.copy = QtGui.QAction("Copy", self)
+        self.edit = QtGui.QAction("Edit", self)
+        self.rename = QtGui.QAction("Rename", self)
+        self.delete = QtGui.QAction("Delete", self)
+
+        self.addTextSeparator("Execute")
+        self.addAction(self.run)
+        self.addAction(self.pause)
+        self.addAction(self.stop)
+        self.addTextSeparator("Test")
+        self.addAction(self.new)
+        self.addAction(self.copy)
+        self.addAction(self.edit)
+        self.addAction(self.rename)
+        self.addAction(self.delete)
 
     # }}}
-    def removeTest(self, itest):  # {{{
-        logger.debug(f"{self.__class__.__name__}.removeTest()")
-        index = self.indexFromItem(itest).row()
-        self.takeTopLevelItem(index)
+
+
+# }}}
+class _TradeListMenu(Menu):  # {{{
+    def __init__(self, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        Menu.__init__(self, parent=parent)
+
+        self.filter = QtGui.QAction("Filter ...", self)
+        self.strategy = QtGui.QAction("Strategy", self)
+        self.long = QtGui.QAction("Long", self)
+        self.short = QtGui.QAction("Short", self)
+        self.win = QtGui.QAction("Win", self)
+        self.loss = QtGui.QAction("Loss", self)
+        self.assets = QtGui.QAction("Assets", self)
+        self.years = QtGui.QAction("Years", self)
+
+        self.addAction(self.filter)
+        self.addTextSeparator("Select")
+        self.addAction(self.strategy)
+        self.addAction(self.long)
+        self.addAction(self.short)
+        self.addAction(self.win)
+        self.addAction(self.loss)
+        self.addAction(self.assets)
+        self.addAction(self.years)
+
+    # }}}
 
 
 # }}}
 
 
-# }}}
 class TradeTree(QtWidgets.QTreeWidget):  # {{{
-    class Column(enum.IntEnum):  # {{{
-        Date = 0
-        Result = 1
-
-    # }}}
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QTreeWidget.__init__(self, parent)
+
         self.__config()
-        self.__createMenu()
+        self.__createMenus()
         self.__connect()
-
-    # }}}
-    def __config(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__config()")
-        labels = list()
-        for l in self.Column:
-            labels.append(l.name)
-        self.setHeaderLabels(labels)
-        self.setSortingEnabled(True)
-        self.sortByColumn(TradeTree.Column.Date, Qt.SortOrder.AscendingOrder)
-        self.setColumnWidth(TradeTree.Column.Date, 170)
-        self.setColumnWidth(TradeTree.Column.Result, 100)
-        self.setFont(Font.MONO)
-
-    # }}}
-    def __createMenu(self):  # {{{
-        self.action_info = QtGui.QAction("Info", self)
-        self.menu = QtWidgets.QMenu(self)
-        self.menu.addAction(self.action_info)
-
-    # }}}
-    def __connect(self):  # {{{
-        self.action_info.triggered.connect(self.__onInfo)
-
-    # }}}
-    def __resetActions(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__resetActions()")
-        for i in self.menu.actions():
-            i.setEnabled(False)
-
-    # }}}
-    def __setVisibleActions(self, item):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__setVisibleActions()")
-        if item is None:
-            self.action_info.setEnabled(False)
-        elif isinstance(item, ITrade):
-            self.action_info.setEnabled(True)
-
-    # }}}
-    @QtCore.pyqtSlot()  # __onInfo# {{{
-    def __onInfo(self):
-        logger.debug(f"{self.__class__.__name__}.__onInfo()")
-        itrade: ITrade = self.currentItem()
-        Dialog.info(str(itrade))
 
     # }}}
     def contextMenuEvent(self, e: QtGui.QContextMenuEvent):  # {{{
         logger.debug(f"{self.__class__.__name__}.contextMenuEvent(e)")
+
         item = self.itemAt(e.pos())
         self.__resetActions()
         self.__setVisibleActions(item)
         self.menu.exec(QtGui.QCursor.pos())
         return e.ignore()
 
+    # }}}
+    def setTradeList(self, tlist: TradeList) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.setTradeList()")
+
+        self.clearTrades()
+        for trade in tlist:
+            item = TradeItem(trade)
+            self.addTopLevelItem(item)
+
+    # }}}
+    def clearTrades(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.clearTrades()")
+
+        while self.takeTopLevelItem(0):
+            pass
+
+    # }}}
+    def __config(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__config()")
+
+        # config style
+        self.setStyleSheet(Css.TREE)
+        self.setContentsMargins(0, 0, 0, 0)
+
+        # config header
+        labels = list()
+        for l in TradeItem.Column:
+            labels.append(l.name)
+        self.setHeaderLabels(labels)
+        self.header().setStyleSheet(Css.TREE_HEADER)
+
+        # config sorting
+        self.setSortingEnabled(True)
+        self.sortByColumn(TradeItem.Column.Date, Qt.SortOrder.AscendingOrder)
+
+        # config width
+        self.setColumnWidth(TradeItem.Column.Date, 180)
+        self.setColumnWidth(TradeItem.Column.Type, 100)
+        self.setColumnWidth(TradeItem.Column.Ticker, 100)
+        self.setColumnWidth(TradeItem.Column.Result, 100)
+        self.setColumnWidth(TradeItem.Column.PPD, 100)
+        self.setMinimumWidth(600)
+
+    # }}}
+    def __createMenus(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createMenus()")
+
+        self.menu = _TradeMenu(self)
+
+    # }}}
+    def __connect(self):  # {{{
+        self.menu.show_chart.triggered.connect(self.__onShowChart)
+        self.menu.info.triggered.connect(self.__onInfo)
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onShowChart# {{{
+    def __onShowChart(self):
+        logger.debug(f"{self.__class__.__name__}.__onShowChart()")
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onInfo# {{{
+    def __onInfo(self):
+        logger.debug(f"{self.__class__.__name__}.__onInfo()")
+
+    # }}}
+
 
 # }}}
+class _TradeMenu(Menu):  # {{{
+    def __init__(self, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        Menu.__init__(self, parent=parent)
+
+        self.show_chart = QtGui.QAction("Show on chart", self)
+        self.info = QtGui.QAction("Info", self)
+
+        self.addAction(self.show_chart)
+        self.addAction(self.info)
+
+    # }}}
+    def __setVisibleActions(self, item):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__setVisibleActions()")
+
+        # disable all actions
+        for i in self.actions():
+            i.setEnabled(False)
+
+        # # enable availible for this item
+        if item is None:
+            self.info.setEnabled(False)
+        elif isinstance(item, ITrade):
+            self.info.setEnabled(True)
+
+    # }}}
+
+
 # }}}
+
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    w = TestWidget()
+    w = TradeTree()
     w.setWindowTitle("AVIN")
     w.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
     w.show()

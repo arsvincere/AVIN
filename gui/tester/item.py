@@ -18,34 +18,55 @@ from avin.utils import logger
 from gui.tester.progress_bar import TestProgressBar
 
 
-class TradeItem(QtWidgets.QTreeWidgetItem):  # {{{
+class TestItem(QtWidgets.QTreeWidgetItem):  # {{{
     class Column(enum.IntEnum):  # {{{
-        Date = 0
-        Type = 1
-        Ticker = 2
-        Result = 3
-        PPD = 4
+        Name = 0
+        Status = 1
+        Trades = 2
+        Win = 3
+        Loss = 4
 
     # }}}
-    def __init__(self, trade: Trade, parent=None):  # {{{
+    def __init__(self, test: Test, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QTreeWidgetItem.__init__(self, parent)
 
+        self.test = test
+        self.progress_bar = TestProgressBar()
         self.setFlags(
             Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
         )
 
-        dt = trade.dt + Usr.TIME_DIF
-        dt = dt.strftime("%Y-%m-%d  %H:%M")
-        self.setText(self.Column.Date, dt)
-        self.setText(self.Column.Type, trade.type.name)
-        self.setText(self.Column.Ticker, trade.instrument.ticker)
-        self.setText(self.Column.Result, str(trade.result()))
-        self.setText(self.Column.PPD, str(trade.percentPerDay()) + "%")
+        self.setText(self.Column.Name, self.name)
 
     # }}}
+    def updateProgressBar(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.updateProgressBar()")
+
+        if self.status == Test.Status.UNDEFINE:
+            self.progress_bar.setValue(0)
+            self.progress_bar.setFormat("Undefine")
+        elif self.status == Test.Status.NEW:
+            self.progress_bar.setValue(0)
+            self.progress_bar.setFormat("New")
+        elif self.status == Test.Status.EDITED:
+            self.progress_bar.setValue(0)
+            self.progress_bar.setFormat("Edited")
+        elif self.status == Test.Status.PROCESS:
+            self.progress_bar.setValue(0)
+            self.progress_bar.setFormat("%p%")
+        elif self.status == Test.Status.COMPLETE:
+            self.progress_bar.setValue(100)
+            self.progress_bar.setFormat("Complete")
+
+        tree = self.parent()
+        if tree:
+            tree.setItemWidget(
+                self, TestTree.Column.Progress, self.progress_bar
+            )
 
 
+# }}}
 # }}}
 class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
     class Column(enum.IntEnum):  # {{{
@@ -141,55 +162,34 @@ class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
 
 
 # }}}
-class TestItem(QtWidgets.QTreeWidgetItem):  # {{{
+class TradeItem(QtWidgets.QTreeWidgetItem):  # {{{
     class Column(enum.IntEnum):  # {{{
-        Name = 0
-        Status = 1
-        Trades = 2
-        Win = 3
-        Loss = 4
+        Date = 0
+        Type = 1
+        Ticker = 2
+        Result = 3
+        PPD = 4
 
     # }}}
-    def __init__(self, test: Test, parent=None):  # {{{
+    def __init__(self, trade: Trade, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QTreeWidgetItem.__init__(self, parent)
 
-        self.test = test
-        self.progress_bar = TestProgressBar()
         self.setFlags(
             Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
         )
 
-        self.setText(self.Column.Name, self.name)
+        dt = trade.dt + Usr.TIME_DIF
+        dt = dt.strftime("%Y-%m-%d  %H:%M")
+        self.setText(self.Column.Date, dt)
+        self.setText(self.Column.Type, trade.type.name)
+        self.setText(self.Column.Ticker, trade.instrument.ticker)
+        self.setText(self.Column.Result, str(trade.result()))
+        self.setText(self.Column.PPD, str(trade.percentPerDay()) + "%")
 
     # }}}
-    def updateProgressBar(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.updateProgressBar()")
-
-        if self.status == Test.Status.UNDEFINE:
-            self.progress_bar.setValue(0)
-            self.progress_bar.setFormat("Undefine")
-        elif self.status == Test.Status.NEW:
-            self.progress_bar.setValue(0)
-            self.progress_bar.setFormat("New")
-        elif self.status == Test.Status.EDITED:
-            self.progress_bar.setValue(0)
-            self.progress_bar.setFormat("Edited")
-        elif self.status == Test.Status.PROCESS:
-            self.progress_bar.setValue(0)
-            self.progress_bar.setFormat("%p%")
-        elif self.status == Test.Status.COMPLETE:
-            self.progress_bar.setValue(100)
-            self.progress_bar.setFormat("Complete")
-
-        tree = self.parent()
-        if tree:
-            tree.setItemWidget(
-                self, TestTree.Column.Progress, self.progress_bar
-            )
 
 
-# }}}
 # }}}
 
 

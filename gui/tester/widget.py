@@ -10,83 +10,89 @@ import sys
 
 from PyQt6 import QtCore, QtWidgets
 
-from avin.const import TEST_DIR
-from avin.utils import Cmd, logger
+from avin.core import Trade, TradeList
+from avin.tester import Test
+from avin.utils import logger
+from gui.custom import Css
+from gui.tester.tree import TestTree, TradeTree
 
 
 class TestWidget(QtWidgets.QWidget):  # {{{
-    """Signal"""  # {{{
+    testChanged = QtCore.pyqtSignal(Test)
+    tlistChanged = QtCore.pyqtSignal(TradeList)
+    tradeChanged = QtCore.pyqtSignal(Trade)
 
-    testChanged = QtCore.pyqtSignal(ITest)
-    tlistChanged = QtCore.pyqtSignal(ITradeList)
-    tradeChanged = QtCore.pyqtSignal(ITrade)
-
-    # }}}
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QWidget.__init__(self, parent)
+
+        self.__config()
         self.__createWidgets()
         self.__createLayots()
         self.__connect()
         self.__loadUserTests()
 
     # }}}
-    def __createWidgets(self):  # {{{
+    def __config(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__config()")
+
+        self.setStyleSheet(Css.STYLE)
+
+    # }}}
+    def __createWidgets(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
+
         self.test_tree = TestTree(self)
         self.trade_tree = TradeTree(self)
-        self.vsplit = QtWidgets.QSplitter(
-            QtCore.Qt.Orientation.Vertical, self
-        )
+
+        vertical = QtCore.Qt.Orientation.Vertical
+        self.vsplit = QtWidgets.QSplitter(vertical, self)
         self.vsplit.addWidget(self.test_tree)
         self.vsplit.addWidget(self.trade_tree)
 
     # }}}
-    def __createLayots(self):  # {{{
+    def __createLayots(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__createLayots()")
+
         vbox = QtWidgets.QVBoxLayout()
         vbox.setContentsMargins(0, 0, 0, 0)
         vbox.addWidget(self.vsplit)
         self.setLayout(vbox)
 
     # }}}
-    def __connect(self):  # {{{
+    def __connect(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__connect()")
         self.test_tree.clicked.connect(self.__onTestTreeClicked)
         self.trade_tree.clicked.connect(self.__onTradeTreeClicked)
 
     # }}}
-    def __loadUserTests(self):  # {{{
+    def __loadUserTests(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__loadUserTests()")
-        dirs = Cmd.getDirs(TEST_DIR, full_path=True)
-        for dir_path in dirs:
-            dir_name = Cmd.name(dir_path)
-            if dir_name.startswith("."):
-                continue
-            itest = ITest.load(dir_path)
-            self.test_tree.addTest(itest)
 
     # }}}
     @QtCore.pyqtSlot()  # __onTestTreeClicked# {{{
-    def __onTestTreeClicked(self):
+    def __onTestTreeClicked(self) -> None:
         logger.debug(f"{self.__class__.__name__}.__onTestTreeClicked()")
+
         item = self.test_tree.currentItem()
-        if isinstance(item, ITest):
-            while self.trade_tree.takeTopLevelItem(0):
-                pass
-            self.testChanged.emit(item)
-        elif isinstance(item, ITradeList):
-            while self.trade_tree.takeTopLevelItem(0):
-                pass
-            self.trade_tree.addTopLevelItems(item)
-            self.tlistChanged.emit(item)
+        class_name = item.__class__.__name__
+        match class_name:
+            case "TestItem":
+                test = item.test
+                self.trade_tree.setTradeList(test.trade_list)
+                self.testChanged.emit(test)
+            case "TradeListItem":
+                tlist = item.tlist
+                self.trade_tree.setTradeList(tlist)
+                self.tlistChanged.emit(tlist)
 
     # }}}
     @QtCore.pyqtSlot()  # __onTradeTreeClicked# {{{
-    def __onTradeTreeClicked(self):
+    def __onTradeTreeClicked(self) -> None:
         logger.debug(f"{self.__class__.__name__}.__onTradeTreeClicked()")
-        itrade = self.trade_tree.currentItem()
-        self.tradeChanged.emit(itrade)
+
+        item = self.trade_tree.currentItem()
+        self.tradeChanged.emit(item.trade)
 
 
 # }}}
