@@ -116,6 +116,7 @@ class Css:
             font-family: Monospace;
             font-size: 12px;
             background-color: {Theme.bg_mild};
+            background-color: {Theme.bg_normal};
             color: {Theme.fg_normal};
             border-width: 1px;
             border-radius: 4px;
@@ -149,7 +150,7 @@ class Css:
     MENU_SECTION = f"""
         font-family: Source Code Pro;
         font-size: 12px;
-        background-color: {Theme.bg_mild};
+        background-color: {Theme.bg_normal};
         color: {Theme.border};
         padding-left: 5px;
         padding-top: 4px;
