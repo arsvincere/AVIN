@@ -19,7 +19,7 @@ class LeftToolBar(QtWidgets.QToolBar):  # {{{
 
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
-        QtWidgets.QToolBar.__init__(self, parent)
+        QtWidgets.QToolBar.__init__(self, "Left Tool Bar", parent)
 
         self.__config()
         self.__createActions()
@@ -97,7 +97,7 @@ class RightToolBar(QtWidgets.QToolBar):  # {{{
 
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
-        QtWidgets.QToolBar.__init__(self, parent)
+        QtWidgets.QToolBar.__init__(self, "Right Tool Bar", parent)
 
         self.__config()
         self.__createActions()
