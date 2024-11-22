@@ -57,7 +57,10 @@ class AssetSelectDialog(QtWidgets.QDialog):
 
     # }}}
     def __config(self):  # {{{
-        self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
+        self.setWindowFlags(
+            QtCore.Qt.WindowType.FramelessWindowHint
+            | QtCore.Qt.WindowType.WindowStaysOnTopHint
+        )
         self.setStyleSheet(Css.DIALOG)
         self.setWindowTitle("AVIN")
 
