@@ -10,13 +10,17 @@ import sys
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 
-from gui.custom import Icon, Spacer
+from avin.utils import logger
+from gui.custom import Css, Icon, Spacer
 
 
 class LeftToolBar(QtWidgets.QToolBar):
+    __ICON_SIZE = QtCore.QSize(32, 32)
+
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QToolBar.__init__(self, parent)
+
         self.__config()
         self.__createActions()
         self.__configButtons()
@@ -25,42 +29,50 @@ class LeftToolBar(QtWidgets.QToolBar):
     # }}}
     def __config(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__config()")
-        self.setIconSize(QtCore.QSize(32, 32))
-        p = self.palette()
-        p.setColor(QtGui.QPalette.ColorRole.Button, QtGui.QColor("#484848"))
-        self.setPalette(p)
+
+        self.setIconSize(self.__ICON_SIZE)
+        self.setContentsMargins(0, 0, 0, 0)
+        self.setStyleSheet(Css.STYLE)
 
     # }}}
     def __createActions(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createActions()")
+
         self.data = QtGui.QAction(Icon.DATA, "Data", self)
         self.asset = QtGui.QAction(Icon.LIST, "Asset", self)
-        self.chart = QtGui.QAction(Icon.CHART, "Chart", self)
+        self.filter = QtGui.QAction(Icon.CHART, "Filter", self)
+        self.analytic = QtGui.QAction(Icon.CHART, "Analytic", self)
         self.strategy = QtGui.QAction(Icon.STRATEGY, "Strategy", self)
+        self.note = QtGui.QAction(Icon.NO, "Note", self)
         self.test = QtGui.QAction(Icon.TEST, "Test", self)
-        self.report = QtGui.QAction(Icon.REPORT, "Report", self)
+        self.summary = QtGui.QAction(Icon.SUMMARY, "Summary", self)
+
         self.console = QtGui.QAction(Icon.CONSOLE, "Console", self)
+        self.config = QtGui.QAction(Icon.CONFIG, "Config", self)
         self.shutdown = QtGui.QAction(Icon.SHUTDOWN, "Shutdown", self)
+
         self.addAction(self.data)
         self.addAction(self.asset)
-        self.addAction(self.chart)
+        self.addAction(self.filter)
+        self.addAction(self.analytic)
         self.addAction(self.strategy)
+        self.addAction(self.note)
         self.addAction(self.test)
-        self.addAction(self.report)
+        self.addAction(self.summary)
+
+        # self.addWidget(Spacer(parent=self))
         self.addAction(self.console)
-        self.addWidget(Spacer(self))
+        self.addAction(self.config)
         self.addAction(self.shutdown)
 
     # }}}
     def __configButtons(self):  # {{{
-        self.widgetForAction(self.data).setCheckable(True)
-        self.widgetForAction(self.asset).setCheckable(True)
-        self.widgetForAction(self.chart).setCheckable(True)
-        self.widgetForAction(self.strategy).setCheckable(True)
-        self.widgetForAction(self.test).setCheckable(True)
-        self.widgetForAction(self.report).setCheckable(True)
-        self.widgetForAction(self.console).setCheckable(True)
-        self.widgetForAction(self.shutdown).setCheckable(True)
+        logger.debug(f"{self.__class__.__name__}.__createActions()")
+
+        for action in self.actions():
+            btn = self.widgetForAction(action)
+            btn.setCheckable(True)
+            btn.setStyleSheet(Css.TOOL_BUTTON)
 
     # }}}
     def __connect(self):  # {{{
