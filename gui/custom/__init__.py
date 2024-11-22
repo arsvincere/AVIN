@@ -9,6 +9,7 @@
 from gui.custom.color import Color
 from gui.custom.css import Css
 from gui.custom.dialog import Dialog
+from gui.custom.dock_widget import DockWidget
 from gui.custom.font import Font
 from gui.custom.icon import Icon
 from gui.custom.label import Label, SubTitleLabel, TitleLabel
@@ -28,6 +29,7 @@ __all__ = (
     "Color",
     "Css",
     "Dialog",
+    "DockWidget",
     "Font",
     "Icon",
     "Label",
