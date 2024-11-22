@@ -11,7 +11,7 @@ import sys
 from PyQt6 import QtCore, QtGui, QtWidgets
 
 from avin.utils import logger
-from gui.custom import Css, Icon, Spacer
+from gui.custom import Css, Icon
 
 
 class LeftToolBar(QtWidgets.QToolBar):
@@ -32,7 +32,7 @@ class LeftToolBar(QtWidgets.QToolBar):
 
         self.setIconSize(self.__ICON_SIZE)
         self.setContentsMargins(0, 0, 0, 0)
-        self.setStyleSheet(Css.STYLE)
+        self.setStyleSheet(Css.TOOL_BAR)
 
     # }}}
     def __createActions(self):  # {{{
@@ -67,7 +67,7 @@ class LeftToolBar(QtWidgets.QToolBar):
 
     # }}}
     def __configButtons(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createActions()")
+        logger.debug(f"{self.__class__.__name__}.__configButtons()")
 
         for action in self.actions():
             btn = self.widgetForAction(action)
@@ -76,10 +76,14 @@ class LeftToolBar(QtWidgets.QToolBar):
 
     # }}}
     def __connect(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__connect()")
+
         self.actionTriggered.connect(self.__onTriggered)
 
     # }}}
     def __onTriggered(self, action: QtGui.QAction):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__onTriggered()")
+
         btn = self.widgetForAction(action)
         state = btn.isChecked()
         btn.setChecked(not state)
@@ -89,9 +93,12 @@ class LeftToolBar(QtWidgets.QToolBar):
 
 
 class RightToolBar(QtWidgets.QToolBar):
+    __ICON_SIZE = QtCore.QSize(32, 32)
+
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QToolBar.__init__(self, parent)
+
         self.__config()
         self.__createActions()
         self.__configButtons()
@@ -100,41 +107,56 @@ class RightToolBar(QtWidgets.QToolBar):
     # }}}
     def __config(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__config()")
-        self.setIconSize(QtCore.QSize(32, 32))
-        p = self.palette()
-        p.setColor(QtGui.QPalette.ColorRole.Button, QtGui.QColor("#484848"))
-        self.setPalette(p)
+
+        self.setIconSize(self.__ICON_SIZE)
+        self.setContentsMargins(0, 0, 0, 0)
+        self.setStyleSheet(Css.TOOL_BAR)
 
     # }}}
     def __createActions(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createActions()")
+
         self.broker = QtGui.QAction(Icon.BROKER, "Broker", self)
-        self.account = QtGui.QAction(Icon.ACCOUNT, "Account", self)
+        self.chart = QtGui.QAction(Icon.CHART, "Chart", self)
+        self.book = QtGui.QAction(Icon.CHART, "Book", self)
+        self.tic = QtGui.QAction(Icon.CHART, "Tic", self)
         self.order = QtGui.QAction(Icon.ORDER, "Order", self)
-        self.analytic = QtGui.QAction(Icon.ANALYTIC, "Analytic", self)
-        self.sandbox = QtGui.QAction(Icon.SANDBOX, "Sandbox", self)
-        self.general = QtGui.QAction(Icon.GENERAL, "General", self)
-        self.keeper = QtGui.QAction(Icon.KEEPER, "Keeper", self)
+        self.account = QtGui.QAction(Icon.ACCOUNT, "Account", self)
+        self.trader = QtGui.QAction(Icon.TXT, "Trader", self)
+        self.report = QtGui.QAction(Icon.KEEPER, "Report", self)
+
+        self.informer = QtGui.QAction(Icon.NO, "Informer", self)
+
         self.addAction(self.broker)
-        self.addAction(self.account)
+        self.addAction(self.chart)
+        self.addAction(self.book)
+        self.addAction(self.tic)
         self.addAction(self.order)
-        self.addAction(self.analytic)
-        self.addAction(self.sandbox)
-        self.addAction(self.general)
-        self.addAction(self.keeper)
+        self.addAction(self.account)
+        self.addAction(self.trader)
+        self.addAction(self.report)
+
+        self.addAction(self.informer)
 
     # }}}
     def __configButtons(self):  # {{{
-        for i in self.actions():
-            self.widgetForAction(i).setCheckable(True)
-        self.addWidget(Spacer(self))
+        logger.debug(f"{self.__class__.__name__}.__configButtons()")
+
+        for action in self.actions():
+            btn = self.widgetForAction(action)
+            btn.setCheckable(True)
+            btn.setStyleSheet(Css.TOOL_BUTTON)
 
     # }}}
     def __connect(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__connect()")
+
         self.actionTriggered.connect(self.__onTriggered)
 
     # }}}
     def __onTriggered(self, action: QtGui.QAction):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__onTriggered()")
+
         btn = self.widgetForAction(action)
         state = btn.isChecked()
         btn.setChecked(not state)
@@ -145,7 +167,7 @@ class RightToolBar(QtWidgets.QToolBar):
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    w = LeftToolBar()
+    w = RightToolBar()
     w.setWindowTitle("AVIN")
     w.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
     w.show()
