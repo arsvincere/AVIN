@@ -13,7 +13,7 @@ from gui.custom.css import Css
 
 
 class LineEdit(QtWidgets.QLineEdit):
-    def __init__(self, string: str, parent=None):
+    def __init__(self, string: str = "", parent=None):
         QtWidgets.QLineEdit.__init__(self, parent)
 
         if string:
