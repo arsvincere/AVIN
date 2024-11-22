@@ -15,7 +15,7 @@ from avin.core import Account, Asset, Broker, Trade, TradeList
 from avin.utils import logger
 from gui.asset import AssetListWidget
 from gui.console import ConsoleWidget
-from gui.custom import Css
+from gui.custom import Css, DockWidget
 from gui.data import DataWidget
 from gui.main_window.toolbar import LeftToolBar, RightToolBar
 from gui.strategy import StrategyWidget
@@ -84,6 +84,51 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle("AVIN  -  Ars  Vincere")
         self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
         self.showMaximized()
+
+        # config dock area
+        opt = QtWidgets.QMainWindow.DockOption
+        self.setDockOptions(
+            opt.AnimatedDocks | opt.AllowNestedDocks | opt.AllowTabbedDocks
+            # | opt.ForceTabbedDocks
+            # | opt.VerticalTabs
+            # | opt.GroupedDragging
+        )
+
+        # config dock tab position
+        self.setTabPosition(
+            Qt.DockWidgetArea.LeftDockWidgetArea,
+            QtWidgets.QTabWidget.TabPosition.North,
+        )
+        self.setTabPosition(
+            Qt.DockWidgetArea.RightDockWidgetArea,
+            QtWidgets.QTabWidget.TabPosition.North,
+        )
+        self.setTabPosition(
+            Qt.DockWidgetArea.TopDockWidgetArea,
+            QtWidgets.QTabWidget.TabPosition.North,
+        )
+        self.setTabPosition(
+            Qt.DockWidgetArea.BottomDockWidgetArea,
+            QtWidgets.QTabWidget.TabPosition.North,
+        )
+
+        # config the corner of dock areas
+        self.setCorner(
+            Qt.Corner.TopLeftCorner,
+            Qt.DockWidgetArea.LeftDockWidgetArea,
+        )
+        self.setCorner(
+            Qt.Corner.BottomLeftCorner,
+            Qt.DockWidgetArea.LeftDockWidgetArea,
+        )
+        self.setCorner(
+            Qt.Corner.TopRightCorner,
+            Qt.DockWidgetArea.RightDockWidgetArea,
+        )
+        self.setCorner(
+            Qt.Corner.BottomRightCorner,
+            Qt.DockWidgetArea.RightDockWidgetArea,
+        )
 
     # }}}
     def __createToolBars(self):  # {{{
@@ -220,16 +265,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if self.data_widget is None:
             self.data_widget = DataWidget(self)
-            self.data_dock_widget = QtWidgets.QDockWidget(self)
-            self.data_dock_widget.setWidget(self.data_widget)
-
-            feat = QtWidgets.QDockWidget.DockWidgetFeature
-            self.data_dock_widget.setFeatures(
-                feat.DockWidgetMovable | feat.DockWidgetVerticalTitleBar
-            )
-
+            self.data_dock_widget = DockWidget("Data", self.data_widget, self)
             area = Qt.DockWidgetArea.LeftDockWidgetArea
             self.addDockWidget(area, self.data_dock_widget)
+            self.data_dock_widget.setFloating(True)
             return
 
     # }}}
@@ -239,16 +278,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if self.asset_widget is None:
             self.asset_widget = AssetListWidget(self)
-            self.asset_dock_widget = QtWidgets.QDockWidget(self)
-            self.asset_dock_widget.setWidget(self.asset_widget)
-
-            feat = QtWidgets.QDockWidget.DockWidgetFeature
-            self.asset_dock_widget.setFeatures(
-                feat.DockWidgetMovable | feat.DockWidgetVerticalTitleBar
+            self.asset_dock_widget = DockWidget(
+                "Asset", self.asset_widget, self
             )
-
             area = Qt.DockWidgetArea.LeftDockWidgetArea
             self.addDockWidget(area, self.asset_dock_widget)
+            self.asset_dock_widget.setFloating(True)
             return
 
     # }}}
@@ -258,16 +293,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if self.strategy_widget is None:
             self.strategy_widget = StrategyWidget(self)
-            self.strategy_dock_widget = QtWidgets.QDockWidget(self)
-            self.strategy_dock_widget.setWidget(self.strategy_widget)
-
-            feat = QtWidgets.QDockWidget.DockWidgetFeature
-            self.strategy_dock_widget.setFeatures(
-                feat.DockWidgetMovable | feat.DockWidgetVerticalTitleBar
+            self.strategy_dock_widget = DockWidget(
+                "Strategy", self.strategy_widget, self
             )
-
             area = Qt.DockWidgetArea.RightDockWidgetArea
             self.addDockWidget(area, self.strategy_dock_widget)
+            self.strategy_dock_widget.setFloating(True)
             return
 
     # }}}
@@ -277,16 +308,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if self.tester_widget is None:
             self.tester_widget = StrategyWidget(self)
-            self.tester_dock_widget = QtWidgets.QDockWidget(self)
-            self.tester_dock_widget.setWidget(self.tester_widget)
-
-            feat = QtWidgets.QDockWidget.DockWidgetFeature
-            self.tester_dock_widget.setFeatures(
-                feat.DockWidgetMovable | feat.DockWidgetVerticalTitleBar
+            self.tester_dock_widget = DockWidget(
+                "Tester", self.tester_widget, self
             )
-
             area = Qt.DockWidgetArea.RightDockWidgetArea
             self.addDockWidget(area, self.tester_dock_widget)
+            self.tester_dock_widget.setFloating(True)
             return
 
     # }}}
@@ -301,12 +328,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if self.console_widget is None:
             self.console_widget = ConsoleWidget(self)
-            self.console_dock_widget = QtWidgets.QDockWidget(self)
-            self.console_dock_widget.setWidget(self.console_widget)
-
-            feat = QtWidgets.QDockWidget.DockWidgetFeature
-            self.console_dock_widget.setFeatures(
-                feat.DockWidgetMovable | feat.DockWidgetVerticalTitleBar
+            self.console_dock_widget = DockWidget(
+                "Console", self.console_widget, self
             )
 
             area = Qt.DockWidgetArea.BottomDockWidgetArea
