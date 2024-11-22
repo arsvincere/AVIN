@@ -32,7 +32,7 @@ class Icon:
     CHART = QtGui.QIcon(Cmd.path(Res.ICON, "chart.svg"))
     STRATEGY = QtGui.QIcon(Cmd.path(Res.ICON, "strategy.svg"))
     TEST = QtGui.QIcon(Cmd.path(Res.ICON, "test.svg"))
-    REPORT = QtGui.QIcon(Cmd.path(Res.ICON, "report.svg"))
+    SUMMARY = QtGui.QIcon(Cmd.path(Res.ICON, "summary.svg"))
     CONSOLE = QtGui.QIcon(Cmd.path(Res.ICON, "console.svg"))
     SHUTDOWN = QtGui.QIcon(Cmd.path(Res.ICON, "shutdown.svg"))
 
