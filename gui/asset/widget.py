@@ -84,6 +84,9 @@ class AssetListWidget(QtWidgets.QWidget):  # {{{
         logger.debug("self.__class__.__name__.__loadUserAssetLists()")
 
         all_names = Thread.requestAllAssetList()
+        if not all_names:
+            return
+
         for list_name in sorted(all_names):
             self.__tool_bar.addAssetListName(list_name)
 
@@ -400,9 +403,12 @@ class _AssetListTree(QtWidgets.QTreeWidget):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QTreeWidget.__init__(self, parent)
+
         self.__createMenu()
         self.__config()
         self.__connect()
+
+        self.__current_alist = None
 
     # }}}
     def __iter__(self):  # {{{
@@ -440,6 +446,12 @@ class _AssetListTree(QtWidgets.QTreeWidget):  # {{{
     # }}}
     def editCurrentAssetList(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.editCurrentAssetList()")
+
+        if self.__current_alist is None:
+            Dialog.error(
+                "Can't add assets!\nNeed to create asset list before!"
+            )
+            return
 
         dial = AssetSelectDialog()
         edited_list = dial.editAssetList(self.__current_alist)
