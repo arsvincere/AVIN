@@ -92,9 +92,12 @@ class _ConfirmDialog(QtWidgets.QDialog):  # {{{
     def __config(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__config()")
 
-        self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
-        self.setWindowTitle("AVIN  -  Widget")
+        self.setWindowFlags(
+            QtCore.Qt.WindowType.FramelessWindowHint
+            | QtCore.Qt.WindowType.WindowStaysOnTopHint
+        )
         self.setStyleSheet(Css.DIALOG)
+        self.setWindowTitle("AVIN")
 
         sp = QtWidgets.QSizePolicy.Policy.Minimum
         self.setSizePolicy(sp, sp)
@@ -154,9 +157,12 @@ class _InfoDialog(QtWidgets.QDialog):  # {{{
     def __config(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__config()")
 
-        self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
-        self.setWindowTitle("AVIN  -  Widget")
+        self.setWindowFlags(
+            QtCore.Qt.WindowType.FramelessWindowHint
+            | QtCore.Qt.WindowType.WindowStaysOnTopHint
+        )
         self.setStyleSheet(Css.DIALOG)
+        self.setWindowTitle("AVIN")
 
         sp = QtWidgets.QSizePolicy.Policy.Minimum
         self.setSizePolicy(sp, sp)
@@ -211,9 +217,12 @@ class _ErrorDialog(QtWidgets.QDialog):  # {{{
     def __config(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__config()")
 
-        self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
-        self.setWindowTitle("AVIN  -  Widget")
+        self.setWindowFlags(
+            QtCore.Qt.WindowType.FramelessWindowHint
+            | QtCore.Qt.WindowType.WindowStaysOnTopHint
+        )
         self.setStyleSheet(Css.DIALOG)
+        self.setWindowTitle("AVIN")
 
         sp = QtWidgets.QSizePolicy.Policy.Minimum
         self.setSizePolicy(sp, sp)
@@ -271,9 +280,12 @@ class _NameDialog(QtWidgets.QDialog):  # {{{
     def __config(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__config()")
 
-        self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
-        self.setWindowTitle("AVIN  -  Widget")
+        self.setWindowFlags(
+            QtCore.Qt.WindowType.FramelessWindowHint
+            | QtCore.Qt.WindowType.WindowStaysOnTopHint
+        )
         self.setStyleSheet(Css.DIALOG)
+        self.setWindowTitle("AVIN")
 
         sp = QtWidgets.QSizePolicy.Policy.Minimum
         self.setSizePolicy(sp, sp)
