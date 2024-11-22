@@ -9,16 +9,16 @@
 import sys
 
 from PyQt6 import QtCore, QtWidgets
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSlot
 
 from avin.core import Account, Asset, Broker, Trade, TradeList
 from avin.utils import logger
 from gui.asset import AssetListWidget
+from gui.console import ConsoleWidget
 from gui.custom import Css
 from gui.data import DataWidget
 from gui.main_window.toolbar import LeftToolBar, RightToolBar
 from gui.strategy import StrategyWidget
-from gui.tester import TesterWidget
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -41,20 +41,18 @@ class MainWindow(QtWidgets.QMainWindow):
         splash.show()
 
         # create main window
+        self.__config()
         # self.__createMdiArea()
         # self.__configMdiArea()
         self.__createToolBars()
-        # self.__createLeftWidgets()
-        # self.__createCenterWidgets()
-        # self.__createRightWidgets()
+        self.__createWidgets()
         # self.__createSplitter()
         # self.__setWidgetSize()
-        # self.__connect()
-        self.__config()
+        self.__connect()
         self.__initUI()
 
     # }}}
-    # def __createMdiArea(self):{{{
+    # def __createMdiArea(self):  # {{{
     #     logger.debug(f"{self.__class__.__name__}.__createMdiArea()")
     #     self.area = QtWidgets.QMdiArea(self)
     #     self.tab1 = QtWidgets.QMdiSubWindow(self.area)
@@ -79,6 +77,15 @@ class MainWindow(QtWidgets.QMainWindow):
     #     self.area.setActiveSubWindow(self.tab1)
     #
     # }}}
+    def __config(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__config()")
+
+        self.setStyleSheet(Css.STYLE)
+        self.setWindowTitle("AVIN  -  Ars  Vincere")
+        self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
+        self.showMaximized()
+
+    # }}}
     def __createToolBars(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createToolBars()")
 
@@ -91,41 +98,29 @@ class MainWindow(QtWidgets.QMainWindow):
         self.addToolBar(Qt.ToolBarArea.RightToolBarArea, self.rtool)
 
     # }}}
-    def __createLeftWidgets(self):  # {{{
+    def __createWidgets(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createLeftWidgets()")
 
-        self.widget_data = DataWidget(self)
-        self.widget_data.hide()
-        self.widget_asset = AssetListWidget(self)
-        self.widget_asset.hide()
-        self.widget_strategy = StrategyWidget(self)
-        self.widget_strategy.hide()
-        self.widget_tester = TesterWidget(self)
-        self.widget_tester.hide()
+        self.data_widget = None
+        self.asset_widget = None
+        self.strategy_widget = None
+        self.tester_widget = None
 
-    # }}}
-    def __createCenterWidgets(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createCenterWidgets()")
+        self.console_widget = None
 
-        self.widget_chart = ChartWidget(self)
-        self.widget_chart.hide()
-        self.widget_report = ReportWidget(self)
-        self.widget_report.hide()
-        self.widget_console = ConsoleWidget(self)
-        self.widget_console.hide()
-        self.widget_account = AccountWidget(self)
-        self.widget_account.hide()
+        # self.widget_chart = ChartWidget(self)
+        # self.widget_chart.hide()
+        # self.widget_report = ReportWidget(self)
+        # self.widget_report.hide()
+        # self.widget_account = AccountWidget(self)
+        # self.widget_account.hide()
 
-    # }}}
-    def __createRightWidgets(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createRightWidgets()")
-
-        self.widget_broker = BrokerWidget(self)
-        self.widget_broker.hide()
-        self.widget_order = OrderDialog(self)
-        self.widget_order.hide()
-        self.widget_general = GeneralWidget(self)
-        self.widget_general.hide()
+        # self.widget_broker = BrokerWidget(self)
+        # self.widget_broker.hide()
+        # self.widget_order = OrderDialog(self)
+        # self.widget_order.hide()
+        # self.widget_general = GeneralWidget(self)
+        # self.widget_general.hide()
 
     # }}}
     def __createSplitter(self):  # {{{
@@ -177,33 +172,31 @@ class MainWindow(QtWidgets.QMainWindow):
         # left tools
         self.ltool.data.triggered.connect(self.__onData)
         self.ltool.asset.triggered.connect(self.__onAsset)
-        self.ltool.chart.triggered.connect(self.__onChart)
+        # self.ltool.filter.triggered.connect(self.__onFilter)
+        # self.ltool.analytic.triggered.connect(self.__onAnalytic)
         self.ltool.strategy.triggered.connect(self.__onStrategy)
-        self.ltool.test.triggered.connect(self.__onTest)
-        self.ltool.report.triggered.connect(self.__onReport)
+        # self.ltool.note.triggered.connect(self.__onNote)
+        self.ltool.tester.triggered.connect(self.__onTester)
+        # self.ltool.summary.triggered.connect(self.__onSummary)
         self.ltool.console.triggered.connect(self.__onConsole)
+        # self.ltool.config.triggered.connect(self.__onConfig)
         self.ltool.shutdown.triggered.connect(self.__onShutdown)
         # right tools
-        self.rtool.broker.triggered.connect(self.__onBroker)
-        self.rtool.account.triggered.connect(self.__onAccount)
-        self.rtool.order.triggered.connect(self.__onOrder)
-        self.rtool.general.triggered.connect(self.__onGeneral)
+        # self.rtool.broker.triggered.connect(self.__onBroker)
+        # self.rtool.chart.triggered.connect(self.__onChart)
+        # self.rtool.book.triggered.connect(self.__onBook)
+        # self.rtool.tic.triggered.connect(self.__onTic)
+        # self.rtool.order.triggered.connect(self.__onOrder)
+        # self.rtool.account.triggered.connect(self.__onAccount)
+        # self.rtool.trader.triggered.connect(self.__onTrader)
+        # self.rtool.report.triggered.connect(self.__onReport)
         # widget signals
-        self.widget_asset.assetChanged.connect(self.__onAssetChanged)
-        self.widget_tester.tlistChanged.connect(self.__onTradeListChanged)
-        self.widget_tester.tradeChanged.connect(self.__onTradeChanged)
-        self.widget_broker.connectEnabled.connect(self.__onConnect)
-        self.widget_broker.connectDisabled.connect(self.__onDisconnect)
-        self.widget_broker.accountSetUp.connect(self.__onAccountSetUp)
-
-    # }}}
-    def __config(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__config()")
-
-        self.setStyleSheet(Css.STYLE)
-        self.setWindowTitle("AVIN  -  Ars  Vincere")
-        self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
-        self.showMaximized()
+        # AssetListWidget.assetChanged.connect(self.__onAssetChanged)
+        # TesterWidget.tlistChanged.connect(self.__onTradeListChanged)
+        # TesterWidget.tradeChanged.connect(self.__onTradeChanged)
+        # self.widget_broker.connectEnabled.connect(self.__onConnect)
+        # self.widget_broker.connectDisabled.connect(self.__onDisconnect)
+        # self.widget_broker.accountSetUp.connect(self.__onAccountSetUp)
 
     # }}}
     def __initUI(self):  # {{{
@@ -221,90 +214,150 @@ class MainWindow(QtWidgets.QMainWindow):
         # self.widget_order.setAsset(iasset)
 
     # }}}
-    @QtCore.pyqtSlot()  # __onData# {{{
+    @pyqtSlot()  # __onData  # {{{
     def __onData(self):
         logger.debug(f"{self.__class__.__name__}.__onData()")
-        state = self.widget_data.isVisible()
-        self.widget_data.setVisible(not state)
+
+        if self.data_widget is None:
+            self.data_widget = DataWidget(self)
+            self.data_dock_widget = QtWidgets.QDockWidget(self)
+            self.data_dock_widget.setWidget(self.data_widget)
+
+            feat = QtWidgets.QDockWidget.DockWidgetFeature
+            self.data_dock_widget.setFeatures(
+                feat.DockWidgetMovable | feat.DockWidgetVerticalTitleBar
+            )
+
+            area = Qt.DockWidgetArea.LeftDockWidgetArea
+            self.addDockWidget(area, self.data_dock_widget)
+            return
 
     # }}}
-    @QtCore.pyqtSlot()  # __onAsset# {{{
+    @pyqtSlot()  # __onAsset  # {{{
     def __onAsset(self):
         logger.debug(f"{self.__class__.__name__}.__onAsset()")
-        state = self.widget_asset.isVisible()
-        self.widget_asset.setVisible(not state)
+
+        if self.asset_widget is None:
+            self.asset_widget = AssetListWidget(self)
+            self.asset_dock_widget = QtWidgets.QDockWidget(self)
+            self.asset_dock_widget.setWidget(self.asset_widget)
+
+            feat = QtWidgets.QDockWidget.DockWidgetFeature
+            self.asset_dock_widget.setFeatures(
+                feat.DockWidgetMovable | feat.DockWidgetVerticalTitleBar
+            )
+
+            area = Qt.DockWidgetArea.LeftDockWidgetArea
+            self.addDockWidget(area, self.asset_dock_widget)
+            return
 
     # }}}
-    @QtCore.pyqtSlot()  # __onChart# {{{
-    def __onChart(self):
-        logger.debug(f"{self.__class__.__name__}.__onChart()")
-        state = self.widget_chart.isVisible()
-        self.widget_chart.setVisible(not state)
-
-    # }}}
-    @QtCore.pyqtSlot()  # __onStrategy# {{{
+    @pyqtSlot()  # __onStrategy  # {{{
     def __onStrategy(self):
         logger.debug(f"{self.__class__.__name__}.__onStrategy()")
-        state = self.widget_strategy.isVisible()
-        self.widget_strategy.setVisible(not state)
+
+        if self.strategy_widget is None:
+            self.strategy_widget = StrategyWidget(self)
+            self.strategy_dock_widget = QtWidgets.QDockWidget(self)
+            self.strategy_dock_widget.setWidget(self.strategy_widget)
+
+            feat = QtWidgets.QDockWidget.DockWidgetFeature
+            self.strategy_dock_widget.setFeatures(
+                feat.DockWidgetMovable | feat.DockWidgetVerticalTitleBar
+            )
+
+            area = Qt.DockWidgetArea.RightDockWidgetArea
+            self.addDockWidget(area, self.strategy_dock_widget)
+            return
 
     # }}}
-    @QtCore.pyqtSlot()  # __onTest# {{{
-    def __onTest(self):
-        logger.debug(f"{self.__class__.__name__}.__onTest()")
-        state = self.widget_tester.isVisible()
-        self.widget_tester.setVisible(not state)
+    @pyqtSlot()  # __onTester  # {{{
+    def __onTester(self):
+        logger.debug(f"{self.__class__.__name__}.__onTester()")
+
+        if self.tester_widget is None:
+            self.tester_widget = StrategyWidget(self)
+            self.tester_dock_widget = QtWidgets.QDockWidget(self)
+            self.tester_dock_widget.setWidget(self.tester_widget)
+
+            feat = QtWidgets.QDockWidget.DockWidgetFeature
+            self.tester_dock_widget.setFeatures(
+                feat.DockWidgetMovable | feat.DockWidgetVerticalTitleBar
+            )
+
+            area = Qt.DockWidgetArea.RightDockWidgetArea
+            self.addDockWidget(area, self.tester_dock_widget)
+            return
 
     # }}}
-    @QtCore.pyqtSlot()  # __onReport# {{{
-    def __onReport(self):
-        logger.debug(f"{self.__class__.__name__}.__onReport()")
-        state = self.widget_report.isVisible()
-        self.widget_report.setVisible(not state)
+    @pyqtSlot()  # __onSummary  # {{{
+    def __onSummary(self):
+        logger.debug(f"{self.__class__.__name__}.__onSummary()")
 
     # }}}
-    @QtCore.pyqtSlot()  # __onConsole# {{{
+    @pyqtSlot()  # __onConsole  # {{{
     def __onConsole(self):
         logger.debug(f"{self.__class__.__name__}.__onConsole()")
-        state = self.widget_console.isVisible()
-        self.widget_console.setVisible(not state)
+
+        if self.console_widget is None:
+            self.console_widget = ConsoleWidget(self)
+            self.console_dock_widget = QtWidgets.QDockWidget(self)
+            self.console_dock_widget.setWidget(self.console_widget)
+
+            feat = QtWidgets.QDockWidget.DockWidgetFeature
+            self.console_dock_widget.setFeatures(
+                feat.DockWidgetMovable | feat.DockWidgetVerticalTitleBar
+            )
+
+            area = Qt.DockWidgetArea.BottomDockWidgetArea
+            self.addDockWidget(area, self.console_dock_widget)
+            return
 
     # }}}
-    @QtCore.pyqtSlot()  # __onShutdown# {{{
+    @pyqtSlot()  # __onShutdown  # {{{
     def __onShutdown(self):
         logger.debug(f"{self.__class__.__name__}.__onShutdown()")
+
         QtWidgets.QApplication.instance().quit()
 
     # }}}
-    @QtCore.pyqtSlot()  # __onBroker# {{{
+
+    @pyqtSlot()  # __onBroker  # {{{
     def __onBroker(self):
         logger.debug(f"{self.__class__.__name__}.__onBroker()")
         state = self.widget_broker.isVisible()
         self.widget_broker.setVisible(not state)
 
     # }}}
-    @QtCore.pyqtSlot()  # __onAccount# {{{
+    @pyqtSlot()  # __onChart  # {{{
+    def __onChart(self):
+        logger.debug(f"{self.__class__.__name__}.__onChart()")
+        state = self.widget_chart.isVisible()
+        self.widget_chart.setVisible(not state)
+
+    # }}}
+    @pyqtSlot()  # __onAccount  # {{{
     def __onAccount(self):
         logger.debug(f"{self.__class__.__name__}.__onAccount()")
         state = self.widget_account.isVisible()
         self.widget_account.setVisible(not state)
 
     # }}}
-    @QtCore.pyqtSlot()  # __onOrder# {{{
+    @pyqtSlot()  # __onOrder  # {{{
     def __onOrder(self):
         logger.debug(f"{self.__class__.__name__}.__onOrder()")
         state = self.widget_order.isVisible()
         self.widget_order.setVisible(not state)
 
     # }}}
-    @QtCore.pyqtSlot()  # __onGeneral# {{{
+    @pyqtSlot()  # __onGeneral  # {{{
     def __onGeneral(self):
         logger.debug(f"{self.__class__.__name__}.__onGeneral()")
         state = self.widget_general.isVisible()
         self.widget_general.setVisible(not state)
 
     # }}}
-    @QtCore.pyqtSlot(Asset)  # __onAssetChanged# {{{
+    @pyqtSlot(Asset)  # __onAssetChanged  # {{{
     def __onAssetChanged(self, iasset: Asset):
         logger.debug(f"{self.__class__.__name__}.__onAssetChanged()")
         assert isinstance(iasset, IShare)
@@ -312,33 +365,33 @@ class MainWindow(QtWidgets.QMainWindow):
         self.widget_order.setAsset(iasset)
 
     # }}}
-    @QtCore.pyqtSlot(TradeList)  # __onTradeListChanged# {{{
+    @pyqtSlot(TradeList)  # __onTradeListChanged # {{{
     def __onTradeListChanged(self, tlist: TradeList):
         logger.debug(f"{self.__class__.__name__}.__onTradeListChanged()")
         self.widget_chart.showTradeList(tlist)
         self.widget_report.showSummary(tlist)
 
     # }}}
-    @QtCore.pyqtSlot(Trade)  # __onTradeChanged# {{{
+    @pyqtSlot(Trade)  # __onTradeChanged  # {{{
     def __onTradeChanged(self, trade: Trade):
         logger.debug(f"{self.__class__.__name__}.__onTradeChanged()")
         self.widget_chart.showTrade(trade)
 
     # }}}
-    @QtCore.pyqtSlot(Broker)  # __onConnect# {{{
+    @pyqtSlot(Broker)  # __onConnect  # {{{
     def __onConnect(self, broker: Broker):
         logger.debug(f"{self.__class__.__name__}.__onConnect()")
         ...
 
     # }}}
-    @QtCore.pyqtSlot(Account)  # __onAccountSetUp# {{{
+    @pyqtSlot(Account)  # __onAccountSetUp  # {{{
     def __onAccountSetUp(self, account: Account):
         logger.debug(f"{self.__class__.__name__}.__onAccountSetUp()")
         self.widget_order.connectAccount(account)
         self.widget_account.connectAccount(account)
 
     # }}}
-    @QtCore.pyqtSlot(Broker)  # __onDisconnect# {{{
+    @pyqtSlot(Broker)  # __onDisconnect  # {{{
     def __onDisconnect(self, broker: Broker):
         logger.debug(f"{self.__class__.__name__}.__onDisconnect()")
         # self.widget_order.disconnectAccount(iaccount)
