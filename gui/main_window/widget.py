@@ -26,6 +26,21 @@ class MainWindow(QtWidgets.QMainWindow):
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QMainWindow.__init__(self, parent)
 
+        # HACK: хз че за херня, но если тут тоже не вызвать заставку
+        # то в hyprland она не отображается. Ее нужно в 2 местах
+        # вызвать здесь и в main.py
+        # Причем настройки тянутся именно из main.py и заставка
+        # от сюда по факту не отображается, но без этого вызова .show()
+        # никак. Наверное дело в цикле событий. Нужно как то
+        # принудительно сначала вывести заставку а потом грузить дальше
+        # но пример из доков Qt с вызовом app.processEvents() не
+        # срабатывает.
+        # Возможно баг в hyprland, в xfce4 вроде работало из main.py
+        # без проблем
+        splash = QtWidgets.QSplashScreen()
+        splash.show()
+
+        # create main window
         # self.__createMdiArea()
         # self.__configMdiArea()
         self.__createToolBars()

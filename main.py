@@ -12,33 +12,27 @@ import sys
 
 import PyQt6
 
-from avin import *
-from gui.data.widget import DataWidget
+from gui import MainWindow, Splash
 
 
 def main():
     print("Welcome to AVIN Trade System!")
 
-    # show splash
+    # start app
     app = PyQt6.QtWidgets.QApplication(sys.argv)
-    # pic = PyQt6.QtGui.QPixmap(SPLASH_PIC)
-    # splash = PyQt6.QtWidgets.QSplashScreen(pic)
-    # splash.show()
 
-    w = DataWidget()
-    w.setWindowTitle("AVIN  -  Widget")
-    w.setWindowFlags(PyQt6.QtCore.Qt.WindowType.FramelessWindowHint)
-    w.show()
-    code = app.exec()
+    # show splash
+    splash = Splash()
+    splash.show()
 
     # show main window
-    # w = MainWindow()
-    # w.show()
-    # splash.finish(w)
-    # code = app.exec()
+    w = MainWindow()
+    w.show()
+    splash.finish(w)
+    code = app.exec()
 
     # before quit actions
-    ...
+    print("Goodbuy!")
     sys.exit(code)
 
 
