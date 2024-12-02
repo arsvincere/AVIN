@@ -42,7 +42,7 @@ class Theme:
 
     class Chart:  # {{{
         # Bar
-        BG = QtGui.QColor("#181616")  # nvim background
+        BG = QtGui.QColor(Color.dragonBlack0)  # #0d0c0c
         BULL = QtGui.QColor("#98BB6C")  # kanagawa 4.2
         BEAR = QtGui.QColor("#FF5D62")  # kanagawa 5.3
         UNDEFINE = QtGui.QColor("#FFFFFF")
