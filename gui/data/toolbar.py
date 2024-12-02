@@ -30,7 +30,7 @@ class DataToolBar(QtWidgets.QToolBar):
 
         self.download = QtGui.QAction(Icon.DOWNLOAD, "Download", self)
         self.convert = QtGui.QAction(Icon.CONVERT, "Convert", self)
-        self.delete = QtGui.QAction(Icon.THRASH, "Delete", self)
+        self.delete = QtGui.QAction(Icon.DELETE, "Delete", self)
         self.update = QtGui.QAction(Icon.UPDATE, "Update", self)
 
         self.addAction(self.download)
