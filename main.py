@@ -16,9 +16,8 @@ from gui import MainWindow, Splash
 
 
 def main():
-    print("Welcome to AVIN Trade System!")
-
     # start app
+    print("Welcome to AVIN Trade System!")
     app = PyQt6.QtWidgets.QApplication(sys.argv)
 
     # show splash
