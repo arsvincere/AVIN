@@ -9,8 +9,8 @@
 from PyQt6 import QtWidgets
 
 
-class Spacer(QtWidgets.QLabel):
-    def __init__(self, width=0, height=0, parent=None):
+class Spacer(QtWidgets.QLabel):  # {{{
+    def __init__(self, width=0, height=0, parent=None):  # {{{
         QtWidgets.QLabel.__init__(self, parent)
 
         if width:
@@ -25,23 +25,34 @@ class Spacer(QtWidgets.QLabel):
                 QtWidgets.QSizePolicy.Policy.Expanding,
             )
 
+    # }}}
 
-class HLine(QtWidgets.QFrame):
-    def __init__(self, parent=None):
+
+# }}}
+class HLine(QtWidgets.QFrame):  # {{{
+    def __init__(self, parent=None):  # {{{
         QtWidgets.QFrame.__init__(self, parent)
         self.setFrameShape(QtWidgets.QFrame.Shape.HLine)
         # self.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
         # self.setFrameShadow(QtWidgets.QFrame.Shadow.Plain)
         # self.setFrameShadow(QtWidgets.QFrame.Shadow.Raised)
 
+    # }}}
 
-class VLine(QtWidgets.QFrame):
-    def __init__(self, parent=None):
+
+# }}}
+class VLine(QtWidgets.QFrame):  # {{{
+    def __init__(self, parent=None):  # {{{
         QtWidgets.QFrame.__init__(self, parent)
         self.setFrameShape(QtWidgets.QFrame.Shape.VLine)
         # self.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
         # self.setFrameShadow(QtWidgets.QFrame.Shadow.Plain)
         # self.setFrameShadow(QtWidgets.QFrame.Shadow.Raised)
+
+    # }}}
+
+
+# }}}
 
 
 if __name__ == "__main__":
