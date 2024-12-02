@@ -6,13 +6,9 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-import sys
-
-from PyQt6 import QtCore, QtGui, QtWidgets
-
 
 class Color:
-    # Nord -------------------------------------------------------------------
+    # Nord -------------------------------------------------------------------{{{
     # polar night.
     nord0 = "#2E3440"
     nord1 = "#3B4252"
@@ -36,8 +32,8 @@ class Color:
     nord13 = "#EBCB8B"
     nord14 = "#A3BE8C"
     nord15 = "#B48EAD"
-
-    # black & white ----------------------------------------------------------
+    # }}}
+    # black & white ----------------------------------------------------------{{{
     # black
     black1 = "#000000"
     black2 = "#040404"
@@ -57,8 +53,8 @@ class Color:
     white4 = "#DDDDDD"
     white5 = "#EEEEEE"
     white6 = "#FFFFFF"
-
-    # Kanagawa ---------------------------------------------------------------
+    # }}}
+    # Kanagawa ---------------------------------------------------------------{{{
     # Bg Shades
     sumiInk0 = "#16161D"
     sumiInk1 = "#181820"
@@ -185,61 +181,8 @@ class Color:
     lotusCyan = "#d7e3d8"
 
 
-class OldQtColor:
-    # common color
-    NONE = QtGui.QColor("#00000000")
-    BLACK = QtGui.QColor("#000000")
-    WHITE = QtGui.QColor("#FFFFFF")
-    RED = QtGui.QColor("#AA0000")
-    GREEN = QtGui.QColor("#00AA00")
-    GREEN = QtGui.QColor("#0000AA")
-    YELLOW = QtGui.QColor("#AAAA00")
-    # Window palette
-    DARK = QtGui.QColor("#0F0F0F")  # 5
-    NORMAL = QtGui.QColor("#323232")
-    INACTIVE = QtGui.QColor("#373737")  # 4
-    HIGHLIGHT = QtGui.QColor("#5D5E60")  # 3
-    DISABLED_TEXT = QtGui.QColor("#848388")  # 2
-    TEXT = QtGui.QColor("#B7B7AF")  # 1
-    BUTTON_TEXT = QtGui.QColor("#CCCCCC")
-    WINDOW_TEXT = QtGui.QColor("#EEEEEE")
-    HIGHLIGHT_TEXT = QtGui.QColor("#FAFAFA")
-    # Bar
-    BG = QtGui.QColor("#181616")  # nvim background
-    BULL = QtGui.QColor("#98BB6C")  # kanagawa 4.2
-    BEAR = QtGui.QColor("#FF5D62")  # kanagawa 5.3
-    UNDEFINE = QtGui.QColor("#FFFFFF")
-    # Black & white bar
-    # BG =                QtGui.QColor("#242424")
-    # BULL =              QtGui.QColor("#BBBBBB")
-    # BEAR =              QtGui.QColor("#646464")
-    # UNDEFINE =          QtGui.QColor("#000000")
-    ZOOM_BULL = QtGui.QColor("#00FF00")
-    ZOOM_BEAR = QtGui.QColor("#FF0000")
-    # Trade
-    STOP = QtGui.QColor("#FF0000")
-    TAKE = QtGui.QColor("#00FF00")
-    OPEN = QtGui.QColor("#AAAAAA")
-    TRADE_WIN = QtGui.QColor("#00AA00")
-    TRADE_LOSS = QtGui.QColor("#AA0000")
-    # Mark
-    MARK = QtGui.QColor("#0000AA")
-    # Extremum
-    SHORTTERM = QtGui.QColor("#FFFFFF")
-    MIDTERM = QtGui.QColor("#AAAA00")
-    LONGTERM = QtGui.QColor("#AA0000")
-    INSIDE_BG = QtGui.QColor("#AA000000")
-    OUTSIDE_BG = QtGui.QColor("#44FFFFFF")
-    # Button
-    BUY = QtGui.QColor("#98BB6C")  # kanagawa 4.2
-    SELL = QtGui.QColor("#FF5D62")  # kanagawa 5.3
+# }}}
 
 
 if __name__ == "__main__":
-    app = QtWidgets.QApplication(sys.argv)
-    w = UOrderType()
-    w.setWindowTitle("AVIN  -  Ars  Vincere")
-    w.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
-    w.showMaximized()
-    w.show()
-    sys.exit(app.exec())
+    ...
