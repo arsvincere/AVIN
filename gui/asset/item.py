@@ -37,7 +37,7 @@ class AssetItem(QtWidgets.QTreeWidgetItem):
             | Qt.ItemFlag.ItemIsSelectable
             | Qt.ItemFlag.ItemIsEnabled
         )
-        self.setCheckState(self.Column.Ticker, Qt.CheckState.Unchecked)
+        # self.setCheckState(self.Column.Ticker, Qt.CheckState.Unchecked)
 
         self.setText(self.Column.Ticker, asset.ticker)
         self.setText(self.Column.Name, asset.name)

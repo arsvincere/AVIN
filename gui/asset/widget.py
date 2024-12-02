@@ -36,7 +36,7 @@ class AssetListWidget(QtWidgets.QWidget):  # {{{
 
     # }}}
     def currentAsset(self) -> Asset:  # {{{
-        return self.tree.currentAsset()
+        return self.__tree.currentAsset()
 
     # }}}
     def currentAssetList(self) -> AssetList:  # {{{
@@ -425,7 +425,10 @@ class _AssetListTree(QtWidgets.QTreeWidget):  # {{{
         logger.debug(f"{self.__class__.__name__}.currentAsset()")
 
         item = self.currentItem()
-        return item.asset
+        if item is not None:
+            return item.asset
+
+        return None
 
     # }}}
     def setAssetList(self, alist: AssetList):  # {{{
@@ -436,6 +439,10 @@ class _AssetListTree(QtWidgets.QTreeWidget):  # {{{
         for asset in alist:
             item = AssetItem(asset)
             self.addTopLevelItem(item)
+
+        # TODO: так текущим ставится последний актив в списке
+        # и еще хз что происходит если в листе пусто, падает наверно
+        self.setCurrentItem(item)
 
     # }}}
     def currentAssetList(self) -> AssetList:  # {{{
