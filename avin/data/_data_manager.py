@@ -54,6 +54,7 @@ class _DataManager:
         cls, exchange, itype, ticker, figi, name, source
     ) -> list[Instrument]:
         logger.debug(f"{cls.__name__}.find()")
+        logger.info(f":: Find instruments {source} {itype}")
 
         if source == DataSource.MOEX:
             class_ = _MoexData
@@ -68,6 +69,9 @@ class _DataManager:
 
         # find instrument
         id_list = await class_.find(exchange, itype, ticker, figi, name)
+
+        logger.info(f"Finded {len(id_list)} instruments!")
+
         return id_list
 
     # }}}

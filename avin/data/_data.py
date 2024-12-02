@@ -67,7 +67,7 @@ class Data:
         cls,
         instrument: Optional[Instrument] = None,
         data_type: Optional[DataType] = None,
-    ) -> DataInfo:
+    ) -> DataInfo | None:
         logger.debug(f"{cls.__name__}.info()")
 
         check = cls.__checkArgs(

@@ -99,6 +99,7 @@ class _MoexData(_AbstractDataSource):
             figi=figi,
             name=name,
         )
+
         # for INDEXes:
         id_list = list()
         if itype == Instrument.Type.INDEX:
@@ -114,7 +115,7 @@ class _MoexData(_AbstractDataSource):
             tinkoff_info = await Keeper.info(
                 DataSource.TINKOFF,
                 itype=Instrument.Type.fromStr(i["type"]),
-                exchange=Exchange.fromStr(i["exchange"]),
+                exchange=i["exchange"],
                 ticker=i["ticker"],
             )
             if tinkoff_info:
