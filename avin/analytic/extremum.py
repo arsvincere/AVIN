@@ -6,7 +6,9 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-from __future__ import annotations
+import enum
+
+from avin.core import Bar, Chart
 
 
 class Extremum:  # {{{
@@ -376,73 +378,6 @@ class ExtremumList:  # {{{
 
 
 # }}}
-class Indicator:  # {{{
-    @staticmethod  # BEAR_LEN# {{{
-    def BEAR_LEN(chart):
-        assert chart.last is not None
-        i = -1
-        while chart[i] is not None and chart[i].isBear():
-            i -= 1
-        return abs(i + 1)
-
-    # }}}
-    @staticmethod  # BULL_LEN# {{{
-    def BULL_LEN(chart):
-        assert chart.last is not None
-        i = -1
-        while chart[i] is not None and chart[i].isBull():
-            i -= 1
-        return abs(i + 1)
-
-    # }}}
-    @staticmethod  # SPEED# {{{
-    def SPEED(chart, period):
-        assert chart.last is not None
-        if chart[-1] is None or chart[-period - 1] is None:
-            return None
-        first = chart[-period - 1].body.mid()
-        last = chart[-1].body.mid()
-        delta = last - first
-        percent = delta / first * 100
-        speed = percent / period
-        return speed
-
-    # }}}
-    @staticmethod  # MA# {{{
-    def MA(chart, period, parameter="close"):
-        assert chart.last is not None
-        total = 0
-        for i in range(-1, -period - 1, -1):
-            if chart[i] == None:
-                return None
-            total += chart[i].close
-        return total / period
-
-    # }}}
-
-
-# }}}
-
-# def highestHigh(chart: Chart):# {{{
-#     bars = chart.getBars()
-#     bar = max(bars, key=lambda x: x.high)
-#     return bar.high
-# # }}}
-# def lowestLow(chart: Chart):# {{{
-#     bars = chart.getBars()
-#     bar = min(bars, key=lambda x: x.low)
-#     return bar.low
-# # }}}
-# def highestHighToday(chart: Chart):# {{{
-#     bars = chart.getTodayBars()
-#     bar = max(bars, key=lambda x: x.high)
-#     return bar.high
-# # }}}
-# def lowestLowToday(chart: Chart):# {{{
-#     bars = chart.getTodayBars()
-#     bar = min(bars, key=lambda x: x.low)
-#     return bar.low
-# # }}}
 
 
 if __name__ == "__main__":
