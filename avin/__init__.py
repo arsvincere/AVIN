@@ -6,6 +6,7 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
+from avin.analytic import *
 from avin.config import *
 from avin.const import *
 from avin.core import *
