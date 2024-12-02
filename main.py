@@ -17,7 +17,6 @@ from gui import MainWindow, Splash
 
 def main():
     # start app
-    print("Welcome to AVIN Trade System!")
     app = PyQt6.QtWidgets.QApplication(sys.argv)
 
     # show splash
@@ -31,7 +30,6 @@ def main():
     code = app.exec()
 
     # before quit actions
-    print("Goodbuy!")
     sys.exit(code)
 
 
