@@ -14,6 +14,7 @@ from PyQt6.QtCore import Qt, pyqtSlot
 from avin.core import Account, Asset, Broker, Trade, TradeList
 from avin.utils import logger
 from gui.asset import AssetListWidget
+from gui.chart import ChartWidget
 from gui.console import ConsoleWidget
 from gui.custom import Css, DockWidget
 from gui.data import DataWidget
@@ -153,6 +154,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.console_widget = None
 
+        self.chart_widget = None
+
         # self.widget_chart = ChartWidget(self)
         # self.widget_chart.hide()
         # self.widget_report = ReportWidget(self)
@@ -226,9 +229,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ltool.console.triggered.connect(self.__onConsole)
         # self.ltool.config.triggered.connect(self.__onConfig)
         self.ltool.shutdown.triggered.connect(self.__onShutdown)
+
         # right tools
         # self.rtool.broker.triggered.connect(self.__onBroker)
-        # self.rtool.chart.triggered.connect(self.__onChart)
+        self.rtool.chart.triggered.connect(self.__onChart)
         # self.rtool.book.triggered.connect(self.__onBook)
         # self.rtool.tic.triggered.connect(self.__onTic)
         # self.rtool.order.triggered.connect(self.__onOrder)
@@ -247,10 +251,14 @@ class MainWindow(QtWidgets.QMainWindow):
     def __initUI(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__initUI()")
 
-        # self.ltool.data.trigger()
-        # self.ltool.chart.trigger()
-        # self.ltool.test.trigger()
-        # self.ltool.console.trigger()
+        self.ltool.asset.trigger()
+        self.ltool.console.trigger()
+
+        self.rtool.chart.trigger()
+
+        asset = self.asset_widget.currentAsset()
+        print(asset)
+
         # self.rtool.broker.trigger()
         # self.rtool.account.trigger()
         # self.rtool.order.trigger()
@@ -268,7 +276,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.data_dock_widget = DockWidget("Data", self.data_widget, self)
             area = Qt.DockWidgetArea.LeftDockWidgetArea
             self.addDockWidget(area, self.data_dock_widget)
-            self.data_dock_widget.setFloating(True)
+            # self.data_dock_widget.setFloating(True)
             return
 
     # }}}
@@ -283,7 +291,7 @@ class MainWindow(QtWidgets.QMainWindow):
             )
             area = Qt.DockWidgetArea.LeftDockWidgetArea
             self.addDockWidget(area, self.asset_dock_widget)
-            self.asset_dock_widget.setFloating(True)
+            # self.asset_dock_widget.setFloating(True)
             return
 
     # }}}
@@ -298,7 +306,7 @@ class MainWindow(QtWidgets.QMainWindow):
             )
             area = Qt.DockWidgetArea.RightDockWidgetArea
             self.addDockWidget(area, self.strategy_dock_widget)
-            self.strategy_dock_widget.setFloating(True)
+            # self.strategy_dock_widget.setFloating(True)
             return
 
     # }}}
@@ -313,7 +321,7 @@ class MainWindow(QtWidgets.QMainWindow):
             )
             area = Qt.DockWidgetArea.RightDockWidgetArea
             self.addDockWidget(area, self.tester_dock_widget)
-            self.tester_dock_widget.setFloating(True)
+            # self.tester_dock_widget.setFloating(True)
             return
 
     # }}}
@@ -345,18 +353,22 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # }}}
 
+    @pyqtSlot()  # __onChart  # {{{
+    def __onChart(self):
+        logger.debug(f"{self.__class__.__name__}.__onChart()")
+
+        if self.chart_widget is None:
+            self.chart_widget = ChartWidget(self)
+
+        self.setCentralWidget(self.chart_widget)
+
+    # }}}
+
     @pyqtSlot()  # __onBroker  # {{{
     def __onBroker(self):
         logger.debug(f"{self.__class__.__name__}.__onBroker()")
         state = self.widget_broker.isVisible()
         self.widget_broker.setVisible(not state)
-
-    # }}}
-    @pyqtSlot()  # __onChart  # {{{
-    def __onChart(self):
-        logger.debug(f"{self.__class__.__name__}.__onChart()")
-        state = self.widget_chart.isVisible()
-        self.widget_chart.setVisible(not state)
 
     # }}}
     @pyqtSlot()  # __onAccount  # {{{

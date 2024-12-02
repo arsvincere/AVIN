@@ -40,10 +40,10 @@ class LeftToolBar(QtWidgets.QToolBar):  # {{{
 
         self.data = QtGui.QAction(Icon.DATA, "Data", self)
         self.asset = QtGui.QAction(Icon.LIST, "Asset", self)
-        self.filter = QtGui.QAction(Icon.CHART, "Filter", self)
-        self.analytic = QtGui.QAction(Icon.CHART, "Analytic", self)
+        self.note = QtGui.QAction(Icon.NOTE, "Note", self)
+        self.analytic = QtGui.QAction(Icon.ANALYTIC, "Analytic", self)
+        self.filter = QtGui.QAction(Icon.FILTER, "Filter", self)
         self.strategy = QtGui.QAction(Icon.STRATEGY, "Strategy", self)
-        self.note = QtGui.QAction(Icon.NO, "Note", self)
         self.tester = QtGui.QAction(Icon.TESTER, "Tester", self)
         self.summary = QtGui.QAction(Icon.SUMMARY, "Summary", self)
 
@@ -53,10 +53,10 @@ class LeftToolBar(QtWidgets.QToolBar):  # {{{
 
         self.addAction(self.data)
         self.addAction(self.asset)
-        self.addAction(self.filter)
-        self.addAction(self.analytic)
-        self.addAction(self.strategy)
         self.addAction(self.note)
+        self.addAction(self.analytic)
+        self.addAction(self.filter)
+        self.addAction(self.strategy)
         self.addAction(self.tester)
         self.addAction(self.summary)
 
@@ -122,7 +122,7 @@ class RightToolBar(QtWidgets.QToolBar):  # {{{
         self.tic = QtGui.QAction(Icon.CHART, "Tic", self)
         self.order = QtGui.QAction(Icon.ORDER, "Order", self)
         self.account = QtGui.QAction(Icon.ACCOUNT, "Account", self)
-        self.trader = QtGui.QAction(Icon.TXT, "Trader", self)
+        self.trader = QtGui.QAction(Icon.TRADER, "Trader", self)
         self.report = QtGui.QAction(Icon.KEEPER, "Report", self)
 
         self.informer = QtGui.QAction(Icon.NO, "Informer", self)
