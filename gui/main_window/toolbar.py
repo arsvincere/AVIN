@@ -11,7 +11,7 @@ import sys
 from PyQt6 import QtCore, QtGui, QtWidgets
 
 from avin.utils import logger
-from gui.custom import Css, Icon
+from gui.custom import Css, Icon, Spacer
 
 
 class LeftToolBar(QtWidgets.QToolBar):  # {{{
@@ -46,7 +46,6 @@ class LeftToolBar(QtWidgets.QToolBar):  # {{{
         self.strategy = QtGui.QAction(Icon.STRATEGY, "Strategy", self)
         self.tester = QtGui.QAction(Icon.TESTER, "Tester", self)
         self.summary = QtGui.QAction(Icon.SUMMARY, "Summary", self)
-
         self.console = QtGui.QAction(Icon.CONSOLE, "Console", self)
         self.config = QtGui.QAction(Icon.CONFIG, "Config", self)
         self.shutdown = QtGui.QAction(Icon.SHUTDOWN, "Shutdown", self)
@@ -59,8 +58,7 @@ class LeftToolBar(QtWidgets.QToolBar):  # {{{
         self.addAction(self.strategy)
         self.addAction(self.tester)
         self.addAction(self.summary)
-
-        # self.addWidget(Spacer(parent=self))
+        self.addWidget(Spacer())
         self.addAction(self.console)
         self.addAction(self.config)
         self.addAction(self.shutdown)
@@ -70,9 +68,10 @@ class LeftToolBar(QtWidgets.QToolBar):  # {{{
         logger.debug(f"{self.__class__.__name__}.__configButtons()")
 
         for action in self.actions():
-            btn = self.widgetForAction(action)
-            btn.setCheckable(True)
-            btn.setStyleSheet(Css.TOOL_BUTTON)
+            if action.__class__.__name__ == "QAction":
+                btn = self.widgetForAction(action)
+                btn.setCheckable(True)
+                btn.setStyleSheet(Css.TOOL_BUTTON)
 
     # }}}
     def __connect(self):  # {{{
@@ -124,7 +123,6 @@ class RightToolBar(QtWidgets.QToolBar):  # {{{
         self.account = QtGui.QAction(Icon.ACCOUNT, "Account", self)
         self.trader = QtGui.QAction(Icon.TRADER, "Trader", self)
         self.report = QtGui.QAction(Icon.KEEPER, "Report", self)
-
         self.informer = QtGui.QAction(Icon.NO, "Informer", self)
 
         self.addAction(self.broker)
@@ -135,7 +133,7 @@ class RightToolBar(QtWidgets.QToolBar):  # {{{
         self.addAction(self.account)
         self.addAction(self.trader)
         self.addAction(self.report)
-
+        self.addWidget(Spacer())
         self.addAction(self.informer)
 
     # }}}
@@ -143,9 +141,10 @@ class RightToolBar(QtWidgets.QToolBar):  # {{{
         logger.debug(f"{self.__class__.__name__}.__configButtons()")
 
         for action in self.actions():
-            btn = self.widgetForAction(action)
-            btn.setCheckable(True)
-            btn.setStyleSheet(Css.TOOL_BUTTON)
+            if action.__class__.__name__ == "QAction":
+                btn = self.widgetForAction(action)
+                btn.setCheckable(True)
+                btn.setStyleSheet(Css.TOOL_BUTTON)
 
     # }}}
     def __connect(self):  # {{{
