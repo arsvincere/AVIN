@@ -31,14 +31,15 @@ class Icon:
     SHUTDOWN = QtGui.QIcon(Cmd.path(Res.ICON, "left", "shutdown.svg"))
 
     # Right panel
-    BROKER = QtGui.QIcon(Cmd.path(Res.ICON, "broker.svg"))
-    CHART = QtGui.QIcon(Cmd.path(Res.ICON, "chart.svg"))
-    BABLO = QtGui.QIcon(Cmd.path(Res.ICON, "BABLO.svg"))
-    ACCOUNT = QtGui.QIcon(Cmd.path(Res.ICON, "account.svg"))
-    ORDER = QtGui.QIcon(Cmd.path(Res.ICON, "order.svg"))
-    SANDBOX = QtGui.QIcon(Cmd.path(Res.ICON, "sandbox.svg"))
-    TRADER = QtGui.QIcon(Cmd.path(Res.ICON, "trader.svg"))
-    KEEPER = QtGui.QIcon(Cmd.path(Res.ICON, "keeper.svg"))
+    BROKER = QtGui.QIcon(Cmd.path(Res.ICON, "right", "broker.svg"))
+    CHART = QtGui.QIcon(Cmd.path(Res.ICON, "right", "chart.svg"))
+    BOOK = QtGui.QIcon(Cmd.path(Res.ICON, "right", "book.svg"))
+    TIC = QtGui.QIcon(Cmd.path(Res.ICON, "right", "tic.svg"))
+    ORDER = QtGui.QIcon(Cmd.path(Res.ICON, "right", "order.svg"))
+    ACCOUNT = QtGui.QIcon(Cmd.path(Res.ICON, "right", "account.svg"))
+    TRADER = QtGui.QIcon(Cmd.path(Res.ICON, "right", "trader.svg"))
+    REPORT = QtGui.QIcon(Cmd.path(Res.ICON, "right", "report.svg"))
+    INFORMER = QtGui.QIcon(Cmd.path(Res.ICON, "right", "informer.svg"))
 
     # Buttons
     ADD = QtGui.QIcon(Cmd.path(Res.ICON, "add.svg"))

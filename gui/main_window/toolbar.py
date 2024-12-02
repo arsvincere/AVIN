@@ -117,13 +117,13 @@ class RightToolBar(QtWidgets.QToolBar):  # {{{
 
         self.broker = QtGui.QAction(Icon.BROKER, "Broker", self)
         self.chart = QtGui.QAction(Icon.CHART, "Chart", self)
-        self.book = QtGui.QAction(Icon.CHART, "Book", self)
-        self.tic = QtGui.QAction(Icon.CHART, "Tic", self)
+        self.book = QtGui.QAction(Icon.BOOK, "Book", self)
+        self.tic = QtGui.QAction(Icon.TIC, "Tic", self)
         self.order = QtGui.QAction(Icon.ORDER, "Order", self)
         self.account = QtGui.QAction(Icon.ACCOUNT, "Account", self)
         self.trader = QtGui.QAction(Icon.TRADER, "Trader", self)
-        self.report = QtGui.QAction(Icon.KEEPER, "Report", self)
-        self.informer = QtGui.QAction(Icon.NO, "Informer", self)
+        self.report = QtGui.QAction(Icon.REPORT, "Report", self)
+        self.informer = QtGui.QAction(Icon.INFORMER, "Informer", self)
 
         self.addAction(self.broker)
         self.addAction(self.chart)
