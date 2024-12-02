@@ -9,10 +9,12 @@
 import asyncio
 
 from PyQt6 import QtCore
+from PyQt6.QtCore import Qt
 
-from avin.data import Data, DataInfo, Instrument
+from avin.data import Data, DataInfo, DataType, Instrument
 from avin.utils import logger
 from gui.custom import awaitQThread
+from gui.data.item import DownloadItem
 
 
 class Thread:  # {{{
@@ -143,8 +145,11 @@ class _TFirstDate(QtCore.QThread):  # {{{
         logger.debug(f"{self.__class__.__name__}.__afirst()")
         logger.info(":: Receiving first date")
 
+        # alias
+        CHECKED = Qt.CheckState.Checked
+
         for i in self.__tree:
-            if i.checkState(_Item.Column.Ticker) != Qt.CheckState.Checked:
+            if i.checkState(DownloadItem.Column.Ticker) != CHECKED:
                 continue
 
             # receive first 1M datetime
@@ -153,7 +158,7 @@ class _TFirstDate(QtCore.QThread):  # {{{
             )
             if dt is not None:
                 dt = dt.strftime("%Y-%m-%d")
-                i.setText(_Item.Column.First_1M, dt)
+                i.setText(DownloadItem.Column.First_1M, dt)
                 logger.info(
                     f"  - received first 1M date for {i.instrument} -> {dt}"
                 )
@@ -164,7 +169,7 @@ class _TFirstDate(QtCore.QThread):  # {{{
             )
             if dt is not None:
                 dt = dt.strftime("%Y-%m-%d")
-                i.setText(_Item.Column.First_D, dt)
+                i.setText(DownloadItem.Column.First_D, dt)
                 logger.info(
                     f"  - received first D date for {i.instrument} -> {dt}"
                 )
