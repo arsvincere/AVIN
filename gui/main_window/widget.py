@@ -171,49 +171,6 @@ class MainWindow(QtWidgets.QMainWindow):
         # self.widget_general.hide()
 
     # }}}
-    def __createSplitter(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createSplitter()")
-
-        # left
-        self.splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
-        self.splitter.addWidget(self.widget_data)
-        self.splitter.addWidget(self.widget_asset)
-        self.splitter.addWidget(self.widget_strategy)
-        self.splitter.addWidget(self.widget_tester)
-        # center
-        self.vsplit = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
-        self.vsplit.addWidget(self.widget_chart)
-        self.vsplit.addWidget(self.widget_account)
-        self.vsplit.addWidget(self.widget_report)
-        self.vsplit.addWidget(self.widget_console)
-        self.splitter.addWidget(self.vsplit)
-        # right
-        self.splitter.addWidget(self.widget_general)
-        self.splitter.addWidget(self.widget_order)
-        self.splitter.addWidget(self.widget_broker)
-
-        self.setCentralWidget(self.splitter)
-        self.splitter.setContentsMargins(5, 5, 5, 5)
-        self.splitter.setHandleWidth(10)
-        self.vsplit.setHandleWidth(10)
-
-    # }}}
-    def __setWidgetSize(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__setWidgetSize()")
-
-        self.splitter.setStretchFactor(0, 10)  # data
-        self.splitter.setStretchFactor(1, 5)  # asset
-        self.splitter.setStretchFactor(2, 5)  # strategy
-        self.splitter.setStretchFactor(3, 10)  # test
-        self.splitter.setStretchFactor(4, 13)  # central widgets
-        self.vsplit.setStretchFactor(0, 10)  # chart
-        self.vsplit.setStretchFactor(1, 2)  # account
-        self.vsplit.setStretchFactor(2, 1)  # report
-        self.vsplit.setStretchFactor(3, 1)  # console
-        self.splitter.setStretchFactor(5, 5)  # order
-        self.splitter.setStretchFactor(6, 5)  # broker
-
-    # }}}
     def __connect(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__connect()")
 
@@ -227,7 +184,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ltool.tester.triggered.connect(self.__onTester)
         # self.ltool.summary.triggered.connect(self.__onSummary)
         self.ltool.console.triggered.connect(self.__onConsole)
-        # self.ltool.config.triggered.connect(self.__onConfig)
+        self.ltool.config.triggered.connect(self.__onConfig)
         self.ltool.shutdown.triggered.connect(self.__onShutdown)
 
         # right tools
@@ -251,13 +208,14 @@ class MainWindow(QtWidgets.QMainWindow):
     def __initUI(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__initUI()")
 
-        self.ltool.asset.trigger()
+        self.ltool.data.trigger()
+        # self.ltool.asset.trigger()
         self.ltool.console.trigger()
 
         self.rtool.chart.trigger()
 
-        asset = self.asset_widget.currentAsset()
-        print(asset)
+        # asset = self.asset_widget.currentAsset()
+        # print(asset)
 
         # self.rtool.broker.trigger()
         # self.rtool.account.trigger()
@@ -278,6 +236,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.addDockWidget(area, self.data_dock_widget)
             # self.data_dock_widget.setFloating(True)
             return
+        else:
+            self.removeDockWidget(self.data_dock_widget)
+            print(self.dockWidgetArea(self.data_dock_widget))
 
     # }}}
     @pyqtSlot()  # __onAsset  # {{{
@@ -343,6 +304,11 @@ class MainWindow(QtWidgets.QMainWindow):
             area = Qt.DockWidgetArea.BottomDockWidgetArea
             self.addDockWidget(area, self.console_dock_widget)
             return
+
+    # }}}
+    @pyqtSlot()  # __onConfig  # {{{
+    def __onConfig(self):
+        logger.debug(f"{self.__class__.__name__}.__onConfig()")
 
     # }}}
     @pyqtSlot()  # __onShutdown  # {{{
