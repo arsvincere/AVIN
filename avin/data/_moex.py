@@ -1,6 +1,6 @@
 #!/usr/bin/env  python3
 # ============================================================================
-# URL:          http://arsvincere.com
+# URL:          http://arsvincjre.com
 # AUTHOR:       Alex Avin
 # E-MAIL:       mr.alexavin@gmail.com
 # LICENSE:      GNU GPLv3
@@ -8,8 +8,10 @@
 
 from __future__ import annotations
 
+import time as timer
 from datetime import UTC, date, datetime, time, timedelta
 
+import httpx
 import moexalgo
 
 from avin.config import Usr
@@ -23,6 +25,8 @@ from avin.data.exchange import Exchange
 from avin.data.instrument import Instrument
 from avin.keeper import Keeper
 from avin.utils import Cmd, logger
+
+# TODO: authorization - тоже ошибки соединения надо обработать
 
 
 class _MoexData(_AbstractDataSource):
@@ -395,7 +399,8 @@ class _MoexData(_AbstractDataSource):
         else:
             method = cls.__requestCandlesBigTimeFrame
 
-        return method(instrument, data_type, begin, end)
+        candles = method(instrument, data_type, begin, end)
+        return candles
 
     # }}}
     @classmethod  # __requestCandlesBigTimeFrame# {{{
@@ -415,16 +420,18 @@ class _MoexData(_AbstractDataSource):
 
         while current < end:
             logger.info(
-                f"  - request {instrument.ticker}-{data_type.value} {current.date()}"
+                f"  - request {instrument.ticker}-{data_type.value} "
+                f"{current.date()}"
             )
-            candles = asset.candles(
+            candles_generator = asset.candles(
                 start=current,
                 end=current.replace(year=current.year + 1),
                 period=period,
                 use_dataframe=False,
             )
-            for i in candles:
-                all_candles.append(i)
+            candles = cls.__tryRequestCandless(candles_generator)
+            all_candles += candles
+
             current = current.replace(year=current.year + 1)
 
         # Fucking MOEX returns candles in closed interval [begin, end]
@@ -454,18 +461,45 @@ class _MoexData(_AbstractDataSource):
                 f"  - request {instrument.ticker}-{data_type.value} "
                 f"from {current.date()}"
             )
-            candles = asset.candles(
+            candles_generator = asset.candles(
                 start=current,
                 end=datetime.combine(current.date(), time(23, 59)),
                 period=period,
                 use_dataframe=False,
             )
-            for i in candles:
-                all_candles.append(i)
-            current = datetime.combine(current.date() + ONE_DAY, time(00, 00))
+            candles = cls.__tryRequestCandless(candles_generator)
+            all_candles += candles
+
+            current = datetime.combine(current.date() + ONE_DAY, time(0, 0))
+
         return all_candles
 
     # }}}
+    @classmethod  # __tryRequestCandless
+    def __tryRequestCandless(cls, candles_generator):
+        logger.debug(f"{cls.__name__}.__tryRequestCandles()")
+
+        candles = list()
+        for n in range(2, 6):
+            try:
+                for i in candles_generator:
+                    candles.append(i)
+            except httpx.ConnectError as err:
+                logger.error(
+                    f"Connection error: '{err}', try {n} after 3 sec"
+                )
+                timer.sleep(3)
+            except httpx.ConnectTimeout as err:
+                logger.error(
+                    f"Connection timeout: '{err}', try {n} after 3 sec"
+                )
+                timer.sleep(3)
+            else:
+                return candles
+
+        logger.critical("Can't download data")
+        exit(5)
+
     @classmethod  # __getHistoricalCandles# {{{
     def __getHistoricalCandles(
         cls,
