@@ -6,7 +6,6 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-import asyncio
 import enum
 import sys
 from datetime import date, datetime
@@ -16,7 +15,7 @@ from PyQt6.QtCore import Qt
 
 from avin.const import Res
 from avin.core import TimeFrame, TimeFrameList
-from avin.data import Data, DataSource, DataType, Instrument
+from avin.data import DataSource, DataType, Instrument
 from avin.data._moex import _MoexData
 from avin.utils import Cmd, logger
 from gui.custom import (
@@ -32,6 +31,7 @@ from gui.custom import (
     ToolButton,
     YearWidget,
 )
+from gui.data.thread import Thread
 
 
 class DataDownloadDialog(QtWidgets.QDialog):  # {{{
@@ -73,8 +73,10 @@ class DataDownloadDialog(QtWidgets.QDialog):  # {{{
     # }}}
     def __config(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__config()")
+
         self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
         self.setStyleSheet(Css.DIALOG)
+        self.setWindowTitle("AVIN")
 
     # }}}
     def __connect(self) -> None:  # {{{
@@ -84,7 +86,7 @@ class DataDownloadDialog(QtWidgets.QDialog):  # {{{
         self.toolbar.sourceChanged.connect(self.__updateTree)
         self.right_panel.request_date.clicked.connect(self.__onFirstDate)
         self.right_panel.download_btn.clicked.connect(self.__onDownload)
-        self.right_panel.cancel_btn.clicked.connect(self.__onCancel)
+        self.right_panel.cancel_btn.clicked.connect(self.reject)
 
     # }}}
     def __initUI(self) -> None:  # {{{
@@ -107,22 +109,10 @@ class DataDownloadDialog(QtWidgets.QDialog):  # {{{
     def __updateTree(self) -> None:
         logger.debug(f"{self.__class__.__name__}.__updateTree()")
 
-        if self.__isBusy():
-            return
-
-        # find instruments
         source = self.toolbar.currentSource()
         itype = self.toolbar.currentType()
-        self.__thread = _TFind(source, itype, parent=self)
-        self.__thread.finded.connect(self.__onFinded)
-        self.__thread.finished.connect(self.__onThreadFinished)
-        self.__thread.start()
-        #
 
-    # }}}
-    @QtCore.pyqtSlot(list)  # __onFinded  # {{{
-    def __onFinded(self, instruments: list[Instrument]):
-        logger.debug(f"{self.__class__.__name__}.__onFinded()")
+        instruments = Thread.find(source, itype)
 
         self.tree.setInstrumentsList(instruments)
 
@@ -131,22 +121,15 @@ class DataDownloadDialog(QtWidgets.QDialog):  # {{{
     def __onFirstDate(self):
         logger.debug(f"{self.__class__.__name__}.__onFirstDate()")
 
-        if self.__isBusy():
-            return
-
-        # receive first datetime
         source = self.toolbar.currentSource()
-        self.__thread = _TFirstDate(source, self.tree, parent=self)
-        self.__thread.finished.connect(self.__onThreadFinished)
-        self.__thread.start()
+
+        # receive first datetime & update tree
+        Thread.firstDateTime(source, self.tree)
 
     # }}}
     @QtCore.pyqtSlot()  # __onDownload  # {{{
     def __onDownload(self):
         logger.debug(f"{self.__class__.__name__}.__onDownload()")
-
-        if self.__isBusy():
-            return
 
         source = self.toolbar.currentSource()
         instruments = self.tree.selectedInstruments()
@@ -154,144 +137,7 @@ class DataDownloadDialog(QtWidgets.QDialog):  # {{{
         begin = self.right_panel.begin()
         end = self.right_panel.end()
 
-        self.__thread = _TDownload(
-            source, instruments, timeframes, begin, end, parent=self
-        )
-        self.__thread.finished.connect(self.__onThreadFinished)
-        self.__thread.start()
-        # self.download_btn.setEnabled(False)
-
-    # }}}
-    @QtCore.pyqtSlot()  # __onCancel  # {{{
-    def __onCancel(self):
-        logger.debug(f"{self.__class__.__name__}.__onCancel()")
-
-        self.reject()
-
-    # }}}
-    @QtCore.pyqtSlot()  # __onThreadFinished  # {{{
-    def __onThreadFinished(self):
-        logger.debug(f"{self.__class__.__name__}.__onThreadFinished()")
-
-        del self.__thread
-        self.__thread = None
-
-    # }}}
-
-
-# }}}
-
-
-class _TFind(QtCore.QThread):  # {{{
-    finded = QtCore.pyqtSignal(list)
-
-    def __init__(  # {{{
-        self, source, itype, parent=None
-    ):
-        logger.debug(f"{self.__class__.__name__}.__init__()")
-        QtCore.QThread.__init__(self, parent)
-
-        self.__source = source
-        self.__itype = itype
-
-    # }}}
-    def run(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.run()")
-        asyncio.run(self.__afind())
-
-    # }}}
-    async def __afind(self):  # {{{
-        logger.info(f":: Find instruments {self.__source} {self.__itype}")
-
-        instruments = await Data.find(
-            source=self.__source, itype=self.__itype
-        )
-        self.finded.emit(instruments)
-        logger.info(f"Finded {len(instruments)} instruments!")
-
-    # }}}
-
-
-# }}}
-class _TFirstDate(QtCore.QThread):  # {{{
-    def __init__(self, source, tree, parent=None):  # {{{
-        QtCore.QThread.__init__(self, parent)
-        self.__source = source
-        self.__tree = tree
-
-    # }}}
-    def run(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.run()")
-        asyncio.run(self.__afirst())
-
-    # }}}
-    async def __afirst(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__afirst()")
-        logger.info(":: Receiving first date")
-
-        for i in self.__tree:
-            if i.checkState(_Item.Column.Ticker) != Qt.CheckState.Checked:
-                continue
-
-            # receive first 1M datetime
-            dt = await Data.firstDateTime(
-                self.__source, i.instrument, DataType.BAR_1M
-            )
-            if dt is not None:
-                dt = dt.strftime("%Y-%m-%d")
-                i.setText(_Item.Column.First_1M, dt)
-                logger.info(
-                    f"  - received first 1M date for {i.instrument} -> {dt}"
-                )
-
-            # receive first D datetime
-            dt = await Data.firstDateTime(
-                self.__source, i.instrument, DataType.BAR_D
-            )
-            if dt is not None:
-                dt = dt.strftime("%Y-%m-%d")
-                i.setText(_Item.Column.First_D, dt)
-                logger.info(
-                    f"  - received first D date for {i.instrument} -> {dt}"
-                )
-
-    # }}}
-
-
-# }}}
-class _TDownload(QtCore.QThread):  # {{{
-    def __init__(  # {{{
-        self, source, instruments, timeframes, begin, end, parent=None
-    ):
-        logger.debug(f"{self.__class__.__name__}.__init__()")
-        QtCore.QThread.__init__(self, parent)
-
-        self.__source = source
-        self.__instruments = instruments
-        self.__timeframes = timeframes
-        self.__begin = begin
-        self.__end = end
-
-    # }}}
-    def run(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.run()")
-        asyncio.run(self.__adownload())
-
-    # }}}
-    async def __adownload(self):  # {{{
-        logger.info(":: Start download data")
-
-        for instrument in self.__instruments:
-            for timeframe in self.__timeframes:
-                data_type = timeframe.toDataType()
-                year = self.__begin
-                while year <= self.__end:
-                    await Data.download(
-                        self.__source, instrument, data_type, year
-                    )
-                    year += 1
-
-        logger.info("Download complete!")
+        Thread.download(source, instruments, timeframes, begin, end)
 
     # }}}
 
@@ -302,7 +148,7 @@ class _TDownload(QtCore.QThread):  # {{{
 class _SourceMenu(Menu):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init()")
-        Menu.__init__(self, parent)
+        Menu.__init__(self, parent=parent)
         self.__createActions()
 
     # }}}
@@ -323,7 +169,7 @@ class _SourceMenu(Menu):  # {{{
 class _InstrumentTypeMenu(Menu):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init()")
-        Menu.__init__(self, parent)
+        Menu.__init__(self, parent=parent)
         self.__createActions()
 
     # }}}
@@ -396,7 +242,7 @@ class _ToolBar(QtWidgets.QToolBar):  # {{{
     def __createMenus(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createMenus()")
 
-        self.source_menu = _SourceMenu(self)
+        self.source_menu = _SourceMenu(parent=self)
         self.source_btn.setMenu(self.source_menu)
         self.source_btn.setPopupMode(
             QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup
