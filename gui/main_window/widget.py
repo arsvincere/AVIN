@@ -17,8 +17,8 @@ from avin.core import Account, Asset, Broker, Trade, TradeList
 from avin.utils import Cmd, logger
 from gui.asset import AssetListDockWidget
 from gui.chart import ChartWidget
-from gui.console import ConsoleWidget
-from gui.custom import Css, DockWidget
+from gui.console import ConsoleDockWidget
+from gui.custom import Css
 from gui.data import DataDockWidget
 from gui.main_window.toolbar import LeftToolBar, RightToolBar
 from gui.strategy import StrategyDockWidget
@@ -168,7 +168,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # self.ltool.filter.triggered.connect(self.__onFilter)
         # self.ltool.analytic.triggered.connect(self.__onAnalytic)
         self.ltool.strategy.triggered.connect(self.__onStrategy)
-        # self.ltool.note.triggered.connect(self.__onNote)
+        self.ltool.note.triggered.connect(self.__onNote)
         self.ltool.tester.triggered.connect(self.__onTester)
         # self.ltool.summary.triggered.connect(self.__onSummary)
         self.ltool.console.triggered.connect(self.__onConsole)
@@ -241,6 +241,23 @@ class MainWindow(QtWidgets.QMainWindow):
         self.asset_widget.setVisible(not state)
 
     # }}}
+    @pyqtSlot()  # __onNote  # {{{
+    def __onNote(self):
+        logger.debug(f"{self.__class__.__name__}.__onNote()")
+
+        command = (
+            Usr.TERMINAL,
+            *Usr.OPT,
+            Usr.EXEC,
+            Usr.EDITOR,
+            Usr.NOTE,
+        )
+        Cmd.subprocess(command)
+
+        btn = self.ltool.widgetForAction(self.ltool.note)
+        btn.setChecked(False)
+
+    # }}}
     @pyqtSlot()  # __onStrategy  # {{{
     def __onStrategy(self):
         logger.debug(f"{self.__class__.__name__}.__onStrategy()")
@@ -279,14 +296,13 @@ class MainWindow(QtWidgets.QMainWindow):
         logger.debug(f"{self.__class__.__name__}.__onConsole()")
 
         if self.console_widget is None:
-            self.console_widget = ConsoleWidget(self)
-            self.console_dock_widget = DockWidget(
-                "Console", self.console_widget, self
-            )
-
+            self.console_widget = ConsoleDockWidget(self)
             area = Qt.DockWidgetArea.BottomDockWidgetArea
-            self.addDockWidget(area, self.console_dock_widget)
+            self.addDockWidget(area, self.console_widget)
             return
+
+        state = self.strategy_widget.isVisible()
+        self.strategy_widget.setVisible(not state)
 
     # }}}
     @pyqtSlot()  # __onConfig  # {{{

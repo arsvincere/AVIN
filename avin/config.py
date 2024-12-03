@@ -19,6 +19,9 @@ class Usr:
     FILTER = os.path.join(Dir.USR, "filter")
     STRATEGY = os.path.join(Dir.USR, "strategy")
 
+    # User notes
+    NOTE = os.path.join(Dir.USR, "note.un")
+
     # Your local timeshift from UTC+0
     # set it if you want see time with offset-aware
     # for example for Moscow +3 hours, set 0 if you want see default UTC time
