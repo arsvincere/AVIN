@@ -9,6 +9,7 @@
 import sys
 
 from PyQt6 import QtCore, QtWidgets
+from PyQt6.QtCore import Qt
 
 from avin.utils import logger
 from gui.custom import Css
@@ -97,6 +98,29 @@ class DataWidget(QtWidgets.QWidget):
         Thread.update(data_info)
 
     # }}}
+
+
+class DataDockWidget(QtWidgets.QDockWidget):
+    def __init__(self, parent=None):  # {{{
+        QtWidgets.QDockWidget.__init__(self, "Data", parent)
+
+        data_widget = DataWidget(self)
+        self.setWidget(data_widget)
+        self.setStyleSheet(Css.DOCK_WIDGET)
+
+        self.setAllowedAreas(
+            Qt.DockWidgetArea.LeftDockWidgetArea
+            | Qt.DockWidgetArea.RightDockWidgetArea
+        )
+
+        feat = QtWidgets.QDockWidget.DockWidgetFeature
+        self.setFeatures(
+            feat.DockWidgetMovable
+            | feat.DockWidgetClosable
+            | feat.DockWidgetFloatable
+        )
+
+        # }}}
 
 
 if __name__ == "__main__":
