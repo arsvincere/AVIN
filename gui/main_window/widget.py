@@ -11,13 +11,15 @@ import sys
 from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import Qt, pyqtSlot
 
+from avin.config import Usr
+from avin.const import Dir
 from avin.core import Account, Asset, Broker, Trade, TradeList
-from avin.utils import logger
+from avin.utils import Cmd, logger
 from gui.asset import AssetListWidget
 from gui.chart import ChartWidget
 from gui.console import ConsoleWidget
 from gui.custom import Css, DockWidget
-from gui.data import DataWidget
+from gui.data import DataDockWidget
 from gui.main_window.toolbar import LeftToolBar, RightToolBar
 from gui.strategy import StrategyWidget
 
@@ -151,24 +153,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.asset_widget = None
         self.strategy_widget = None
         self.tester_widget = None
-
         self.console_widget = None
 
         self.chart_widget = None
-
-        # self.widget_chart = ChartWidget(self)
-        # self.widget_chart.hide()
-        # self.widget_report = ReportWidget(self)
-        # self.widget_report.hide()
-        # self.widget_account = AccountWidget(self)
-        # self.widget_account.hide()
-
-        # self.widget_broker = BrokerWidget(self)
-        # self.widget_broker.hide()
-        # self.widget_order = OrderDialog(self)
-        # self.widget_order.hide()
-        # self.widget_general = GeneralWidget(self)
-        # self.widget_general.hide()
 
     # }}}
     def __connect(self):  # {{{
@@ -230,15 +217,15 @@ class MainWindow(QtWidgets.QMainWindow):
         logger.debug(f"{self.__class__.__name__}.__onData()")
 
         if self.data_widget is None:
-            self.data_widget = DataWidget(self)
-            self.data_dock_widget = DockWidget("Data", self.data_widget, self)
+            self.data_widget = DataDockWidget(self)
             area = Qt.DockWidgetArea.LeftDockWidgetArea
-            self.addDockWidget(area, self.data_dock_widget)
-            # self.data_dock_widget.setFloating(True)
+            self.addDockWidget(area, self.data_widget)
             return
+
+        if self.data_widget.isVisible():
+            self.data_widget.hide()
         else:
-            self.removeDockWidget(self.data_dock_widget)
-            print(self.dockWidgetArea(self.data_dock_widget))
+            self.data_widget.show()
 
     # }}}
     @pyqtSlot()  # __onAsset  # {{{
@@ -309,6 +296,19 @@ class MainWindow(QtWidgets.QMainWindow):
     @pyqtSlot()  # __onConfig  # {{{
     def __onConfig(self):
         logger.debug(f"{self.__class__.__name__}.__onConfig()")
+
+        config_path = Cmd.path(Dir.LIB, "config.py")
+        command = (
+            Usr.TERMINAL,
+            *Usr.OPT,
+            Usr.EXEC,
+            Usr.EDITOR,
+            config_path,
+        )
+        Cmd.subprocess(command)
+
+        btn = self.ltool.widgetForAction(self.ltool.config)
+        btn.setChecked(False)
 
     # }}}
     @pyqtSlot()  # __onShutdown  # {{{
