@@ -6,6 +6,9 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-from gui.tester.widget import TesterWidget
+from gui.tester.widget import TesterDockWidget, TesterWidget
 
-__all__ = ("TesterWidget",)
+__all__ = (
+    "TesterWidget",
+    "TesterDockWidget",
+)

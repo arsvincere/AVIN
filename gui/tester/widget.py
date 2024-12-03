@@ -9,6 +9,7 @@
 import sys
 
 from PyQt6 import QtCore, QtWidgets
+from PyQt6.QtCore import Qt
 
 from avin.core import Trade, TradeList
 from avin.tester import Test
@@ -17,6 +18,30 @@ from gui.custom import Css
 from gui.tester.tree import TestTree, TradeTree
 
 
+class TesterDockWidget(QtWidgets.QDockWidget):  # {{{
+    def __init__(self, parent=None):  # {{{
+        QtWidgets.QDockWidget.__init__(self, "Tester", parent)
+
+        widget = TesterWidget(self)
+        self.setWidget(widget)
+        self.setStyleSheet(Css.DOCK_WIDGET)
+
+        self.setAllowedAreas(
+            Qt.DockWidgetArea.LeftDockWidgetArea
+            | Qt.DockWidgetArea.RightDockWidgetArea
+        )
+
+        feat = QtWidgets.QDockWidget.DockWidgetFeature
+        self.setFeatures(
+            feat.DockWidgetMovable
+            | feat.DockWidgetClosable
+            | feat.DockWidgetFloatable
+        )
+
+        # }}}
+
+
+# }}}
 class TesterWidget(QtWidgets.QWidget):  # {{{
     testChanged = QtCore.pyqtSignal(Test)
     tlistChanged = QtCore.pyqtSignal(TradeList)
