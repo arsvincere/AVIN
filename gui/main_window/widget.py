@@ -15,7 +15,7 @@ from avin.config import Usr
 from avin.const import Dir
 from avin.core import Account, Asset, Broker, Trade, TradeList
 from avin.utils import Cmd, logger
-from gui.asset import AssetListWidget
+from gui.asset import AssetListDockWidget
 from gui.chart import ChartWidget
 from gui.console import ConsoleWidget
 from gui.custom import Css, DockWidget
@@ -222,10 +222,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.addDockWidget(area, self.data_widget)
             return
 
-        if self.data_widget.isVisible():
-            self.data_widget.hide()
-        else:
-            self.data_widget.show()
+        state = self.data_widget.isVisible()
+        self.data_widget.setVisible(not state)
 
     # }}}
     @pyqtSlot()  # __onAsset  # {{{
@@ -233,14 +231,13 @@ class MainWindow(QtWidgets.QMainWindow):
         logger.debug(f"{self.__class__.__name__}.__onAsset()")
 
         if self.asset_widget is None:
-            self.asset_widget = AssetListWidget(self)
-            self.asset_dock_widget = DockWidget(
-                "Asset", self.asset_widget, self
-            )
+            self.asset_widget = AssetListDockWidget(self)
             area = Qt.DockWidgetArea.LeftDockWidgetArea
-            self.addDockWidget(area, self.asset_dock_widget)
-            # self.asset_dock_widget.setFloating(True)
+            self.addDockWidget(area, self.asset_widget)
             return
+
+        state = self.asset_widget.isVisible()
+        self.asset_widget.setVisible(not state)
 
     # }}}
     @pyqtSlot()  # __onStrategy  # {{{
@@ -325,8 +322,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if self.chart_widget is None:
             self.chart_widget = ChartWidget(self)
+            self.setCentralWidget(self.chart_widget)
 
-        self.setCentralWidget(self.chart_widget)
+        state = self.chart_widget.isVisible()
+        self.chart_widget.setVisible(not state)
 
     # }}}
 

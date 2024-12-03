@@ -8,10 +8,11 @@
 
 from gui.asset.dialog_info import AssetInfoDialog
 from gui.asset.dialog_select import AssetSelectDialog
-from gui.asset.widget import AssetListWidget
+from gui.asset.widget import AssetListDockWidget, AssetListWidget
 
 __all__ = (
     "AssetInfoDialog",
     "AssetSelectDialog",
     "AssetListWidget",
+    "AssetListDockWidget",
 )

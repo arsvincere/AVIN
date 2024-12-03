@@ -19,6 +19,30 @@ from gui.asset.thread import Thread
 from gui.custom import Css, Dialog, Icon, Menu, Spacer, ToolButton
 
 
+class AssetListDockWidget(QtWidgets.QDockWidget):  # {{{
+    def __init__(self, parent=None):  # {{{
+        QtWidgets.QDockWidget.__init__(self, "AssetList", parent)
+
+        widget = AssetListWidget(self)
+        self.setWidget(widget)
+        self.setStyleSheet(Css.DOCK_WIDGET)
+
+        self.setAllowedAreas(
+            Qt.DockWidgetArea.LeftDockWidgetArea
+            | Qt.DockWidgetArea.RightDockWidgetArea
+        )
+
+        feat = QtWidgets.QDockWidget.DockWidgetFeature
+        self.setFeatures(
+            feat.DockWidgetMovable
+            | feat.DockWidgetClosable
+            | feat.DockWidgetFloatable
+        )
+
+        # }}}
+
+
+# }}}
 class AssetListWidget(QtWidgets.QWidget):  # {{{
     assetChanged = QtCore.pyqtSignal(Asset)
 
@@ -272,11 +296,11 @@ class _AssetListToolBar(QtWidgets.QToolBar):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createActions()")
 
         self.action_add = QtGui.QAction(Icon.ADD, "Add", self)
-        self.action_new = QtGui.QAction(Icon.NEW, "New", self)
+        self.action_new = QtGui.QAction("New", self)
         self.action_rename = QtGui.QAction(Icon.RENAME, "Rename", self)
-        self.action_copy = QtGui.QAction(Icon.COPY, "Copy", self)
-        self.action_clear = QtGui.QAction(Icon.CLEAR, "Clear", self)
-        self.action_delete = QtGui.QAction(Icon.THRASH, "Delete", self)
+        self.action_copy = QtGui.QAction("Copy", self)
+        self.action_clear = QtGui.QAction("Clear", self)
+        self.action_delete = QtGui.QAction(Icon.DELETE, "Delete", self)
 
     # }}}
     def __createListButton(self):  # {{{
