@@ -19,7 +19,31 @@ from gui.data.toolbar import DataToolBar
 from gui.data.tree import DataInfoTree
 
 
-class DataWidget(QtWidgets.QWidget):
+class DataDockWidget(QtWidgets.QDockWidget):  # {{{
+    def __init__(self, parent=None):  # {{{
+        QtWidgets.QDockWidget.__init__(self, "Data", parent)
+
+        data_widget = DataWidget(self)
+        self.setWidget(data_widget)
+        self.setStyleSheet(Css.DOCK_WIDGET)
+
+        self.setAllowedAreas(
+            Qt.DockWidgetArea.LeftDockWidgetArea
+            | Qt.DockWidgetArea.RightDockWidgetArea
+        )
+
+        feat = QtWidgets.QDockWidget.DockWidgetFeature
+        self.setFeatures(
+            feat.DockWidgetMovable
+            | feat.DockWidgetClosable
+            | feat.DockWidgetFloatable
+        )
+
+        # }}}
+
+
+# }}}
+class DataWidget(QtWidgets.QWidget):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QWidget.__init__(self, parent)
@@ -100,27 +124,7 @@ class DataWidget(QtWidgets.QWidget):
     # }}}
 
 
-class DataDockWidget(QtWidgets.QDockWidget):
-    def __init__(self, parent=None):  # {{{
-        QtWidgets.QDockWidget.__init__(self, "Data", parent)
-
-        data_widget = DataWidget(self)
-        self.setWidget(data_widget)
-        self.setStyleSheet(Css.DOCK_WIDGET)
-
-        self.setAllowedAreas(
-            Qt.DockWidgetArea.LeftDockWidgetArea
-            | Qt.DockWidgetArea.RightDockWidgetArea
-        )
-
-        feat = QtWidgets.QDockWidget.DockWidgetFeature
-        self.setFeatures(
-            feat.DockWidgetMovable
-            | feat.DockWidgetClosable
-            | feat.DockWidgetFloatable
-        )
-
-        # }}}
+# }}}
 
 
 if __name__ == "__main__":
