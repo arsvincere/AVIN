@@ -9,6 +9,7 @@
 import sys
 
 from PyQt6 import QtCore, QtWidgets
+from PyQt6.QtCore import Qt
 
 from avin.core import Strategy
 from avin.utils import logger
@@ -17,6 +18,30 @@ from gui.strategy.item import StrategyItem
 from gui.strategy.tree import StrategySetTree, StrategyTree
 
 
+class StrategyDockWidget(QtWidgets.QDockWidget):  # {{{
+    def __init__(self, parent=None):  # {{{
+        QtWidgets.QDockWidget.__init__(self, "Strategy", parent)
+
+        widget = StrategyWidget(self)
+        self.setWidget(widget)
+        self.setStyleSheet(Css.DOCK_WIDGET)
+
+        self.setAllowedAreas(
+            Qt.DockWidgetArea.LeftDockWidgetArea
+            | Qt.DockWidgetArea.RightDockWidgetArea
+        )
+
+        feat = QtWidgets.QDockWidget.DockWidgetFeature
+        self.setFeatures(
+            feat.DockWidgetMovable
+            | feat.DockWidgetClosable
+            | feat.DockWidgetFloatable
+        )
+
+        # }}}
+
+
+# }}}
 class StrategyWidget(QtWidgets.QWidget):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")

@@ -21,7 +21,7 @@ from gui.console import ConsoleWidget
 from gui.custom import Css, DockWidget
 from gui.data import DataDockWidget
 from gui.main_window.toolbar import LeftToolBar, RightToolBar
-from gui.strategy import StrategyWidget
+from gui.strategy import StrategyDockWidget
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -245,14 +245,13 @@ class MainWindow(QtWidgets.QMainWindow):
         logger.debug(f"{self.__class__.__name__}.__onStrategy()")
 
         if self.strategy_widget is None:
-            self.strategy_widget = StrategyWidget(self)
-            self.strategy_dock_widget = DockWidget(
-                "Strategy", self.strategy_widget, self
-            )
-            area = Qt.DockWidgetArea.RightDockWidgetArea
-            self.addDockWidget(area, self.strategy_dock_widget)
-            # self.strategy_dock_widget.setFloating(True)
+            self.strategy_widget = StrategyDockWidget(self)
+            area = Qt.DockWidgetArea.LeftDockWidgetArea
+            self.addDockWidget(area, self.strategy_widget)
             return
+
+        state = self.strategy_widget.isVisible()
+        self.strategy_widget.setVisible(not state)
 
     # }}}
     @pyqtSlot()  # __onTester  # {{{
