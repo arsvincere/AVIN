@@ -41,9 +41,15 @@ class Test:
 
         self.__name = name
         self.__status = Test.Status.NEW
+        self.__strategy_set = StrategySet(f"{name}-sset")
         self.__trade_list = TradeList(f"{name}-tlist")
         self.__report = Report(test=self)
-        self.__cfg = dict()  # TODO: выпили ты нахуй этот cfg, пережитки json
+        self.__description = ""
+        self.__deposit = 100000.0
+        self.__commission = 0.0005
+        self.__begin = date(2018, 1, 1)
+        self.__end = date(2023, 1, 1)
+        self.__account = "_backtest"
 
         # signals
         self.progress = Signal(int)
@@ -71,6 +77,16 @@ class Test:
         self.__status = new_status
 
     # }}}
+    @property  # strategy_set# {{{
+    def strategy_set(self):
+        return self.__strategy_set
+
+    @strategy_set.setter
+    def strategy_set(self, strategy_set: StrategySet):
+        strategy_set.name = f"{self.__name}-sset"
+        self.__strategy_set = strategy_set
+
+    # }}}
     @property  # trade_list# {{{
     def trade_list(self):
         return self.__trade_list
@@ -83,63 +99,54 @@ class Test:
     # }}}
     @property  # description# {{{
     def description(self):
-        return self.__cfg["description"]
+        return self.__description
 
     @description.setter
     def description(self, description):
-        self.__cfg["description"] = description
-
-    # }}}
-    @property  # strategy_set# {{{
-    def strategy_set(self):
-        return self.__cfg["strategy_set"]
-
-    @strategy_set.setter
-    def strategy_set(self, strategy_set: StrategySet):
-        self.__cfg["strategy_set"] = strategy_set
+        self.__description = description
 
     # }}}
     @property  # deposit# {{{
     def deposit(self):
-        return self.__cfg["deposit"]
+        return self.__deposit
 
     @deposit.setter
     def deposit(self, deposit: float):
-        self.__cfg["deposit"] = deposit
+        self.__deposit = deposit
 
     # }}}
     @property  # commission# {{{
     def commission(self):
-        return self.__cfg["commission"]
+        return self.__commission
 
     @commission.setter
     def commission(self, commission):
-        self.__cfg["commission"] = commission
+        self.__commission = commission
 
     # }}}
     @property  # begin# {{{
     def begin(self) -> date:
-        return self.__cfg["begin"]
+        return self.__begin
 
     @begin.setter
     def begin(self, begin: date):
         assert isinstance(begin, date)
-        self.__cfg["begin"] = begin
+        self.__begin = begin
 
     # }}}
     @property  # end# {{{
     def end(self) -> date:
-        return self.__cfg["end"]
+        return self.__end
 
     @end.setter
     def end(self, end: date):
         assert isinstance(end, date)
-        self.__cfg["end"] = end
+        self.__end = end
 
     # }}}
     @property  # account  # {{{
     def account(self):
-        return "_backtest"
+        return self.__account
 
     # }}}
     @property  # time_step  # {{{
@@ -240,6 +247,14 @@ class Test:
         logger.debug(f"{cls.__name__}.copy()")
 
         assert False
+
+    # }}}
+    @classmethod  # requestAll# {{{
+    async def requestAll(cls) -> list[str]:
+        logger.debug(f"{cls.__name__}.requestAll()")
+
+        names = await Keeper.get(cls, get_only_names=True)
+        return names
 
     # }}}
 

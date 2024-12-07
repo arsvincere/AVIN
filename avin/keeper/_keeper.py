@@ -1336,8 +1336,22 @@ class Keeper:
     async def __getTest(cls, Test, kwargs: dict) -> Test:
         logger.debug(f"{cls.__name__}.__getTest()")
 
-        name = kwargs.get("name")
+        get_only_names = kwargs.get("get_only_names")
 
+        # return list[str_names] if kwargs["get_only_names"]
+        if get_only_names:
+            request = """
+                SELECT name FROM "Test";
+                """
+            records = await cls.transaction(request)
+            all_names = list()
+            for i in records:
+                name = i["name"]
+                all_names.append(name)
+            return all_names
+
+        # return test if kwargs["name"]
+        name = kwargs.get("name")
         request = f"""
             SELECT
                 name, account, strategy_set, trade_list, status,
