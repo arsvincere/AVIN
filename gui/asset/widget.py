@@ -222,10 +222,14 @@ class AssetListWidget(QtWidgets.QWidget):  # {{{
         self.__tool_bar.removeAssetListName(alist.name)
         Thread.delete(alist)
 
+        self.__updateWidget()
+
     # }}}
 
 
 # }}}
+
+
 class _AssetListToolBar(QtWidgets.QToolBar):  # {{{
     listChanged = QtCore.pyqtSignal()
     __ICON_SIZE = QtCore.QSize(32, 32)
@@ -460,13 +464,23 @@ class _AssetListTree(QtWidgets.QTreeWidget):  # {{{
 
         self.clear()
         self.__current_alist = alist
-        for asset in alist:
+        if len(alist) == 0:
+            return
+
+        # create first asset item and set as current item
+        i = 0
+        asset = alist[i]
+        item = AssetItem(asset)
+        self.addTopLevelItem(item)
+        self.setCurrentItem(item)
+        i += 1
+
+        # create other asset items
+        while i < len(alist):
+            asset = alist[i]
             item = AssetItem(asset)
             self.addTopLevelItem(item)
-
-        # TODO: так текущим ставится последний актив в списке
-        # и еще хз что происходит если в листе пусто, падает наверно
-        self.setCurrentItem(item)
+            i += 1
 
     # }}}
     def currentAssetList(self) -> AssetList:  # {{{
