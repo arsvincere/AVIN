@@ -6,7 +6,7 @@
 -- ===========================================================================
 
 CREATE TYPE "DataSource" AS ENUM (--{{{
-    'MOEX', 'TINKOFF'
+    'CONVERT','MOEX', 'TINKOFF'
     );
 --}}}
 CREATE TYPE "DataType" AS ENUM (--{{{
