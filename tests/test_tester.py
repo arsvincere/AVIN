@@ -12,6 +12,8 @@ import pytest
 from avin import *
 from avin.tester._stream import _BarStream
 
+# TODO: delete _unittest_test from db after pytests
+
 
 @pytest.mark.asyncio  # test_BarStream  # {{{
 async def test_BarStream():
