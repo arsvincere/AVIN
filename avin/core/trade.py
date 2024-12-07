@@ -538,6 +538,10 @@ class TradeList:  # {{{
     def name(self):
         return self.__name
 
+    @name.setter
+    def name(self, new_name: str):
+        self.__name = new_name
+
     # }}}
     @property  # subname# {{{
     def subname(self):
