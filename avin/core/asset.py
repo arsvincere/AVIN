@@ -462,6 +462,7 @@ class AssetList:  # {{{
     @classmethod  # copy  # {{{
     async def copy(cls, asset_list: AssetList, new_name: str) -> None:
         logger.debug(f"{cls.__name__}.copy()")
+
         new_list = AssetList(new_name)
         new_list.assets = asset_list.assets
         await cls.save(new_list)
