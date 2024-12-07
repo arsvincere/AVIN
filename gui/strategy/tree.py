@@ -88,6 +88,10 @@ class StrategyTree(QtWidgets.QTreeWidget):  # {{{
     def __config(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__config()")
 
+        # config style
+        self.setStyleSheet(Css.TREE)
+        self.setContentsMargins(0, 0, 0, 0)
+
         # config header
         labels = list()
         for l in StrategyItem.Column:
@@ -103,10 +107,6 @@ class StrategyTree(QtWidgets.QTreeWidget):  # {{{
 
         # config width
         self.setColumnWidth(StrategyItem.Column.Name, 150)
-
-        # config style
-        self.setStyleSheet(Css.TREE)
-        self.setContentsMargins(0, 0, 0, 0)
 
     # }}}
     def __connect(self):  # {{{
