@@ -759,6 +759,11 @@ class StrategySet:  # {{{
     def name(self):
         return self.__name
 
+    @name.setter
+    def name(self, name: str):
+        assert isinstance(name, str)
+        self.__name = name
+
     # }}}
     def add(self, node: StrategySetNode) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.add({node})")
@@ -800,7 +805,7 @@ class StrategySet:  # {{{
         logger.debug(f"{self.__class__.__name__}.getStrategyList()")
 
         # ensure self.__asset_list availible
-        if not self.__asset_list:
+        if self.__asset_list is None:
             logger.critical(
                 "StrategySet can't create StrategyList, "
                 "need create common asset list before."
