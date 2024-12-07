@@ -128,12 +128,29 @@ class Instrument:
         return float(self.info["min_price_step"])
 
     # }}}
-    def pretty(self) -> str:
+    def pretty(self) -> str:  # {{{
         logger.debug(f"{self.__class__.__name__}.pretty()")
 
         s = json.dumps(self.__info, indent=4, ensure_ascii=False)
         return s
 
+    # }}}
+    @classmethod  # fromStr# {{{
+    async def fromStr(cls, string: str) -> Instrument:
+        logger.debug(f"{cls.__name__}.fromStr()")
+
+        # string is like "MOEX-SHARE-SBER"
+        exchange, itype, ticker = string.split("-")
+
+        # convert types
+        exchange = Exchange.fromStr(exchange)
+        itype = Instrument.Type.fromStr(itype)
+
+        # request and return instrument
+        instrument = await cls.fromTicker(exchange, itype, ticker)
+        return instrument
+
+    # }}}
     @classmethod  # fromRecord# {{{
     def fromRecord(cls, record: asyncpg.Record) -> Instrument:
         logger.debug(f"{cls.__name__}.fromRecord()")
