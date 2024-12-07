@@ -14,9 +14,10 @@ from PyQt6.QtCore import Qt
 from avin.core import TradeList
 from avin.tester import Test
 from avin.utils import logger
-from gui.custom import Css, Menu
+from gui.custom import Css, Dialog, Menu
 from gui.tester.dialog_edit import TestEditDialog
 from gui.tester.item import TestItem, TradeItem, TradeListItem
+from gui.tester.thread import Thread
 
 
 class TestTree(QtWidgets.QTreeWidget):  # {{{
@@ -167,14 +168,18 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
     def __onCopy(self):
         logger.debug(f"{self.__class__.__name__}.__onCopy()")
 
-        # itest = self.currentItem()
-        # new_name = Dialog.name(default=itest.name)
-        # if new_name:
-        #     path = Cmd.join(TEST_DIR, new_name)
-        #     Cmd.copyDir(itest.dir_path, path)
-        #     copy = ITest.load(path)
-        #     copy.name = new_name
-        #     self.addTopLevelItem(copy)
+        new_name = Dialog.name("New name...")
+        if not new_name:
+            return
+
+        item = self.currentItem()
+        test = item.test
+
+        new_test = Thread.copyTest(test, new_name)
+        if new_test:
+            new_item = TestItem(new_test)
+            self.addTopLevelItem(new_item)
+            self.setCurrentItem(new_item)
 
     # }}}
     @QtCore.pyqtSlot()  # __onEdit# {{{
