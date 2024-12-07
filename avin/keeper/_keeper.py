@@ -1046,6 +1046,19 @@ class Keeper:
         if not name:
             return None
 
+        # check existing asset list with this name
+        # return None if not exist
+        request = f"""
+            SELECT name  FROM "AssetList"
+            WHERE
+                name = '{name}'
+            ;
+            """
+        records = await cls.transaction(request)
+        if not records:
+            return None
+
+        # request assets of asset list
         request = f"""
             SELECT
                 "AssetList-Asset".name AS alist_name,
