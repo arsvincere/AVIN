@@ -11,7 +11,7 @@ import asyncio
 from PyQt6 import QtCore
 from PyQt6.QtCore import Qt
 
-from avin.data import Data, DataInfo, DataType, Instrument
+from avin.data import ConvertTaskList, Data, DataInfo, DataType, Instrument
 from avin.utils import logger
 from gui.custom import awaitQThread
 from gui.data.item import DownloadItem
@@ -51,38 +51,9 @@ class Thread:  # {{{
         awaitQThread(thread)
 
     # }}}
-    @classmethod  # download  # {{{
-    def download(cls, source, instruments, timeframes, begin, end) -> None:
-        logger.debug(f"{cls.__name__}.download()")
-
-        thread = _TDownload(source, instruments, timeframes, begin, end)
-        thread.start()
-        awaitQThread(thread)
-
-    # }}}
-    @classmethod  # delete  # {{{
-    def delete(cls, data_info: DataInfo) -> None:
-        logger.debug(f"{cls.__name__}.delete()")
-
-        thread = _TDelete(data_info)
-        thread.start()
-        awaitQThread(thread)
-
-    # }}}
-    @classmethod  # update  # {{{
-    def update(cls, data_info: DataInfo) -> None:
-        logger.debug(f"{cls.__name__}.update()")
-
-        thread = _TUpdate(data_info)
-        thread.start()
-        awaitQThread(thread)
-
-    # }}}
 
 
 # }}}
-
-
 class _TInfo(QtCore.QThread):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
@@ -178,7 +149,11 @@ class _TFirstDate(QtCore.QThread):  # {{{
 
 
 # }}}
-class _TDownload(QtCore.QThread):  # {{{
+
+
+class TDownload(QtCore.QThread):  # {{{
+    name = "Download"
+
     def __init__(  # {{{
         self, source, instruments, timeframes, begin, end, parent=None
     ):
@@ -198,11 +173,7 @@ class _TDownload(QtCore.QThread):  # {{{
 
     # }}}
     async def __adownload(self):  # {{{
-        # TODO: тоже самое, логи уровня инфо - тут скорее всего лишнее
-        # пусть это в ядре будет, там как то понятно и однозначно
-        # не надо размазывать логи по всему приложению
-        # в модуль дата это все пихай.
-        logger.info(":: Start download data")
+        logger.debug(f"{self.__class__.__name__}.__adownload()")
 
         for instrument in self.__instruments:
             for timeframe in self.__timeframes:
@@ -214,13 +185,13 @@ class _TDownload(QtCore.QThread):  # {{{
                     )
                     year += 1
 
-        logger.info("Download complete!")
-
     # }}}
 
 
 # }}}
-class _TDelete(QtCore.QThread):  # {{{
+class TDelete(QtCore.QThread):  # {{{
+    name = "Delete"
+
     def __init__(  # {{{
         self, data_info: DataInfo, parent=None
     ):
@@ -245,7 +216,9 @@ class _TDelete(QtCore.QThread):  # {{{
 
 
 # }}}
-class _TUpdate(QtCore.QThread):  # {{{
+class TUpdate(QtCore.QThread):  # {{{
+    name = "Update"
+
     def __init__(  # {{{
         self, data_info: DataInfo, parent=None
     ):
@@ -270,6 +243,34 @@ class _TUpdate(QtCore.QThread):  # {{{
         # if has selected - update only selected items
         for i in self.__data_info:
             await Data.update(i.instrument, i.data_type)
+
+    # }}}
+
+
+# }}}
+class TConvert(QtCore.QThread):  # {{{
+    name = "Convert"
+
+    def __init__(  # {{{
+        self, convert_list_name: str, parent=None
+    ):
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtCore.QThread.__init__(self, parent)
+
+        self.__clist_name = convert_list_name
+
+    # }}}
+    def run(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.run()")
+        asyncio.run(self.__aconvert())
+
+    # }}}
+    async def __aconvert(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__aconvert()")
+
+        clist = await ConvertTaskList.load(self.__clist_name)
+        for task in clist:
+            await Data.convert(task)
 
     # }}}
 

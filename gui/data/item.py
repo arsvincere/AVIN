@@ -104,9 +104,7 @@ class DownloadItem(QtWidgets.QTreeWidgetItem):  # {{{
         self.instrument = instrument
 
         self.setFlags(
-            Qt.ItemFlag.ItemIsUserCheckable
-            | Qt.ItemFlag.ItemIsSelectable
-            | Qt.ItemFlag.ItemIsEnabled
+            Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled
         )
         self.setCheckState(self.Column.Ticker, Qt.CheckState.Unchecked)
         self.setText(self.Column.Ticker, instrument.ticker)

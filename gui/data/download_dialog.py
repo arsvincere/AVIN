@@ -17,7 +17,6 @@ from avin.data import DataSource, Instrument
 from avin.utils import logger
 from gui.custom import (
     Css,
-    Dialog,
     Label,
     Menu,
     PushButton,
@@ -36,8 +35,6 @@ class DataDownloadDialog(QtWidgets.QDialog):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QDialog.__init__(self, parent)
 
-        self.__thread = None
-
         self.__createWidgets()
         self.__createLayots()
         self.__config()
@@ -45,6 +42,38 @@ class DataDownloadDialog(QtWidgets.QDialog):  # {{{
         self.__initUI()
 
     # }}}
+
+    def currentSource(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.currentSource()")
+
+        return self.toolbar.currentSource()
+
+    # }}}
+    def selectedInstruments(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectedInstruments()")
+
+        return self.tree.selectedInstruments()
+
+    # }}}
+    def selectedTimeframes(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectedTimeframes()")
+
+        return self.right_panel.selectedTimeframes()
+
+    # }}}
+    def beginYear(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.beginYear()")
+
+        return self.right_panel.begin()
+
+    # }}}
+    def endYear(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.endYear()")
+
+        return self.right_panel.end()
+
+    # }}}
+
     def __createWidgets(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
 
@@ -82,7 +111,7 @@ class DataDownloadDialog(QtWidgets.QDialog):  # {{{
         self.toolbar.typeChanged.connect(self.__updateTree)
         self.toolbar.sourceChanged.connect(self.__updateTree)
         self.right_panel.request_date.clicked.connect(self.__onFirstDate)
-        self.right_panel.download_btn.clicked.connect(self.__onDownload)
+        self.right_panel.download_btn.clicked.connect(self.accept)
         self.right_panel.cancel_btn.clicked.connect(self.reject)
 
     # }}}
@@ -92,16 +121,7 @@ class DataDownloadDialog(QtWidgets.QDialog):  # {{{
         self.__updateTree()
 
     # }}}
-    def __isBusy(self) -> bool:  # {{{
-        logger.debug(f"{self.__class__.__name__}.__isBusy()")
 
-        if self.__thread is not None:
-            Dialog.info("Data manager is busy now, wait for complete task")
-            return True
-
-        return False
-
-    # }}}
     @QtCore.pyqtSlot()  # __updateTree  # {{{
     def __updateTree(self) -> None:
         logger.debug(f"{self.__class__.__name__}.__updateTree()")
@@ -111,30 +131,23 @@ class DataDownloadDialog(QtWidgets.QDialog):  # {{{
 
         instruments = Thread.find(source, itype)
 
-        self.tree.setInstrumentsList(instruments)
+        if instruments is not None:
+            self.tree.setInstrumentsList(instruments)
 
     # }}}
     @QtCore.pyqtSlot()  # __onFirstDate  # {{{
     def __onFirstDate(self):
         logger.debug(f"{self.__class__.__name__}.__onFirstDate()")
 
+        # TODO: caching first date in db
+
         source = self.toolbar.currentSource()
 
+        # TODO: disabled dialog css никак не отличается
+        self.setEnabled(False)
         # receive first datetime & update tree
         Thread.firstDateTime(source, self.tree)
-
-    # }}}
-    @QtCore.pyqtSlot()  # __onDownload  # {{{
-    def __onDownload(self):
-        logger.debug(f"{self.__class__.__name__}.__onDownload()")
-
-        source = self.toolbar.currentSource()
-        instruments = self.tree.selectedInstruments()
-        timeframes = self.right_panel.selectedTimeframes()
-        begin = self.right_panel.begin()
-        end = self.right_panel.end()
-
-        Thread.download(source, instruments, timeframes, begin, end)
+        self.setEnabled(True)
 
     # }}}
 
@@ -337,11 +350,12 @@ class _Tree(QtWidgets.QTreeWidget):  # {{{
     def __config(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__config()")
 
-        # set header labels
+        # config header labels
         labels = list()
         for l in DownloadItem.Column:
             labels.append(l.name)
         self.setHeaderLabels(labels)
+        self.header().setStyleSheet(Css.TREE_HEADER)
 
         # set sizes
         self.setColumnWidth(DownloadItem.Column.Ticker, 100)
@@ -351,11 +365,15 @@ class _Tree(QtWidgets.QTreeWidget):  # {{{
         self.setMinimumWidth(620)
         self.setMinimumHeight(400)
 
-        # other options
+        # config sorting
         self.setSortingEnabled(True)
         self.sortByColumn(
             DownloadItem.Column.Ticker, Qt.SortOrder.AscendingOrder
         )
+
+        # config style
+        self.setStyleSheet(Css.TREE)
+        self.setContentsMargins(0, 0, 0, 0)
 
         # size policy
         self.setSizePolicy(
