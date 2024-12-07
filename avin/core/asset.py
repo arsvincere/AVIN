@@ -305,6 +305,7 @@ class Share(Asset):  # {{{
 class AssetList:  # {{{
     def __init__(self, name: str, assets: Optional[list] = None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__({name})")
+
         self.__name = name
         self.__assets = assets if assets else list()
 
@@ -364,7 +365,7 @@ class AssetList:  # {{{
 
     # }}}
     def remove(self, asset: Asset) -> None:  # {{{
-        logger.debug(f"AssetList.remove({asset.ticker})")
+        logger.debug(f"{self.__class__.__name__}.remove({asset.ticker})")
 
         try:
             self.__assets.remove(asset)
