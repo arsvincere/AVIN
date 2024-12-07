@@ -9,7 +9,6 @@
 from datetime import date
 
 import pytest
-
 from avin import *
 from avin.tester._stream import _BarStream
 
@@ -45,16 +44,16 @@ async def test_Test():
     assert test.account == "_backtest"
 
     # create strategy set
-    item1 = StrategySetItem(
+    item1 = StrategySetNode(
         "Every", "minute", "BBG004S68614", long=True, short=False
     )
-    item2 = StrategySetItem(
+    item2 = StrategySetNode(
         "Every", "minute", "BBG004S683W7", long=False, short=True
     )
-    item3 = StrategySetItem(
+    item3 = StrategySetNode(
         "Every", "five", "BBG004S68B31", long=True, short=True
     )
-    item4 = StrategySetItem(
+    item4 = StrategySetNode(
         "Every", "five", "BBG004730N88", long=True, short=True
     )
     s_set = StrategySet(
@@ -101,13 +100,13 @@ async def test_Tester():
     test = Test(f"{test_name}")
 
     # create strategy set
-    item1 = StrategySetItem(
+    item1 = StrategySetNode(
         "Every", "day", "BBG004S68614", long=True, short=False
     )
-    # item2 = StrategySetItem(
+    # item2 = StrategySetNode(
     #     "Every", "minute", "BBG004S683W7", long=True, short=True
     # )
-    # item3 = StrategySetItem(
+    # item3 = StrategySetNode(
     #     "Every", "five", "BBG004S68B31", long=True, short=True
     # )
     s_set = StrategySet(

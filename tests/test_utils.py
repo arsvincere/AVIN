@@ -10,7 +10,7 @@
 from avin.utils import *
 
 
-def test_binary_search():
+def test_binary_search():  # {{{
     v1 = [0, 1, 2, 3, 4, 5, 6, 7, 8]
     v2 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     for i in v1:
@@ -25,7 +25,8 @@ def test_binary_search():
     assert binary_search(v1, x) is None
 
 
-def test_find_left_right():
+# }}}
+def test_find_left_right():  # {{{
     v1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     x = -5
     assert find_left(v1, x) is None
@@ -39,6 +40,9 @@ def test_find_left_right():
     x = 11
     assert find_left(v1, x) == 9
     assert find_right(v1, x) == None
+
+
+# }}}
 
 
 if __name__ == "__main__":

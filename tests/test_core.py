@@ -10,7 +10,6 @@ import asyncio
 from datetime import UTC, datetime
 
 import pytest
-
 from avin import *
 
 
@@ -1008,9 +1007,9 @@ async def test_StrategyList():
 
 
 # }}}
-@pytest.mark.asyncio  # test_StrategySetItem  # {{{
-async def test_StrategySetItem():
-    item = StrategySetItem(
+@pytest.mark.asyncio  # test_StrategySetNode  # {{{
+async def test_StrategySetNode():
+    item = StrategySetNode(
         "Every", "minute", "BBG004730N88", long=True, short=True
     )
     assert item.strategy == "Every"
@@ -1022,23 +1021,23 @@ async def test_StrategySetItem():
 
 # }}}
 @pytest.mark.asyncio  # test_StrategySet  # {{{
-async def test_StrategySetItem():
+async def test_StrategySet():
     afks = await Asset.fromTicker(Exchange.MOEX, Asset.Type.SHARE, "AFKS")
     aflt = await Asset.fromTicker(Exchange.MOEX, Asset.Type.SHARE, "AFLT")
     alrs = await Asset.fromTicker(Exchange.MOEX, Asset.Type.SHARE, "ALRS")
     sber = await Asset.fromTicker(Exchange.MOEX, Asset.Type.SHARE, "SBER")
 
     # create items
-    item1 = StrategySetItem(
+    item1 = StrategySetNode(
         "Every", "minute", "BBG004S68614", long=True, short=False
     )
-    item2 = StrategySetItem(
+    item2 = StrategySetNode(
         "Every", "minute", "BBG004S683W7", long=False, short=True
     )
-    item3 = StrategySetItem(
+    item3 = StrategySetNode(
         "Every", "five", "BBG004S68B31", long=True, short=True
     )
-    item4 = StrategySetItem(
+    item4 = StrategySetNode(
         "Every", "five", "BBG004730N88", long=True, short=True
     )
 

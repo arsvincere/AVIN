@@ -63,24 +63,6 @@ def test_InstrumentType():  # {{{
 # }}}
 
 
-@pytest.mark.asyncio  # test_DataInfoNode  # {{{
-async def test_DataInfoNode():
-    source = DataSource.MOEX
-    afks = await Instrument.fromTicker(
-        Exchange.MOEX, Instrument.Type.SHARE, "AFKS"
-    )
-    data_type = DataType.BAR_1M
-    begin = datetime(2023, 1, 1)
-    end = datetime(2024, 1, 1)
-    node = DataInfoNode(source, afks, data_type, begin, end)
-    assert node.source == source
-    assert node.instrument == afks
-    assert node.data_type == data_type
-    assert node.first_dt == begin
-    assert node.last_dt == end
-
-
-# }}}
 @pytest.mark.asyncio  # test_Instrument  # {{{
 async def test_Instrument():
     info = {
@@ -121,6 +103,71 @@ async def test_Instrument():
 
 
 # }}}
+@pytest.mark.asyncio  # test_DataInfoNode  # {{{
+async def test_DataInfoNode():
+    source = DataSource.MOEX
+    afks = await Instrument.fromTicker(
+        Exchange.MOEX, Instrument.Type.SHARE, "AFKS"
+    )
+    data_type = DataType.BAR_1M
+    begin = datetime(2023, 1, 1)
+    end = datetime(2024, 1, 1)
+    node = DataInfoNode(source, afks, data_type, begin, end)
+    assert node.source == source
+    assert node.instrument == afks
+    assert node.data_type == data_type
+    assert node.first_dt == begin
+    assert node.last_dt == end
+
+
+# }}}
+@pytest.mark.asyncio  # test_ConvertTaskList  # {{{
+async def test_ConvertTaskList():
+    afks = await Instrument.fromStr("MOEX-SHARE-AFKS")
+    sber = await Instrument.fromStr("MOEX-SHARE-SBER")
+    in_type = DataType.BAR_1M
+    out_type = DataType.BAR_5M
+
+    # create convert tasks
+    task_afks = ConvertTask(afks, in_type, out_type)
+    task_sber = ConvertTask(sber, in_type, out_type)
+
+    # create convert task list
+    clist_name = "_unittest"
+    clist = ConvertTaskList(clist_name)
+    assert len(clist) == 0
+
+    # add
+    clist.add(task_afks)
+    clist.add(task_sber)
+    assert len(clist) == 2
+
+    # save
+    ConvertTaskList.save(clist)
+    file_path = Cmd.path(Usr.DATA, "_unittest.csv")
+    assert Cmd.isExist(file_path)
+
+    # load
+    loaded = await ConvertTaskList.load(clist_name)
+    assert len(clist) == len(loaded)
+    assert clist[0] == loaded[0]
+    assert clist[1] == loaded[1]
+
+    # remove
+    clist.remove(task_sber)
+    assert len(clist) == 1
+
+    # clear
+    clist.clear()
+    assert len(clist) == 0
+
+    # delete
+    ConvertTaskList.delete(clist)
+
+
+# }}}
+
+
 @pytest.mark.asyncio  # test_Data_cache  # {{{
 async def test_Data_cache(event_loop):
     await Data.cache()
@@ -201,9 +248,10 @@ async def test_Data_download():
 async def test_Data_convert():
     id_list = await Data.find(Exchange.MOEX, Instrument.Type.SHARE, "ABRD")
     abrd = id_list[0]
+    convert_task = ConvertTask(abrd, DataType.BAR_D, DataType.BAR_M)
 
     # convert ABRD D -> M
-    await Data.convert(abrd, DataType.BAR_D, DataType.BAR_M)
+    await Data.convert(convert_task)
 
 
 # }}}

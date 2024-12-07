@@ -10,12 +10,17 @@
 from datetime import date, datetime
 
 import pytest
-
 from avin import *
 
 
 @pytest.mark.asyncio
 async def test_Tinkoff(event_loop):
+    # testing in holidays not possible, return{{{
+    now_day = now().weekday()
+    if WeekDays.isHoliday(now_day):
+        return
+
+    # }}}
     # connect{{{
     await Tinkoff.connect()
     assert Tinkoff.isConnect()
