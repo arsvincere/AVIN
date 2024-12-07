@@ -12,12 +12,14 @@ import enum
 
 
 class DataSource(enum.Enum):
+    CONVERT = 0
     MOEX = 1
     TINKOFF = 2
 
     @classmethod  # fromStr  # {{{
     def fromStr(cls, string) -> DataSource:
         sources = {
+            "CONVERT": DataSource.CONVERT,
             "MOEX": DataSource.MOEX,
             "TINKOFF": DataSource.TINKOFF,
         }
