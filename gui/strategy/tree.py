@@ -16,6 +16,7 @@ from avin.core import Strategy, StrategyList, StrategySet
 from avin.utils import Cmd, logger
 from gui.asset import AssetInfoDialog, AssetSelectDialog
 from gui.custom import Css, Dialog, Menu
+from gui.strategy.dialog_select import StrategySelectDialog
 from gui.strategy.item import (
     ConfigItem,
     StrategyItem,
@@ -23,6 +24,7 @@ from gui.strategy.item import (
     StrategySetNodeItem,
     VersionItem,
 )
+from gui.strategy.thread import Thread
 
 
 class StrategyTree(QtWidgets.QTreeWidget):  # {{{
@@ -276,10 +278,7 @@ class StrategySetTree(QtWidgets.QTreeWidget):  # {{{
         logger.debug(f"{self.__class__.__name__}.setStrategySet()")
 
         # create strategy list
-        slist = strategy_set.createStrategyList()
-
-        # create asset list
-        alist = strategy_set.createAssetList()
+        alist, slist = Thread.createLists(strategy_set)
 
         # create items
         for strategy in slist:
@@ -399,7 +398,7 @@ class StrategySetTree(QtWidgets.QTreeWidget):  # {{{
     def __onStrategyAdd(self):
         logger.debug(f"{self.__class__.__name__}.__onStrategyAdd()")
 
-        dial = StrategyAddDialog()
+        dial = StrategySelectDialog()
         selected = dial.selectStrategys()
         for strategy in selected:
             if strategy not in self:

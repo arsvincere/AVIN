@@ -7,11 +7,15 @@
 # ============================================================================
 
 from gui.strategy.dialog_select import StrategySelectDialog
-from gui.strategy.widget import StrategyDockWidget, StrategyWidget
+from gui.strategy.widget import (
+    StrategyDockWidget,
+    StrategySetWidget,
+    StrategyWidget,
+)
 
 __all__ = (
     "StrategySelectDialog",
-    "StrategyWidget",
-    "StrategyWidget",
     "StrategyDockWidget",
+    "StrategyWidget",
+    "StrategySetWidget",
 )

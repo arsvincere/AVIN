@@ -11,7 +11,7 @@ import sys
 from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import Qt
 
-from avin.core import Strategy
+from avin.core import Strategy, StrategySet
 from avin.utils import logger
 from gui.custom import Css
 from gui.strategy.item import StrategyItem
@@ -88,6 +88,8 @@ class StrategyWidget(QtWidgets.QWidget):  # {{{
 
 
 # }}}
+
+
 class StrategySetWidget(QtWidgets.QWidget):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
@@ -98,6 +100,20 @@ class StrategySetWidget(QtWidgets.QWidget):  # {{{
         self.__config()
 
     # }}}
+
+    def setStrategySet(self, strategy_set: StrategySet) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.setStrategySet()")
+
+        self.__tree.setStrategySet(strategy_set)
+
+    # }}}
+    def currentStrategySet(self) -> StrategySet:  # {{{
+        logger.debug(f"{self.__class__.__name__}.currentStrategySet()")
+
+        return self.__tree.currentStrategySet()
+
+    # }}}
+
     def __createWidgets(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
 

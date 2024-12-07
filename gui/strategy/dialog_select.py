@@ -170,7 +170,5 @@ class _ToolBar(QtWidgets.QToolBar):  # {{{
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     w = StrategySelectDialog()
-    w.setWindowTitle("AVIN")
-    w.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
     w.show()
     sys.exit(app.exec())

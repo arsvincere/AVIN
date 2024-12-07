@@ -10,7 +10,7 @@ import asyncio
 
 from PyQt6 import QtCore
 
-from avin.core import Strategy
+from avin.core import Strategy, StrategyList, StrategySet
 from avin.utils import logger
 from gui.custom import awaitQThread
 
@@ -82,7 +82,6 @@ class Thread:
         awaitQThread(thread)
 
     # }}}
-
     @classmethod  # load  # {{{
     def load(cls, name: str, version: str) -> Strategy:
         logger.debug(f"{cls.__name__}.load()")
@@ -94,6 +93,19 @@ class Thread:
         return thread.strategy
 
     # }}}
+
+    @classmethod  # createLists  # {{{
+    def createLists(cls, strategy_set: StrategySet) -> StrategyList:
+        logger.debug(f"{cls.__name__}.createLists()")
+
+        thread = _TCreateAListSList(strategy_set)
+        thread.start()
+        awaitQThread(thread)
+
+        return thread.alist, thread.slist
+
+
+# }}}
 
 
 class _TNew(QtCore.QThread):  # {{{
@@ -267,6 +279,35 @@ class _TLoad(QtCore.QThread):  # {{{
         logger.debug(f"{self.__class__.__name__}.__aload()")
 
         self.strategy = await Strategy.load(self.__name, self.__ver)
+
+    # }}}
+
+
+# }}}
+class _TCreateAListSList(QtCore.QThread):  # {{{
+    def __init__(self, strategy_set: StrategySet, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtCore.QThread.__init__(self, parent)
+
+        self.__sset = strategy_set
+        self.alist = None
+        self.slist = None
+
+    # }}}
+    def run(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.run()")
+
+        asyncio.run(self.__acreate())
+
+    # }}}
+    async def __acreate(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__acreate()")
+
+        # before create StrategyList need create AssetList
+        self.alist = await self.__sset.createAssetList()
+
+        # create StrategyList and save as self.result
+        self.slist = await self.__sset.createStrategyList()
 
     # }}}
 
