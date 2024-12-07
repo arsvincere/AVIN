@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import UTC, date, datetime, timedelta
 
 from avin.config import Usr
-from avin.const import DAY_BEGIN, DAY_END, Res, WeekDays
+from avin.const import DAY_BEGIN, DAY_END, WeekDays
 from avin.data._bar import _Bar, _BarsData
 from avin.data._moex import _MoexData
 from avin.data._tinkoff import _TinkoffData
@@ -25,7 +25,7 @@ from avin.utils import Cmd, logger, now
 
 class _DataManager:
     __AUTO_UPDATE = Usr.AUTO_UPDATE_MARKET_DATA
-    __LAST_UPDATE_FILE = Cmd.path(Res.DATA, "last_update")
+    __LAST_UPDATE_FILE = Cmd.path(Usr.DATA, "last_update")
     __DATA_IS_UP_TO_DATE = None
 
     class VoidBar:  # {{{
@@ -43,6 +43,9 @@ class _DataManager:
         logger.info(":: Start caching assets info")
 
         for i in DataSource:
+            if i == DataSource.CONVERT:
+                continue
+
             class_ = cls.__getDataSourceClass(i)
             await class_.cacheInstrumentsInfo()
 
@@ -115,6 +118,7 @@ class _DataManager:
             begin = data_info.last_dt  # select from last converted
             end = datetime.combine(date.today(), DAY_BEGIN, UTC)  # to today
 
+        # load in_type data
         in_data = await _BarsData.load(instr, in_type, begin, end)
 
         # convert bars
@@ -122,7 +126,9 @@ class _DataManager:
         out_bars = converter(in_data.bars, in_type, out_type)
 
         # save converted data
-        converted_data = _BarsData(in_data.source, instr, out_type, out_bars)
+        converted_data = _BarsData(
+            DataSource.CONVERT, instr, out_type, out_bars
+        )
         await _BarsData.save(converted_data)
 
     # }}}
@@ -365,6 +371,10 @@ class _DataManager:
     @classmethod  # __update  # {{{
     async def __update(cls, node):
         logger.debug(f"{cls.__name__}.__update()")
+
+        # If the data is obtained by convertation, go out
+        if node.source == DataSource.CONVERT:
+            return
 
         instr = node.instrument
         data_type = node.data_type

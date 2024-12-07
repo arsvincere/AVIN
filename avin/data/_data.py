@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from typing import Optional
 
 from avin.data._data_manager import _DataManager
+from avin.data.convert import ConvertTask
 from avin.data.data_info import DataInfo
 from avin.data.data_source import DataSource
 from avin.data.data_type import DataType
@@ -68,6 +69,8 @@ class Data:
         instrument: Optional[Instrument] = None,
         data_type: Optional[DataType] = None,
     ) -> DataInfo | None:
+        """Return information about availible (downloaded) data"""
+
         logger.debug(f"{cls.__name__}.info()")
 
         check = cls.__checkArgs(
@@ -126,20 +129,20 @@ class Data:
 
     # }}}
     @classmethod  # convert  # {{{
-    async def convert(
-        cls, instrument: Instrument, in_type: DataType, out_type: DataType
-    ) -> None:
+    async def convert(cls, task: ConvertTask) -> None:
         logger.debug(f"{cls.__name__}.convert()")
 
         check = cls.__checkArgs(
-            instrument=instrument,
-            in_type=in_type,
-            out_type=out_type,
+            instrument=task.instrument,
+            in_type=task.in_type,
+            out_type=task.out_type,
         )
         if not check:
             return
 
-        await _DataManager.convert(instrument, in_type, out_type)
+        await _DataManager.convert(
+            task.instrument, task.in_type, task.out_type
+        )
 
     # }}}
     @classmethod  # delete  # {{{
