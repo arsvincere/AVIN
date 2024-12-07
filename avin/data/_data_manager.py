@@ -10,11 +10,12 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime, timedelta
 
-from avin.config import Usr
+from avin.config import Auto, Usr
 from avin.const import DAY_BEGIN, DAY_END, WeekDays
 from avin.data._bar import _Bar, _BarsData
 from avin.data._moex import _MoexData
 from avin.data._tinkoff import _TinkoffData
+from avin.data.convert import ConvertTaskList
 from avin.data.data_info import DataInfo, DataInfoNode
 from avin.data.data_source import DataSource
 from avin.data.data_type import DataType
@@ -158,9 +159,18 @@ class _DataManager:
     async def updateAll(cls) -> None:
         logger.info(":: Update all market data")
 
+        # update
         data_info = await DataInfo.load()  # load all
         for node in data_info:
             await cls.__update(node)
+
+        # convert timeframes
+        if not Auto.CONVERT_MARKET_DATA:
+            return
+
+        clist = await ConvertTaskList.load("convert_list")
+        for task in clist:
+            await cls.convert(task.instrument, task.in_type, task.out_type)
 
     # }}}
     @classmethod  # request  # {{{
