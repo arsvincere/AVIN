@@ -196,21 +196,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def __initUI(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__initUI()")
 
-        self.ltool.data.trigger()
-        # self.ltool.asset.trigger()
+        self.ltool.tester.trigger()
         self.ltool.console.trigger()
-
         self.rtool.chart.trigger()
-
-        # asset = self.asset_widget.currentAsset()
-        # print(asset)
-
-        # self.rtool.broker.trigger()
-        # self.rtool.account.trigger()
-        # self.rtool.order.trigger()
-        # iasset = self.widget_asset.currentAsset()
-        # self.widget_chart.showChart(iasset)
-        # self.widget_order.setAsset(iasset)
 
     # }}}
     @pyqtSlot()  # __onData  # {{{
