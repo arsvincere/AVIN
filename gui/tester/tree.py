@@ -15,6 +15,7 @@ from avin.core import TradeList
 from avin.tester import Test
 from avin.utils import logger
 from gui.custom import Css, Menu
+from gui.tester.dialog_edit import TestEditDialog
 from gui.tester.item import TestItem, TradeItem, TradeListItem
 
 
@@ -45,7 +46,8 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
     def addTest(self, test: Test):  # {{{
         logger.debug(f"{self.__class__.__name__}.addTest()")
 
-        assert False, "Write me!!"
+        item = TestItem(test)
+        self.addTopLevelItem(item)
 
     # }}}
 
@@ -155,9 +157,10 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
     def __onNew(self):
         logger.debug(f"{self.__class__.__name__}.__onNew()")
 
-        # test = self.constructor.newTest()
-        # if test:
-        #     self.addTest(test)
+        dial = TestEditDialog()
+        test = dial.newTest()
+        if test:
+            self.addTest(test)
 
     # }}}
     @QtCore.pyqtSlot()  # __onCopy# {{{

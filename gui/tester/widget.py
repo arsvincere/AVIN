@@ -15,6 +15,7 @@ from avin.core import Trade, TradeList
 from avin.tester import Test
 from avin.utils import logger
 from gui.custom import Css
+from gui.tester.thread import Thread
 from gui.tester.tree import TestTree, TradeTree
 
 
@@ -93,6 +94,11 @@ class TesterWidget(QtWidgets.QWidget):  # {{{
     # }}}
     def __loadUserTests(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__loadUserTests()")
+
+        all_names = Thread.requestAllTest()
+        for name in all_names:
+            test = Thread.loadTest(name)
+            self.test_tree.addTest(test)
 
     # }}}
     @QtCore.pyqtSlot()  # __onTestTreeClicked# {{{

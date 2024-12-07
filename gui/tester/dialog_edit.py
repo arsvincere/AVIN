@@ -13,6 +13,8 @@ from PyQt6 import QtCore, QtWidgets
 from avin.tester import Test
 from avin.utils import logger
 from gui.custom import Css, Icon, LineEdit, ToolButton
+from gui.strategy import StrategySetWidget
+from gui.tester.thread import Thread
 
 
 class TestEditDialog(QtWidgets.QDialog):
@@ -22,20 +24,23 @@ class TestEditDialog(QtWidgets.QDialog):
 
         self.__config()
         self.__createWidgets()
-        self.__createLayots()
         self.__createForm()
+        self.__createLayots()
         self.__connect()
         self.__initUI()
 
     # }}}
 
     def newTest(self):  # {{{
-        new_test = ITest(name="")
-        self.alist = gui.asset.IAssetList(".tmp", parent=new_test)
+        logger.debug(f"{self.__class__.__name__}.newTest()")
+
+        new_test = Test("unnamed")
+        self.__readTest(new_test)
         result = self.exec()
+
         if result == QtWidgets.QDialog.DialogCode.Accepted:
-            self.__writeTestConfig(new_test)
-            ITest.save(new_test)
+            self.__writeTest(new_test)
+            Thread.saveTest(new_test)
             logger.info(f"New test '{new_test.name}' created")
             return new_test
         else:
@@ -65,45 +70,58 @@ class TestEditDialog(QtWidgets.QDialog):
         logger.debug(f"{self.__class__.__name__}.__config()")
         self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
         self.setStyleSheet(Css.DIALOG)
+        self.setWindowTitle("AVIN")
 
     # }}}
     def __createWidgets(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
         self.testname_lineedit = LineEdit()
-        self.sset_lineedit = LineEdit()
         self.dblspinbox_deposit = QtWidgets.QDoubleSpinBox()
         self.dblspinbox_commission = QtWidgets.QDoubleSpinBox()
         self.begin = QtWidgets.QDateEdit()
         self.end = QtWidgets.QDateEdit()
         self.description = QtWidgets.QPlainTextEdit()
+
+        self.sset_widget = StrategySetWidget(self)
+
         self.ok_btn = ToolButton(Icon.OK)
         self.cancel_btn = ToolButton(Icon.CANCEL)
-
-    # }}}
-    def __createLayots(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createLayots()")
-
-        self.hbox_btn = QtWidgets.QHBoxLayout()
-        self.hbox_btn.addStretch()
-        self.hbox_btn.addWidget(self.ok_btn)
-        self.hbox_btn.addWidget(self.cancel_btn)
 
     # }}}
     def __createForm(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createForm()")
         form = QtWidgets.QFormLayout()
         form.addRow("Test name", self.testname_lineedit)
-        form.addRow("Strategy set", self.sset_lineedit)
         form.addRow("Deposit", self.dblspinbox_deposit)
         form.addRow("Commission %", self.dblspinbox_commission)
         form.addRow("Begin date", self.begin)
         form.addRow("End date", self.end)
         form.addRow(QtWidgets.QLabel("Description"))
         form.addRow(self.description)
-        form.addRow(self.hbox_btn)
-        self.setLayout(form)
+
+        self.form = form
 
     # }}}
+    def __createLayots(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createLayots()")
+
+        hbox = QtWidgets.QHBoxLayout()
+        hbox.addLayout(self.form)
+        hbox.addWidget(self.sset_widget)
+
+        hbox_btn = QtWidgets.QHBoxLayout()
+        hbox_btn.addStretch()
+        hbox_btn.addWidget(self.ok_btn)
+        hbox_btn.addWidget(self.cancel_btn)
+
+        vbox = QtWidgets.QVBoxLayout()
+        vbox.addLayout(hbox_btn)
+        vbox.addLayout(hbox)
+
+        self.setLayout(vbox)
+
+    # }}}
+
     def __connect(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__connect()")
         self.ok_btn.clicked.connect(self.accept)
@@ -111,41 +129,31 @@ class TestEditDialog(QtWidgets.QDialog):
 
     # }}}
     def __initUI(self):  # {{{
-        self.testname_lineedit.setText("unnamed")
-
         self.dblspinbox_deposit.setMinimum(0.0)
         self.dblspinbox_deposit.setMaximum(1_000_000_000.0)
-        self.dblspinbox_deposit.setValue(100_000.0)
 
         self.dblspinbox_commission.setMinimum(0.0)
         self.dblspinbox_commission.setMaximum(1.0)
-        self.dblspinbox_commission.setValue(0.05)
-
-        self.begin.setDate(QtCore.QDate(2018, 1, 1))
-        self.end.setDate(QtCore.QDate(2023, 1, 1))
 
     # }}}
     def __writeTest(self, test: Test):  # {{{
-        test.name = self.lineedit_testname.text()
-        test.description = self.description.toPlainText()
-        test.strategy = self.combobox_strategy.currentText()
-        test.version = self.combobox_version.currentText()
-        test.alist = self.alist
+        test.name = self.testname_lineedit.text()
+        test.strategy_set = self.sset_widget.currentStrategySet()
         test.deposit = self.dblspinbox_deposit.value()
         test.commission = self.dblspinbox_commission.value() / 100
-        test.begin = str(self.begin.date().toPyDate())
-        test.end = str(self.end.date().toPyDate())
+        test.begin = self.begin.date().toPyDate()
+        test.end = self.end.date().toPyDate()
+        test.description = self.description.toPlainText()
         return test
 
     # }}}
     def __readTest(self, test):  # {{{
-        self.lineedit_testname.setText(test.name)
-        self.combobox_strategy.setCurrentText(test.strategy)
-        self.combobox_version.setCurrentText(test.version)
+        self.testname_lineedit.setText(test.name)
+        self.sset_widget.setStrategySet(test.strategy_set)
         self.dblspinbox_deposit.setValue(test.deposit)
         self.dblspinbox_commission.setValue(test.commission * 100)
-        self.begin.setDate(test.begin.date())
-        self.end.setDate(test.end.date())
+        self.begin.setDate(test.begin)
+        self.end.setDate(test.end)
         self.description.setPlainText(test.description)
 
     # }}}
@@ -154,7 +162,5 @@ class TestEditDialog(QtWidgets.QDialog):
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     w = TestEditDialog()
-    w.setWindowTitle("AVIN")
-    w.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
     w.show()
     sys.exit(app.exec())

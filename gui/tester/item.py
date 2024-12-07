@@ -37,7 +37,7 @@ class TestItem(QtWidgets.QTreeWidgetItem):  # {{{
             Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
         )
 
-        self.setText(self.Column.Name, self.name)
+        self.setText(self.Column.Name, test.name)
 
     # }}}
     def updateProgressBar(self):  # {{{
