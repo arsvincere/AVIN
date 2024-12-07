@@ -18,7 +18,7 @@ from gui.asset.thread import Thread
 from gui.custom import Css, Icon, LineEdit, ToolButton
 
 
-class AssetSelectDialog(QtWidgets.QDialog):
+class AssetSelectDialog(QtWidgets.QDialog):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QDialog.__init__(self, parent)
@@ -32,6 +32,41 @@ class AssetSelectDialog(QtWidgets.QDialog):
         self.__loadUserAssets()
 
     # }}}
+
+    def editAssetList(self, editable: AssetList) -> AssetList | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.editAssetList()")
+
+        self.__markExisting(editable)
+
+        result = self.exec()
+        if result == QtWidgets.QDialog.DialogCode.Rejected:
+            return None
+
+        editable.clear()
+        for i in self.__tree:
+            state = i.checkState(AssetItem.Column.Ticker)
+            if state == Qt.CheckState.Checked:
+                index = self.__tree.indexOfTopLevelItem(i)
+                item = self.__tree.takeTopLevelItem(index)
+                editable.add(item.asset)
+        return editable
+
+    # }}}
+    def selectAssets(self) -> AssetList | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.editAssetList()")
+
+        result = self.exec()
+        if result == QtWidgets.QDialog.DialogCode.Rejected:
+            return None
+
+        selected = AssetList("selected")
+        for i in self.__tree:
+            if i.isChecked():
+                selected.add(i.asset)
+        return selected
+
+    # }}}
+
     def __createWidgets(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
 
@@ -97,43 +132,12 @@ class AssetSelectDialog(QtWidgets.QDialog):
                 )
 
     # }}}
-    def editAssetList(self, editable: AssetList) -> AssetList | None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.editAssetList()")
-
-        self.__markExisting(editable)
-
-        result = self.exec()
-        if result == QtWidgets.QDialog.DialogCode.Rejected:
-            return None
-
-        editable.clear()
-        for i in self.__tree:
-            state = i.checkState(AssetItem.Column.Ticker)
-            if state == Qt.CheckState.Checked:
-                index = self.__tree.indexOfTopLevelItem(i)
-                item = self.__tree.takeTopLevelItem(index)
-                editable.add(item.asset)
-        return editable
-
-    # }}}
-    def selectAssets(self) -> AssetList | None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.editAssetList()")
-
-        result = self.exec()
-        if result == QtWidgets.QDialog.DialogCode.Rejected:
-            return None
-
-        selected = AssetList("selected")
-        for i in self.__tree:
-            if i.isChecked():
-                selected.add(i.asset)
-        return selected
 
 
 # }}}
 
 
-class _Tree(QtWidgets.QTreeWidget):
+class _Tree(QtWidgets.QTreeWidget):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QTreeWidget.__init__(self, parent)
@@ -151,6 +155,7 @@ class _Tree(QtWidgets.QTreeWidget):
         return iter(all_items)
 
     # }}}
+
     def setAssetList(self, alist: AssetList):  # {{{
         logger.debug(f"{self.__class__.__name__}.setAssetList()")
 
@@ -158,24 +163,13 @@ class _Tree(QtWidgets.QTreeWidget):
         self.__current_alist = alist
         for asset in alist:
             item = AssetItem(asset)
+            item.setCheckState(
+                AssetItem.Column.Ticker, Qt.CheckState.Unchecked
+            )
             self.addTopLevelItem(item)
 
     # }}}
-    def currentAssetList(self) -> AssetList:  # {{{
-        logger.debug(f"{self.__class__.__name__}.currentAssetList()")
 
-        return self.__current_alist
-
-    # }}}
-    def editCurrentAssetList(self) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.editCurrentAssetList()")
-
-        editor = Editor()
-        edited_list = editor.editAssetList(ialist)
-        if edited_list:
-            self.setAssetList(edited_list)
-
-    # }}}
     def __config(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__config()")
 
@@ -199,6 +193,9 @@ class _Tree(QtWidgets.QTreeWidget):
         self.setContentsMargins(0, 0, 0, 0)
 
     # }}}
+
+
+# }}}
 
 
 if __name__ == "__main__":
