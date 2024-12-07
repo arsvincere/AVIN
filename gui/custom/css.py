@@ -18,6 +18,16 @@ class Css:
         color: {Theme.fg_normal};
         """
     # }}}
+    # WIDGET  # {{{
+    WIDGET = """
+        "QWidget {
+            background-color: green;
+            }
+        "QWidget:disabled {
+            background-color: red;
+            }
+        """
+    # }}}
     # DIALOG  # {{{
     DIALOG = f"""
         font-family: Monospace;
