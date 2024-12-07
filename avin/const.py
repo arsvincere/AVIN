@@ -41,7 +41,6 @@ class Res:  # {{{
     """Resource subdirectories"""
 
     CACHE = os.path.join(Dir.RES, "cache")
-    DATA = os.path.join(Dir.RES, "data")
     ICON = os.path.join(Dir.RES, "icon")
     LOGO = os.path.join(Dir.RES, "logo")
     DOWNLOAD = os.path.join(Dir.RES, "download")
