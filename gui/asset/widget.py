@@ -23,8 +23,8 @@ class AssetListDockWidget(QtWidgets.QDockWidget):  # {{{
     def __init__(self, parent=None):  # {{{
         QtWidgets.QDockWidget.__init__(self, "AssetList", parent)
 
-        widget = AssetListWidget(self)
-        self.setWidget(widget)
+        self.widget = AssetListWidget(self)
+        self.setWidget(self.widget)
         self.setStyleSheet(Css.DOCK_WIDGET)
 
         self.setAllowedAreas(
