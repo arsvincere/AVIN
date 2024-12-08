@@ -29,6 +29,8 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         self.__createMenus()
         self.__connect()
 
+        self.thread = None
+
     # }}}
     def __iter__(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__iter__()")
