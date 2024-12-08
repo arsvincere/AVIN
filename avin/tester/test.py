@@ -258,12 +258,19 @@ class Test:
 
     # }}}
     @classmethod  # rename# {{{
-    async def rename(cls, test, new_name: str) -> None:
+    async def rename(cls, test, new_name: str) -> Test | None:
         logger.debug(f"{cls.__name__}.rename()")
 
-        await Keeper.delete(test)
+        # check new name
+        availible = await cls.__checkName(new_name)
+        if not availible:
+            return None
+
+        await cls.delete(test)
         test.name = new_name
-        await Keeper.add(test)
+        await cls.save(test)
+
+        return test
 
     # }}}
     @classmethod  # copy# {{{
@@ -288,7 +295,7 @@ class Test:
         new_test.account = test.account
         new_test.time_step = test.time_step
 
-        await Test.save(new_test)
+        await cls.save(new_test)
         return new_test
 
     # }}}
