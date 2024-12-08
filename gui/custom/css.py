@@ -6,7 +6,6 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-
 from gui.custom.theme import Theme
 
 
@@ -303,6 +302,13 @@ class Css:
             padding: 1px 5px;
         }}
     """
+    # }}}
+    # CHART_LABEL  # {{{
+    CHART_LABEL = f"""
+        font-family: Monospace;
+        background-color: {Theme.bg_dark};
+        color: {Theme.fg_normal};
+        """
     # }}}
     BUY_BUTTON = """# {{{
         QPushButton {
