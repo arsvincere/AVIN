@@ -184,8 +184,9 @@ class MainWindow(QtWidgets.QMainWindow):
         # self.rtool.account.triggered.connect(self.__onAccount)
         # self.rtool.trader.triggered.connect(self.__onTrader)
         # self.rtool.report.triggered.connect(self.__onReport)
+
         # widget signals
-        # AssetListWidget.assetChanged.connect(self.__onAssetChanged)
+        AssetListWidget.assetChanged.connect(self.__onAssetChanged)
         # TesterWidget.tlistChanged.connect(self.__onTradeListChanged)
         # TesterWidget.tradeChanged.connect(self.__onTradeChanged)
         # self.widget_broker.connectEnabled.connect(self.__onConnect)
@@ -361,11 +362,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # }}}
     @pyqtSlot(Asset)  # __onAssetChanged  # {{{
-    def __onAssetChanged(self, iasset: Asset):
+    def __onAssetChanged(self, asset: Asset):
         logger.debug(f"{self.__class__.__name__}.__onAssetChanged()")
-        assert isinstance(iasset, IShare)
+        assert isinstance(asset, Asset)
+
         self.widget_chart.showChart(iasset)
-        self.widget_order.setAsset(iasset)
+        # self.widget_order.setAsset(iasset)
 
     # }}}
     @pyqtSlot(TradeList)  # __onTradeListChanged # {{{

@@ -21,11 +21,8 @@ from avin.utils import Signal, find_left, logger
 
 
 class Chart:
-    """Const"""  # {{{
-
     DEFAULT_BARS_COUNT = 5000
 
-    # }}}
     def __init__(  # {{{
         self,
         instrument: Instrument,
@@ -87,6 +84,10 @@ class Chart:
     def __iter__(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__iter__()")
         return iter(self.__bars)
+
+    # }}}
+    def __len__(self):  # {{{
+        return len(self.__bars)
 
     # }}}
     @property  # instrument  # {{{

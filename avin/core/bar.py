@@ -20,9 +20,7 @@ from avin.data._bar import _Bar
 Chart = TypeVar("Chart")
 
 
-class Bar(_Bar):  # {{{
-    """doc"""
-
+class Bar(_Bar):
     class Type(enum.Flag):  # {{{
         UNDEFINE = 0
         BEAR = 1
@@ -152,8 +150,6 @@ class Bar(_Bar):  # {{{
 
     # }}}
 
-
-# }}}
 
 if __name__ == "__main__":
     ...
