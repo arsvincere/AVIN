@@ -228,12 +228,12 @@ class _TRequestAllTest(QtCore.QThread):  # {{{
 # }}}
 
 
-class TesterThread(QtCore.QThread):  # {{{
+class TRunTest(QtCore.QThread):  # {{{
     def __init__(self, test: Test, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtCore.QThread.__init__(self, parent)
 
-        self.__test = test
+        self.test = test
 
     # }}}
     def run(self):  # {{{
@@ -246,7 +246,7 @@ class TesterThread(QtCore.QThread):  # {{{
         logger.debug(f"{self.__class__.__name__}.__anew()")
 
         t = Tester()
-        t.setTest(self.__test)
+        t.setTest(self.test)
         await t.runTest()
 
     # }}}
