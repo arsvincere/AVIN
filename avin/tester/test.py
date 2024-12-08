@@ -69,6 +69,8 @@ class Test:
     @name.setter
     def name(self, new_name) -> bool:
         self.__name = new_name
+        self.__strategy_set.name = f"{new_name}-sset"
+        self.__trade_list.name = f"{new_name}-tlist"
 
     # }}}
     @property  # status# {{{
