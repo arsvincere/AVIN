@@ -7,6 +7,7 @@
 # ============================================================================
 
 import sys
+from typing import Union
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt
@@ -266,6 +267,7 @@ class StrategySetTree(QtWidgets.QTreeWidget):  # {{{
         return False
 
     # }}}
+
     def contextMenuEvent(self, e: QtGui.QContextMenuEvent):  # {{{
         logger.debug(f"{self.__class__.__name__}.contextMenuEvent()")
         item = self.itemAt(e.pos())
@@ -283,8 +285,8 @@ class StrategySetTree(QtWidgets.QTreeWidget):  # {{{
         # create items
         for strategy in slist:
             group_item = StrategySetNodeGroup(strategy)
-            self.addTopLevelItem(strategy_item)
-            for node in slist[strategy]:
+            self.addTopLevelItem(group_item)
+            for node in strategy_set[strategy]:
                 asset = alist.find(figi=node.figi)
                 node_item = StrategySetNodeItem(node)
                 node_item.setAsset(asset)
@@ -302,6 +304,7 @@ class StrategySetTree(QtWidgets.QTreeWidget):  # {{{
         return sset
 
     # }}}
+
     def __createActions(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createActions()")
 
@@ -370,6 +373,8 @@ class StrategySetTree(QtWidgets.QTreeWidget):  # {{{
         self.__asset_clear.triggered.connect(self.__onAssetClear)
         self.__asset_info.triggered.connect(self.__onAssetInfo)
 
+        self.itemChanged.connect(self.__onItemChanged)
+
     # }}}
     def __setVisibleActions(self, item):  # {{{
         logger.debug(f"{self.__class__.__name__}.__setVisibleActions()")
@@ -431,12 +436,12 @@ class StrategySetTree(QtWidgets.QTreeWidget):  # {{{
         # show asset select dialog
         dial = AssetSelectDialog()
         alist = dial.selectAssets()
+        if alist is None:
+            return
 
         # add assets if not exist
         for asset in alist:
-            if asset not in group:
-                node_item = StrategySetNodeItem.new(group, asset)
-                group.addChild(node_item)
+            group.addAsset(asset)
 
     # }}}
     @QtCore.pyqtSlot()  # __onAssetRemove  # {{{
@@ -473,6 +478,28 @@ class StrategySetTree(QtWidgets.QTreeWidget):  # {{{
         item = self.currentItem()
         dial = AssetInfoDialog()
         dial.showInfo(item.asset)
+
+    # }}}
+    @QtCore.pyqtSlot(QtWidgets.QTreeWidgetItem, int)  # __onItemChanged  # {{{
+    def __onItemChanged(
+        self,
+        item: Union[StrategySetNodeItem, StrategySetNodeGroup],
+        column: int,
+    ):
+        logger.debug(f"{self.__class__.__name__}.__onItemChanged()")
+
+        # ignore autotristrate checkbox for StrategySetNodeGroup
+        if isinstance(item, StrategySetNodeGroup):
+            return
+
+        # this is StrategySetNodeItem
+        cheched = Qt.CheckState.Checked
+        long = item.checkState(item.Column.Long) == cheched
+        short = item.checkState(item.Column.Short) == cheched
+        print(item, long, short)
+        node = item.node
+        node.long = long
+        node.short = short
 
     # }}}
 

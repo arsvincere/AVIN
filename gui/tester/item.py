@@ -38,6 +38,8 @@ class TestItem(QtWidgets.QTreeWidgetItem):  # {{{
         )
 
         self.setText(self.Column.Name, test.name)
+        self.setText(self.Column.Status, test.status.name)
+        self.setText(self.Column.Trades, str(len(test.trade_list)))
 
     # }}}
     def updateProgressBar(self):  # {{{

@@ -186,11 +186,15 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
     def __onEdit(self):
         logger.debug(f"{self.__class__.__name__}.__onEdit()")
 
-        # itest: ITest = self.currentItem()
-        # edited = self.constructor.editTest(itest)
-        # if edited:
-        #     self.removeTest(itest)
-        #     self.addTest(edited)
+        item = self.currentItem()
+        test = item.test
+
+        dial = TestEditDialog()
+        edited = dial.editTest(test)
+        if edited:
+            index = self.indexFromItem(item).row()
+            self.takeTopLevelItem(index)
+            self.addTest(edited)
 
     # }}}
     @QtCore.pyqtSlot()  # __onRename# {{{
@@ -207,14 +211,18 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
     def __onDelete(self):
         logger.debug(f"{self.__class__.__name__}.delete()")
 
-        # result = Dialog.confirm()
-        # if result:
-        #     itest = self.currentItem()
-        #     logger.info(f"Delete test '{itest.name}'")
-        #     Test.delete(itest)
-        #     self.removeTest(itest)
-        # else:
-        #     logger.info("Cancel delete")
+        if not Dialog.confirm():
+            return
+
+        item = self.currentItem()
+        test = item.test
+
+        # delete test
+        Thread.deleteTest(test)
+
+        # delete item from tree
+        index = self.indexFromItem(item).row()
+        self.takeTopLevelItem(index)
 
     # }}}
 

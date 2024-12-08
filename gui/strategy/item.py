@@ -13,7 +13,7 @@ import enum
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
 
-from avin.core import Asset, Strategy, StrategySetNode
+from avin.core import Asset, AssetList, Strategy, StrategySetNode
 from avin.utils import logger
 from gui.strategy.thread import Thread
 
@@ -380,13 +380,23 @@ class StrategySetNodeGroup(QtWidgets.QTreeWidgetItem):  # {{{
         return self.__strategy.version
 
     # }}}
+    @property  # alist  # {{{
+    def alist(self) -> AssetList:
+        asset_list = AssetList("")
+        for child in self:
+            asset = child.asset
+            asset_list.add(asset)
+
+        return asset_list
+
+    # }}}
     def addAsset(self, asset: Asset) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.addAsset()")
 
         if asset in self:
             return
 
-        node_item = StrategySetNode.new(self, asset)
+        node_item = StrategySetNodeItem.new(self, asset)
         self.addChild(node_item)
 
     # }}}

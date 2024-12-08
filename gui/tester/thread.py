@@ -28,7 +28,7 @@ class Thread:  # {{{
 
     # }}}
     @classmethod  # loadTest  # {{{
-    def loadTest(cls, name: str) -> None:
+    def loadTest(cls, name: str) -> Test | None:
         logger.debug(f"{cls.__name__}.loadTest()")
 
         thread = _TLoadTest(name)
@@ -39,7 +39,7 @@ class Thread:  # {{{
 
     # }}}
     @classmethod  # copyTest  # {{{
-    def copyTest(cls, test: Test, new_name: str) -> None:
+    def copyTest(cls, test: Test, new_name: str) -> Test | None:
         logger.debug(f"{cls.__name__}.copyTest()")
 
         thread = _TCopyTest(test, new_name)
@@ -47,6 +47,15 @@ class Thread:  # {{{
         awaitQThread(thread)
 
         return thread.result
+
+    # }}}
+    @classmethod  # deleteTest  # {{{
+    def deleteTest(cls, test: Test) -> None:
+        logger.debug(f"{cls.__name__}.deleteTest()")
+
+        thread = _TDeleteTest(test)
+        thread.start()
+        awaitQThread(thread)
 
     # }}}
     @classmethod  # requestAllTest  # {{{
@@ -130,6 +139,29 @@ class _TCopyTest(QtCore.QThread):  # {{{
         logger.debug(f"{self.__class__.__name__}.__arun()")
 
         self.result = await Test.copy(self.__test, self.__new_name)
+
+    # }}}
+
+
+# }}}
+class _TDeleteTest(QtCore.QThread):  # {{{
+    def __init__(self, test: Test, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtCore.QThread.__init__(self, parent)
+
+        self.__test = test
+
+    # }}}
+    def run(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.run()")
+
+        asyncio.run(self.__arun())
+
+    # }}}
+    async def __arun(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__arun()")
+
+        await Test.delete(self.__test)
 
     # }}}
 

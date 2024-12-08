@@ -34,35 +34,47 @@ class TestEditDialog(QtWidgets.QDialog):
     def newTest(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.newTest()")
 
+        # create new test, and exec edit dialog
         new_test = Test("unnamed")
         self.__readTest(new_test)
         result = self.exec()
 
-        if result == QtWidgets.QDialog.DialogCode.Accepted:
-            self.__writeTest(new_test)
-            Thread.saveTest(new_test)
-            logger.info(f"New test '{new_test.name}' created")
-            return new_test
-        else:
+        # check exec status
+        if result == QtWidgets.QDialog.DialogCode.Rejected:
             logger.info("Cancel new test")
             return False
 
+        # write config from UI, save
+        self.__writeTest(new_test)
+        Thread.saveTest(new_test)
+
+        logger.info(f"New test '{new_test.name}' created")
+        return new_test
+
     # }}}
-    def editTest(self, itest):  # {{{
-        self.__readTestConfig(itest)
-        self.alist = itest.alist
+    def editTest(self, test: Test):  # {{{
+        logger.debug(f"{self.__class__.__name__}.editTest()")
+
+        # read test config to UI
+        self.__readTest(test)
         result = self.exec()
-        if result == QtWidgets.QDialog.DialogCode.Accepted:
-            ITest.delete(itest)
-            edited = ITest(name="")
-            edited = self.__writeTestConfig(edited)
-            edited.status = Test.Status.EDITED
-            ITest.save(edited)
-            logger.info("Test edited")
-            return edited
-        else:
+
+        # check exec status
+        if result == QtWidgets.QDialog.DialogCode.Rejected:
             logger.info("Cancel edit test")
             return False
+
+        # delete old test
+        Thread.deleteTest(test)
+
+        # create new test, write config from UI, set status, save
+        edited = Test("")
+        self.__writeTest(edited)
+        edited.status = Test.Status.EDITED
+        Thread.saveTest(edited)
+
+        logger.info("Test edited")
+        return edited
 
     # }}}
 
