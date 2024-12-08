@@ -130,6 +130,7 @@ class AssetListWidget(QtWidgets.QWidget):  # {{{
     @QtCore.pyqtSlot()  # __onItemClicked{{{
     def __onItemClicked(self):
         logger.debug(f"{self.__class__.__name__}.__onItemClicked()")
+
         asset = self.__tree.currentAsset()
         self.assetChanged.emit(asset)
 
