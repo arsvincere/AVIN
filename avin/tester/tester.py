@@ -13,6 +13,10 @@ from avin.tester._virtual_broker import _VirtualBroker
 from avin.tester.test import Test
 from avin.utils import logger
 
+# TODO: нахер все эти заморочки с setTest, clearAll...
+# здесь нужен только один публичный метод - запустить тест
+# и все.
+
 
 class Tester:
     def __init__(self):  # {{{
