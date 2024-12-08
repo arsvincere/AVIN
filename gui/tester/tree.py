@@ -201,10 +201,26 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
     def __onRename(self):
         logger.debug(f"{self.__class__.__name__}.__onRename()")
 
-        # itest: ITest = self.currentItem()
-        # new_name = Dialog.name(default=itest.name)
-        # if new_name:
-        #     ITest.rename(itest, new_name)
+        # enter new name
+        new_name = Dialog.name("New name...")
+        if not new_name:
+            return
+
+        # get current test
+        item = self.currentItem()
+        test = item.test
+
+        # try rename test
+        renamed_test = Thread.renameTest(test, new_name)
+        if not renamed_test:
+            return
+
+        # delete old item
+        index = self.indexFromItem(item).row()
+        self.takeTopLevelItem(index)
+
+        # add renamed test
+        self.addTest(renamed_test)
 
     # }}}
     @QtCore.pyqtSlot()  # __onDelete# {{{

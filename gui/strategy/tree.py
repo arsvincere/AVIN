@@ -488,15 +488,16 @@ class StrategySetTree(QtWidgets.QTreeWidget):  # {{{
     ):
         logger.debug(f"{self.__class__.__name__}.__onItemChanged()")
 
-        # ignore autotristrate checkbox for StrategySetNodeGroup
+        # ignore checkbox for StrategySetNodeGroup
         if isinstance(item, StrategySetNodeGroup):
             return
 
-        # this is StrategySetNodeItem
+        # StrategySetNodeItem get checkstate, and convert -> bool
         cheched = Qt.CheckState.Checked
         long = item.checkState(item.Column.Long) == cheched
         short = item.checkState(item.Column.Short) == cheched
-        print(item, long, short)
+
+        # set long/short flags for node
         node = item.node
         node.long = long
         node.short = short
