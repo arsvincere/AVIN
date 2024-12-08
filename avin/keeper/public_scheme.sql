@@ -5,8 +5,6 @@
 -- LICENSE:      GNU GPLv3
 -- ===========================================================================
 
-
-
 CREATE SCHEMA IF NOT EXISTS public -- {{{
     AUTHORIZATION pg_database_owner;
 COMMENT ON SCHEMA public
