@@ -17,7 +17,7 @@ from avin.utils import logger
 from gui.custom import Css, Dialog, Menu
 from gui.tester.dialog_edit import TestEditDialog
 from gui.tester.item import TestItem, TradeItem, TradeListItem
-from gui.tester.thread import Thread
+from gui.tester.thread import Thread, TRunTest
 
 
 class TestTree(QtWidgets.QTreeWidget):  # {{{
@@ -30,6 +30,17 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         self.__connect()
 
     # }}}
+    def __iter__(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__iter__()")
+
+        all_items = list()
+        for i in range(self.topLevelItemCount()):
+            item = self.topLevelItem(i)
+            all_items.append(item)
+
+        return iter(all_items)
+
+    # }}}
 
     def contextMenuEvent(self, e: QtGui.QContextMenuEvent):  # {{{
         logger.debug(f"{self.__class__.__name__}.contextMenuEvent(e)")
@@ -40,15 +51,24 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         if isinstance(item, TestItem):
             self.test_menu.exec(QtGui.QCursor.pos())
         elif isinstance(item, TradeListItem):
-            self.trade_list_menu.exec(QtGui.QCursor.pos())
+            self.tlist_menu.exec(QtGui.QCursor.pos())
         return e.ignore()
 
     # }}}
-    def addTest(self, test: Test):  # {{{
+    def addTest(self, test: Test) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.addTest()")
 
         item = TestItem(test)
         self.addTopLevelItem(item)
+
+    # }}}
+    def removeTest(self, test: Test) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.removeTest()")
+
+        for item in self:
+            if item.test.name == test.name:
+                index = self.indexFromItem(item).row()
+                self.takeTopLevelItem(index)
 
     # }}}
 
@@ -108,23 +128,27 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         self.tlist_menu.years.triggered.connect(self.__onSelectYears)
 
     # }}}
-    def __reloadTest(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__reloadTest()")
 
-        # FIX: write me!
-        assert False
+    def __isBusy(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__isBusy()")
 
-    # }}}
-    def __removeTest(self, test: Test):  # {{{
-        logger.debug(f"{self.__class__.__name__}.removeTest()")
-        index = self.indexFromItem(itest).row()
-        self.takeTopLevelItem(index)
+        if self.thread is not None:
+            Dialog.info("Tester is busy now, wait for complete test")
+            return True
+
+        return False
 
     # }}}
     @QtCore.pyqtSlot()  # __threadFinished# {{{
     def __threadFinished(self):
         logger.debug(f"{self.__class__.__name__}.__threadFinished()")
-        self.__reloadTest()
+
+        # find and update test item text
+        test = self.thread.test
+        for item in self:
+            if item.test.name == test.name:
+                item.updateText()
+
         self.thread = None
 
     # }}}
@@ -132,16 +156,16 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
     @QtCore.pyqtSlot()  # __onRun# {{{
     def __onRun(self):
         logger.debug(f"{self.__class__.__name__}.__onRun()")
-        # if self.thread is not None:
-        #     Dialog.info("Tester is busy now, wait for complete test")
-        #     return
-        # itest = self.currentItem()
-        # tester = Tester()
-        # tester.progress.connect(self.__updateProgressBar)
-        # self.thread = Thread(tester, itest)
-        # self.thread.finished.connect(self.__threadFinished)
-        # itest.updateProgressBar()
-        # self.thread.start()
+
+        if self.__isBusy():
+            return
+
+        item = self.currentItem()
+        test = item.test
+
+        self.thread = TRunTest(test)
+        self.thread.finished.connect(self.__threadFinished)
+        self.thread.start()
 
     # }}}
     @QtCore.pyqtSlot()  # __onPause# {{{
