@@ -147,6 +147,9 @@ class TestEditDialog(QtWidgets.QDialog):
         self.dblspinbox_commission.setMinimum(0.0)
         self.dblspinbox_commission.setMaximum(1.0)
 
+        self.begin.setDisplayFormat("yyyy.MM.dd")
+        self.end.setDisplayFormat("yyyy.MM.dd")
+
     # }}}
     def __writeTest(self, test: Test):  # {{{
         test.name = self.testname_lineedit.text()
