@@ -14,14 +14,18 @@ from PyQt6 import QtCore, QtWidgets
 from avin.const import ONE_DAY
 from avin.core import Asset, Chart, TimeFrame
 from avin.utils import logger, now
+from gui.chart.gchart import GChart
 from gui.chart.scene import ChartScene
+from gui.chart.thread import Thread
 from gui.chart.view import ChartView
 from gui.custom import Css
 
 
-class ChartWidget(QtWidgets.QWidget):  # {{{
+class ChartWidget(QtWidgets.QWidget):
     def __init__(self, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QWidget.__init__(self, parent)
+
         self.__config()
         self.__createWidgets()
         self.__createLayots()
@@ -32,6 +36,8 @@ class ChartWidget(QtWidgets.QWidget):  # {{{
     def __config(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__config()")
 
+        self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
+        self.setWindowTitle("AVIN  -  Ars  Vincere")
         self.setStyleSheet(Css.STYLE)
 
     # }}}
@@ -81,13 +87,17 @@ class ChartWidget(QtWidgets.QWidget):  # {{{
 
     # }}}
     def __initUI(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__initUI()")
+
         for timeframe in TimeFrame.ALL:
             self.combobox_timeframe1.addItem(str(timeframe))
             self.combobox_timeframe2.addItem(str(timeframe))
-        self.combobox_timeframe1.setCurrentIndex(3)
-        self.combobox_timeframe2.setCurrentIndex(2)
+        self.combobox_timeframe1.setCurrentIndex(4)
+        self.combobox_timeframe2.setCurrentIndex(5)
+
         self.dateedit_begin.setMinimumDate(QtCore.QDate(2018, 1, 1))
         self.dateedit_begin.setMaximumDate(now().date() - ONE_DAY)
+
         self.dateedit_end.setMinimumDate(QtCore.QDate(2018, 1, 1))
         self.dateedit_end.setMaximumDate(now().date())
 
@@ -181,16 +191,18 @@ class ChartWidget(QtWidgets.QWidget):  # {{{
         ...
 
     # }}}
-    def showChart(self, iasset: Asset):  # {{{
-        logger.debug(f"{self.__class__.__name__}.showChart()")
+    def setAsset(self, asset: Asset):  # {{{
+        logger.debug(f"{self.__class__.__name__}.setAsset()")
+
         timeframe = self.__readTimeframe1()
         end = now()
         begin = now() - timeframe * Chart.DEFAULT_BARS_COUNT
-        gchart = GChart(iasset, timeframe, begin, end)
+        chart = Thread.loadChart(asset, timeframe, begin, end)
+        gchart = GChart(chart)
+
         self.scene.setGChart(gchart)
-        # self.view.scale(1.00, 0.5)
         self.view.centerOnLast()
-        self.btn_asset.setText(iasset.ticker)
+        self.btn_asset.setText(asset.ticker)
 
     # }}}
     def showTradeList(self, itlist):  # {{{
@@ -224,13 +236,9 @@ class ChartWidget(QtWidgets.QWidget):  # {{{
 
 # }}}
 
-# }}}
-
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     w = ChartWidget()
-    w.setWindowTitle("AVIN  -  Ars  Vincere")
-    w.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
     w.show()
     sys.exit(app.exec())

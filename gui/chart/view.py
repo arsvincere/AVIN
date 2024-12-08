@@ -6,12 +6,13 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-from PyQt6 import QtCore, QtWidgets
+from PyQt6 import QtCore, QtGui, QtWidgets
+from PyQt6.QtCore import Qt
 
 from gui.chart.gtrade import GTrade
 
 
-class ChartView(QtWidgets.QGraphicsView):  # {{{
+class ChartView(QtWidgets.QGraphicsView):
     def __init__(self, parent=None):  # {{{
         QtWidgets.QGraphicsView.__init__(self, parent)
         # включает режим перетаскивания сцены внутри QGraphicsView
@@ -20,6 +21,7 @@ class ChartView(QtWidgets.QGraphicsView):  # {{{
         self.current_gtrade = None
 
     # }}}
+
     def wheelEvent(self, e):  # {{{
         ctrl = QtCore.Qt.KeyboardModifier.ControlModifier
         no = QtCore.Qt.KeyboardModifier.NoModifier
@@ -36,15 +38,24 @@ class ChartView(QtWidgets.QGraphicsView):  # {{{
         self.__resetTranformation()
 
     # }}}
-    def __resetTranformation(self):  # {{{
-        tr = self.transform()
-        tr = tr.inverted()[0]
-        pos = self.mapToScene(0, 0)
-        info = self.scene().labels
-        info.setTransform(tr)
-        info.setPos(pos)
-        if self.current_gtrade:
-            self.current_gtrade.annotation.setTransform(tr)
+    def enterEvent(self, e: QtGui.QEnterEvent):  # {{{
+        super().enterEvent(e)
+
+        self.viewport().setCursor(Qt.CursorShape.CrossCursor)
+
+    # }}}
+    def mousePressEvent(self, e: QtGui.QMouseEvent):  # {{{
+        super().mousePressEvent(e)
+
+        self.viewport().setCursor(Qt.CursorShape.CrossCursor)
+        return e.ignore()
+
+    # }}}
+    def mouseReleaseEvent(self, e: QtGui.QMouseEvent):  # {{{
+        super().mouseReleaseEvent(e)
+
+        self.viewport().setCursor(Qt.CursorShape.CrossCursor)
+        return e.ignore()
 
     # }}}
     # def mouseMoveEvent(self, e: QtGui.QMouseEvent):{{{
@@ -52,11 +63,7 @@ class ChartView(QtWidgets.QGraphicsView):  # {{{
     #     super().mouseMoveEvent(e)
     #     return e.ignore()
     # }}}
-    # def mousePressEvent(self, e: QtGui.QMouseEvent):{{{
-    #     ...
-    #     super().mousePressEvent(e)
-    #     return e.ignore()
-    # }}}
+
     def centerOnFirst(self):  # {{{
         logger.debug("ChartView.centerOnFirst()")
         scene = self.scene()
@@ -83,11 +90,19 @@ class ChartView(QtWidgets.QGraphicsView):  # {{{
         pos = gtrade.trade_pos
         self.centerOn(pos)
 
+    # }}}
 
-# }}}
+    def __resetTranformation(self):  # {{{
+        tr = self.transform()
+        tr = tr.inverted()[0]
+        pos = self.mapToScene(0, 0)
+        info = self.scene().labels
+        info.setTransform(tr)
+        info.setPos(pos)
+        if self.current_gtrade:
+            self.current_gtrade.annotation.setTransform(tr)
 
-
-# }}}
+    # }}}
 
 
 if __name__ == "__main__":

@@ -56,6 +56,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__initUI()
 
     # }}}
+
     # def __createMdiArea(self):  # {{{
     #     logger.debug(f"{self.__class__.__name__}.__createMdiArea()")
     #     self.area = QtWidgets.QMdiArea(self)
@@ -186,7 +187,6 @@ class MainWindow(QtWidgets.QMainWindow):
         # self.rtool.report.triggered.connect(self.__onReport)
 
         # widget signals
-        AssetListWidget.assetChanged.connect(self.__onAssetChanged)
         # TesterWidget.tlistChanged.connect(self.__onTradeListChanged)
         # TesterWidget.tradeChanged.connect(self.__onTradeChanged)
         # self.widget_broker.connectEnabled.connect(self.__onConnect)
@@ -197,11 +197,12 @@ class MainWindow(QtWidgets.QMainWindow):
     def __initUI(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__initUI()")
 
-        self.ltool.tester.trigger()
+        self.ltool.asset.trigger()
         self.ltool.console.trigger()
         self.rtool.chart.trigger()
 
     # }}}
+
     @pyqtSlot()  # __onData  # {{{
     def __onData(self):
         logger.debug(f"{self.__class__.__name__}.__onData()")
@@ -221,9 +222,15 @@ class MainWindow(QtWidgets.QMainWindow):
         logger.debug(f"{self.__class__.__name__}.__onAsset()")
 
         if self.asset_widget is None:
+            # create dock widget
             self.asset_widget = AssetListDockWidget(self)
             area = Qt.DockWidgetArea.LeftDockWidgetArea
             self.addDockWidget(area, self.asset_widget)
+
+            # connect signal
+            self.asset_widget.widget.assetChanged.connect(
+                self.__onAssetChanged
+            )
             return
 
         state = self.asset_widget.isVisible()
@@ -271,13 +278,15 @@ class MainWindow(QtWidgets.QMainWindow):
             self.addDockWidget(area, self.tester_widget)
             return
 
-        state = self.strategy_widget.isVisible()
-        self.strategy_widget.setVisible(not state)
+        state = self.tester_widget.isVisible()
+        self.tester_widget.setVisible(not state)
 
     # }}}
     @pyqtSlot()  # __onSummary  # {{{
     def __onSummary(self):
         logger.debug(f"{self.__class__.__name__}.__onSummary()")
+
+        assert False
 
     # }}}
     @pyqtSlot()  # __onConsole  # {{{
@@ -332,41 +341,41 @@ class MainWindow(QtWidgets.QMainWindow):
         self.chart_widget.setVisible(not state)
 
     # }}}
-
     @pyqtSlot()  # __onBroker  # {{{
     def __onBroker(self):
         logger.debug(f"{self.__class__.__name__}.__onBroker()")
-        state = self.widget_broker.isVisible()
-        self.widget_broker.setVisible(not state)
+
+        assert False
 
     # }}}
     @pyqtSlot()  # __onAccount  # {{{
     def __onAccount(self):
         logger.debug(f"{self.__class__.__name__}.__onAccount()")
-        state = self.widget_account.isVisible()
-        self.widget_account.setVisible(not state)
+
+        assert False
 
     # }}}
     @pyqtSlot()  # __onOrder  # {{{
     def __onOrder(self):
         logger.debug(f"{self.__class__.__name__}.__onOrder()")
-        state = self.widget_order.isVisible()
-        self.widget_order.setVisible(not state)
+
+        assert False
 
     # }}}
     @pyqtSlot()  # __onGeneral  # {{{
     def __onGeneral(self):
         logger.debug(f"{self.__class__.__name__}.__onGeneral()")
-        state = self.widget_general.isVisible()
-        self.widget_general.setVisible(not state)
+
+        assert False
 
     # }}}
+
     @pyqtSlot(Asset)  # __onAssetChanged  # {{{
     def __onAssetChanged(self, asset: Asset):
         logger.debug(f"{self.__class__.__name__}.__onAssetChanged()")
         assert isinstance(asset, Asset)
 
-        self.widget_chart.showChart(iasset)
+        self.chart_widget.setAsset(asset)
         # self.widget_order.setAsset(iasset)
 
     # }}}
@@ -408,6 +417,5 @@ class MainWindow(QtWidgets.QMainWindow):
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     w = MainWindow()
-    w.showMaximized()
     w.show()
     sys.exit(app.exec())

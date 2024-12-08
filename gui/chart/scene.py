@@ -6,7 +6,6 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-
 from PyQt6 import QtWidgets
 
 from avin.utils import logger
@@ -17,7 +16,7 @@ from gui.custom import Theme
 from gui.indicator.extremum import ExtremumHandler
 
 
-class ChartScene(QtWidgets.QGraphicsScene):  # {{{
+class ChartScene(QtWidgets.QGraphicsScene):
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QGraphicsScene.__init__(self, parent)
@@ -192,9 +191,6 @@ class ChartScene(QtWidgets.QGraphicsScene):  # {{{
     def currentChart(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.currentChart()")
         return self.gchart
-
-
-# }}}
 
 
 # }}}

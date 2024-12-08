@@ -21,6 +21,7 @@ class GTrade(Trade, QtWidgets.QGraphicsItemGroup):  # {{{
     OPEN_WIDTH = 1
     STOP_WIDTH = 1
     TAKE_WIDTH = 1
+
     __open_pen = QtGui.QPen()
     __open_pen.setWidth(OPEN_WIDTH)
     __open_pen.setColor(Theme.Chart.OPEN)
