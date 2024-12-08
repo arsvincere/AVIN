@@ -90,6 +90,7 @@ class Chart:
         return len(self.__bars)
 
     # }}}
+
     @property  # instrument  # {{{
     def instrument(self):
         return self.__instrument
@@ -129,6 +130,7 @@ class Chart:
         self.__now = new_bar
 
     # }}}
+
     def addHistoricalBar(self, new_bar: Bar) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.addNewHistoricalBar()")
 
@@ -148,20 +150,62 @@ class Chart:
     # }}}
     def getBars(self) -> list[Bar]:  # {{{
         logger.debug(f"{self.__class__.__name__}.getBars()")
+
         return self.__bars[0 : self.__head]
 
     # }}}
     def getTodayBars(self) -> list[Bar]:  # {{{
         logger.debug(f"{self.__class__.__name__}.getTodayBars()")
+
         if self.__now is None:
             return list()
+
         today = self.__now.dt.date()
         i = self.__head
         while i - 1 > 0 and self.__bars[i - 1].dt.date() == today:
             i -= 1
+
         return self.__bars[i : self.__head]
 
     # }}}
+    def highestHigh(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.highestHigh()")
+
+        # using method getBars() instead of self.__bars
+        # because its return only [0, head] bars
+        bars = self.getBars()
+
+        bar = max(bars, key=lambda x: x.high)
+        return bar.high
+
+    # }}}
+    def lowestLow(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.lowestLow()")
+
+        # using method getBars() instead of self.__bars
+        # because its return only [0, head] bars
+        bars = self.getBars()
+        bar = min(bars, key=lambda x: x.low)
+        return bar.low
+
+    # }}}
+    def highestHighToday(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.highestHighToday()")
+
+        bars = self.getTodayBars()
+        bar = max(bars, key=lambda x: x.high)
+        return bar.high
+
+    # }}}
+    def lowestLowToday(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.lowestLowToday()")
+
+        bars = self.getTodayBars()
+        bar = min(bars, key=lambda x: x.low)
+        return bar.low
+
+    # }}}
+
     def setHeadIndex(self, index) -> bool:  # {{{
         logger.debug(f"{self.__class__.__name__}.setHeadIndex()")
         assert isinstance(index, int)
@@ -208,6 +252,7 @@ class Chart:
             return None
 
     # }}}
+
     @classmethod  # load# {{{
     async def load(
         cls,
@@ -239,6 +284,7 @@ class Chart:
         return chart
 
     # }}}
+
     @classmethod  # __checkArgs  # {{{
     def __checkArgs(
         cls,
