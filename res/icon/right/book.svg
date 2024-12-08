@@ -24,8 +24,8 @@
      inkscape:deskcolor="#505050"
      inkscape:document-units="px"
      inkscape:zoom="9.6011845"
-     inkscape:cx="30.673299"
-     inkscape:cy="27.496607"
+     inkscape:cx="29.423453"
+     inkscape:cy="39.265988"
      inkscape:window-width="1910"
      inkscape:window-height="1045"
      inkscape:window-x="0"
@@ -82,12 +82,12 @@
      id="layer1">
     <path
        style="opacity:1;fill:none;fill-opacity:1;stroke:#cccccc;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:0;stroke-dasharray:none;stroke-opacity:1"
-       d="M 12,52 H 29"
+       d="m 24,52 h 5"
        id="path14"
        sodipodi:nodetypes="cc" />
     <path
        style="fill:none;fill-opacity:1;stroke:#cccccc;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:0;stroke-dasharray:none;stroke-opacity:1"
-       d="M 35,20 H 54"
+       d="M 35,20 H 50"
        id="path14-7"
        sodipodi:nodetypes="cc" />
     <path
@@ -122,7 +122,7 @@
        sodipodi:nodetypes="cc" />
     <path
        style="fill:none;fill-opacity:1;stroke:#cccccc;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:0;stroke-dasharray:none;stroke-opacity:1"
-       d="M 35,44 H 47"
+       d="M 35,44 H 48"
        id="path14-7-2-9-9-1-1-8-3"
        sodipodi:nodetypes="cc" />
     <path
@@ -137,7 +137,7 @@
        sodipodi:nodetypes="cc" />
     <path
        style="fill:none;fill-opacity:1;stroke:#cccccc;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:0;stroke-dasharray:none;stroke-opacity:1"
-       d="M 35,12 H 53"
+       d="M 35,12 H 54"
        id="path14-7-2-4-6"
        sodipodi:nodetypes="cc" />
   </g>
