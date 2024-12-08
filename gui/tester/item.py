@@ -37,9 +37,15 @@ class TestItem(QtWidgets.QTreeWidgetItem):  # {{{
             Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
         )
 
-        self.setText(self.Column.Name, test.name)
-        self.setText(self.Column.Status, test.status.name)
-        self.setText(self.Column.Trades, str(len(test.trade_list)))
+        self.updateText()
+
+    # }}}
+    def updateText(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.update()")
+
+        self.setText(self.Column.Name, self.test.name)
+        self.setText(self.Column.Status, self.test.status.name)
+        self.setText(self.Column.Trades, str(len(self.test.trade_list)))
 
     # }}}
     def updateProgressBar(self):  # {{{
@@ -67,8 +73,9 @@ class TestItem(QtWidgets.QTreeWidgetItem):  # {{{
                 self, TestTree.Column.Progress, self.progress_bar
             )
 
+    # }}}
 
-# }}}
+
 # }}}
 class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
     class Column(enum.IntEnum):  # {{{
