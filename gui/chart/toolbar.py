@@ -6,7 +6,6 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-
 from PyQt6 import QtCore, QtGui, QtWidgets
 
 from avin.core import TimeFrame
