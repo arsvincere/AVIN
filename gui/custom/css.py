@@ -8,6 +8,19 @@
 
 from gui.custom.theme import Theme
 
+# TODO: эти сепараторы относятся к док виджетам,
+# к панели за которую они перетаскиваются
+
+# QMainWindow::separator {
+#     background: yellow;
+#     width: 10px; /* when vertical */
+#     height: 10px; /* when horizontal */
+# }
+#
+# QMainWindow::separator:hover {
+#     background: red;
+# }
+
 
 class Css:
     # STYLE  # {{{
@@ -106,14 +119,15 @@ class Css:
     # }}}
     # TOOL_BAR  # {{{
     TOOL_BAR = f"""
-        font-family: Monospace;
-        background-color: {Theme.bg_normal};
-        color: {Theme.fg_normal};
+        QToolBar {{
+            font-family: Monospace;
+            background-color: {Theme.bg_normal};
+            color: {Theme.fg_normal};
 
-        border-color: transparent;
-        border-width: 2px;
-        border-style: solid;
-
+            border-color: transparent;
+            border-width: 2px;
+            border-style: solid;
+        }}
         """
     # }}}
     # TOOL_BUTTON  # {{{
@@ -210,12 +224,13 @@ class Css:
             background-color: transparent;
             color: {Theme.fg_disabled};
         }}
-        // QMenu::separator {{
-        //     height: 20px;
-        //     background: lightblue;
-        //     margin-left: 10px;
-        //     margin-right: 5px;
-        // }}
+        QMenu::separator {{
+            height: 20px;
+            width: 5px;
+            background: lightblue;
+            margin-left: 10px;
+            margin-right: 5px;
+        }}
         // QMenu::indicator {{
         //     background: red;
         //     width: 13px;
@@ -298,7 +313,9 @@ class Css:
             background-color: {Theme.bg_normal};
             color: {Theme.border};
             border: 1px solid {Theme.border};
-            margin: 0px 1px;
+            margin-left: 1px;
+            margin-right: 1px;
+            margin-bottom: 5px;
             padding: 1px 5px;
         }}
     """

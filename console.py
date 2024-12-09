@@ -8,14 +8,14 @@
 
 
 def main():
-    # start app
     print("Welcome to AVIN Trade System!")
 
     # load trader config
+    ...
 
     # start trader
+    ...
 
-    # before quit actions
     print("Goodbuy!")
 
 

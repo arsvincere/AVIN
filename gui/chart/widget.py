@@ -17,6 +17,7 @@ from avin.utils import logger, now
 from gui.chart.gchart import GChart
 from gui.chart.scene import ChartScene
 from gui.chart.thread import Thread
+from gui.chart.toolbar import ChartToolBar
 from gui.chart.view import ChartView
 from gui.custom import Css
 
@@ -53,6 +54,8 @@ class ChartWidget(QtWidgets.QWidget):
         self.btn_indicator = QtWidgets.QPushButton("Indicator")
         self.btn_mark = QtWidgets.QPushButton("Mark")
 
+        self.toolbar = ChartToolBar()
+
     # }}}
     def __createLayots(self):  # {{{
         hbox1 = QtWidgets.QHBoxLayout()
@@ -67,6 +70,7 @@ class ChartWidget(QtWidgets.QWidget):
         hbox1.addStretch()
         vbox = QtWidgets.QVBoxLayout()
         vbox.setContentsMargins(0, 0, 0, 0)
+        vbox.addWidget(self.toolbar)
         vbox.addLayout(hbox1)
         vbox.addWidget(self.view)
         self.setLayout(vbox)
