@@ -43,9 +43,11 @@ class Icon:
 
     # Buttons
     ADD = QtGui.QIcon(Cmd.path(Res.ICON, "btn", "add.svg"))
+    BAR = QtGui.QIcon(Cmd.path(Res.ICON, "btn", "bar.svg"))
     CANCEL = QtGui.QIcon(Cmd.path(Res.ICON, "btn", "cancel.svg"))
     CLOSE = QtGui.QIcon(Cmd.path(Res.ICON, "btn", "close.svg"))
     CONVERT = QtGui.QIcon(Cmd.path(Res.ICON, "btn", "convert.svg"))
+    CUNDLE = QtGui.QIcon(Cmd.path(Res.ICON, "btn", "cundle.svg"))
     DELETE = QtGui.QIcon(Cmd.path(Res.ICON, "btn", "delete.svg"))
     DOWN = QtGui.QIcon(Cmd.path(Res.ICON, "btn", "down.svg"))
     DOWNLOAD = QtGui.QIcon(Cmd.path(Res.ICON, "btn", "download.svg"))

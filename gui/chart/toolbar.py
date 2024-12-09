@@ -6,12 +6,15 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
+import enum
+
 from PyQt6 import QtCore, QtGui, QtWidgets
 
 from avin.core import TimeFrame
 from avin.utils import logger
 from gui.custom import (
     Css,
+    Icon,
     Menu,
     ToolButton,
 )
@@ -20,6 +23,8 @@ from gui.custom import (
 class ChartToolBar(QtWidgets.QToolBar):  # {{{
     firstTimeFrameChanged = QtCore.pyqtSignal(TimeFrame)
     secondTimeFrameChanged = QtCore.pyqtSignal(TimeFrame)
+    barViewSelected = QtCore.pyqtSignal()
+    cundleViewSelected = QtCore.pyqtSignal()
 
     __ICON_SIZE = QtCore.QSize(32, 32)
 
@@ -42,12 +47,15 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
 
         self.__first_tf_btn = ToolButton(parent=self)
         self.__first_tf_btn.setText("5M")
-
         self.__second_tf_btn = ToolButton(parent=self)
         self.__second_tf_btn.setText("D")
 
-        self.__bar_btn = ToolButton(parent=self)
-        self.__candle_btn = ToolButton(parent=self)
+        self.__bar_btn = ToolButton(icon=Icon.BAR, parent=self)
+        self.__bar_btn.setCheckable(True)
+        self.__cundle_btn = ToolButton(icon=Icon.CUNDLE, parent=self)
+        self.__cundle_btn.setCheckable(True)
+        self.__cundle_btn.setChecked(True)
+        self.__current_view = _ViewType.CUNDLE
 
         self.__indicator_btn = ToolButton(
             text="Indicator", width=96, parent=self
@@ -57,7 +65,7 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
         self.addWidget(self.__first_tf_btn)
         self.addWidget(self.__second_tf_btn)
         self.addWidget(self.__bar_btn)
-        self.addWidget(self.__candle_btn)
+        self.addWidget(self.__cundle_btn)
         self.addWidget(self.__indicator_btn)
 
     # }}}
@@ -90,6 +98,8 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
 
         self.__first_tf_menu.triggered.connect(self.__onFirstTF)
         self.__second_tf_menu.triggered.connect(self.__onSecondTF)
+        self.__bar_btn.clicked.connect(self.__onBarBtn)
+        self.__cundle_btn.clicked.connect(self.__onCundleBtn)
 
     # }}}
 
@@ -113,11 +123,45 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
             self.secondTimeFrameChanged.emit(timeframe)
 
     # }}}
+    @QtCore.pyqtSlot()  # __onBarBtn  # {{{
+    def __onBarBtn(self):
+        logger.debug(f"{self.__class__.__name__}.__onBarBtn()")
+
+        if self.__current_view == _ViewType.BAR:
+            return
+
+        self.__current_view = _ViewType.BAR
+        self.__bar_btn.setChecked(True)
+        self.__cundle_btn.setChecked(False)
+
+        self.barViewSelected.emit()
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onCundleBtn  # {{{
+    def __onCundleBtn(self):
+        logger.debug(f"{self.__class__.__name__}.__onCundleBtn()")
+
+        if self.__current_view == _ViewType.CUNDLE:
+            return
+
+        self.__current_view = _ViewType.CUNDLE
+        self.__cundle_btn.setChecked(True)
+        self.__bar_btn.setChecked(False)
+
+        self.cundleViewSelected.emit()
+
+    # }}}
 
 
 # }}}
 
 
+class _ViewType(enum.Enum):  # {{{
+    BAR = 1
+    CUNDLE = 2
+
+
+# }}}
 class _FirstTFMenu(Menu):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init()")
