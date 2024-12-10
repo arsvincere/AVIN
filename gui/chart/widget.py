@@ -136,9 +136,18 @@ class ChartWidget(QtWidgets.QWidget):
         self.__drawChart()
 
     # }}}
-    @QtCore.pyqtSlot(TimeFrame)  # __onTimeframe2{{{
-    def __onTimeframe2(self, timeframe: TimeFrame):
+    @QtCore.pyqtSlot(TimeFrame, bool)  # __onTimeframe2{{{
+    def __onTimeframe2(self, timeframe: TimeFrame, endbled: bool):
         logger.debug(f"{self.__class__.__name__}.__onTimeframe2()")
+
+        gchart = self.scene.currentChart()
+        if gchart is None:
+            return
+
+        if endbled:
+            gchart.drawBack(timeframe)
+        else:
+            gchart.clearBack(timeframe)
 
     # }}}
 

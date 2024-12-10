@@ -10,9 +10,11 @@ from __future__ import annotations
 
 from PyQt6 import QtCore, QtWidgets
 
+from avin.const import ONE_DAY
 from avin.core import (
     Bar,
     Chart,
+    TimeFrame,
 )
 from avin.utils import find_left, logger
 from gui.custom import Theme
@@ -129,6 +131,63 @@ class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
 
 
 # }}}
+class GBarBehind(QtWidgets.QGraphicsItemGroup):  # {{{
+    def __init__(self, bars: list[Bar], gchart: GChart):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QGraphicsItemGroup.__init__(self, gchart)
+
+        self.bars = bars
+        self.gchart = gchart
+
+        self.__calcCoordinates()
+        self.__setColor()
+        self.__createGraphics()
+
+    # }}}
+    def __calcCoordinates(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__calcCoordinates()")
+
+        first = self.bars[0]
+        last = self.bars[-1]
+        low_bar = min(self.bars, key=lambda x: x.low)
+        high_bar = max(self.bars, key=lambda x: x.high)
+
+        gchart = self.gchart
+        self.x0 = gchart.xFromDatetime(first.dt) + GBar.INDENT
+        self.x1 = gchart.xFromDatetime(last.dt) - GBar.WIDTH - GBar.INDENT
+        self.y0 = gchart.yFromPrice(low_bar.low)
+        self.y1 = gchart.yFromPrice(high_bar.high)
+
+    # }}}
+    def __setColor(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__setColor()")
+
+        open_price = self.bars[0].open
+        close_price = self.bars[-1].close
+
+        if close_price > open_price:
+            self.color = Theme.Chart.BULL_BEHIND
+        elif close_price < open_price:
+            self.color = Theme.Chart.BEAR_BEHIND
+        else:
+            self.color = Theme.Chart.UNDEFINE_BEHIND
+
+    # }}}
+    def __createGraphics(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createGraphics()")
+
+        width = self.x1 - self.x0
+        height = self.y1 - self.y0
+
+        body = QtWidgets.QGraphicsRectItem(self.x0, self.y0, width, height)
+        body.setBrush(self.color)
+
+        self.addToGroup(body)
+
+    # }}}
+
+
+# }}}
 class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
     def __init__(self, chart: Chart, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
@@ -136,9 +195,36 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
 
         self.chart = chart
         self.gbars = list()
+        self.gbars_behind = list()
 
         self.__createSceneRect()
         self.__createGBars()
+
+    # }}}
+
+    def drawBack(self, timeframe: TimeFrame) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.drawBack()")
+
+        assert timeframe in (TimeFrame("1H"), TimeFrame("D"))
+        assert len(self.gbars) > 0
+
+        if timeframe == TimeFrame("1H"):
+            self.__drawBack_1H()
+
+        if timeframe == TimeFrame("D"):
+            self.__drawBack_D()
+
+    # }}}
+    def clearBack(self, timeframe: TimeFrame) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.clearBack()")
+
+        assert timeframe in (TimeFrame("1H"), TimeFrame("D"))
+        assert len(self.gbars) > 0
+
+        # clear old graphic bars behind
+        for gbar_behind in self.gbars_behind:
+            gbar_behind.setVisible(False)  # NOTE: иначе не удаляются...
+            self.removeFromGroup(gbar_behind)
 
     # }}}
 
@@ -152,9 +238,9 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
     def barFromDatetime(self, dt) -> GBar:  # {{{
         logger.debug(f"{self.__class__.__name__}.barFromDatetime()")
 
-        index = find_left(self._bars, dt, key=lambda x: x.dt)
+        index = find_left(self.gbars, dt, key=lambda x: x.bar.dt)
         assert index is not None
-        gbar = self._bars[index]
+        gbar = self.gbars[index]
 
         return gbar
 
@@ -224,6 +310,28 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
             gbar = GBar(bar, n, self)
             self.gbars.append(gbar)
             self.addToGroup(gbar)
+
+    # }}}
+    def __drawBack_1H(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__drawBack_1H()")
+
+    # }}}
+    def __drawBack_D(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__drawBack_D()")
+
+        first_day = self.chart.first.dt.date()
+        last_day = self.chart.last.dt.date()
+
+        day = first_day
+        while day <= last_day:
+            bars = self.chart.getBarsOfDate(day)
+
+            if bars:
+                gbar_behind = GBarBehind(bars, self)
+                self.gbars_behind.append(gbar_behind)
+                self.addToGroup(gbar_behind)
+
+            day += ONE_DAY
 
     # }}}
 
