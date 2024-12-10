@@ -9,6 +9,30 @@
 from __future__ import annotations
 
 
+class Analytic:
+    def highestHigh(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.highestHigh()")
+
+        # using method getBars() instead of self.__bars
+        # because its return only [0, head] bars
+        bars = self.getBars()
+
+        bar = max(bars, key=lambda x: x.high)
+        return bar.high
+
+    # }}}
+    def lowestLow(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.lowestLow()")
+
+        # using method getBars() instead of self.__bars
+        # because its return only [0, head] bars
+        bars = self.getBars()
+        bar = min(bars, key=lambda x: x.low)
+        return bar.low
+
+    # }}}
+
+
 class Extremum:  # {{{
     class Type(enum.Flag):  # {{{
         UNDEFINE = 0b00000000_00000000
