@@ -149,6 +149,7 @@ class Chart:
         self.updated.emit(self, new_bar)
 
     # }}}
+
     def getBars(self) -> list[Bar]:  # {{{
         logger.debug(f"{self.__class__.__name__}.getBars()")
 
@@ -169,30 +170,81 @@ class Chart:
         return self.__bars[i : self.__head]
 
     # }}}
-    def getBarsOfDate(self, day: date) -> list[Bar]:  # {{{
+    def getBarsOfYear(self, dt: datetime) -> list[Bar]:  # {{{
+        """Return list[Bar] with year the same, as year of argument 'dt'"""
+
+        logger.debug(f"{self.__class__.__name__}.getBarsOfYear()")
+
+        year = dt.year
+        i = bisect.bisect_left(self.__bars, year, key=lambda x: x.dt.year)
+        j = bisect.bisect_right(self.__bars, year, key=lambda x: x.dt.year)
+
+        return self.__bars[i:j]
+
+    # }}}
+    def getBarsOfMounth(self, dt: datetime) -> list[Bar]:  # {{{
+        """Return list[Bar] with month the same, as month of argument 'dt'"""
+
+        logger.debug(f"{self.__class__.__name__}.getBarsOfWeek()")
+
+        assert self.__timeframe < TimeFrame("W")
+
+        year_bars = self.getBarsOfYear(dt)
+        month = dt.month
+        i = bisect.bisect_left(self.__bars, month, key=lambda x: x.dt.month)
+        j = bisect.bisect_right(self.__bars, month, key=lambda x: x.dt.month)
+
+        return self.__bars[i:j]
+
+    # }}}
+    def getBarsOfWeek(self, dt: datetime) -> list[Bar]:  # {{{
+        """Return list[Bar] with week the same, as week of argument 'dt'"""
+
+        logger.debug(f"{self.__class__.__name__}.getBarsOfWeek()")
+
+        assert self.__timeframe < TimeFrame("W")
+
+        week = dt.isocalendar()[1]
+        i = bisect.bisect_left(
+            self.__bars, week, key=lambda x: x.dt.isocalendar()[1]
+        )
+        j = bisect.bisect_right(
+            self.__bars, week, key=lambda x: x.dt.isocalendar()[1]
+        )
+
+        return self.__bars[i:j]
+
+    # }}}
+    def getBarsOfDay(self, dt: datetime) -> list[Bar]:  # {{{
+        """Return list[Bar] with day the same, as day of argument 'dt'"""
+
         logger.debug(f"{self.__class__.__name__}.getBarsOfDate()")
 
         assert self.__timeframe < TimeFrame("D")
 
+        day = dt.date()
         i = bisect.bisect_left(self.__bars, day, key=lambda x: x.dt.date())
         j = bisect.bisect_right(self.__bars, day, key=lambda x: x.dt.date())
 
         return self.__bars[i:j]
 
     # }}}
-    def getBarsOfHour(self, dt_hour: datetime) -> list[Bar]:  # {{{
+    def getBarsOfHour(self, dt: datetime) -> list[Bar]:  # {{{
+        """Return list[Bar] with hour the same, as hour of argument 'dt'"""
+
         logger.debug(f"{self.__class__.__name__}.getBarsOfHour()")
-        assert dt_hour.minute == 0
 
-        bars_of_day = self.getBarsOfDate(dt_hour.date())
-        hour = dt_hour.hour
+        assert self.__timeframe < TimeFrame("1H")
 
+        bars_of_day = self.getBarsOfDay(dt)
+        hour = dt.hour
         i = bisect.bisect_left(bars_of_day, hour, key=lambda x: x.dt.hour)
         j = bisect.bisect_right(bars_of_day, hour, key=lambda x: x.dt.hour)
 
         return bars_of_day[i:j]
 
     # }}}
+
     def highestHigh(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.highestHigh()")
 
