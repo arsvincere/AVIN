@@ -6,6 +6,7 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
+from datetime import datetime
 
 from avin.utils import *
 
@@ -40,6 +41,21 @@ def test_find_left_right():  # {{{
     x = 11
     assert find_left(v1, x) == 9
     assert find_right(v1, x) == None
+
+
+# }}}
+def test_next_month():  # {{{
+    dt = datetime(2023, 1, 30, 12, 20)
+    dt = next_month(dt)
+    assert dt == datetime(2023, 2, 1, 0, 0)
+    dt = next_month(dt)
+    assert dt == datetime(2023, 3, 1, 0, 0)
+    dt = next_month(dt)
+    assert dt == datetime(2023, 4, 1, 0, 0)
+
+    dt = datetime(2023, 12, 30, 11, 16)
+    dt = next_month(dt)
+    assert dt == datetime(2024, 1, 1)
 
 
 # }}}
