@@ -29,7 +29,8 @@ class ChartWidget(QtWidgets.QWidget):
         self.__createWidgets()
         self.__createLayots()
         self.__connect()
-        self.__initUI()
+
+        self.__asset = None
 
     # }}}
 
@@ -107,37 +108,8 @@ class ChartWidget(QtWidgets.QWidget):
     def __connect(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__connect()")
 
-        self.toolbar.firstTimeFrameChanged.connect(self.__onTimeframe1Changed)
-
-    # }}}
-    def __initUI(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__initUI()")
-
-    # }}}
-    def __readBeginDate(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__readBeginDate()")
-
-    # }}}
-    def __readEndDate(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__readEndDate()")
-
-    # }}}
-    def __setBegin(self, dt):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__setBegin()")
-
-    # }}}
-    def __setEnd(self, dt):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__setEnd()")
-
-    # }}}
-    def __setTimeframe1(self, timeframe):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__setTimeframe1()")
-        assert isinstance(timeframe, TimeFrame)
-
-    # }}}
-    def __setTimeframe2(self, timeframe):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__setTimeframe2()")
-        assert isinstance(timeframe, TimeFrame)
+        self.toolbar.firstTimeFrameChanged.connect(self.__onTimeframe1)
+        self.toolbar.secondTimeFrameChanged.connect(self.__onTimeframe2)
 
     # }}}
     def __drawChart(self) -> None:  # {{{
@@ -154,48 +126,19 @@ class ChartWidget(QtWidgets.QWidget):
 
     # }}}
 
-    @QtCore.pyqtSlot()  # __onButtonAsset{{{
-    def __onButtonAsset(self):
-        logger.debug(f"{self.__class__.__name__}.__onButtonAsset()")
+    @QtCore.pyqtSlot(TimeFrame)  # __onTimeframe1{{{
+    def __onTimeframe1(self, timeframe: TimeFrame):
+        logger.debug(f"{self.__class__.__name__}.__onTimeframe1()")
 
-    # }}}
-    @QtCore.pyqtSlot()  # __onButtonIndicator{{{
-    def __onButtonIndicator(self):
-        logger.debug(f"{self.__class__.__name__}.__onButtonIndicator()")
-
-        # indicators = self.indicator_dial.chooseIndicator()
-        # current_chart = self.scene.currentChart()
-        # if indicators and current_chart:
-        #     for i in indicators:
-        #         gindicator = i.createGItem(current_chart)
-        #         self.scene.addIndicator(gindicator)
-
-    # }}}
-    @QtCore.pyqtSlot()  # __onButtonMark{{{
-    def __onButtonMark(self):
-        logger.debug(f"{self.__class__.__name__}.__onButtonMark()")
-
-    # }}}
-    @QtCore.pyqtSlot()  # __onTimeframe1Changed{{{
-    def __onTimeframe1Changed(self):
-        logger.debug(f"{self.__class__.__name__}.__onTimeframe1Changed()")
+        if self.__asset is None:
+            return
 
         self.__drawChart()
 
     # }}}
-    @QtCore.pyqtSlot()  # __onTimeframe2Changed{{{
-    def __onTimeframe2Changed(self):
-        logger.debug(f"{self.__class__.__name__}.__onTimeframe2Changed()")
-
-    # }}}
-    @QtCore.pyqtSlot()  # __onBeginDateChanged{{{
-    def __onBeginDateChanged(self):
-        logger.debug(f"{self.__class__.__name__}.__onBeginDateChanged()")
-
-    # }}}
-    @QtCore.pyqtSlot()  # __onEndDateChanged{{{
-    def __onEndDateChanged(self):
-        logger.debug(f"{self.__class__.__name__}.__onEndDateChanged()")
+    @QtCore.pyqtSlot(TimeFrame)  # __onTimeframe2{{{
+    def __onTimeframe2(self, timeframe: TimeFrame):
+        logger.debug(f"{self.__class__.__name__}.__onTimeframe2()")
 
     # }}}
 
