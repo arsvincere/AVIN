@@ -36,14 +36,8 @@ class ChartWidget(QtWidgets.QWidget):
     def setAsset(self, asset: Asset) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.setAsset()")
 
-        timeframe = self.toolbar.firstTimeFrame()
-        end = now()
-        begin = now() - timeframe * Chart.DEFAULT_BARS_COUNT
-        chart = Thread.loadChart(asset, timeframe, begin, end)
-        gchart = GChart(chart)
-
-        self.scene.setGChart(gchart)
-        self.view.centerOnLast()
+        self.__asset = asset
+        self.__drawChart()
 
     # }}}
     def setTradeList(self, tlist: TradeList) -> None:  # {{{
@@ -113,6 +107,8 @@ class ChartWidget(QtWidgets.QWidget):
     def __connect(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__connect()")
 
+        self.toolbar.firstTimeFrameChanged.connect(self.__onTimeframe1Changed)
+
     # }}}
     def __initUI(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__initUI()")
@@ -144,6 +140,19 @@ class ChartWidget(QtWidgets.QWidget):
         assert isinstance(timeframe, TimeFrame)
 
     # }}}
+    def __drawChart(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__drawChart()")
+
+        timeframe = self.toolbar.firstTimeFrame()
+        end = now()
+        begin = now() - timeframe * Chart.DEFAULT_BARS_COUNT
+        chart = Thread.loadChart(self.__asset, timeframe, begin, end)
+        gchart = GChart(chart)
+
+        self.scene.setGChart(gchart)
+        self.view.centerOnLast()
+
+    # }}}
 
     @QtCore.pyqtSlot()  # __onButtonAsset{{{
     def __onButtonAsset(self):
@@ -170,6 +179,8 @@ class ChartWidget(QtWidgets.QWidget):
     @QtCore.pyqtSlot()  # __onTimeframe1Changed{{{
     def __onTimeframe1Changed(self):
         logger.debug(f"{self.__class__.__name__}.__onTimeframe1Changed()")
+
+        self.__drawChart()
 
     # }}}
     @QtCore.pyqtSlot()  # __onTimeframe2Changed{{{
