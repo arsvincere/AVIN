@@ -145,6 +145,32 @@ def stop(text: str):  # {{{
 
 
 # }}}
+def next_month(dt: datetime) -> datetime:  # {{{
+    """Возвращает datetime первое число следующего месяца от полученного dt"""
+
+    if dt.month == 12:
+        next = dt.replace(
+            year=dt.year + 1,
+            month=1,
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+        )
+    else:
+        next = dt.replace(
+            month=dt.month + 1,
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+        )
+
+    return next
+
+
+# }}}
+
 
 if __name__ == "__main__":
     ...
