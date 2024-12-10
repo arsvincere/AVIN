@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import bisect
 from datetime import UTC, datetime
 from typing import Optional
 
@@ -168,6 +169,17 @@ class Chart:
         return self.__bars[i : self.__head]
 
     # }}}
+    def getBarsOfDate(self, day: date) -> list[Bar]:
+        logger.debug(f"{self.__class__.__name__}.getBarsOfDate()")
+
+        assert self.__timeframe < TimeFrame("D")
+
+        i = bisect.bisect_left(self.__bars, day, key=lambda x: x.dt.date())
+        j = bisect.bisect_right(self.__bars, day, key=lambda x: x.dt.date())
+        # assert i != j
+
+        return self.__bars[i:j]
+
     def highestHigh(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.highestHigh()")
 
