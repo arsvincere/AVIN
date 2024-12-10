@@ -26,12 +26,12 @@ def round_price(price: float, min_price_step: float):  # {{{
 
 
 # }}}
-def binary_search(vector, x, key=None):  # {{{
+def binary_search(seq, x, key=None):  # {{{
     left = 0
-    right = len(vector) - 1
+    right = len(seq) - 1
     while left <= right:
         mid = (right - left) // 2 + left
-        mid_val = vector[mid] if key is None else key(vector[mid])
+        mid_val = seq[mid] if key is None else key(seq[mid])
         if x == mid_val:
             return mid
         if x < mid_val:
@@ -42,23 +42,23 @@ def binary_search(vector, x, key=None):  # {{{
 
 
 # }}}
-def find_left(vector, x, key=None):  # {{{
+def find_left(seq, x, key=None):  # {{{
     """Возвращает индекс элемента меньше или равного 'x'
     Если 'x', меньше самого левого элемента в векторе, возвращает None
     """
-    i = bisect.bisect_right(vector, x, key=key)
+    i = bisect.bisect_right(seq, x, key=key)
     if i:
         return i - 1
     return None
 
 
 # }}}
-def find_right(vector, x, key=None):  # {{{
+def find_right(seq, x, key=None):  # {{{
     """Возвращает индекс элемента больше или равного 'x'
     Если 'x', больше самого правого элемента в векторе, возвращает None
     """
-    i = bisect.bisect_left(vector, x, key=key)
-    if i != len(vector):
+    i = bisect.bisect_left(seq, x, key=key)
+    if i != len(seq):
         return i
     return None
 
