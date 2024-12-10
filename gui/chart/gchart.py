@@ -10,20 +10,20 @@ from __future__ import annotations
 
 from PyQt6 import QtCore, QtWidgets
 
-from avin.const import ONE_DAY
+from avin.const import ONE_DAY, ONE_HOUR, ONE_WEEK
 from avin.core import (
     Bar,
     Chart,
     TimeFrame,
 )
-from avin.utils import find_left, logger
+from avin.utils import find_left, logger, next_month
 from gui.custom import Theme
 
 
 class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
     DRAW_BODY = True
     WIDTH = 8
-    HEIGHT = 10  # 10px на 1% цены
+    HEIGHT = 10  # px на 1% цены
     INDENT = 2
     SHADOW_WIDTH = 1
 
@@ -154,7 +154,7 @@ class GBarBehind(QtWidgets.QGraphicsItemGroup):  # {{{
 
         gchart = self.gchart
         self.x0 = gchart.xFromDatetime(first.dt) + GBar.INDENT
-        self.x1 = gchart.xFromDatetime(last.dt) - GBar.WIDTH - GBar.INDENT
+        self.x1 = gchart.xFromDatetime(last.dt) + GBar.WIDTH - GBar.INDENT
         self.y0 = gchart.yFromPrice(low_bar.low)
         self.y1 = gchart.yFromPrice(high_bar.high)
 
@@ -195,7 +195,10 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
 
         self.chart = chart
         self.gbars = list()
-        self.gbars_behind = list()
+        self.behind_1H = list()
+        self.behind_D = list()
+        self.behind_W = list()
+        self.behind_M = list()
 
         self.__createSceneRect()
         self.__createGBars()
@@ -205,26 +208,33 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
     def drawBack(self, timeframe: TimeFrame) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.drawBack()")
 
-        assert timeframe in (TimeFrame("1H"), TimeFrame("D"))
         assert len(self.gbars) > 0
 
-        if timeframe == TimeFrame("1H"):
-            self.__drawBack_1H()
-
-        if timeframe == TimeFrame("D"):
-            self.__drawBack_D()
+        match timeframe:
+            case "1H":
+                self.__drawBack_1H()
+            case "D":
+                self.__drawBack_D()
+            case "W":
+                self.__drawBack_W()
+            case "M":
+                self.__drawBack_M()
 
     # }}}
     def clearBack(self, timeframe: TimeFrame) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.clearBack()")
 
-        assert timeframe in (TimeFrame("1H"), TimeFrame("D"))
         assert len(self.gbars) > 0
 
-        # clear old graphic bars behind
-        for gbar_behind in self.gbars_behind:
-            gbar_behind.setVisible(False)  # NOTE: иначе не удаляются...
-            self.removeFromGroup(gbar_behind)
+        match str(timeframe):
+            case "1H":
+                self.__clearBack_1H()
+            case "D":
+                self.__clearBack_D()
+            case "W":
+                self.__clearBack_W()
+            case "M":
+                self.__clearBack_M()
 
     # }}}
 
@@ -315,23 +325,105 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
     def __drawBack_1H(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__drawBack_1H()")
 
+        first = self.chart.first.dt
+        last = self.chart.last.dt
+
+        current = first
+        while current <= last:
+            bars = self.chart.getBarsOfHour(current)
+
+            if bars:
+                gbar_behind = GBarBehind(bars, self)
+                self.behind_1H.append(gbar_behind)
+                self.addToGroup(gbar_behind)
+
+            current += ONE_HOUR
+
     # }}}
     def __drawBack_D(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__drawBack_D()")
 
-        first_day = self.chart.first.dt.date()
-        last_day = self.chart.last.dt.date()
+        first = self.chart.first.dt
+        last = self.chart.last.dt
 
-        day = first_day
-        while day <= last_day:
-            bars = self.chart.getBarsOfDate(day)
+        day = first
+        while day <= last:
+            bars = self.chart.getBarsOfDay(day)
 
             if bars:
                 gbar_behind = GBarBehind(bars, self)
-                self.gbars_behind.append(gbar_behind)
+                self.behind_D.append(gbar_behind)
                 self.addToGroup(gbar_behind)
 
             day += ONE_DAY
+
+    # }}}
+    def __drawBack_W(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__drawBack_W()")
+
+        first = self.chart.first.dt
+        last = self.chart.last.dt
+
+        current = first
+        while current <= last:
+            bars = self.chart.getBarsOfWeek(current)
+
+            if bars:
+                gbar_behind = GBarBehind(bars, self)
+                self.behind_W.append(gbar_behind)
+                self.addToGroup(gbar_behind)
+
+            current += ONE_WEEK
+
+    # }}}
+    def __drawBack_M(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__drawBack_M()")
+
+        first = self.chart.first.dt
+        last = self.chart.last.dt
+
+        current = first
+        while current <= last:
+            bars = self.chart.getBarsOfMounth(current)
+
+            if bars:
+                gbar_behind = GBarBehind(bars, self)
+                self.behind_M.append(gbar_behind)
+                self.addToGroup(gbar_behind)
+
+            current = next_month(current)
+
+    # }}}
+    def __clearBack_1H(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__clearBack_1H()")
+
+        for gbar_behind in self.behind_1H:
+            gbar_behind.setVisible(False)  # NOTE: иначе не удаляются...
+            self.removeFromGroup(gbar_behind)
+
+    # }}}
+    def __clearBack_D(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__clearBack_D()")
+
+        for gbar_behind in self.behind_D:
+            gbar_behind.setVisible(False)  # NOTE: иначе не удаляются...
+            self.removeFromGroup(gbar_behind)
+
+    # }}}
+    def __clearBack_W(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__clearBack_W()")
+
+        for gbar_behind in self.behind_W:
+            gbar_behind.setVisible(False)  # NOTE: иначе не удаляются...
+            self.removeFromGroup(gbar_behind)
+
+    # }}}
+    def __clearBack_M(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__clearBack_M()")
+
+        for gbar_behind in self.behind_M:
+            gbar_behind.setVisible(False)  # NOTE: иначе не удаляются...
+            self.removeFromGroup(gbar_behind)
 
     # }}}
 
