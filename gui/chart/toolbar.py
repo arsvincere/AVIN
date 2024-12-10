@@ -39,6 +39,20 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
 
     # }}}
 
+    def firstTimeFrame(self) -> TimeFrame:
+        logger.debug(f"{self.__class__.__name__}.firstTimeFrame()")
+
+        text = self.__first_tf_btn.text()
+        timeframe = TimeFrame(text)
+        return timeframe
+
+    def secondTimeFrame(self) -> TimeFrame:
+        logger.debug(f"{self.__class__.__name__}.secondTimeFrame()")
+
+        text = self.__second_tf_btn.text()
+        timeframe = TimeFrame(text)
+        return timeframe
+
     def __createButtons(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createActions()")
 
