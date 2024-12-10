@@ -169,17 +169,30 @@ class Chart:
         return self.__bars[i : self.__head]
 
     # }}}
-    def getBarsOfDate(self, day: date) -> list[Bar]:
+    def getBarsOfDate(self, day: date) -> list[Bar]:  # {{{
         logger.debug(f"{self.__class__.__name__}.getBarsOfDate()")
 
         assert self.__timeframe < TimeFrame("D")
 
         i = bisect.bisect_left(self.__bars, day, key=lambda x: x.dt.date())
         j = bisect.bisect_right(self.__bars, day, key=lambda x: x.dt.date())
-        # assert i != j
 
         return self.__bars[i:j]
 
+    # }}}
+    def getBarsOfHour(self, dt_hour: datetime) -> list[Bar]:  # {{{
+        logger.debug(f"{self.__class__.__name__}.getBarsOfHour()")
+        assert dt_hour.minute == 0
+
+        bars_of_day = self.getBarsOfDate(dt_hour.date())
+        hour = dt_hour.hour
+
+        i = bisect.bisect_left(bars_of_day, hour, key=lambda x: x.dt.hour)
+        j = bisect.bisect_right(bars_of_day, hour, key=lambda x: x.dt.hour)
+
+        return bars_of_day[i:j]
+
+    # }}}
     def highestHigh(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.highestHigh()")
 
