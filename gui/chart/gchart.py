@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from PyQt6 import QtCore, QtGui, QtWidgets
+from PyQt6 import QtCore, QtWidgets
 
 from avin.core import (
     Bar,
@@ -87,12 +87,7 @@ class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
         shadow = QtWidgets.QGraphicsLineItem(
             self.x_center, self.y_low, self.x_center, self.y_hgh
         )
-
-        pen = QtGui.QPen()
-        pen.setColor(self.color)
-        pen.setWidth(GBar.SHADOW_WIDTH)
-        shadow.setPen(pen)
-
+        shadow.setPen(self.color)
         self.addToGroup(shadow)
 
     # }}}
@@ -102,12 +97,7 @@ class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
         opn = QtWidgets.QGraphicsLineItem(
             self.x0, self.y_opn, self.x_center, self.y_opn
         )
-
-        pen = QtGui.QPen()
-        pen.setColor(self.color)
-        pen.setWidth(GBar.SHADOW_WIDTH)
-        opn.setPen(pen)
-
+        opn.setPen(self.color)
         self.addToGroup(opn)
 
     # }}}
@@ -117,12 +107,7 @@ class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
         cls = QtWidgets.QGraphicsLineItem(
             self.x_center, self.y_cls, self.x1, self.y_cls
         )
-
-        pen = QtGui.QPen()
-        pen.setColor(self.color)
-        pen.setWidth(GBar.SHADOW_WIDTH)
-        cls.setPen(pen)
-
+        cls.setPen(self.color)
         self.addToGroup(cls)
 
     # }}}
