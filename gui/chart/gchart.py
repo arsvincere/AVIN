@@ -142,7 +142,7 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
 
     # }}}
 
-    def barFromDatetime(self, dt):  # {{{
+    def barFromDatetime(self, dt) -> GBar:  # {{{
         logger.debug(f"{self.__class__.__name__}.barFromDatetime()")
 
         index = find_left(self._bars, dt, key=lambda x: x.dt)
@@ -152,34 +152,34 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
         return gbar
 
     # }}}
-    def xFromNumber(self, n):  # {{{
+    def xFromNumber(self, n) -> float:  # {{{
         logger.debug(f"{self.__class__.__name__}.xFromNumber()")
 
         return int(n * GBar.WIDTH)
 
     # }}}
-    def xFromDatetime(self, dt):  # {{{
+    def xFromDatetime(self, dt) -> float:  # {{{
         logger.debug(f"{self.__class__.__name__}.xFromDatetime()")
 
         gbar = self.barFromDatetime(dt)
         return gbar.x
 
     # }}}
-    def yFromPrice(self, price):  # {{{
+    def yFromPrice(self, price) -> float:  # {{{
         logger.debug(f"{self.__class__.__name__}.yFromPrice()")
 
         y = self.rect.height() - price * self.SCALE_Y + self.y_indent
         return y
 
     # }}}
-    def nFromX(self, x):  # {{{
+    def nFromX(self, x) -> int:  # {{{
         logger.debug(f"{self.__class__.__name__}.nFromX()")
 
         n = int(x / GBar.WIDTH)
         return n
 
     # }}}
-    def barAt(self, x):  # {{{
+    def barAt(self, x) -> GBar:  # {{{
         logger.debug(f"{self.__class__.__name__}.barAt()")
 
         if x < 0:
