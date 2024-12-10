@@ -20,8 +20,9 @@ from gui.custom import Theme
 
 class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
     DRAW_BODY = True
-    WIDTH = 16
-    INDENT = 4
+    WIDTH = 8
+    HEIGHT = 10  # 10px на 1% цены
+    INDENT = 2
     SHADOW_WIDTH = 1
 
     def __init__(self, bar: Bar, n: int, gchart: GChart):  # {{{
@@ -166,11 +167,7 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
     def yFromPrice(self, price):  # {{{
         logger.debug(f"{self.__class__.__name__}.yFromPrice()")
 
-        y = int(
-            self.rect.height()
-            - price / self.step / self.SCALE_Y
-            + self.y_indent
-        )
+        y = self.rect.height() - price * self.SCALE_Y + self.y_indent
         return y
 
     # }}}
@@ -198,16 +195,21 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
     def __createSceneRect(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createSceneRect()")
 
-        self.SCALE_Y = 10
-        self.step = self.chart.instrument.min_price_step
+        # Масштаб по оси Y расчитывается так чтобы изменение цены
+        # на 1% занимало GBar.HEIGHT = 10px
+        # Не зависимо от того сколько стоит актив 20р штука или 5000р штука
+        # бар у которого тело 20.0-20.2 будет занимать 10px на экране
+        # и бар с телом 5000-5050 тоже будет занимать 10px на экране
+        last_price = self.chart.last.close  # 1000
+        self.SCALE_Y = GBar.HEIGHT / last_price * 100
 
         x0 = 0
         y0 = 0
         x1 = len(self.chart) * GBar.WIDTH
-        y1 = int(self.chart.highestHigh() / self.step / self.SCALE_Y)
+        y1 = int(self.chart.highestHigh() * self.SCALE_Y)
 
-        self.x_indent = (x1 - x0) * 0.1
-        self.y_indent = (y1 - y0) * 0.1
+        self.x_indent = (x1 - x0) * 0.2  # доп.отступ 20%
+        self.y_indent = (y1 - y0) * 0.1  # доп.отступ 10%
 
         height = y1 - y0 + self.y_indent
         width = x1 - x0 + self.x_indent
