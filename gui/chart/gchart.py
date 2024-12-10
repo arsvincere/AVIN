@@ -38,9 +38,11 @@ class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
     # }}}
     def __createGraphicsItem(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.createGraphicsItem()")
+
         self.__calcCoordinates()
         self.__setColor()
         self.__createShadowLine()
+
         if self.DRAW_BODY:
             self.__createBody()
         else:
@@ -70,6 +72,7 @@ class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
     # }}}
     def __setColor(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__setColor()")
+
         if self.bar.isBull():
             self.color = Theme.Chart.BULL
         elif self.bar.isBear():
@@ -80,49 +83,61 @@ class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
     # }}}
     def __createShadowLine(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createShadowLine()")
+
         shadow = QtWidgets.QGraphicsLineItem(
             self.x_center, self.y_low, self.x_center, self.y_hgh
         )
+
         pen = QtGui.QPen()
         pen.setColor(self.color)
         pen.setWidth(GBar.SHADOW_WIDTH)
         shadow.setPen(pen)
+
         self.addToGroup(shadow)
 
     # }}}
     def __createOpenLine(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createOpenLine()")
+
         opn = QtWidgets.QGraphicsLineItem(
             self.x0, self.y_opn, self.x_center, self.y_opn
         )
+
         pen = QtGui.QPen()
         pen.setColor(self.color)
         pen.setWidth(GBar.SHADOW_WIDTH)
         opn.setPen(pen)
+
         self.addToGroup(opn)
 
     # }}}
     def __createCloseLine(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createCloseLine()")
+
         cls = QtWidgets.QGraphicsLineItem(
             self.x_center, self.y_cls, self.x1, self.y_cls
         )
+
         pen = QtGui.QPen()
         pen.setColor(self.color)
         pen.setWidth(GBar.SHADOW_WIDTH)
         cls.setPen(pen)
+
         self.addToGroup(cls)
 
     # }}}
     def __createBody(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createBody()")
+
         width = self.x1 - self.x0
         height = abs(self.y_opn - self.y_cls)
         y0 = self.y_cls if self.bar.isBull() else self.y_opn
         x0 = self.x_center - width / 2
+
         body = QtWidgets.QGraphicsRectItem(x0, y0, width, height)
         body.setPen(self.color)
         body.setBrush(self.color)
+
         self.addToGroup(body)
 
     # }}}
@@ -148,6 +163,7 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
         index = find_left(self._bars, dt, key=lambda x: x.dt)
         assert index is not None
         gbar = self._bars[index]
+
         return gbar
 
     # }}}
