@@ -182,19 +182,20 @@ class Chart:
         return self.__bars[i:j]
 
     # }}}
-    def getBarsOfMounth(self, dt: datetime) -> list[Bar]:  # {{{
+    def getBarsOfMonth(self, dt: datetime) -> list[Bar]:  # {{{
         """Return list[Bar] with month the same, as month of argument 'dt'"""
 
         logger.debug(f"{self.__class__.__name__}.getBarsOfWeek()")
 
-        assert self.__timeframe < TimeFrame("W")
+        if self.__timeframe >= TimeFrame("M"):
+            return []
 
         year_bars = self.getBarsOfYear(dt)
         month = dt.month
-        i = bisect.bisect_left(self.__bars, month, key=lambda x: x.dt.month)
-        j = bisect.bisect_right(self.__bars, month, key=lambda x: x.dt.month)
+        i = bisect.bisect_left(year_bars, month, key=lambda x: x.dt.month)
+        j = bisect.bisect_right(year_bars, month, key=lambda x: x.dt.month)
 
-        return self.__bars[i:j]
+        return year_bars[i:j]
 
     # }}}
     def getBarsOfWeek(self, dt: datetime) -> list[Bar]:  # {{{
@@ -202,17 +203,19 @@ class Chart:
 
         logger.debug(f"{self.__class__.__name__}.getBarsOfWeek()")
 
-        assert self.__timeframe < TimeFrame("W")
+        if self.__timeframe >= TimeFrame("W"):
+            return []
 
+        year_bars = self.getBarsOfYear(dt)
         week = dt.isocalendar()[1]
         i = bisect.bisect_left(
-            self.__bars, week, key=lambda x: x.dt.isocalendar()[1]
+            year_bars, week, key=lambda x: x.dt.isocalendar()[1]
         )
         j = bisect.bisect_right(
-            self.__bars, week, key=lambda x: x.dt.isocalendar()[1]
+            year_bars, week, key=lambda x: x.dt.isocalendar()[1]
         )
 
-        return self.__bars[i:j]
+        return year_bars[i:j]
 
     # }}}
     def getBarsOfDay(self, dt: datetime) -> list[Bar]:  # {{{
@@ -220,7 +223,8 @@ class Chart:
 
         logger.debug(f"{self.__class__.__name__}.getBarsOfDate()")
 
-        assert self.__timeframe < TimeFrame("D")
+        if self.__timeframe >= TimeFrame("D"):
+            return []
 
         day = dt.date()
         i = bisect.bisect_left(self.__bars, day, key=lambda x: x.dt.date())
@@ -234,7 +238,8 @@ class Chart:
 
         logger.debug(f"{self.__class__.__name__}.getBarsOfHour()")
 
-        assert self.__timeframe < TimeFrame("1H")
+        if self.__timeframe >= TimeFrame("1H"):
+            return []
 
         bars_of_day = self.getBarsOfDay(dt)
         hour = dt.hour
