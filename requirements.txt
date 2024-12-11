@@ -4,7 +4,6 @@ moexalgo
 tinkoff-investments
 pandas
 pyqt6
-qasync
 asyncpg
 pgadmin4
 cython
