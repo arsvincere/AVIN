@@ -42,12 +42,15 @@ class HLine(QtWidgets.QFrame):  # {{{
 
 # }}}
 class VLine(QtWidgets.QFrame):  # {{{
-    def __init__(self, parent=None):  # {{{
+    def __init__(self, width=0, parent=None):  # {{{
         QtWidgets.QFrame.__init__(self, parent)
         self.setFrameShape(QtWidgets.QFrame.Shape.VLine)
         # self.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
         # self.setFrameShadow(QtWidgets.QFrame.Shadow.Plain)
         # self.setFrameShadow(QtWidgets.QFrame.Shadow.Raised)
+
+        if width:
+            self.setFixedWidth(width)
 
     # }}}
 
