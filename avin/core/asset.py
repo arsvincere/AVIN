@@ -56,7 +56,8 @@ class Asset(Instrument, ABC):  # {{{
             timeframe = TimeFrame(timeframe)
 
         chart = self.__charts.get(timeframe, None)
-        if not chart:
+
+        if chart is None:
             raise AssetError(f"Chart {self.ticker}-{timeframe} not cached")
 
         return chart
