@@ -22,6 +22,7 @@ from gui.custom import Css
 from gui.data import DataDockWidget
 from gui.main_window.toolbar import LeftToolBar, RightToolBar
 from gui.strategy import StrategyDockWidget
+from gui.summary import SummaryDockWidget
 from gui.tester import TesterDockWidget
 
 
@@ -155,6 +156,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.asset_widget = None
         self.strategy_widget = None
         self.tester_widget = None
+        self.summary_widget = None
         self.console_widget = None
 
         self.chart_widget = None
@@ -171,7 +173,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ltool.strategy.triggered.connect(self.__onStrategy)
         self.ltool.note.triggered.connect(self.__onNote)
         self.ltool.tester.triggered.connect(self.__onTester)
-        # self.ltool.summary.triggered.connect(self.__onSummary)
+        self.ltool.summary.triggered.connect(self.__onSummary)
         self.ltool.console.triggered.connect(self.__onConsole)
         self.ltool.config.triggered.connect(self.__onConfig)
         self.ltool.shutdown.triggered.connect(self.__onShutdown)
@@ -286,7 +288,15 @@ class MainWindow(QtWidgets.QMainWindow):
     def __onSummary(self):
         logger.debug(f"{self.__class__.__name__}.__onSummary()")
 
-        assert False
+        if self.summary_widget is None:
+            self.summary_widget = SummaryDockWidget(self)
+            # area = Qt.DockWidgetArea.BottomDockWidgetArea
+            self.tabifyDockWidget(self.console_widget, self.summary_widget)
+            # self.addDockWidget(area, self.summary_widget)
+            return
+
+        state = self.summary_widget.isVisible()
+        self.summary_widget.setVisible(not state)
 
     # }}}
     @pyqtSlot()  # __onConsole  # {{{
@@ -299,8 +309,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.addDockWidget(area, self.console_widget)
             return
 
-        state = self.strategy_widget.isVisible()
-        self.strategy_widget.setVisible(not state)
+        state = self.console_widget.isVisible()
+        self.console_widget.setVisible(not state)
 
     # }}}
     @pyqtSlot()  # __onConfig  # {{{
