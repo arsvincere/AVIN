@@ -120,13 +120,9 @@ class Css:
     # TOOL_BAR  # {{{
     TOOL_BAR = f"""
         QToolBar {{
-            font-family: Monospace;
+            font-family: Sans;
             background-color: {Theme.bg_normal};
             color: {Theme.fg_normal};
-
-            border-color: transparent;
-            border-width: 2px;
-            border-style: solid;
         }}
         """
     # }}}
@@ -134,6 +130,8 @@ class Css:
     TOOL_BUTTON = f"""
         QToolButton {{
             font-family: Monospace;
+            font-size: 16px;
+            font-weight: 600;
             background-color: {Theme.bg_normal};
             border-width: 0px;
             border-radius: 4px;
