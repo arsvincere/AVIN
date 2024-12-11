@@ -8,6 +8,8 @@
 
 from __future__ import annotations
 
+import enum
+
 from PyQt6 import QtCore, QtWidgets
 
 from avin.const import ONE_DAY, ONE_HOUR, ONE_WEEK
@@ -20,11 +22,17 @@ from avin.utils import find_left, logger, next_month
 from gui.custom import Theme
 
 
+class ViewType(enum.Enum):  # {{{
+    BAR = 1
+    CUNDLE = 2
+
+
+# }}}
 class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
-    DRAW_BODY = True
     WIDTH = 8
     HEIGHT = 10  # px на 1% цены
-    INDENT = 2
+    CUNDLE_INDENT = 2
+    BAR_INDENT = 1
     SHADOW_WIDTH = 1
 
     def __init__(self, bar: Bar, n: int, gchart: GChart):  # {{{
@@ -35,31 +43,46 @@ class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
         self.n = n
         self.gchart = gchart
 
-        self.__createGraphicsItem()
-
-    # }}}
-    def __createGraphicsItem(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.createGraphicsItem()")
-
         self.__calcCoordinates()
         self.__setColor()
         self.__createShadowLine()
-
-        if self.DRAW_BODY:
-            self.__createBody()
-        else:
-            self.__createOpenLine()
-            self.__createCloseLine()
+        self.__createBody()
+        self.__createOpenLine()
+        self.__createCloseLine()
+        self.updateView()
 
     # }}}
+
+    def updateView(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.updateView()")
+
+        view_type = self.gchart.viewType()
+        match view_type:
+            case ViewType.BAR:
+                self.open_line.show()
+                self.close_line.show()
+                self.body.hide()
+            case ViewType.CUNDLE:
+                self.open_line.hide()
+                self.close_line.hide()
+                self.body.show()
+
+    # }}}
+
     def __calcCoordinates(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__calcCoordinates()")
 
         gchart = self.gchart
-        self.x = gchart.xFromNumber(self.n)
-        self.x0 = self.x + self.INDENT
-        self.x1 = self.x + self.WIDTH - self.INDENT
-        self.x_center = int((self.x0 + self.x1) / 2)
+
+        # for bar view - without indent
+        X0 = gchart.xFromNumber(self.n)
+        X1 = X0 + self.WIDTH
+
+        self.x_center = (X0 + X1) / 2
+        self.x0_bar = X0 + self.BAR_INDENT
+        self.x1_bar = X1 - self.BAR_INDENT
+        self.x0_cundle = X0 + self.CUNDLE_INDENT
+        self.x1_cundle = X1 - self.CUNDLE_INDENT
 
         self.y_opn = gchart.yFromPrice(self.bar.open)
         self.y_cls = gchart.yFromPrice(self.bar.close)
@@ -86,46 +109,46 @@ class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
     def __createShadowLine(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createShadowLine()")
 
-        shadow = QtWidgets.QGraphicsLineItem(
+        self.shadow = QtWidgets.QGraphicsLineItem(
             self.x_center, self.y_low, self.x_center, self.y_hgh
         )
-        shadow.setPen(self.color)
-        self.addToGroup(shadow)
+        self.shadow.setPen(self.color)
+        self.addToGroup(self.shadow)
 
     # }}}
     def __createOpenLine(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createOpenLine()")
 
-        opn = QtWidgets.QGraphicsLineItem(
-            self.x0, self.y_opn, self.x_center, self.y_opn
+        self.open_line = QtWidgets.QGraphicsLineItem(
+            self.x0_bar, self.y_opn, self.x_center, self.y_opn
         )
-        opn.setPen(self.color)
-        self.addToGroup(opn)
+        self.open_line.setPen(self.color)
+        self.addToGroup(self.open_line)
 
     # }}}
     def __createCloseLine(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createCloseLine()")
 
-        cls = QtWidgets.QGraphicsLineItem(
-            self.x_center, self.y_cls, self.x1, self.y_cls
+        self.close_line = QtWidgets.QGraphicsLineItem(
+            self.x_center, self.y_cls, self.x1_bar, self.y_cls
         )
-        cls.setPen(self.color)
-        self.addToGroup(cls)
+        self.close_line.setPen(self.color)
+        self.addToGroup(self.close_line)
 
     # }}}
     def __createBody(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createBody()")
 
-        width = self.x1 - self.x0
+        width = self.x1_cundle - self.x0_cundle
         height = abs(self.y_opn - self.y_cls)
         y0 = self.y_cls if self.bar.isBull() else self.y_opn
         x0 = self.x_center - width / 2
 
-        body = QtWidgets.QGraphicsRectItem(x0, y0, width, height)
-        body.setPen(self.color)
-        body.setBrush(self.color)
+        self.body = QtWidgets.QGraphicsRectItem(x0, y0, width, height)
+        self.body.setPen(self.color)
+        self.body.setBrush(self.color)
 
-        self.addToGroup(body)
+        self.addToGroup(self.body)
 
     # }}}
 
@@ -190,6 +213,8 @@ class GBarBehind(QtWidgets.QGraphicsItemGroup):  # {{{
 
 # }}}
 class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
+    __VIEW_TYPE = ViewType.BAR
+
     def __init__(self, chart: Chart, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QGraphicsItemGroup.__init__(self, parent)
@@ -236,6 +261,21 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
                 self.__clearBack_W()
             case "M":
                 self.__clearBack_M()
+
+    # }}}
+
+    def viewType(self) -> ViewType:  # {{{
+        logger.debug(f"{self.__class__.__name__}.viewType()")
+
+        return GChart.__VIEW_TYPE
+
+    # }}}
+    def setViewType(self, t: ViewType):  # {{{
+        logger.debug(f"{self.__class__.__name__}.setViewType()")
+
+        GChart.__VIEW_TYPE = t
+        for gbar in self.gbars:
+            gbar.updateView()
 
     # }}}
 

@@ -12,7 +12,7 @@ from PyQt6 import QtCore, QtWidgets
 
 from avin.core import Asset, Chart, TimeFrame, Trade, TradeList
 from avin.utils import logger, now
-from gui.chart.gchart import GChart
+from gui.chart.gchart import GChart, ViewType
 from gui.chart.scene import ChartScene
 from gui.chart.thread import Thread
 from gui.chart.toolbar import ChartToolBar
@@ -110,6 +110,8 @@ class ChartWidget(QtWidgets.QWidget):
 
         self.toolbar.firstTimeFrameChanged.connect(self.__onTimeframe1)
         self.toolbar.secondTimeFrameChanged.connect(self.__onTimeframe2)
+        self.toolbar.barViewSelected.connect(self.__onBarView)
+        self.toolbar.cundleViewSelected.connect(self.__onCundleView)
 
     # }}}
     def __drawChart(self) -> None:  # {{{
@@ -126,7 +128,7 @@ class ChartWidget(QtWidgets.QWidget):
 
     # }}}
 
-    @QtCore.pyqtSlot(TimeFrame)  # __onTimeframe1{{{
+    @QtCore.pyqtSlot(TimeFrame)  # __onTimeframe1  # {{{
     def __onTimeframe1(self, timeframe: TimeFrame):
         logger.debug(f"{self.__class__.__name__}.__onTimeframe1()")
 
@@ -136,7 +138,7 @@ class ChartWidget(QtWidgets.QWidget):
         self.__drawChart()
 
     # }}}
-    @QtCore.pyqtSlot(TimeFrame, bool)  # __onTimeframe2{{{
+    @QtCore.pyqtSlot(TimeFrame, bool)  # __onTimeframe2  # {{{
     def __onTimeframe2(self, timeframe: TimeFrame, endbled: bool):
         logger.debug(f"{self.__class__.__name__}.__onTimeframe2()")
 
@@ -148,6 +150,28 @@ class ChartWidget(QtWidgets.QWidget):
             gchart.drawBack(timeframe)
         else:
             gchart.clearBack(timeframe)
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onBarView  # {{{
+    def __onBarView(self):
+        logger.debug(f"{self.__class__.__name__}.__onBarView()")
+
+        gchart = self.scene.currentChart()
+        if gchart is None:
+            return
+
+        gchart.setViewType(ViewType.BAR)
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onCundleView  # {{{
+    def __onCundleView(self):
+        logger.debug(f"{self.__class__.__name__}.__onCundleView()")
+
+        gchart = self.scene.currentChart()
+        if gchart is None:
+            return
+
+        gchart.setViewType(ViewType.CUNDLE)
 
     # }}}
 

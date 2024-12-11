@@ -6,12 +6,12 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-import enum
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 
-from avin.core import TimeFrame
+from avin.core import TimeFrame, TimeFrameList
 from avin.utils import logger
+from gui.chart.gchart import ViewType
 from gui.custom import (
     Css,
     Icon,
@@ -49,14 +49,14 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
         return timeframe
 
     # }}}
-    def secondTimeFrame(self) -> TimeFrame:  # {{{
+    def secondTimeFrames(self) -> TimeFrameList:  # {{{
         logger.debug(f"{self.__class__.__name__}.secondTimeFrame()")
 
-        text = self.__second_tf_btn.text()
-        timeframe = TimeFrame(text)
-        return timeframe
+        # TODO: it
+        assert False
 
     # }}}
+
     def __createButtons(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createActions()")
 
@@ -80,10 +80,10 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
         # bar / cundle
         self.__bar_btn = ToolButton(icon=Icon.BAR, parent=self)
         self.__bar_btn.setCheckable(True)
+        self.__bar_btn.setChecked(True)
         self.__cundle_btn = ToolButton(icon=Icon.CUNDLE, parent=self)
         self.__cundle_btn.setCheckable(True)
-        self.__cundle_btn.setChecked(True)
-        self.__current_view = _ViewType.CUNDLE
+        self.__current_view = ViewType.BAR
 
         # indicator
         self.__indicator_btn = ToolButton(
@@ -187,10 +187,10 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
     def __onBarBtn(self):
         logger.debug(f"{self.__class__.__name__}.__onBarBtn()")
 
-        if self.__current_view == _ViewType.BAR:
+        if self.__current_view == ViewType.BAR:
             return
 
-        self.__current_view = _ViewType.BAR
+        self.__current_view = ViewType.BAR
         self.__bar_btn.setChecked(True)
         self.__cundle_btn.setChecked(False)
 
@@ -201,10 +201,10 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
     def __onCundleBtn(self):
         logger.debug(f"{self.__class__.__name__}.__onCundleBtn()")
 
-        if self.__current_view == _ViewType.CUNDLE:
+        if self.__current_view == ViewType.CUNDLE:
             return
 
-        self.__current_view = _ViewType.CUNDLE
+        self.__current_view = ViewType.CUNDLE
         self.__cundle_btn.setChecked(True)
         self.__bar_btn.setChecked(False)
 
@@ -216,12 +216,6 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
 # }}}
 
 
-class _ViewType(enum.Enum):  # {{{
-    BAR = 1
-    CUNDLE = 2
-
-
-# }}}
 class _FirstTFMenu(Menu):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init()")
