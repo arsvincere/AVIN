@@ -75,14 +75,14 @@ class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
         gchart = self.gchart
 
         # for bar view - without indent
-        X0 = gchart.xFromNumber(self.n)
-        X1 = X0 + self.WIDTH
+        self.X0 = gchart.xFromNumber(self.n)
+        self.X1 = self.X0 + self.WIDTH
 
-        self.x_center = (X0 + X1) / 2
-        self.x0_bar = X0 + self.BAR_INDENT
-        self.x1_bar = X1 - self.BAR_INDENT
-        self.x0_cundle = X0 + self.CUNDLE_INDENT
-        self.x1_cundle = X1 - self.CUNDLE_INDENT
+        self.x_center = (self.X0 + self.X1) / 2
+        self.x0_bar = self.X0 + self.BAR_INDENT
+        self.x1_bar = self.X1 - self.BAR_INDENT
+        self.x0_cundle = self.X0 + self.CUNDLE_INDENT
+        self.x1_cundle = self.X1 - self.CUNDLE_INDENT
 
         self.y_opn = gchart.yFromPrice(self.bar.open)
         self.y_cls = gchart.yFromPrice(self.bar.close)
@@ -176,8 +176,8 @@ class GBarBehind(QtWidgets.QGraphicsItemGroup):  # {{{
         high_bar = max(self.bars, key=lambda x: x.high)
 
         gchart = self.gchart
-        self.x0 = gchart.xFromDatetime(first.dt) + GBar.INDENT
-        self.x1 = gchart.xFromDatetime(last.dt) + GBar.WIDTH - GBar.INDENT
+        self.x0 = gchart.xFromDatetime(first.dt)
+        self.x1 = gchart.xFromDatetime(last.dt) + GBar.WIDTH
         self.y0 = gchart.yFromPrice(low_bar.low)
         self.y1 = gchart.yFromPrice(high_bar.high)
 
@@ -319,7 +319,7 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
         logger.debug(f"{self.__class__.__name__}.xFromDatetime()")
 
         gbar = self.barFromDatetime(dt)
-        return gbar.x
+        return gbar.X0
 
     # }}}
     def yFromPrice(self, price) -> float:  # {{{
