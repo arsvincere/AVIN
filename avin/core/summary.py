@@ -6,27 +6,83 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-"""Doc"""
-
 from __future__ import annotations
 
 import pandas as pd
 
 
-class Report:
-    """Const"""  # {{{
-
-    # FUNCTIONS = None  # инициализируется внизу класса
-    # }}}
+class Summary:
     def __init__(self, test: Test):  # {{{
         self._test = test
-        self.__df = Report.calculate(test.trade_list)
+        self.__df = Summary.calculate(test.trade_list)
 
     # }}}
     def __str__(self):  # {{{
         return str(self.__df)
 
     # }}}
+
+    @staticmethod  # save# {{{
+    def save(report, path) -> bool:
+        report.__df.to_csv(path, sep=";")
+        return True
+
+    # }}}
+    @staticmethod  # load# {{{
+    def load(file_path: str, parent):
+        report = Summary(parent)
+        report.__df = pd.read_csv(file_path, sep=";")
+        return report
+
+    # }}}
+    @staticmethod  # delete# {{{
+    def delete(report):
+        path = report.path
+        if not Cmd.isExist(path):
+            logger.warning(f"Can't delete Summary: '{path}', file not found")
+            return False
+        Cmd.delete(path)
+        return True
+
+    # }}}
+    @staticmethod  # getHeader# {{{
+    def getHeader() -> list[str]:
+        header = list()
+        header.append("name")
+        for column_name in Summary.__FUNCTIONS:
+            header.append(column_name)
+        return header
+
+    # }}}
+    @staticmethod  # calculate# {{{
+    def calculate(tlist: TradeList) -> pd.DataFrame:
+        dct = dict()
+        dct["name"] = tlist.name
+        results = Summary._getResults(tlist)
+
+        for column, function in Summary.__FUNCTIONS.items():
+            value = round(function(results), 2)
+            dct[column] = value
+
+        df = pd.DataFrame([dct])
+        for tl in tlist.childs:
+            df_child = Summary.calculate(tl)
+            df = pd.concat([df, df_child], ignore_index=True)
+
+        return df
+
+    # }}}
+
+    def update(self):  # {{{
+        assert False, "пересделать"
+
+    # }}}
+    def clear(self):  # {{{
+        indexes = self.__df.index
+        self.__df.drop(indexes)
+
+    # }}}
+
     @staticmethod  # _grossProfit# {{{
     def _grossProfit(results: list) -> float:
         """Возвращает валовую прибыль всех <results>"""
@@ -80,8 +136,8 @@ class Report:
     # }}}
     @staticmethod  # _percentProfitable# {{{
     def _percentProfitable(results: list) -> float:
-        win = Report._winningTrades(results)
-        total = Report._totalTrades(results)
+        win = Summary._winningTrades(results)
+        total = Summary._totalTrades(results)
         if total == 0:
             return 0
         else:
@@ -90,8 +146,8 @@ class Report:
     # }}}
     @staticmethod  # _percentUnprofitable# {{{
     def _percentUnprofitable(results: list) -> float:
-        loss = Report._losingTrades(results)
-        total = Report._totalTrades(results)
+        loss = Summary._losingTrades(results)
+        total = Summary._totalTrades(results)
         if total == 0:
             return 0
         else:
@@ -116,29 +172,29 @@ class Report:
     # }}}
     @staticmethod  # _averageWin# {{{
     def _averageWin(results: list) -> float:
-        win_count = Report._winningTrades(results)
+        win_count = Summary._winningTrades(results)
         if win_count == 0:
             return 0.0
         else:
-            return Report._grossProfit(results) / win_count
+            return Summary._grossProfit(results) / win_count
 
     # }}}
     @staticmethod  # _averageLoss# {{{
     def _averageLoss(results: list) -> float:
-        loss_count = Report._losingTrades(results)
+        loss_count = Summary._losingTrades(results)
         if loss_count == 0:
             return 0.0
         else:
-            return Report._grossLoss(results) / loss_count
+            return Summary._grossLoss(results) / loss_count
 
     # }}}
     @staticmethod  # _averageTrade# {{{
     def _averageTrade(results: list) -> float:
-        count = Report._totalTrades(results)
+        count = Summary._totalTrades(results)
         if count == 0:
             return 0
         else:
-            return Report._totalNetProfit(results) / count
+            return Summary._totalNetProfit(results) / count
 
     # }}}
     @staticmethod  # _maxWinSeries# {{{
@@ -169,11 +225,11 @@ class Report:
     # }}}
     @staticmethod  # _ratio# {{{
     def _ratio(results: list) -> float:
-        avg_loss = Report._averageLoss(results)
+        avg_loss = Summary._averageLoss(results)
         if avg_loss == 0:
             return 0.0
         else:
-            return abs(Report._averageWin(results) / avg_loss)
+            return abs(Summary._averageWin(results) / avg_loss)
 
     # }}}
     @staticmethod  # _getResults# {{{
@@ -185,64 +241,8 @@ class Report:
         return results
 
     # }}}
-    @staticmethod  # save# {{{
-    def save(report, path) -> bool:
-        report.__df.to_csv(path, sep=";")
-        return True
-
-    # }}}
-    @staticmethod  # load# {{{
-    def load(file_path: str, parent):
-        report = Report(parent)
-        report.__df = pd.read_csv(file_path, sep=";")
-        return report
-
-    # }}}
-    @staticmethod  # delete# {{{
-    def delete(report):
-        path = report.path
-        if not Cmd.isExist(path):
-            logger.warning(f"Can't delete Report: '{path}', file not found")
-            return False
-        Cmd.delete(path)
-        return True
-
-    # }}}
-    @staticmethod  # getHeader# {{{
-    def getHeader() -> list[str]:
-        header = list()
-        header.append("name")
-        for column_name in Report.FUNCTIONS:
-            header.append(column_name)
-        return header
-
-    # }}}
-    @staticmethod  # calculate# {{{
-    def calculate(tlist: TradeList) -> pd.DataFrame:
-        dct = dict()
-        dct["name"] = tlist.name
-        results = Report._getResults(tlist)
-        for column, function in Report.FUNCTIONS.items():
-            value = round(function(results), 2)
-            dct[column] = value
-        df = pd.DataFrame([dct])
-        for tl in tlist.childs:
-            df_child = Report.calculate(tl)
-            df = pd.concat([df, df_child], ignore_index=True)
-        return df
-
-    # }}}
-    def update(self):  # {{{
-        assert False, "пересделать"
-
-    # }}}
-    def clear(self):  # {{{
-        indexes = self.__df.index
-        self.__df.drop(indexes)
-
-    # }}}
-    FUNCTIONS = {  # {{{
-        # Column            Function
+    __FUNCTIONS = {  # {{{
+        # Column: Function
         "profit": _totalNetProfit,
         "%": _percentProfitable,
         "trades": _totalTrades,
@@ -262,23 +262,23 @@ class Report:
     # }}}
 
 
-# Report.FUNCTIONS ={{{
+# Summary.__FUNCTIONS ={{{
 #     # Column            Function
-#     "profit":           Report._totalNetProfit,
-#     "%":                Report._percentProfitable,
-#     "trades":           Report._totalTrades,
-#     "win":              Report._winningTrades,
-#     "loss":             Report._losingTrades,
-#     "w-seq":            Report._maxWinSeries,
-#     "l-seq":            Report._maxLossSeries,
-#     "avg":              Report._averageTrade,
-#     "avg win":          Report._averageWin,
-#     "avg loss":         Report._averageLoss,
-#     "max win":          Report._largestWin,
-#     "max loss":         Report._largestLoss,
-#     "gross profit":     Report._grossProfit,
-#     "gross loss":       Report._grossLoss,
-#     "ratio":            Report._ratio,
+#     "profit":           Summary._totalNetProfit,
+#     "%":                Summary._percentProfitable,
+#     "trades":           Summary._totalTrades,
+#     "win":              Summary._winningTrades,
+#     "loss":             Summary._losingTrades,
+#     "w-seq":            Summary._maxWinSeries,
+#     "l-seq":            Summary._maxLossSeries,
+#     "avg":              Summary._averageTrade,
+#     "avg win":          Summary._averageWin,
+#     "avg loss":         Summary._averageLoss,
+#     "max win":          Summary._largestWin,
+#     "max loss":         Summary._largestLoss,
+#     "gross profit":     Summary._grossProfit,
+#     "gross loss":       Summary._grossLoss,
+#     "ratio":            Summary._ratio,
 #     }
 # }}}
 

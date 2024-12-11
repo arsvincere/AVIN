@@ -12,7 +12,7 @@ import enum
 from datetime import date, timedelta
 
 from avin.const import ONE_MINUTE
-from avin.core import Report, StrategySet, TradeList
+from avin.core import StrategySet, Summary, TradeList
 from avin.keeper import Keeper
 from avin.utils import Signal, logger
 
@@ -44,7 +44,7 @@ class Test:
         self.__status = Test.Status.NEW
         self.__strategy_set = StrategySet(f"{name}-sset")
         self.__trade_list = TradeList(f"{name}-tlist")
-        self.__report = Report(test=self)
+        self.__report = Summary(test=self)
         self.__deposit = 100000.0
         self.__commission = 0.0005
         self.__begin = date(2018, 1, 1)
