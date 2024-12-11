@@ -54,13 +54,10 @@ class Tester:
             await self.__startTest()
             await self.__finishTest()
 
-        print("exit 100500")
-        exit(100500)
-
         self.__test.status = Test.Status.COMPLETE
-        self.__createReport()
-        self.__saveTest()
-        logger.info(f":: '{self.test}' complete!")
+        # self.__createReport()
+        await self.__saveTest()
+        logger.info(f":: {self.__test} complete!")
         self.__clearAll()
 
     # }}}
@@ -195,11 +192,11 @@ class Tester:
     #         self.test.updateReport()
     #
     #     # }}}
-    #     def __saveTest(self):  # {{{
-    #         Test.save(self.test)
-    #         logger.info("Test saved")
-    #
-    #     # }}}
+    async def __saveTest(self):  # {{{
+        await Test.save(self.__test)
+        logger.info("Test saved")
+
+    # }}}
 
 
 if __name__ == "__main__":

@@ -107,7 +107,7 @@ class Test:
         return self.__report
 
     @report.setter
-    def report(self, report: Report):
+    def report(self, report: Summary):
         self.__report = report
 
     # }}}
@@ -177,9 +177,9 @@ class Test:
 
     # }}}
 
-    def updateReport(self):  # {{{
-        logger.debug("Test.updateReport()")
-        self.__report = Report(test=self)
+    def updateSummary(self):  # {{{
+        logger.debug("Test.updateSummary()")
+        self.__report = Summary(test=self)
 
     # }}}
     async def clear(self):  # {{{
@@ -215,7 +215,7 @@ class Test:
         test.end = record["end_date"]
 
         # create report
-        test.__report = Report(test)
+        test.__report = Summary(test)
 
         return test
 
@@ -234,7 +234,7 @@ class Test:
         await TradeList.save(test.trade_list)
 
         # TODO:
-        # save Report????
+        # save Summary????
 
         # save Test
         await Keeper.add(test)
