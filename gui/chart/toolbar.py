@@ -15,8 +15,10 @@ from avin.utils import logger
 from gui.custom import (
     Css,
     Icon,
+    Label,
     Menu,
     ToolButton,
+    VLine,
 )
 
 
@@ -58,14 +60,24 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
     def __createButtons(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createActions()")
 
+        # asset
         self.__asset_btn = ToolButton(text="ASSET", width=64, parent=self)
         self.__current_asset = None
 
-        self.__first_tf_btn = ToolButton(parent=self)
-        self.__first_tf_btn.setText("5M")
-        self.__second_tf_btn = ToolButton(parent=self)
-        self.__second_tf_btn.setText("D")
+        # first timeframe
+        self.__first_tf_btn = ToolButton(text="D", parent=self)
 
+        # back timeframe
+        self.__second_1H = ToolButton(text="1H", parent=self)
+        self.__second_D = ToolButton(text="D", parent=self)
+        self.__second_W = ToolButton(text="W", parent=self)
+        self.__second_M = ToolButton(text="M", parent=self)
+        self.__second_1H.setCheckable(True)
+        self.__second_D.setCheckable(True)
+        self.__second_W.setCheckable(True)
+        self.__second_M.setCheckable(True)
+
+        # bar / cundle
         self.__bar_btn = ToolButton(icon=Icon.BAR, parent=self)
         self.__bar_btn.setCheckable(True)
         self.__cundle_btn = ToolButton(icon=Icon.CUNDLE, parent=self)
@@ -73,15 +85,26 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
         self.__cundle_btn.setChecked(True)
         self.__current_view = _ViewType.CUNDLE
 
+        # indicator
         self.__indicator_btn = ToolButton(
             text="Indicator", width=96, parent=self
         )
 
+        # add widgets
         self.addWidget(self.__asset_btn)
         self.addWidget(self.__first_tf_btn)
-        self.addWidget(self.__second_tf_btn)
+        self.addWidget(VLine(width=10))
+        self.addWidget(Label(" Background:", self))
+        self.addWidget(self.__second_1H)
+        self.addWidget(self.__second_D)
+        self.addSeparator()
+        self.setStyleSheet(Css.TOOL_BAR)
+        self.addWidget(self.__second_W)
+        self.addWidget(self.__second_M)
+        self.addWidget(VLine(width=10))
         self.addWidget(self.__bar_btn)
         self.addWidget(self.__cundle_btn)
+        self.addWidget(VLine(width=10))
         self.addWidget(self.__indicator_btn)
 
     # }}}
@@ -94,11 +117,11 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
             QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup
         )
 
-        self.__second_tf_menu = _SecondTFMenu(self)
-        self.__second_tf_btn.setMenu(self.__second_tf_menu)
-        self.__second_tf_btn.setPopupMode(
-            QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup
-        )
+        # self.__second_tf_menu = _SecondTFMenu(self)
+        # self.__second_tf_btn.setMenu(self.__second_tf_menu)
+        # self.__second_tf_btn.setPopupMode(
+        #     QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup
+        # )
 
     # }}}
     def __config(self):  # {{{
@@ -113,7 +136,10 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
         logger.debug(f"{self.__class__.__name__}.__connect()")
 
         self.__first_tf_menu.triggered.connect(self.__onFirstTF)
-        self.__second_tf_menu.triggered.connect(self.__onSecondTF)
+        self.__second_1H.clicked.connect(self.__onSecond_1H)
+        self.__second_D.clicked.connect(self.__onSecond_D)
+        self.__second_W.clicked.connect(self.__onSecond_W)
+        self.__second_M.clicked.connect(self.__onSecond_M)
         self.__bar_btn.clicked.connect(self.__onBarBtn)
         self.__cundle_btn.clicked.connect(self.__onCundleBtn)
 
@@ -129,17 +155,32 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
             self.firstTimeFrameChanged.emit(timeframe)
 
     # }}}
-    @QtCore.pyqtSlot(QtGui.QAction)  # __onSecondTF  # {{{
-    def __onSecondTF(self, action: QtGui.QAction):
-        logger.debug(f"{self.__class__.__name__}.__onSecondTF()")
+    @QtCore.pyqtSlot(bool)  # __onSecond_1H  # {{{
+    def __onSecond_1H(self, checked: bool):
+        logger.debug(f"{self.__class__.__name__}.__onSecond_1H()")
 
-        timeframe = action.data()
-        self.secondTimeFrameChanged.emit(timeframe, action.isChecked())
+        self.secondTimeFrameChanged.emit(TimeFrame("1H"), checked)
 
-        # TODO: список таймфреймов на кнопке надо писать а не
-        # последний кликнутый
-        if self.__second_tf_btn.text() != str(timeframe):
-            self.__second_tf_btn.setText(str(timeframe))
+    # }}}
+    @QtCore.pyqtSlot(bool)  # __onSecond_D  # {{{
+    def __onSecond_D(self, checked: bool):
+        logger.debug(f"{self.__class__.__name__}.__onSecond_D()")
+
+        self.secondTimeFrameChanged.emit(TimeFrame("D"), checked)
+
+    # }}}
+    @QtCore.pyqtSlot(bool)  # __onSecond_W  # {{{
+    def __onSecond_W(self, checked: bool):
+        logger.debug(f"{self.__class__.__name__}.__onSecond_W()")
+
+        self.secondTimeFrameChanged.emit(TimeFrame("W"), checked)
+
+    # }}}
+    @QtCore.pyqtSlot(bool)  # __onSecond_M  # {{{
+    def __onSecond_M(self, checked: bool):
+        logger.debug(f"{self.__class__.__name__}.__onSecond_M()")
+
+        self.secondTimeFrameChanged.emit(TimeFrame("M"), checked)
 
     # }}}
     @QtCore.pyqtSlot()  # __onBarBtn  # {{{
