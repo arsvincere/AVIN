@@ -180,6 +180,7 @@ class GBarBehind(QtWidgets.QGraphicsItemGroup):  # {{{
         height = self.y1 - self.y0
 
         body = QtWidgets.QGraphicsRectItem(self.x0, self.y0, width, height)
+        body.setPen(self.color)
         body.setBrush(self.color)
 
         self.addToGroup(body)
@@ -384,7 +385,7 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
 
         current = first
         while current <= last:
-            bars = self.chart.getBarsOfMounth(current)
+            bars = self.chart.getBarsOfMonth(current)
 
             if bars:
                 gbar_behind = GBarBehind(bars, self)
