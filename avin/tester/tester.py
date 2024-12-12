@@ -17,6 +17,8 @@ from avin.utils import logger
 # здесь нужен только один публичный метод - запустить тест
 # и все.
 
+# TODO: log причесать по всем функциям
+
 
 class Tester:
     def __init__(self):  # {{{
@@ -54,9 +56,21 @@ class Tester:
             await self.__startTest()
             await self.__finishTest()
 
+        # FIX: в БД статус сейчас не обновляется...
+        # а сделать тупо сейв нельзя из за того как реализовано
+        # сохранение объектов у меня сейчас - оно всегда удаляет все старое..
+        # выход я вижу такой:
+        # добавить объектам так же метод .update
+        # для явного обновления полей в БД
+        # без удаления и сохранения объекта.. объект уже должен
+        # быть в БД.
+        # и то что уже есть в БД нужно проконтролировать.
+        # и посмотреть что будет если в БД попробовать UPDATE
+        # не существующей записи
+        # сделать pytest на эти вещи
         self.__test.status = Test.Status.COMPLETE
         # self.__createReport()
-        await self.__saveTest()
+        # await self.__saveTest() # XXX: тут и так все сохранено в БД!
         logger.info(f":: {self.__test} complete!")
         self.__clearAll()
 
@@ -183,8 +197,10 @@ class Tester:
 
     async def __finishTest(self):  # {{{
         logger.info(f"Finish test {self.__current_asset.ticker}")
+
         for i in self.__slist:
             await i.finish()
+
         self.__current_asset.clearCache()
 
     # }}}
@@ -193,8 +209,14 @@ class Tester:
     #
     #     # }}}
     async def __saveTest(self):  # {{{
-        await Test.save(self.__test)
-        logger.info("Test saved")
+        logger.debug(f"{self.__class__.__name__}.__saveTest()")
+
+        # XXX: и так все в БД сохраняется по ходу теста, этот метод -
+        # пережиток прошлого
+        # удалить его нахуй?
+
+        # await Test.save(self.__test)
+        # logger.info("Test saved")
 
     # }}}
 

@@ -188,7 +188,7 @@ class Test:
         self.__trade_list.clear()  # clear runtime
         await Keeper.delete(self.__trade_list, only_trades=True)  # in db
 
-        self.__report.clear()
+        self.__report.clear()  # TODO: че выпиливаем report summary или как?
         self.__status = Test.Status.NEW
 
     # }}}
