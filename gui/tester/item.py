@@ -184,6 +184,8 @@ class TradeItem(QtWidgets.QTreeWidgetItem):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QTreeWidgetItem.__init__(self, parent)
 
+        self.trade = trade
+
         self.setFlags(
             Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
         )
