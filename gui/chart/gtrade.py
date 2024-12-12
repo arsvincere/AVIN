@@ -11,13 +11,12 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 from avin.config import Usr
 from avin.core import (
     TimeFrame,
-    Trade,
     TradeList,
 )
 from gui.custom import Theme
 
 
-class GTrade(Trade, QtWidgets.QGraphicsItemGroup):  # {{{
+class GTrade(QtWidgets.QGraphicsItemGroup):  # {{{
     OPEN_WIDTH = 1
     STOP_WIDTH = 1
     TAKE_WIDTH = 1
@@ -34,7 +33,7 @@ class GTrade(Trade, QtWidgets.QGraphicsItemGroup):  # {{{
 
     def __init__(self, itrade, parent):  # {{{
         QtWidgets.QGraphicsItemGroup.__init__(self, parent)
-        Trade.__init__(self, itrade._info, parent)
+
         itrade.gtrade = self  # link to GTrade in ITrade item
         self.itrade = itrade  #  link to ITrade in GTrade item
         self.__parent = parent
