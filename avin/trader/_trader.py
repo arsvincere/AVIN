@@ -19,6 +19,9 @@ from avin.data import Data
 from avin.trader.tinkoff import Tinkoff
 from avin.utils import logger, now
 
+# TODO: здесь походу StrategySet еще вообще не используется...
+# не помню уже
+
 
 class Trader:
     def __init__(self):  # {{{
