@@ -237,7 +237,7 @@ class Summary:
         results = list()
         for trade in tlist.trades:
             if not trade.isBlocked():
-                results.append(trade.result)
+                results.append(trade.result())
         return results
 
     # }}}
