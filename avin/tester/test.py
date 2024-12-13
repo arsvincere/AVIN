@@ -12,7 +12,7 @@ import enum
 from datetime import date, timedelta
 
 from avin.const import ONE_MINUTE
-from avin.core import StrategySet, Summary, TradeList
+from avin.core import Asset, Strategy, Summary, TradeList
 from avin.keeper import Keeper
 from avin.utils import Signal, logger
 
@@ -67,14 +67,13 @@ class Test:
 
     # }}}
 
-    def __init__(self, name: str):  # {{{
-        logger.debug(f"Test.__init__({name})")
+    def __init__(self, strategy: Strategy, asset: Asset):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
 
-        self.__name = name
         self.__status = Test.Status.NEW
-        self.__strategy_set = StrategySet(f"{name}-sset")
-        self.__trade_list = TradeList(f"{name}-tlist")
-        self.__report = Summary(test=self)
+        self.__strategy = strategy
+        self.__asset = asset
+        self.__trade_list = TradeList(f"{self.name}-trade_list")
         self.__deposit = 100000.0
         self.__commission = 0.0005
         self.__begin = date(2018, 1, 1)
@@ -92,56 +91,32 @@ class Test:
 
     # }}}
 
-    @property  # name# {{{
+    @property  # name  # {{{
     def name(self):
-        return self.__name
-
-    @name.setter
-    def name(self, new_name) -> bool:
-        self.__name = new_name
-        self.__strategy_set.name = f"{new_name}-sset"
-        self.__trade_list.name = f"{new_name}-tlist"
+        string = (
+            f"Test={self.__strategy.name}-{self.__strategy.version}-"
+            f"{self.__asset.ticker}"
+        )
+        return string
 
     # }}}
-    @property  # status# {{{
-    def status(self):
-        return self.__status
-
-    @status.setter
-    def status(self, new_status) -> bool:
-        self.__status = new_status
+    @property  # strategy  # {{{
+    def strategy(self):
+        return self.__strategy
 
     # }}}
-    @property  # strategy_set# {{{
-    def strategy_set(self):
-        return self.__strategy_set
-
-    @strategy_set.setter
-    def strategy_set(self, strategy_set: StrategySet):
-        strategy_set.name = f"{self.__name}-sset"
-        self.__strategy_set = strategy_set
+    @property  # asset  # {{{
+    def asset(self):
+        return self.__asset
 
     # }}}
-    @property  # trade_list# {{{
+    @property  # trade_list  # {{{
     def trade_list(self):
         return self.__trade_list
 
-    @trade_list.setter
-    def trade_list(self, trade_list: TradeList):
-        trade_list.name = f"{self.__name}-tlist"
-        self.__trade_list = trade_list
-
     # }}}
-    @property  # report# {{{
-    def report(self):
-        return self.__report
 
-    @report.setter
-    def report(self, report: Summary):
-        self.__report = report
-
-    # }}}
-    @property  # deposit# {{{
+    @property  # deposit  # {{{
     def deposit(self):
         return self.__deposit
 
@@ -150,7 +125,7 @@ class Test:
         self.__deposit = deposit
 
     # }}}
-    @property  # commission# {{{
+    @property  # commission  # {{{
     def commission(self):
         return self.__commission
 
@@ -159,7 +134,7 @@ class Test:
         self.__commission = commission
 
     # }}}
-    @property  # begin# {{{
+    @property  # begin  # {{{
     def begin(self) -> date:
         return self.__begin
 
@@ -169,7 +144,7 @@ class Test:
         self.__begin = begin
 
     # }}}
-    @property  # end# {{{
+    @property  # end  # {{{
     def end(self) -> date:
         return self.__end
 
@@ -179,7 +154,7 @@ class Test:
         self.__end = end
 
     # }}}
-    @property  # description# {{{
+    @property  # description  # {{{
     def description(self):
         return self.__description
 
@@ -206,71 +181,84 @@ class Test:
         self.__time_step = time_step
 
     # }}}
+    @property  # status  # {{{
+    def status(self):
+        return self.__status
 
-    def updateSummary(self):  # {{{
-        logger.debug("Test.updateSummary()")
-        self.__report = Summary(test=self)
+    @status.setter
+    def status(self, new_status):
+        self.__status = new_status
 
     # }}}
-    async def clear(self):  # {{{
-        logger.debug("Test.clear()")
+
+    def summary(self) -> Summary:  # {{{
+        logger.debug(f"{self.__class__.__name__}.summary()")
+
+        # TODO:
+        # надо изменить теперь Summary оно не тест должно принимать а тлист
+        assert False
+
+        summary = Summary(self.__trade_list)
+        return summary
+
+    # }}}
+    async def clear(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.clear()")
+
+        # TODO: здесь нужно другое имя.
+        # это не просто clear() как у AssetList TradeList StrategyList...
+        # здесь идет очистка трейдов в БД.
+        # и нужно чтобы как минимум была разница в названиях
+        # а еще лучше чтобы было понятно что этот метод чистит
+        # возможно - clearTrades...
 
         self.__trade_list.clear()  # clear runtime
-        await Keeper.delete(self.__trade_list, only_trades=True)  # in db
+        TradeList.deleteTrades(self.__trade_list)  # clear db
 
-        self.__report.clear()  # TODO: че выпиливаем report summary или как?
         self.__status = Test.Status.NEW
 
     # }}}
 
-    @classmethod  # fromRecord# {{{
+    @classmethod  # fromRecord  # {{{
     async def fromRecord(cls, record: asyncpg.Record) -> Test:
         logger.debug(f"{cls.__name__}.fromRecord()")
 
-        test = Test(record["name"])
-        test.status = Test.Status.fromStr(record["status"])
+        asset = Asset.fromRecord(record)
+        strategy = await Strategy.load(
+            record["strategy"],
+            record["version"],
+        )
 
-        # request strategy set
-        s_set = await Keeper.get(StrategySet, name=record["strategy_set"])
-        test.strategy_set = s_set
+        test = Test(strategy, asset)
+        test.__status = Test.Status.fromStr(record["status"])
 
         # request trade list
-        tlist = await Keeper.get(TradeList, name=record["trade_list"])
-        test.__trade_list = tlist
+        test.__trade_list = await TradeList.load(record["trade_list"])
 
-        test.description = record["description"]
-        test.deposit = record["deposit"]
-        test.commission = record["commission"]
-        test.begin = record["begin_date"]
-        test.end = record["end_date"]
-
-        # create report
-        test.__report = Summary(test)
+        test.__deposit = record["deposit"]
+        test.__commission = record["commission"]
+        test.__begin = record["begin_date"]
+        test.__end = record["end_date"]
+        test.__description = record["description"]
 
         return test
 
     # }}}
-    @classmethod  # save# {{{
+    @classmethod  # save  # {{{
     async def save(cls, test: Test) -> None:
         logger.debug(f"{cls.__name__}.save()")
 
         # remove old if exist
         await Keeper.delete(test)
 
-        # save StrategySet
-        await StrategySet.save(test.strategy_set)
-
         # save TradeList
         await TradeList.save(test.trade_list)
-
-        # TODO:
-        # save Summary????
 
         # save Test
         await Keeper.add(test)
 
     # }}}
-    @classmethod  # load#{{{
+    @classmethod  # load  # {{{
     async def load(cls, name: str) -> Test | None:
         logger.debug(f"{cls.__name__}.load()")
 
@@ -278,75 +266,27 @@ class Test:
         return test
 
     # }}}
-    @classmethod  # delete# {{{
+    @classmethod  # delete  # {{{
     async def delete(cls, test) -> None:
         logger.debug(f"{cls.__name__}.delete()")
 
         await Keeper.delete(test)
-        await Keeper.delete(test.trade_list)
-        await Keeper.delete(test.strategy_set)
+        await TradeList.delete(test.trade_list)
 
     # }}}
-    @classmethod  # rename# {{{
-    async def rename(cls, test, new_name: str) -> Test | None:
-        logger.debug(f"{cls.__name__}.rename()")
+    @classmethod  # update  # {{{
+    async def update(cls, test: Test) -> None:
+        logger.debug(f"{cls.__name__}.update()")
 
-        # check new name
-        availible = await cls.__checkName(new_name)
-        if not availible:
-            return None
-
-        await cls.delete(test)
-        test.name = new_name
-        await cls.save(test)
-
-        return test
+        await Keeper.update(test)
 
     # }}}
-    @classmethod  # copy# {{{
-    async def copy(cls, test, new_name: str) -> Test | None:
-        logger.debug(f"{cls.__name__}.copy()")
-
-        # check new name
-        availible = await cls.__checkName(new_name)
-        if not availible:
-            return None
-
-        new_test = Test(new_name)
-        new_test.status = test.status
-        new_test.strategy_set = test.strategy_set
-        new_test.trade_list = test.trade_list
-        new_test.report = test.report
-        new_test.deposit = test.deposit
-        new_test.commission = test.commission
-        new_test.begin = test.begin
-        new_test.end = test.end
-        new_test.description = test.description
-        new_test.account = test.account
-        new_test.time_step = test.time_step
-
-        await cls.save(new_test)
-        return new_test
-
-    # }}}
-    @classmethod  # requestAll# {{{
+    @classmethod  # requestAll  # {{{
     async def requestAll(cls) -> list[str]:
         logger.debug(f"{cls.__name__}.requestAll()")
 
         names = await Keeper.get(cls, get_only_names=True)
         return names
-
-    # }}}
-
-    @classmethod  # __checkName{{{
-    async def __checkName(cls, name):
-        logger.debug(f"{cls.__name__}.__checkName()")
-
-        existed_names = await cls.requestAll()
-        if name in existed_names:
-            return False
-
-        return True
 
     # }}}
 

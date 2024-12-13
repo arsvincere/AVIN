@@ -19,6 +19,10 @@ from avin.utils import logger
 
 # TODO: log причесать по всем функциям
 
+# TODO: в переменных порядок навести в конструкторе и в clearAll
+# чтобы одинаковый список был, и только актуальные переменные
+# там сейчас жесть какая то из разных версий реализации
+
 
 class Tester:
     def __init__(self):  # {{{
@@ -30,14 +34,11 @@ class Tester:
 
     # }}}
 
-    def setTest(self, test: Test):  # {{{
+    async def run(self, test: Test):  # {{{
+        logger.info(f":: Tester run {test}")
+
         self.__clearAll()
         self.__test = test
-
-    # }}}
-    async def runTest(self):  # {{{
-        logger.info(f":: Tester run {self.__test}")
-        assert self.__test is not None
 
         await self.__test.clear()
         self.__test.status = Test.Status.PROCESS
@@ -69,6 +70,8 @@ class Tester:
         # не существующей записи
         # сделать pytest на эти вещи
         self.__test.status = Test.Status.COMPLETE
+        Test.update(self.__test)
+
         # self.__createReport()
         # await self.__saveTest() # XXX: тут и так все сохранено в БД!
         logger.info(f":: {self.__test} complete!")
@@ -204,10 +207,6 @@ class Tester:
         self.__current_asset.clearCache()
 
     # }}}
-    #     def __createReport(self):  # {{{
-    #         self.test.updateReport()
-    #
-    #     # }}}
     async def __saveTest(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__saveTest()")
 

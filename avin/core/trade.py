@@ -25,6 +25,12 @@ from avin.data import Instrument
 from avin.keeper import Keeper
 from avin.utils import AsyncSignal, logger
 
+# TODO:
+# Trade.trade_list -> rename trade_list_name
+# и вообще везде типо strategy -> strategy_name там где используется
+# только str имя стратегии, а где объект там strategy
+# все остальные объекты в коде тоже привести к такому стандарту
+
 
 class Trade:  # {{{
     class Type(enum.Enum):  # {{{
@@ -447,6 +453,7 @@ class Trade:  # {{{
     @classmethod  # save  # {{{
     async def save(cls, trade: Trade) -> None:
         logger.debug(f"{cls.__name__}.save()")
+
         await Keeper.add(trade)
 
     # }}}
@@ -466,12 +473,14 @@ class Trade:  # {{{
     @classmethod  # delete  # {{{
     async def delete(cls, trade: Trade) -> None:
         logger.debug(f"{cls.__name__}.delete()")
+
         await Keeper.delete(trade)
 
     # }}}
     @classmethod  # update  # {{{
     async def update(cls, trade: Trade) -> None:
         logger.debug(f"{cls.__name__}.update()")
+
         await Keeper.update(trade)
 
     # }}}
@@ -479,6 +488,7 @@ class Trade:  # {{{
         logger.debug(
             f"{self.__class__.__name__}.__connectOrderSignals('{order}')"
         )
+
         await order.posted.async_connect(self.onOrderPosted)
         await order.executed.async_connect(self.onOrderExecuted)
 
@@ -742,7 +752,7 @@ class TradeList:  # {{{
     async def save(cls, tlist) -> None:
         logger.debug(f"{cls.__name__}.save()")
 
-        await Keeper.delete(tlist)
+        # await Keeper.delete(tlist)  # XXX: нельзя так делать
         await Keeper.add(tlist)
 
         # XXX: вот надо хорошо подумать и решить...
@@ -765,7 +775,15 @@ class TradeList:  # {{{
     @classmethod  # delete# {{{
     async def delete(cls, tlist):
         logger.debug(f"{cls.__name__}.delete()")
+
         await Keeper.delete(tlist)
+
+    # }}}
+    @classmethod  # deleteTrades # {{{
+    async def deleteTrades(cls, trade_list: TradeList):
+        logger.debug(f"{cls.__name__}.deleteTrades()")
+
+        await Keeper.delete(trade_list, only_trades=True)
 
     # }}}
 

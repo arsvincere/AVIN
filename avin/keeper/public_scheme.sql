@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS "Data" ( -- {{{
     last_dt TIMESTAMP WITH TIME ZONE NOT NULL
     );
 -- }}}
+
 CREATE TABLE IF NOT EXISTS "Strategy" ( -- {{{
     name text NOT NULL,
     version text NOT NULL,
@@ -106,7 +107,7 @@ CREATE TABLE IF NOT EXISTS "TradeList" ( -- {{{
 -- }}}
 CREATE TABLE IF NOT EXISTS "Trade" ( -- {{{
     trade_id    text PRIMARY KEY,
-    tlist       text REFERENCES "TradeList"(name) ON UPDATE CASCADE,
+    trade_list  text REFERENCES "TradeList"(name) ON UPDATE CASCADE,
     figi        text REFERENCES "Asset"(figi),
     strategy    text,
     version     text,
@@ -164,9 +165,12 @@ CREATE TABLE IF NOT EXISTS "Operation" ( -- {{{
 -- }}}
 CREATE TABLE IF NOT EXISTS "Test" ( -- {{{
     name            text PRIMARY KEY,
-    account         text REFERENCES "Account"(name) ON UPDATE CASCADE,
-    strategy_set    text REFERENCES "StrategySet"(name) ON UPDATE CASCADE,
+    strategy        text,
+    version         text,
+    FOREIGN KEY (strategy, version) REFERENCES "Strategy" (name, version) ON UPDATE CASCADE,
+    figi            text REFERENCES "Asset"(figi),
     trade_list      text REFERENCES "TradeList"(name) ON UPDATE CASCADE,
+    account         text REFERENCES "Account"(name) ON UPDATE CASCADE,
     status          "Test.Status" NOT NULL,
     deposit         float,
     commission      float,
@@ -179,6 +183,6 @@ CREATE TABLE IF NOT EXISTS "Trader" ( -- {{{
     name            text PRIMARY KEY,
     account         text REFERENCES "Account"(name) ON UPDATE CASCADE,
     strategy_set    text REFERENCES "StrategySet"(name) ON UPDATE CASCADE,
-    tlist           text REFERENCES "TradeList"(name) ON UPDATE CASCADE
+    trade_list      text REFERENCES "TradeList"(name) ON UPDATE CASCADE
     );
 -- }}}

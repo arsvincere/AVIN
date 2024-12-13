@@ -34,6 +34,7 @@ from avin.utils import AsyncSignal, logger
 
 class _VirtualBroker(Broker):
     name = "_VirtualBroker"
+
     new_bar = AsyncSignal(NewHistoricalBarEvent)
     bar_changed = AsyncSignal(BarChangedEvent)
     new_transaction = AsyncSignal(TransactionEvent)
