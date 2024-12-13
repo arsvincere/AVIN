@@ -35,6 +35,104 @@ async def test_BarStream():
 # }}}
 @pytest.mark.asyncio  # test_Test  # {{{
 async def test_Test():
+    asset = await Asset.fromStr("MOEX-SHARE-SBER")
+    strategy = await Strategy.load("Every", "day")
+
+    test = Test(strategy, asset)
+
+    assert test.name == "Test=Every-day-SBER"
+    assert test.strategy == strategy
+    assert test.asset == asset
+
+    # default values
+    assert test.trade_list.name == "Test=Every-day-SBER-trade_list"
+    assert test.deposit == 100_000.0
+    assert test.commission == 0.0005
+    assert test.begin == date(2018, 1, 1)
+    assert test.end == date(2023, 1, 1)
+    assert test.description == ""
+    assert test.account == "_backtest"
+    assert test.time_step == ONE_MINUTE
+    assert test.status == Test.Status.NEW
+
+    # save
+    await Test.save(test)
+
+    # update
+    test.status = Test.Status.EDITED
+    await Test.update(test)
+
+    # load
+    loaded = await Test.load("Test=Every-day-SBER")
+    assert loaded.status == Test.Status.EDITED
+
+    # delete
+    await Test.delete(test)
+    loaded = await Test.load("Test=Every-day-SBER")
+    assert loaded is None
+
+
+# }}}
+@pytest.mark.asyncio  # test_Tester  # {{{
+async def test_Tester():
+    tester = Tester()
+
+    test_name = "_unittest_test"
+    test = Test(f"{test_name}")
+
+    # create strategy set
+    item1 = StrategySetNode(
+        "Every", "day", "BBG004S68614", long=True, short=False
+    )
+    # item2 = StrategySetNode(
+    #     "Every", "minute", "BBG004S683W7", long=True, short=True
+    # )
+    # item3 = StrategySetNode(
+    #     "Every", "five", "BBG004S68B31", long=True, short=True
+    # )
+    s_set = StrategySet(
+        name=f"{test_name}-set",
+        # items=[item1, item2, item3],
+        items=[item1],
+    )
+
+    # configure test
+    test.description = "unit test <class Tester>"
+    test.strategy_set = s_set
+    test.deposit = 100_000.0
+    test.commission = 0.0005
+    test.begin = date(2023, 8, 1)
+    test.end = date(2023, 8, 2)
+
+    # save
+    await Test.save(test)
+
+    tester.setTest(test)
+    await tester.runTest()
+
+
+# }}}
+
+
+@pytest.mark.asyncio  # test_clear_all_test_vars  # {{{
+async def test_clear_all_test_vars():
+    test_name = "Test=Every-day-SBER"
+    test = await Test.load(f"{test_name}")
+    if test is not None:
+        await Test.delete(test)
+
+
+# }}}
+
+
+# NOTE: пусть код пока останется, по факту сейчас тест уже
+# не использует StrategySet
+# StrategySet будет использоваться Trader
+# в его тесты этот код потом можно будет перенести
+@pytest.mark.asyncio  # test_Test_with_StrategySet  # {{{
+async def test_Test():
+    return
+
     test_name = "_unittest_test"
     test = Test(f"{test_name}")
     assert test.name == f"{test_name}"
@@ -89,56 +187,6 @@ async def test_Test():
 
     # delete
     await Test.delete(test)
-
-
-# }}}
-@pytest.mark.asyncio  # test_Tester  # {{{
-async def test_Tester():
-    tester = Tester()
-
-    test_name = "_unittest_test"
-    test = Test(f"{test_name}")
-
-    # create strategy set
-    item1 = StrategySetNode(
-        "Every", "day", "BBG004S68614", long=True, short=False
-    )
-    # item2 = StrategySetNode(
-    #     "Every", "minute", "BBG004S683W7", long=True, short=True
-    # )
-    # item3 = StrategySetNode(
-    #     "Every", "five", "BBG004S68B31", long=True, short=True
-    # )
-    s_set = StrategySet(
-        name=f"{test_name}-set",
-        # items=[item1, item2, item3],
-        items=[item1],
-    )
-
-    # configure test
-    test.description = "unit test <class Tester>"
-    test.strategy_set = s_set
-    test.deposit = 100_000.0
-    test.commission = 0.0005
-    test.begin = date(2023, 8, 1)
-    test.end = date(2023, 8, 2)
-
-    # save
-    await Test.save(test)
-
-    tester.setTest(test)
-    await tester.runTest()
-
-
-# }}}
-
-
-@pytest.mark.asyncio  # test_clear_all_test_vars  # {{{
-async def test_clear_all_test_vars():
-    test_name = "_unittest_test"
-    test = await Test.load(f"{test_name}")
-    if test is not None:
-        await Test.delete(test)
 
 
 # }}}
