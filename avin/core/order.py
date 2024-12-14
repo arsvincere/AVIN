@@ -284,7 +284,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     async def __limitOrderFromRecord(cls, record):
         logger.debug(f"Order.__limitOrderFromRecord({record})")
 
-        instrument = await Instrument.byFigi(figi=record["figi"])
+        instrument = await Instrument.fromFigi(figi=record["figi"])
         order = LimitOrder(
             account_name=record["account"],
             direction=Direction.fromStr(record["direction"]),
@@ -307,7 +307,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     async def __stopOrderFromRecord(cls, record):
         logger.debug(f"Order.__stopOrderFromRecord({record})")
 
-        instrument = await Instrument.byFigi(figi=record["figi"])
+        instrument = await Instrument.fromFigi(figi=record["figi"])
         order = StopOrder(
             account_name=record["account"],
             direction=Direction.fromStr(record["direction"]),
@@ -331,7 +331,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     async def __stopLossFromRecord(cls, record):
         logger.debug(f"Order.__stopLossFromRecord({record})")
 
-        instrument = await Instrument.byFigi(figi=record["figi"])
+        instrument = await Instrument.fromFigi(figi=record["figi"])
         order = StopLoss(
             account_name=record["account"],
             direction=Direction.fromStr(record["direction"]),
@@ -355,7 +355,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     async def __takeProfitFromRecord(cls, record):
         logger.debug(f"Order.__takeProfitFromRecord({record})")
 
-        instrument = await Instrument.byFigi(figi=record["figi"])
+        instrument = await Instrument.fromFigi(figi=record["figi"])
         order = TakeProfit(
             account_name=record["account"],
             direction=Direction.fromStr(record["direction"]),
