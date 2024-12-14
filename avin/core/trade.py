@@ -169,12 +169,12 @@ class Trade:  # {{{
 
         # emiting special signal for this status
         if status == Trade.Status.OPENED:
-            await self.opened.async_emit(self)
+            await self.opened.aemit(self)
         elif status == Trade.Status.CLOSED:
-            await self.closed.async_emit(self)
+            await self.closed.aemit(self)
 
         # emiting common signal
-        await self.statusChanged.async_emit(self)
+        await self.statusChanged.aemit(self)
 
     # }}}
     async def attachOrder(self, order: Order):  # {{{
@@ -489,8 +489,8 @@ class Trade:  # {{{
             f"{self.__class__.__name__}.__connectOrderSignals('{order}')"
         )
 
-        await order.posted.async_connect(self.onOrderPosted)
-        await order.executed.async_connect(self.onOrderExecuted)
+        order.posted.aconnect(self.onOrderPosted)
+        order.executed.aconnect(self.onOrderExecuted)
 
     # }}}
 

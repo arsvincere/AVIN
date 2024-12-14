@@ -233,10 +233,10 @@ class _VirtualBroker(Broker):
         await cls.__data_stream.loadData(cls.__test.begin, cls.__test.end)
         for event in cls.__data_stream:
             if event.type == Event.Type.BAR_CHANGED:
-                await cls.bar_changed.async_emit(event)
+                await cls.bar_changed.aemit(event)
                 await cls.__checkOrders(event)
             elif event.type == Event.Type.NEW_HISTORICAL_BAR:
-                await cls.new_bar.async_emit(event)
+                await cls.new_bar.aemit(event)
             else:
                 assert False, "так не должно быть"
 
@@ -315,7 +315,7 @@ class _VirtualBroker(Broker):
             order_broker_id=order.broker_id,
             transaction=transaction,
         )
-        await cls.new_transaction.async_emit(event)
+        await cls.new_transaction.aemit(event)
         await cls.__account.receive(event)
 
     # }}}

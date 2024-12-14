@@ -208,7 +208,7 @@ class Trader:
             for timeframe in self.timeframe_list:
                 await self.broker.createBarStream(asset, timeframe)
 
-        await self.broker.new_bar.async_connect(self.__onNewBar)
+        self.broker.new_bar.aconnect(self.__onNewBar)
 
     # }}}
     async def __startTransactionStream(self) -> None:  # {{{

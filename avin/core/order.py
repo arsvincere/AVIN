@@ -181,14 +181,14 @@ class Order(metaclass=abc.ABCMeta):  # {{{
 
         # emitting special signal for this status
         if status == Order.Status.POSTED:
-            await self.posted.async_emit(self)
+            await self.posted.aemit(self)
         if status == Order.Status.REJECTED:
-            await self.rejected.async_emit(self)
+            await self.rejected.aemit(self)
         if status == Order.Status.CANCELED:
-            await self.canceled.async_emit(self)
+            await self.canceled.aemit(self)
 
         # emiting common signal
-        await self.statusChanged.async_emit(self)
+        await self.statusChanged.aemit(self)
 
     # }}}
     async def setParentTrade(self, trade):  # {{{

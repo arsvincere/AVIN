@@ -618,8 +618,8 @@ class Strategy(ABC):  # {{{
 
     # }}}
     async def __connectTradeSignals(self, trade: Trade):  # {{{
-        await trade.opened.async_connect(self.onTradeOpened)
-        await trade.closed.async_connect(self.onTradeClosed)
+        trade.opened.aconnect(self.onTradeOpened)
+        trade.closed.aconnect(self.onTradeClosed)
 
     # }}}
 

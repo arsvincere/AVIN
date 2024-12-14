@@ -710,7 +710,7 @@ async def test_Trade():
     await trade.attachOrder(order)  # signals of order connect automaticaly
     assert order.trade_id == trade.trade_id  # and parent trade_id was seted
 
-    await order.posted.async_emit(order)
+    await order.posted.aemit(order)
     assert (
         trade.status == Trade.Status.AWAIT_EXEC
     )  # side effect - status changed
@@ -732,7 +732,7 @@ async def test_Trade():
         meta=None,
     )
 
-    await order.executed.async_emit(order, operation)
+    await order.executed.aemit(order, operation)
     assert trade.status == Trade.Status.OPENED  # side effect - status changed
 
     # other property availible for opened trade
@@ -782,8 +782,8 @@ async def test_Trade():
         meta=None,
     )
     await trade.attachOrder(order_2)  # signals of order connect automaticaly
-    await order_2.posted.async_emit(order_2)
-    await order_2.executed.async_emit(order_2, operation_2)
+    await order_2.posted.aemit(order_2)
+    await order_2.executed.aemit(order_2, operation_2)
 
     assert trade.status == Trade.Status.CLOSED
     assert trade.isLong()

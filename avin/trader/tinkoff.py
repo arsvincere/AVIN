@@ -1214,7 +1214,7 @@ class Tinkoff(Broker):
                 timeframe = cls.__ti_to_av(response.candle.interval)
                 bar = cls.__ti_to_av(response.candle)
                 event = NewHistoricalBarEvent(figi, timeframe, bar)
-                await Tinkoff.new_bar.async_emit(event)
+                await Tinkoff.new_bar.aemit(event)
 
         # TODO: нет, здесь надо что то более глобальное
         # смена флага и че, про нее никто не узнает
@@ -1265,7 +1265,7 @@ class Tinkoff(Broker):
 
             if response.order_trades:
                 event = cls.__ti_to_av(response.order_trades)
-                await Tinkoff.new_transaction.async_emit(event)
+                await Tinkoff.new_transaction.aemit(event)
 
                 for i in cls.__accounts:
                     if i.name == event.account:

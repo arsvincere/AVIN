@@ -140,7 +140,7 @@ class Asset(Instrument, ABC):  # {{{
 
         if event.type == Event.Type.BAR_CHANGED:
             chart.updateNowBar(event.bar)
-            await self.updated.async_emit(self, chart)
+            await self.updated.aemit(self, chart)
 
         if event.type == Event.Type.NEW_HISTORICAL_BAR:
             chart.addHistoricalBar(event.bar)
@@ -154,7 +154,7 @@ class Asset(Instrument, ABC):  # {{{
                 "M": self.newBarM,
             }
             signal = signals[str(timeframe)]
-            await signal.async_emit(self, chart)
+            await signal.aemit(self, chart)
 
     # }}}
     @classmethod  # fromRecord# {{{

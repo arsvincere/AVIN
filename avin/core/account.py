@@ -174,7 +174,7 @@ class Account:
 
         await Operation.save(operation)
         await order.setStatus(Order.Status.EXECUTED)
-        await order.executed.async_emit(order, operation)
+        await order.executed.aemit(order, operation)
 
         # remove order from self.__active_orders
         self.__active_orders.remove(order)
