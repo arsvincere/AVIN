@@ -151,7 +151,6 @@ class Tester:
         self, event: NewHistoricalBarEvent | BarChangedEvent
     ) -> None:
         logger.debug(f"{self.__class__.__name__}.__onBarEvent()")
-        logger.info(f"-> receive {event}")
 
         await self.__test.asset.receive(event)
 
