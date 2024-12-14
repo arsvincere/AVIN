@@ -18,11 +18,7 @@ import pandas as pd
 from avin.core.chart import Chart
 from avin.core.event import Event
 from avin.core.timeframe import TimeFrame
-from avin.data import (
-    Data,
-    DataType,
-    Instrument,
-)
+from avin.data import Data, DataType, Exchange, Instrument
 from avin.exceptions import AssetError
 from avin.keeper import Keeper
 from avin.utils import AsyncSignal, logger, now
