@@ -102,11 +102,13 @@ class _VirtualBroker(Broker):
         order.meta = "virtual posted"
 
         cls.__limit_orders.append(order)
+        await order.setStatus(Order.Status.POSTED)
 
         # check now bar
         assert cls.__current_asset is not None
         chart = cls.__current_asset.chart(TimeFrame("1M"))
         bar = chart.now
+
         if order.price in bar:
             await cls.__executeOrder(order, bar)
 
@@ -176,6 +178,7 @@ class _VirtualBroker(Broker):
         # Это метод заглушка, аккаунт использует вызов Broker.syncOrder
         # для синхронизации статуса ордера при торговле с Тинькофф
         # в режиме тестера просто ничего не делаем.
+        # статус ордерам ставится в методах postLimitOrder, __executeOrder...
         return True
 
     # }}}
@@ -213,7 +216,7 @@ class _VirtualBroker(Broker):
 
     @classmethod  # createBarStream  # {{{
     def createBarStream(cls, asset: Asset, timeframe: TimeFrame) -> None:
-        logger.info(f"  - create bar stream {asset}-{timeframe}")
+        logger.debug(f"{cls.__name__}.createBarStream({asset}, {timeframe})")
 
         if not cls.__data_stream:
             cls.__data_stream = _BarStream()
@@ -226,9 +229,9 @@ class _VirtualBroker(Broker):
         cls.__current_asset = asset
 
     # }}}
-    @classmethod  # startDataStream  # {{{
-    async def startDataStream(cls):
-        logger.info("  - start data stream")
+    @classmethod  # runDataStream  # {{{
+    async def runDataStream(cls):
+        logger.debug(f"{cls.__name__}.runDataStream()")
 
         await cls.__data_stream.loadData(cls.__test.begin, cls.__test.end)
         for event in cls.__data_stream:
@@ -306,6 +309,7 @@ class _VirtualBroker(Broker):
         )
         await order.attachTransaction(transaction)
         order.meta = "virtual executed"
+        await order.setStatus(Order.Status.FILLED)
 
         # create and send TransactionEvent
         event = TransactionEvent(

@@ -1575,6 +1575,8 @@ class Keeper:
     ) -> None:
         logger.debug(f"{cls.__name__}.__deleteTradeList()")
 
+        only_trades = kwargs.get("only_trades")
+
         # delete trades
         request = f"""
             DELETE FROM "Trade"
@@ -1582,10 +1584,10 @@ class Keeper:
             """
         await cls.transaction(request)
 
-        # delete trade list ?
-        only_trades = kwargs.get("only_trades")
         if only_trades:
             return
+
+        # delete trade list
         request = f"""
             DELETE FROM "TradeList"
             WHERE name = '{trade_list.name}';

@@ -32,26 +32,6 @@ from avin.core.trade import Trade, TradeList
 from avin.keeper import Keeper
 from avin.utils import AsyncSignal, Cmd, logger, round_price
 
-# XXX: ну что KISS?
-# выпиливаем short long ?
-# пусть каждая стратегия торгует что то одно только?
-# или вернее... если выпиливать это, то получится
-# хз что именно торгует стратегия, если в названии явно не
-# сказано...
-# Так так так.
-# Давай ка подумаем чем чревато выпиливание такое...
-# Если стратегия всегде делает только один .process(asset, chart)
-# то значит она там сама решает лонг или шорт она делает...
-# и это остается на усмотрение пользователя только
-# пусть стреляет себе в ногу если хочет...
-# но хорошая практика делать стратегии типо:
-# Name.long-v1
-# Name.long-v2
-# Blalala.short-v3
-
-"""
-"""
-
 
 class Strategy(ABC):  # {{{
     """Signal"""  # {{{
@@ -71,16 +51,8 @@ class Strategy(ABC):  # {{{
         self.__active_trades = TradeList(name="")
 
     # }}}
-    @property  # @abstractmethod timeframe_list  # {{{
-    @abstractmethod
+    @abstractmethod  # timeframe_list  # {{{
     def timeframe_list() -> list[TimeFrame]:
-        # TODO:
-        # сделай это просто функцией а не абстрактным свойством.
-        # опять же тупо ради однообразия синтаксиса
-        # в группе абстрактных методов.
-        # и название timeframe_list не канает.
-        # нужно что то типо "нужныеДляРаботыТаймфреймы"
-        # или "используемыеТаймфреймы", "необходимыеТаймфреймы"
         pass
 
     # }}}
@@ -112,7 +84,6 @@ class Strategy(ABC):  # {{{
         logger.info(f"  Trade opened: '{trade}'")
         logger.info(f"  Trade open dt: '{trade.openDateTime()}'")
 
-        self.active_trades.add(trade)
         await Trade.update(trade)
 
     # }}}

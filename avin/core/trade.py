@@ -522,6 +522,11 @@ class TradeList:  # {{{
         return f"TradeList name={self.__name}"
 
     # }}}
+    def __getitem__(self, index: int) -> Trade:  # {{{
+        assert index < len(self.__trades)
+        return self.__trades[index]
+
+    # }}}
     def __iter__(self):  # {{{
         return iter(self.__trades)
 

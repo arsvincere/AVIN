@@ -76,7 +76,7 @@ class Test:
         self.__asset = asset
         self.__enable_long = True
         self.__enable_short = True
-        self.__trade_list = TradeList(f"{self.name}-trade_list")
+        self.__trade_list = TradeList(f"{self}-trade_list")
         self.__deposit = 100000.0
         self.__commission = 0.0005
         self.__begin = date(2018, 1, 1)
@@ -90,14 +90,14 @@ class Test:
 
     # }}}
     def __str__(self):  # {{{
-        return f"Test='{self.name}'"
+        return f"Test={self.name}"
 
     # }}}
 
     @property  # name  # {{{
     def name(self):
         string = (
-            f"Test={self.__strategy.name}-{self.__strategy.version}-"
+            f"{self.__strategy.name}-{self.__strategy.version}-"
             f"{self.__asset.ticker}"
         )
         return string
