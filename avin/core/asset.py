@@ -157,6 +157,22 @@ class Asset(Instrument, ABC):  # {{{
             await signal.aemit(self, chart)
 
     # }}}
+    @classmethod  # fromStr# {{{
+    async def fromStr(cls, string: str) -> Asset:
+        logger.debug(f"{cls.__name__}.fromStr()")
+
+        # string is like "MOEX-SHARE-SBER"
+        exchange, itype, ticker = string.split("-")
+
+        # convert types
+        exchange = Exchange.fromStr(exchange)
+        itype = Asset.Type.fromStr(itype)
+
+        # request and return asset
+        asset = await cls.fromTicker(exchange, itype, ticker)
+        return asset
+
+    # }}}
     @classmethod  # fromRecord# {{{
     def fromRecord(cls, record: asyncpg.Record) -> Asset:
         logger.debug(f"{cls.__name__}.fromRecord()")
