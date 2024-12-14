@@ -152,7 +152,7 @@ class GTrade(QtWidgets.QGraphicsItemGroup):  # {{{
 
 
 # }}}
-class GTradeList(TradeList, QtWidgets.QGraphicsItemGroup):  # {{{
+class GTest(TradeList, QtWidgets.QGraphicsItemGroup):  # {{{
     def __init__(self, itlist, parent=None):  # {{{
         QtWidgets.QGraphicsItemGroup.__init__(self, parent)
         TradeList.__init__(self, itlist.name, parent=itlist)
