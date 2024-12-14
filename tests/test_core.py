@@ -682,7 +682,7 @@ async def test_Trade():
         trade_type=trade_type,
         instrument=sber,
         trade_id=trade_id,
-        trade_list=tlist_name,
+        trade_list_name=tlist_name,
     )
     assert trade.trade_id == trade_id
     assert trade.dt == dt
@@ -852,7 +852,7 @@ async def test_TradeList():
         trade_type=trade_type,
         instrument=asset,
         trade_id=trade_id_1,
-        trade_list=tlist_name,
+        trade_list_name=tlist_name,
     )
     trade_id_2 = Id(1112.0)
     trade_2 = Trade(
@@ -862,7 +862,7 @@ async def test_TradeList():
         trade_type=trade_type,
         instrument=asset,
         trade_id=trade_id_2,
-        trade_list=tlist_name,
+        trade_list_name=tlist_name,
     )
     tlist.add(trade_1)  # only add in TradeList, not in db
     tlist.add(trade_2)  # only add in TradeList, not in db

@@ -87,6 +87,7 @@ class Trade:  # {{{
             return statuses[string]
 
     # }}}
+
     def __init__(  # {{{
         self,
         dt: datetime,
@@ -126,6 +127,8 @@ class Trade:  # {{{
 
     # }}}
     def __str__(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__str__()")
+
         dt = self.dt + Usr.TIME_DIF
         dt = dt.strftime("%Y-%m-%d %H:%M")
         string = (
@@ -135,6 +138,7 @@ class Trade:  # {{{
         return string
 
     # }}}
+
     # @async_slot  #onOrderPosted # {{{
     async def onOrderPosted(self, order):
         assert order.trade_id == self.trade_id
@@ -200,33 +204,48 @@ class Trade:  # {{{
         return chart
 
     # }}}
+
     def isLong(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.isLong()")
+
         return self.type == Trade.Type.LONG
 
     # }}}
     def isShort(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.isShort()")
+
         return self.type == Trade.Type.SHORT
 
     # }}}
     def isWin(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.isWin()")
+
         assert self.status == Trade.Status.CLOSED
         return self.result > 0
 
     # }}}
     def isLoss(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.isLoss()")
+
         assert self.status == Trade.Status.CLOSED
         return self.result <= 0
 
     # }}}
     def isBlocked(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.isBlocked()")
+
         return self.__blocked
 
     # }}}
     def setBlocked(self, val: bool):  # {{{
+        logger.debug(f"{self.__class__.__name__}.setBlocked()")
+
         self.__blocked = val
 
     # }}}
     def lots(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.lots()")
+
         total = 0
         for op in self.operations:
             if op.direction == Direction.BUY:
@@ -237,6 +256,8 @@ class Trade:  # {{{
 
     # }}}
     def quantity(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.quantity()")
+
         total = 0
         for op in self.operations:
             if op.direction == Direction.BUY:
@@ -247,6 +268,8 @@ class Trade:  # {{{
 
     # }}}
     def buyQuantity(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.buyQuantity()")
+
         total = 0
         for op in self.operations:
             if op.direction == Direction.BUY:
@@ -255,6 +278,8 @@ class Trade:  # {{{
 
     # }}}
     def sellQuantity(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.sellQuantity()")
+
         total = 0
         for op in self.operations:
             if op.direction == Direction.SELL:
@@ -263,6 +288,8 @@ class Trade:  # {{{
 
     # }}}
     def amount(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.amount()")
+
         if self.status == Trade.Status.CLOSED:
             return 0.0
         total = 0
@@ -275,6 +302,8 @@ class Trade:  # {{{
 
     # }}}
     def buyAmount(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.buyAmount()")
+
         total = 0
         for op in self.operations:
             if op.direction == Direction.BUY:
@@ -283,6 +312,8 @@ class Trade:  # {{{
 
     # }}}
     def sellAmount(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.sellAmount()")
+
         total = 0
         for op in self.operations:
             if op.direction == Direction.SELL:
@@ -291,10 +322,14 @@ class Trade:  # {{{
 
     # }}}
     def commission(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.commission()")
+
         return self.buyCommission() + self.sellCommission()
 
     # }}}
     def buyCommission(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.buyCommission()")
+
         total = 0
         for op in self.operations:
             if op.direction == Direction.BUY:
@@ -303,6 +338,8 @@ class Trade:  # {{{
 
     # }}}
     def sellCommission(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.sellCommission()")
+
         total = 0
         for op in self.operations:
             if op.direction == Direction.SELL:
@@ -319,23 +356,31 @@ class Trade:  # {{{
 
     # }}}
     def buyAverage(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.buyAverage()")
+
         if self.buyQuantity() == 0:
             return 0.0
         return self.buyAmount() / self.buyQuantity()
 
     # }}}
     def sellAverage(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.sellAverage()")
+
         if self.sellQuantity() == 0:
             return 0.0
         return self.sellAmount() / self.sellQuantity()
 
     # }}}
     def openDateTime(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.openDateTime()")
+
         assert self.status.value >= Trade.Status.OPENED.value
         return self.operations[0].dt
 
     # }}}
     def openPrice(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.openPrice()")
+
         assert self.status.value >= Trade.Status.OPENED.value
         assert self.status.value != Trade.Status.CANCELED.value
 
@@ -346,35 +391,46 @@ class Trade:  # {{{
 
     # }}}
     def closeDateTime(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.closeDateTime()")
         assert self.status == Trade.Status.CLOSED
+
         return self.operations[-1].dt
 
     # }}}
     def closePrice(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.closePrice()")
         assert self.status == Trade.Status.CLOSED
+
         if self.isLong():
             return self.sellAverage()
 
         return self.buyAverage()
 
     # }}}
-    # def stop_price(self):# {{{
-    #   # NOTE: может быть стоит сделать отдельное добавление стопа и тейка
-    #   # не через общее addOrder, а через addStopLoss addTakeProfit
-    #   # тогда там и можно будет легко выцепить цену стопа тейка...
-    #   # и вообще нужы ли эти параметры в трейде?
-    #   # ну на графике хорошо смотреть где был стоп тейк...
-    #   # а если стратегия не пользуется стоп тейком? Всмысле не пользуется!
-    #   # стоп должен быть ВСЕГДА.
-    #   # а тейк? какой смысл делать его не фиксированным к цене?
-    #   # пока не знаю таких кейсов
-    #     return self.__info["stop_price"]
-    # # }}}
-    # def take_price(self):# {{{
-    #     return self.__info["take_price"]
-    # # }}}
+    def stopPrice(self) -> float | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.stopPrice()")
+
+        for order in self.orders:
+            if order.type == Order.Type.STOP_LOSS:
+                return order.stop_price
+
+        return None
+
+    # }}}
+    def takePrice(self) -> float | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.takePrice()")
+
+        for order in self.orders:
+            if order.type == Order.Type.TAKE_PROFIT:
+                return order.stop_price
+
+        return None
+
+    # }}}
     def result(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.result()")
         assert self.status == Trade.Status.CLOSED
+
         result = (
             self.sellAmount()
             - self.buyAmount()
@@ -385,6 +441,8 @@ class Trade:  # {{{
 
     # }}}
     def holdingDays(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.holdingDays()")
+
         opn_dt = self.operations[0].dt
         cls_dt = self.operations[-1].dt
         holding = cls_dt - opn_dt + ONE_DAY
@@ -392,19 +450,24 @@ class Trade:  # {{{
 
     # }}}
     def percent(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.percent()")
         assert self.status == Trade.Status.CLOSED
+
         persent = self.result() / self.buyAmount() * 100
         return round(persent, 2)
 
     # }}}
     def percentPerDay(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.percentPerDay()")
         assert self.status == Trade.Status.CLOSED
+
         persent = self.result() / self.buyAmount() * 100
         holding = self.holdingDays()
         persent_per_day = persent / holding
         return round(persent_per_day, 2)
 
     # }}}
+
     @classmethod  # fromRecord{{{
     async def fromRecord(cls, record):
         logger.debug(f"{cls.__name__}.fromRecord()")
@@ -478,6 +541,7 @@ class Trade:  # {{{
         await Keeper.update(trade)
 
     # }}}
+
     async def __connectOrderSignals(self, order: Order):  # {{{
         logger.debug(
             f"{self.__class__.__name__}.__connectOrderSignals('{order}')"
