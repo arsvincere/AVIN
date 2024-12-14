@@ -221,14 +221,14 @@ class Trade:  # {{{
         logger.debug(f"{self.__class__.__name__}.isWin()")
 
         assert self.status == Trade.Status.CLOSED
-        return self.result > 0
+        return self.result() > 0
 
     # }}}
     def isLoss(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.isLoss()")
 
         assert self.status == Trade.Status.CLOSED
-        return self.result <= 0
+        return self.result() <= 0
 
     # }}}
     def isBlocked(self):  # {{{
@@ -571,9 +571,7 @@ class TradeList:  # {{{
         self.__childs: list[TradeList] = list()
         self.__asset = parent.asset if parent else None
 
-        # TODO:
-        # self.__owner???
-        # для ссылки на тест или трейдера?
+        self.__owner = None
 
     # }}}
     def __str__(self):  # {{{
@@ -629,6 +627,11 @@ class TradeList:  # {{{
         return self.__parent
 
     # }}}
+    @property  # owner# {{{
+    def owner(self) -> Test | Trader | None:
+        return self.__owner
+
+    # }}}
 
     def add(self, trade: Trade) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.add()")
@@ -679,7 +682,12 @@ class TradeList:  # {{{
         return None
 
     # }}}
+    def setOwner(self, owner: Test | Trader):  # {{{
+        logger.debug(f"{self.__class__.__name__}.setOwner()")
 
+        self.__owner = owner
+
+    # }}}
     def selectStatus(self, status: Trade.Status) -> TradeList:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectStatus()")
 
@@ -843,8 +851,11 @@ class TradeList:  # {{{
             parent=self,
             subname=f"- {subname}",
         )
-        child.__asset = self.asset
+
+        child.__asset = self.__asset
+        child.__owner = self.__owner
         self.__childs.append(child)
+
         return child
 
     # }}}
