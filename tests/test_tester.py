@@ -45,6 +45,8 @@ async def test_Test():
     assert test.asset == asset
 
     # default values
+    assert test.enable_long
+    assert test.enable_short
     assert test.trade_list.name == "Test=Every-day-SBER-trade_list"
     assert test.deposit == 100_000.0
     assert test.commission == 0.0005

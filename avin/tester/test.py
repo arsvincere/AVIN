@@ -70,9 +70,12 @@ class Test:
     def __init__(self, strategy: Strategy, asset: Asset):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
 
+        # default values:
         self.__status = Test.Status.NEW
         self.__strategy = strategy
         self.__asset = asset
+        self.__enable_long = True
+        self.__enable_short = True
         self.__trade_list = TradeList(f"{self.name}-trade_list")
         self.__deposit = 100000.0
         self.__commission = 0.0005
@@ -108,6 +111,16 @@ class Test:
     @property  # asset  # {{{
     def asset(self):
         return self.__asset
+
+    # }}}
+    @property  # enable_long  # {{{
+    def enable_long(self):
+        return self.__enable_long
+
+    # }}}
+    @property  # enable_short  # {{{
+    def enable_short(self):
+        return self.__enable_short
 
     # }}}
     @property  # trade_list  # {{{
