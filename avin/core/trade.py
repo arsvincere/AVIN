@@ -593,20 +593,7 @@ class TradeList:  # {{{
         return len(self.__trades)
 
     # }}}
-    def _createChild(self, trades, subname):  # {{{
-        logger.debug(f"{self.__class__.__name__}._createChild()")
 
-        child = TradeList(
-            name=self.name,
-            trades=trades,
-            parent=self,
-            subname=f"- {subname}",
-        )
-        child.__asset = self.asset
-        self.__childs.append(child)
-        return child
-
-    # }}}
     @property  # name# {{{
     def name(self):
         return self.__name
@@ -642,6 +629,7 @@ class TradeList:  # {{{
         return self.__parent
 
     # }}}
+
     def add(self, trade: Trade) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.add()")
         trade.trade_list_name = self.name
@@ -691,6 +679,7 @@ class TradeList:  # {{{
         return None
 
     # }}}
+
     def selectStatus(self, status: Trade.Status) -> TradeList:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectStatus()")
 
@@ -793,6 +782,7 @@ class TradeList:  # {{{
         assert False, "не написана"
 
     # }}}
+
     @classmethod  # fromRecord # {{{
     async def fromRecord(cls, name, records: asyncpg.Record):
         logger.debug(f"{cls.__name__}.fromRecord()")
@@ -841,6 +831,21 @@ class TradeList:  # {{{
         logger.debug(f"{cls.__name__}.deleteTrades()")
 
         await Keeper.delete(trade_list, only_trades=True)
+
+    # }}}
+
+    def _createChild(self, trades, subname):  # {{{
+        logger.debug(f"{self.__class__.__name__}._createChild()")
+
+        child = TradeList(
+            name=self.name,
+            trades=trades,
+            parent=self,
+            subname=f"- {subname}",
+        )
+        child.__asset = self.asset
+        self.__childs.append(child)
+        return child
 
     # }}}
 
