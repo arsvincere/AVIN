@@ -27,41 +27,7 @@ class ChartScene(QtWidgets.QGraphicsScene):
         self.__createIndicatorGroup()
 
     # }}}
-    def __config(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__config()")
-        self.setBackgroundBrush(Theme.Chart.BG)
 
-    # }}}
-    def __createWidgets(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createWidgets()")
-        self.labels = self.addWidget(ChartLabels())
-        self.bar_info = BarInfo()
-        self.vol_info = VolumeInfo()
-        eh = ExtremumHandler()
-        self.extr_label = eh.getLabel()
-        self.labels.widget().add(self.bar_info)
-        self.labels.widget().add(self.vol_info)
-        self.labels.widget().add(self.extr_label)
-
-    # }}}
-    def __createChartGroup(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createChartGroup()")
-        self.__has_chart = False
-        self.gchart = None
-
-    # }}}
-    def __createTListGroup(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createTListGroup()")
-        self.__has_gtlist = False
-        self.gtlist = None
-
-    # }}}
-    def __createIndicatorGroup(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createIndicatorGroup()")
-        self.indicators = QtWidgets.QGraphicsItemGroup()
-        self.addItem(self.indicators)
-
-    # }}}
     def mouseMoveEvent(self, e: QtWidgets.QGraphicsSceneMouseEvent):  # {{{
         # print(e.pos())
         # print(e.scenePos())
@@ -144,6 +110,7 @@ class ChartScene(QtWidgets.QGraphicsScene):
         #             i += 1
 
     # }}}
+
     def setGChart(self, gchart: GChart):  # {{{
         logger.debug(f"{self.__class__.__name__}.setGChart()")
         self.removeGChart()
@@ -192,8 +159,43 @@ class ChartScene(QtWidgets.QGraphicsScene):
         logger.debug(f"{self.__class__.__name__}.currentChart()")
         return self.gchart
 
+    # }}}
 
-# }}}
+    def __config(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__config()")
+        self.setBackgroundBrush(Theme.Chart.BG)
+
+    # }}}
+    def __createWidgets(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createWidgets()")
+        self.labels = self.addWidget(ChartLabels())
+        self.bar_info = BarInfo()
+        self.vol_info = VolumeInfo()
+        eh = ExtremumHandler()
+        self.extr_label = eh.getLabel()
+        self.labels.widget().add(self.bar_info)
+        self.labels.widget().add(self.vol_info)
+        self.labels.widget().add(self.extr_label)
+
+    # }}}
+    def __createChartGroup(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createChartGroup()")
+        self.__has_chart = False
+        self.gchart = None
+
+    # }}}
+    def __createTListGroup(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createTListGroup()")
+        self.__has_gtlist = False
+        self.gtlist = None
+
+    # }}}
+    def __createIndicatorGroup(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createIndicatorGroup()")
+        self.indicators = QtWidgets.QGraphicsItemGroup()
+        self.addItem(self.indicators)
+
+    # }}}
 
 
 if __name__ == "__main__":
