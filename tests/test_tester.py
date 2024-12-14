@@ -40,7 +40,7 @@ async def test_Test():
 
     test = Test(strategy, asset)
 
-    assert test.name == "Test=Every-day-SBER"
+    assert test.name == "Every-day-SBER"
     assert test.strategy == strategy
     assert test.asset == asset
 
@@ -65,52 +65,31 @@ async def test_Test():
     await Test.update(test)
 
     # load
-    loaded = await Test.load("Test=Every-day-SBER")
+    loaded = await Test.load("Every-day-SBER")
     assert loaded.status == Test.Status.EDITED
 
     # delete
     await Test.delete(test)
-    loaded = await Test.load("Test=Every-day-SBER")
+    loaded = await Test.load("Every-day-SBER")
     assert loaded is None
 
 
 # }}}
 @pytest.mark.asyncio  # test_Tester  # {{{
 async def test_Tester():
-    tester = Tester()
+    asset = await Asset.fromStr("MOEX-SHARE-SBER")
+    strategy = await Strategy.load("Every", "day")
 
-    test_name = "_unittest_test"
-    test = Test(f"{test_name}")
-
-    # create strategy set
-    item1 = StrategySetNode(
-        "Every", "day", "BBG004S68614", long=True, short=False
-    )
-    # item2 = StrategySetNode(
-    #     "Every", "minute", "BBG004S683W7", long=True, short=True
-    # )
-    # item3 = StrategySetNode(
-    #     "Every", "five", "BBG004S68B31", long=True, short=True
-    # )
-    s_set = StrategySet(
-        name=f"{test_name}-set",
-        # items=[item1, item2, item3],
-        items=[item1],
-    )
-
-    # configure test
-    test.description = "unit test <class Tester>"
-    test.strategy_set = s_set
-    test.deposit = 100_000.0
-    test.commission = 0.0005
+    test = Test(strategy, asset)
     test.begin = date(2023, 8, 1)
     test.end = date(2023, 8, 2)
-
-    # save
+    test.description = "unit test <class Tester>"
     await Test.save(test)
 
-    tester.setTest(test)
-    await tester.runTest()
+    tester = Tester()
+    await tester.run(test)
+
+    await Test.delete(test)
 
 
 # }}}
@@ -118,8 +97,8 @@ async def test_Tester():
 
 @pytest.mark.asyncio  # test_clear_all_test_vars  # {{{
 async def test_clear_all_test_vars():
-    test_name = "Test=Every-day-SBER"
-    test = await Test.load(f"{test_name}")
+    test_name = "Every-day-SBER"
+    test = await Test.load(test_name)
     if test is not None:
         await Test.delete(test)
 
@@ -131,64 +110,107 @@ async def test_clear_all_test_vars():
 # не использует StrategySet
 # StrategySet будет использоваться Trader
 # в его тесты этот код потом можно будет перенести
-@pytest.mark.asyncio  # test_Test_with_StrategySet  # {{{
-async def test_Test():
-    return
-
-    test_name = "_unittest_test"
-    test = Test(f"{test_name}")
-    assert test.name == f"{test_name}"
-    assert test.status == Test.Status.NEW
-    assert test.trade_list.name == f"{test_name}-tlist"
-    assert test.report is not None
-    assert test.account == "_backtest"
-
-    # create strategy set
-    item1 = StrategySetNode(
-        "Every", "minute", "BBG004S68614", long=True, short=False
-    )
-    item2 = StrategySetNode(
-        "Every", "minute", "BBG004S683W7", long=False, short=True
-    )
-    item3 = StrategySetNode(
-        "Every", "five", "BBG004S68B31", long=True, short=True
-    )
-    item4 = StrategySetNode(
-        "Every", "five", "BBG004730N88", long=True, short=True
-    )
-    s_set = StrategySet(
-        name=f"{test_name}-set",
-        items=[item1, item2, item3, item4],
-    )
-    assert s_set.name == f"{test_name}-set"
-    assert len(s_set) == 4
-
-    # configure test
-    test.description = "unit test <class Test>"
-    test.strategy_set = s_set
-    test.deposit = 100_000.0
-    test.commission = 0.0005
-    test.begin = date(2023, 8, 1)
-    test.end = date(2023, 9, 1)
-
-    # save
-    await Test.save(test)
-
-    # load
-    loaded = await Test.load(f"{test_name}")
-    assert loaded.name == test.name
-    assert loaded.trade_list.name == test.trade_list.name
-    assert loaded.strategy_set.name == test.strategy_set.name
-    assert loaded.account == test.account
-    assert loaded.description == test.description
-
-    assert loaded.deposit == test.deposit
-    assert loaded.commission == test.commission
-    assert loaded.begin == test.begin
-    assert loaded.end == test.end
-
-    # delete
-    await Test.delete(test)
-
-
-# }}}
+# @pytest.mark.asyncio  # test_Test_with_StrategySet  # {{{
+# async def test_Test():
+#     pass
+#     return
+#
+#     test_name = "_unittest_test"
+#     test = Test(f"{test_name}")
+#     assert test.name == f"{test_name}"
+#     assert test.status == Test.Status.NEW
+#     assert test.trade_list.name == f"{test_name}-tlist"
+#     assert test.report is not None
+#     assert test.account == "_backtest"
+#
+#     # create strategy set
+#     item1 = StrategySetNode(
+#         "Every", "minute", "BBG004S68614", long=True, short=False
+#     )
+#     item2 = StrategySetNode(
+#         "Every", "minute", "BBG004S683W7", long=False, short=True
+#     )
+#     item3 = StrategySetNode(
+#         "Every", "five", "BBG004S68B31", long=True, short=True
+#     )
+#     item4 = StrategySetNode(
+#         "Every", "five", "BBG004730N88", long=True, short=True
+#     )
+#     s_set = StrategySet(
+#         name=f"{test_name}-set",
+#         items=[item1, item2, item3, item4],
+#     )
+#     assert s_set.name == f"{test_name}-set"
+#     assert len(s_set) == 4
+#
+#     # configure test
+#     test.description = "unit test <class Test>"
+#     test.strategy_set = s_set
+#     test.deposit = 100_000.0
+#     test.commission = 0.0005
+#     test.begin = date(2023, 8, 1)
+#     test.end = date(2023, 9, 1)
+#
+#     # save
+#     await Test.save(test)
+#
+#     # load
+#     loaded = await Test.load(f"{test_name}")
+#     assert loaded.name == test.name
+#     assert loaded.trade_list.name == test.trade_list.name
+#     assert loaded.strategy_set.name == test.strategy_set.name
+#     assert loaded.account == test.account
+#     assert loaded.description == test.description
+#
+#     assert loaded.deposit == test.deposit
+#     assert loaded.commission == test.commission
+#     assert loaded.begin == test.begin
+#     assert loaded.end == test.end
+#
+#     # delete
+#     await Test.delete(test)
+#
+#
+# # }}}
+# @pytest.mark.asyncio  # test_Tester  # {{{
+# async def test_Tester():
+#     pass
+#     return
+#
+#     tester = Tester()
+#
+#     test_name = "_unittest_test"
+#     test = Test(f"{test_name}")
+#
+#     # create strategy set
+#     item1 = StrategySetNode(
+#         "Every", "day", "BBG004S68614", long=True, short=False
+#     )
+#     # item2 = StrategySetNode(
+#     #     "Every", "minute", "BBG004S683W7", long=True, short=True
+#     # )
+#     # item3 = StrategySetNode(
+#     #     "Every", "five", "BBG004S68B31", long=True, short=True
+#     # )
+#     s_set = StrategySet(
+#         name=f"{test_name}-set",
+#         # items=[item1, item2, item3],
+#         items=[item1],
+#     )
+#
+#     # configure test
+#     test.description = "unit test <class Tester>"
+#     test.strategy_set = s_set
+#     test.deposit = 100_000.0
+#     test.commission = 0.0005
+#     test.begin = date(2023, 8, 1)
+#     test.end = date(2023, 8, 2)
+#
+#     # save
+#     await Test.save(test)
+#
+#     tester.setTest(test)
+#     await tester.runTest()
+#
+#
+# # }}}
