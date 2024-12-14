@@ -57,11 +57,11 @@ class SummaryWidget(QtWidgets.QTableWidget):
 
     # }}}
 
-    def showSummary(self, itlist):  # {{{
+    def showSummary(self, tlist):  # {{{
         logger.debug(f"{self.__class__.__name__}.showSummary()")
 
         self.__clear()
-        df = Summary.calculate(itlist)
+        df = Summary.calculate(tlist)
         for i in df.index:
             for n, val in enumerate(df.loc[i], 0):
                 item = QtWidgets.QTableWidgetItem()
