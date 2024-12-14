@@ -85,6 +85,9 @@ class Test:
         self.__account = "_backtest"
         self.__time_step = ONE_MINUTE
 
+        # set owner
+        self.__trade_list.setOwner(self)
+
         # signals
         self.progress = Signal(int)
 
@@ -237,6 +240,7 @@ class Test:
         loaded = await TradeList.load(record["trade_list"])
         assert loaded is not None
         test.__trade_list = loaded
+        test.__trade_list.setOwner(test)
 
         test.__deposit = record["deposit"]
         test.__commission = record["commission"]
