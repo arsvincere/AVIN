@@ -17,8 +17,8 @@ from avin.keeper import Keeper
 from avin.utils import Signal, logger
 
 # TODO:
-# ( ) 1. Сделать тест атомарным: одна стратегия, один актив, один TradeList
-# ( ) 2. Summary - можно пределать теперь к трейд листу
+# (x) 1. Сделать тест атомарным: одна стратегия, один актив, один TradeList
+# (x) 2. Summary - можно пределать теперь к трейд листу
 # ( ) 3. Tester - прогоняет тест, просто и очевидно все
 #        Возможно в будущем появится более сложный тестер который
 #        будет учитывать и несколько стретегий и несколько активов и
@@ -207,28 +207,8 @@ class Test:
     def summary(self) -> Summary:  # {{{
         logger.debug(f"{self.__class__.__name__}.summary()")
 
-        # TODO:
-        # надо изменить теперь Summary оно не тест должно принимать а тлист
-        assert False
-
         summary = Summary(self.__trade_list)
         return summary
-
-    # }}}
-    async def clear(self) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.clear()")
-
-        # TODO: здесь нужно другое имя.
-        # это не просто clear() как у AssetList TradeList StrategyList...
-        # здесь идет очистка трейдов в БД.
-        # и нужно чтобы как минимум была разница в названиях
-        # а еще лучше чтобы было понятно что этот метод чистит
-        # возможно - clearTrades...
-
-        self.__trade_list.clear()  # clear runtime
-        TradeList.deleteTrades(self.__trade_list)  # clear db
-
-        self.__status = Test.Status.NEW
 
     # }}}
 
@@ -246,7 +226,9 @@ class Test:
         test.__status = Test.Status.fromStr(record["status"])
 
         # request trade list
-        test.__trade_list = await TradeList.load(record["trade_list"])
+        loaded = await TradeList.load(record["trade_list"])
+        assert loaded is not None
+        test.__trade_list = loaded
 
         test.__deposit = record["deposit"]
         test.__commission = record["commission"]
@@ -300,6 +282,17 @@ class Test:
 
         names = await Keeper.get(cls, get_only_names=True)
         return names
+
+    # }}}
+    @classmethod  # deleteTrades  # {{{
+    async def deleteTrades(cls, test: Test) -> None:
+        logger.debug(f"{cls.__name__}.deleteTrades()")
+
+        test.__trade_list.clear()  # clear runtime
+        await TradeList.deleteTrades(test.__trade_list)  # clear db
+
+        test.__status = Test.Status.NEW
+        await Test.update(test)
 
     # }}}
 
