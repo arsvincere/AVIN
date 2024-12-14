@@ -25,12 +25,6 @@ from avin.data import Instrument
 from avin.keeper import Keeper
 from avin.utils import AsyncSignal, logger
 
-# TODO:
-# Trade.trade_list -> rename trade_list_name
-# и вообще везде типо strategy -> strategy_name там где используется
-# только str имя стратегии, а где объект там strategy
-# все остальные объекты в коде тоже привести к такому стандарту
-
 
 class Trade:  # {{{
     class Type(enum.Enum):  # {{{
@@ -102,7 +96,7 @@ class Trade:  # {{{
         instrument: Instrument,
         status: Trade.Status = Status.INITIAL,
         trade_id: Optional[Id] = None,
-        trade_list: Optional[str] = "",
+        trade_list_name: Optional[str] = "",
         orders: Optional[list] = None,
         operations: Optional[list] = None,
     ):
@@ -120,7 +114,7 @@ class Trade:  # {{{
         self.instrument = instrument
         self.status = status
         self.trade_id = trade_id
-        self.trade_list = trade_list
+        self.trade_list_name = trade_list_name
         self.orders = orders if orders else list()
         self.operations = operations if operations else list()
         self.__blocked = False
@@ -438,7 +432,7 @@ class Trade:  # {{{
             instrument=Instrument.fromRecord(record),
             status=Trade.Status.fromStr(record["status"]),
             trade_id=Id.fromStr(record["trade_id"]),
-            trade_list=record["tlist"],
+            trade_list_name=record["trade_list"],
             orders=orders,
             operations=operations,
         )
@@ -586,24 +580,18 @@ class TradeList:  # {{{
     # }}}
     def add(self, trade: Trade) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.add()")
-        trade.trade_list = self.name
+        trade.trade_list_name = self.name
         self.__trades.append(trade)
 
     # }}}
     def remove(self, trade: Trade) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.remove()")
-        trade.trade_list = ""
+        trade.trade_list_name = ""
         self.__trades.remove(trade)
 
     # }}}
     def clear(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.clear()")
-
-        # XXX: это вообще че?
-        # о чем я думал когда писал этот цикл?
-        # чтобы что?
-        for trade in self.__trades:
-            trade.trade_list = ""
 
         self.__trades.clear()
 
@@ -757,7 +745,7 @@ class TradeList:  # {{{
     async def save(cls, tlist) -> None:
         logger.debug(f"{cls.__name__}.save()")
 
-        # await Keeper.delete(tlist)  # XXX: нельзя так делать
+        await Keeper.delete(tlist)  # XXX: нельзя так делать
         await Keeper.add(tlist)
 
         # XXX: вот надо хорошо подумать и решить...

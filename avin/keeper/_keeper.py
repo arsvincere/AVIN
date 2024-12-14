@@ -529,7 +529,7 @@ class Keeper:
                 )
             VALUES (
                 '{trade.trade_id}',
-                '{trade.trade_list}',
+                '{trade.trade_list_name}',
                 '{trade.instrument.figi}',
                 '{trade.strategy}',
                 '{trade.version}',
