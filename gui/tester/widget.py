@@ -23,8 +23,8 @@ class TesterDockWidget(QtWidgets.QDockWidget):  # {{{
     def __init__(self, parent=None):  # {{{
         QtWidgets.QDockWidget.__init__(self, "Tester", parent)
 
-        widget = TesterWidget(self)
-        self.setWidget(widget)
+        self.widget = TesterWidget(self)
+        self.setWidget(self.widget)
         self.setStyleSheet(Css.DOCK_WIDGET)
 
         self.setAllowedAreas(

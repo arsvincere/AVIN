@@ -38,6 +38,7 @@ class TestItem(QtWidgets.QTreeWidgetItem):  # {{{
         )
 
         self.updateText()
+        self.__createTradeListChild()
 
     # }}}
     def updateText(self):  # {{{
@@ -75,6 +76,15 @@ class TestItem(QtWidgets.QTreeWidgetItem):  # {{{
 
     # }}}
 
+    def __createTradeListChild(self) -> None:
+        logger.debug(f"{self.__class__.__name__}.__createTradeListChild()")
+
+        if self.test.status != Test.Status.COMPLETE:
+            return
+
+        tlist_item = TradeListItem(self.test.trade_list)
+        self.addChild(tlist_item)
+
 
 # }}}
 class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
@@ -86,6 +96,7 @@ class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
         Loss = 4
 
     # }}}
+
     def __init__(self, tlist: TradeList, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QTreeWidget.__init__(self, parent)
@@ -99,7 +110,7 @@ class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
 
         # text
         has_parent = tlist.parent_tlist is not None
-        name = tlist.subname if has_parent else tlist.name
+        name = tlist.subname if has_parent else "trades"
         self.setText(self.Column.Name, name)
         self.setText(self.Column.Trades, str(len(tlist)))
         self.setText(self.Column.Win, "???")
@@ -108,10 +119,11 @@ class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
         # text align
         right = Qt.AlignmentFlag.AlignRight
         self.setTextAlignment(self.Column.Trades, right)
-        self.setTextAlignment(self.Column.Block, right)
-        self.setTextAlignment(self.Column.Allow, right)
+        self.setTextAlignment(self.Column.Win, right)
+        self.setTextAlignment(self.Column.Loss, right)
 
     # }}}
+
     def selectStrategy(self, name: str, version: str) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectStrategy()")
 

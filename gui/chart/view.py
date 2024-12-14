@@ -9,7 +9,8 @@
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt
 
-from gui.chart.gtrade import GTrade
+from avin.utils import logger
+from gui.chart.gtest import GTrade
 
 
 class ChartView(QtWidgets.QGraphicsView):

@@ -11,8 +11,10 @@ import sys
 from PyQt6 import QtCore, QtWidgets
 
 from avin.core import Asset, Chart, TimeFrame, Trade, TradeList
+from avin.tester import Test
 from avin.utils import logger, now
 from gui.chart.gchart import GChart, ViewType
+from gui.chart.gtest import GTradeList
 from gui.chart.scene import ChartScene
 from gui.chart.thread import Thread
 from gui.chart.toolbar import ChartToolBar
@@ -44,18 +46,24 @@ class ChartWidget(QtWidgets.QWidget):
     def setTradeList(self, tlist: TradeList) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.setTradeList()")
 
-        # if itlist.asset is None:
-        #     self.scene.removeGTradeList()
-        #     return
-        #
-        # gtlist = GTradeList(itlist)
-        # self.__setTimeframe1(TimeFrame("D"))
-        # self.__setTimeframe2(TimeFrame("5M"))
-        # self.__setBegin(gtlist.begin)
-        # self.__setEnd(gtlist.end)
-        #
-        # self.scene.setGTradeList(gtlist)
-        # self.view.centerOnFirst()
+        test = tlist.owner
+        assert isinstance(test, Test)
+        gtrade_list = GTradeList.fromSelected(test, tlist)
+
+        self.toolbar.setFirstTimeFrame(TimeFrame("D"))
+        self.toolbar.resetSecondTimeFrames()
+
+        self.scene.setGTradeList(gtrade_list)
+        self.view.centerOnFirst()
+
+        # FIX:
+        # во первых надо сохранять то что сейчас активен GTradeList
+        # чтобы работала смена таймфрейма
+        # во вторых при создании GTradeList надо использовать
+        # таймфрейм
+        # возможно стоит в тест вообще вернуть таймфрейм
+        # думать думать думать
+        self.__asset = test.asset
 
     # }}}
     def showTrade(self, trade: Trade):  # {{{
@@ -69,10 +77,10 @@ class ChartWidget(QtWidgets.QWidget):
     def clearAll(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.clearAll()")
 
-        self.scene.removeChart()
-        self.scene.removeTradeList()
-        self.scene.removeIndicator()
-        self.scene.removeMark()
+        self.scene.removeGChart()
+        self.scene.removeGTradeList()
+        # self.scene.removeIndicator()
+        # self.scene.removeMark()
         self.view.resetTransform()
 
     # }}}
@@ -142,7 +150,7 @@ class ChartWidget(QtWidgets.QWidget):
     def __onTimeframe2(self, timeframe: TimeFrame, endbled: bool):
         logger.debug(f"{self.__class__.__name__}.__onTimeframe2()")
 
-        gchart = self.scene.currentChart()
+        gchart = self.scene.currentGChart()
         if gchart is None:
             return
 

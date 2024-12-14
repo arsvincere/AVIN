@@ -6,13 +6,18 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
+from __future__ import annotations
+
+from datetime import UTC, datetime, time
+
 from PyQt6 import QtCore, QtGui, QtWidgets
 
 from avin.config import Usr
-from avin.core import (
-    TimeFrame,
-    TradeList,
-)
+from avin.core import TimeFrame, Trade, TradeList
+from avin.tester import Test
+from avin.utils import logger
+from gui.chart.gchart import GBar, GChart
+from gui.chart.thread import Thread
 from gui.custom import Theme
 
 
@@ -31,37 +36,58 @@ class GTrade(QtWidgets.QGraphicsItemGroup):  # {{{
     __take_pen.setWidth(TAKE_WIDTH)
     __take_pen.setColor(Theme.Chart.TAKE)
 
-    def __init__(self, itrade, parent):  # {{{
+    def __init__(self, trade: Trade, gchart: GChart, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QGraphicsItemGroup.__init__(self, parent)
 
-        itrade.gtrade = self  # link to GTrade in ITrade item
-        self.itrade = itrade  #  link to ITrade in GTrade item
-        self.__parent = parent
-        self.__gchart = parent.gchart
+        self.trade = trade
+        self.gchart = gchart
+
         self.__calcCoordinates()
-        self.__crateTradeShape()
+        self.__createTradeShape()
         self.__createOpenItem()
         self.__createStopLossItem()
         self.__createTakeProfitItem()
 
     # }}}
+
+    def showAnnotation(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.showAnnotation()")
+
+        self.__createAnnotation()
+        self.annotation.show()
+
+    # }}}
+    def hideAnnotation(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.hideAnnotation()")
+
+        self.annotation.hide()
+
+    # }}}
+
     def __calcCoordinates(self):  # {{{
-        gchart = self.__gchart
-        self.x_opn = gchart.xFromDatetime(self.open_dt)
-        self.x_cls = gchart.xFromDatetime(self.close_dt)
-        gbar = gchart.barFromDatetime(self.open_dt)
+        logger.debug(f"{self.__class__.__name__}.__calcCoordinates()")
+
+        gchart = self.gchart
+        trade = self.trade
+        self.x_opn = gchart.xFromDatetime(trade.openDateTime())
+        self.x_cls = gchart.xFromDatetime(trade.closeDateTime())
+        gbar = gchart.barFromDatetime(trade.openDateTime())
         y_hgh = gbar.high_pos.y()
         self.y0 = y_hgh - 50
         self.trade_pos = QtCore.QPointF(self.x_opn, self.y0)
 
     # }}}
-    def __crateTradeShape(self):  # {{{
+    def __createTradeShape(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createTradeShape()")
+
         x0 = self.x_opn
         x1 = x0 + GBar.WIDTH
         x_center = (x0 + x1) / 2
         y0 = self.y0
         y1 = y0 - GBar.WIDTH
-        if self.isLong():
+
+        if self.trade.isLong():
             p1 = QtCore.QPointF(x0, y0)
             p2 = QtCore.QPointF(x1, y0)
             p3 = QtCore.QPointF(x_center, y1)
@@ -72,27 +98,38 @@ class GTrade(QtWidgets.QGraphicsItemGroup):  # {{{
             p3 = QtCore.QPointF(x_center, y0)
             triangle = QtGui.QPolygonF([p1, p2, p3])
         triangle = QtWidgets.QGraphicsPolygonItem(triangle)
-        if self.isWin():
+
+        if self.trade.isWin():
             triangle.setPen(Theme.Chart.TRADE_WIN)
             triangle.setBrush(Theme.Chart.TRADE_WIN)
         else:
             triangle.setPen(Theme.Chart.TRADE_LOSS)
             triangle.setBrush(Theme.Chart.TRADE_LOSS)
+
         self.addToGroup(triangle)
 
     # }}}
     def __createOpenItem(self):  # {{{
-        open_price = self.strategy["open_price"]
-        self.y_opn = self.__gchart.yFromPrice(open_price)
+        logger.debug(f"{self.__class__.__name__}.__createOpenItem()")
+
+        open_price = self.trade.openPrice()
+        self.y_opn = self.gchart.yFromPrice(open_price)
+
         open_item = QtWidgets.QGraphicsLineItem(
             self.x_opn, self.y_opn, self.x_cls + GBar.WIDTH, self.y_opn
         )
         open_item.setPen(self.__open_pen)
+
         self.addToGroup(open_item)
 
     # }}}
     def __createStopLossItem(self):  # {{{
-        stop_loss_price = self.strategy["stop_price"]
+        logger.debug(f"{self.__class__.__name__}.__createStopLossItem()")
+
+        stop_loss_price = self.trade.stopPrice()
+        if stop_loss_price is None:
+            return
+
         self.y_stop = self.__gchart.yFromPrice(stop_loss_price)
         stop_loss = QtWidgets.QGraphicsLineItem(
             self.x_opn,
@@ -105,7 +142,12 @@ class GTrade(QtWidgets.QGraphicsItemGroup):  # {{{
 
     # }}}
     def __createTakeProfitItem(self):  # {{{
-        take_profit_price = self.strategy["take_price"]
+        logger.debug(f"{self.__class__.__name__}.__createTakeProfitItem()")
+
+        take_profit_price = self.trade.takePrice()
+        if take_profit_price is None:
+            return
+
         self.y_take = self.__gchart.yFromPrice(take_profit_price)
         take_profit = QtWidgets.QGraphicsLineItem(
             self.x_opn,
@@ -118,6 +160,8 @@ class GTrade(QtWidgets.QGraphicsItemGroup):  # {{{
 
     # }}}
     def __createAnnotation(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createAnnotation()")
+
         msk_dt = self.dt + Usr.TIME_DIF
         str_dt = msk_dt.strftime("%Y-%m-%d  %H:%M")
         text = (
@@ -125,7 +169,7 @@ class GTrade(QtWidgets.QGraphicsItemGroup):  # {{{
             f"{str_dt}<br>"
             f"Result: {self.result}<br>"
             f"Days: {self.holding}<br>"
-            f"Profitability: {self.percent_per_day}% "
+            f"PPD: {self.percent_per_day}% "
             "</div>"
         )
         self.annotation = QtWidgets.QGraphicsTextItem()
@@ -135,63 +179,65 @@ class GTrade(QtWidgets.QGraphicsItemGroup):  # {{{
         self.addToGroup(self.annotation)
 
     # }}}
-    def parent(self):  # {{{
-        return self.__parent
-
-    # }}}
-    def showAnnotation(self):  # {{{
-        self.__createAnnotation()
-        self.annotation.show()
-
-    # }}}
-    def hideAnnotation(self):  # {{{
-        self.annotation.hide()
 
 
 # }}}
-
-
-# }}}
-class GTest(TradeList, QtWidgets.QGraphicsItemGroup):  # {{{
-    def __init__(self, itlist, parent=None):  # {{{
+class GTradeList(QtWidgets.QGraphicsItemGroup):  # {{{
+    def __init__(self, test: Test, trade_list, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QGraphicsItemGroup.__init__(self, parent)
-        TradeList.__init__(self, itlist.name, parent=itlist)
+
+        self.test = test
+        self.trade_list = trade_list
+
         self.__createGChart()
         self.__createGTrades()
 
     # }}}
     def __createGChart(self):  # {{{
-        if self.asset is None:
-            self.gchart = None
-            return
-        self.gchart = GChart(
-            self.asset,
+        logger.debug(f"{self.__class__.__name__}.__createGChart()")
+
+        begin = datetime.combine(self.test.begin, time(0, 0, tzinfo=UTC))
+        end = datetime.combine(self.test.end, time(0, 0, tzinfo=UTC))
+
+        chart = Thread.loadChart(
+            self.test.asset,
             TimeFrame("D"),
-            self.begin,
-            self.end,
+            begin,
+            end,
         )
+
+        self.gchart = GChart(chart)
 
     # }}}
     def __createGTrades(self):  # {{{
-        if self.gchart is None:
-            return
-        for t in self.parent():
-            gtrade = GTrade(t, parent=self)
-            self.add(gtrade)  # Trade.add
-            self.addToGroup(gtrade)  # QGraphicsItemGroup.addToGroup
+        logger.debug(f"{self.__class__.__name__}.__createGTrades()")
+
+        self.gtrades = QtWidgets.QGraphicsItemGroup()
+        for trade in self.trade_list:
+            gtrade = GTrade(trade, self.gchart)
+            self.gtrades.addToGroup(gtrade)
 
     # }}}
-    @property  # begin{{{
-    def begin(self):
-        return self.test.begin
+
+    @classmethod  # fromTest  # {{{
+    def fromTest(cls, test: Test) -> GTradeList:
+        logger.debug(f"{cls.__name__}.fromTest()")
+
+        gtrade_list = cls(test, test.trade_list)
+        return gtrade_list
 
     # }}}
-    @property  # end{{{
-    def end(self):
-        return self.test.end
+    @classmethod  # fromSelected  # {{{
+    def fromSelected(
+        cls, test: Test, selected_trades: TradeList
+    ) -> GTradeList:
+        logger.debug(f"{cls.__name__}.fromSelected()")
 
+        gtrade_list = cls(test, selected_trades)
+        return gtrade_list
 
-# }}}
+    # }}}
 
 
 # }}}

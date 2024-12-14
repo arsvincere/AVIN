@@ -49,14 +49,28 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
         return timeframe
 
     # }}}
+    def setFirstTimeFrame(self, timeframe: TimeFrame) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.setFirstTimeFrame()")
+
+        self.__first_tf_btn.setText(str(timeframe))
+
+    # }}}
     def secondTimeFrames(self) -> TimeFrameList:  # {{{
-        logger.debug(f"{self.__class__.__name__}.secondTimeFrame()")
+        logger.debug(f"{self.__class__.__name__}.secondTimeFrames()")
 
         # TODO: it
         assert False
 
     # }}}
+    def resetSecondTimeFrames(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.resetSecondTimeFrames()")
 
+        self.__second_1H.setChecked(False)
+        self.__second_D.setChecked(False)
+        self.__second_W.setChecked(False)
+        self.__second_M.setChecked(False)
+
+    # }}}
     def __createButtons(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createActions()")
 

@@ -11,7 +11,7 @@ from PyQt6 import QtWidgets
 from avin.utils import logger
 from gui.chart.gchart import GChart
 from gui.chart.glabels import BarInfo, ChartLabels, VolumeInfo
-from gui.chart.gtrade import GTradeList
+from gui.chart.gtest import GTradeList
 from gui.custom import Theme
 from gui.indicator.extremum import ExtremumHandler
 
@@ -121,21 +121,9 @@ class ChartScene(QtWidgets.QGraphicsScene):
         return True
 
     # }}}
-    def setGTradeList(self, gtlist: GTradeList):  # {{{
-        logger.debug(f"{self.__class__.__name__}.setGTradeList()")
-        self.removeGTradeList()
-        self.gchart = gtlist.gchart
-        self.gtlist = gtlist
-        self.__has_chart = True
-        self.__has_gtlist = True
-        self.setSceneRect(self.gchart.rect)
-        self.addItem(self.gchart)
-        self.addItem(self.gtlist)
-
-    # }}}
-    def addIndicator(self, gi):  # {{{
-        logger.debug(f"{self.__class__.__name__}.addIndicator()")
-        self.indicators.addToGroup(gi)
+    def currentGChart(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.currentChart()")
+        return self.gchart
 
     # }}}
     def removeGChart(self):  # {{{
@@ -145,19 +133,35 @@ class ChartScene(QtWidgets.QGraphicsScene):
             self.__has_chart = False
 
     # }}}
+
+    def setGTradeList(self, gtrade_list: GTradeList):  # {{{
+        logger.debug(f"{self.__class__.__name__}.setGTradeList()")
+
+        self.removeGTradeList()
+
+        self.gchart = gtrade_list.gchart
+        self.gtrades = gtrade_list.gtrades
+        self.__has_chart = True
+        self.__has_gtrades = True
+        self.setSceneRect(self.gchart.rect)
+        self.addItem(self.gchart)
+        self.addItem(self.gtrades)
+
+    # }}}
     def removeGTradeList(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.removeGTradeList()")
         if self.__has_chart:
             self.removeItem(self.gchart)
             self.__has_chart = False
-        if self.__has_gtlist:
-            self.removeItem(self.gtlist)
-            self.__has_gtlist = False
+        if self.__has_gtrades:
+            self.removeItem(self.gtrades)
+            self.__has_gtrades = False
 
     # }}}
-    def currentChart(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.currentChart()")
-        return self.gchart
+
+    def addIndicator(self, gi):  # {{{
+        logger.debug(f"{self.__class__.__name__}.addIndicator()")
+        self.indicators.addToGroup(gi)
 
     # }}}
 
@@ -186,8 +190,8 @@ class ChartScene(QtWidgets.QGraphicsScene):
     # }}}
     def __createTListGroup(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createTListGroup()")
-        self.__has_gtlist = False
-        self.gtlist = None
+        self.__has_gtrades = False
+        self.gtrades = None
 
     # }}}
     def __createIndicatorGroup(self):  # {{{
