@@ -19,7 +19,7 @@ from avin.utils import Signal, logger
 # TODO:
 # (x) 1. Сделать тест атомарным: одна стратегия, один актив, один TradeList
 # (x) 2. Summary - можно пределать теперь к трейд листу
-# ( ) 3. Tester - прогоняет тест, просто и очевидно все
+# (x) 3. Tester - прогоняет тест, просто и очевидно все
 #        Возможно в будущем появится более сложный тестер который
 #        будет учитывать и несколько стретегий и несколько активов и
 #        и деньги на счету...
@@ -113,22 +113,30 @@ class Test:
         return self.__asset
 
     # }}}
-    @property  # enable_long  # {{{
-    def enable_long(self):
-        return self.__enable_long
-
-    # }}}
-    @property  # enable_short  # {{{
-    def enable_short(self):
-        return self.__enable_short
-
-    # }}}
     @property  # trade_list  # {{{
     def trade_list(self):
         return self.__trade_list
 
     # }}}
 
+    @property  # enable_long  # {{{
+    def enable_long(self):
+        return self.__enable_long
+
+    @enable_long.setter
+    def enable_long(self, value: bool):
+        self.__enable_long = value
+
+    # }}}
+    @property  # enable_short  # {{{
+    def enable_short(self):
+        return self.__enable_short
+
+    @enable_short.setter
+    def enable_short(self, value: bool):
+        self.__enable_short = value
+
+    # }}}
     @property  # deposit  # {{{
     def deposit(self):
         return self.__deposit
@@ -295,6 +303,50 @@ class Test:
         await Test.update(test)
 
     # }}}
+
+    @classmethod  # toJson{{{
+    def toJson(cls, test: Test) -> dict:
+        logger.debug(f"{cls.__name__}.toJson()")
+
+        obj = {
+            "strategy": test.strategy.name,
+            "version": test.strategy.version,
+            "asset": str(test.asset),
+            "enable_long": test.enable_long,
+            "enable_short": test.enable_short,
+            "deposit": test.deposit,
+            "commission": test.commission,
+            "begin_date": test.begin.isoformat(),
+            "end_date": test.end.isoformat(),
+            "description": test.description,
+            "status": test.status.name,
+        }
+        return obj
+
+    # }}}
+    @classmethod  # fromJson{{{
+    async def fromJson(cls, obj) -> Test:
+        logger.debug(f"{cls.__name__}.fromJson()")
+
+        name = obj["strategy"]
+        version = obj["version"]
+        strategy = await Strategy.load(name, version)
+        asset = await Asset.fromStr(obj["asset"])
+
+        test = Test(strategy, asset)
+        test.enable_long = obj["enable_long"]
+        test.enable_short = obj["enable_short"]
+        test.deposit = obj["deposit"]
+        test.commission = obj["commission"]
+        test.begin = date.fromisoformat(obj["begin_date"])
+        test.end = date.fromisoformat(obj["end_date"])
+        test.description = obj["description"]
+        test.status = Test.Status.fromStr(obj["status"])
+
+        return test
+
+
+# }}}
 
 
 if __name__ == "__main__":
