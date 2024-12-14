@@ -1,0 +1,13 @@
+{
+    "strategy": "Every",
+    "version": "day",
+    "asset": "MOEX-SHARE-SBER",
+    "enable_long": true,
+    "enable_short": true,
+    "deposit": 100000.0,
+    "commission": 0.0005,
+    "begin_date": "2018-01-01",
+    "end_date": "2023-01-01",
+    "description": "",
+    "status": "NEW"
+}
