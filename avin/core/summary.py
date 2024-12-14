@@ -10,78 +10,57 @@ from __future__ import annotations
 
 import pandas as pd
 
-# TODO: .data_frame...
-# возвращает результат как дата фрейм... надо сделать методом или свойством
-# и плюс отдельные функции - вычисление каждого отдельного параметра.
-# или нет... вычисляет пусть все таки в df...
-# или нет... пусть на лету вычисляет...
-# короче это уже другой вопрос.
-# Суть ближайшего изменение - доступ ко всему саммари как к ДФ
-# и доступ к каждой отдельно колонке через соответствующую функцию.
-
-
-# TODO:
-# и вообще саммари это реал тайм объект над трейд листом
-# или еще вернее - это то что трейд лист может вернуть..
-# да! Summary относится к трейд листу а не к тесту!
-# Подумай об этом еще.. попробуй в отдельной ветке...
+from avin.utils import logger
 
 
 class Summary:
-    def __init__(self, test: Test):  # {{{
-        self._test = test
-        self.__df = Summary.calculate(test.trade_list)
+    def __init__(self, trade_list: TradeList):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+
+        self.__trade_list = trade_list
+        self.__df = self.__calculate(trade_list)
 
     # }}}
     def __str__(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__str__()")
+
         return str(self.__df)
 
     # }}}
 
-    @staticmethod  # save# {{{
-    def save(report, path) -> bool:
-        report.__df.to_csv(path, sep=";")
-        return True
+    def data(self) -> pd.DataFrame:  # {{{
+        return self.__df
 
     # }}}
-    @staticmethod  # load# {{{
-    def load(file_path: str, parent):
-        report = Summary(parent)
-        report.__df = pd.read_csv(file_path, sep=";")
-        return report
 
-    # }}}
-    @staticmethod  # delete# {{{
-    def delete(report):
-        path = report.path
-        if not Cmd.isExist(path):
-            logger.warning(f"Can't delete Summary: '{path}', file not found")
-            return False
-        Cmd.delete(path)
-        return True
-
-    # }}}
-    @staticmethod  # getHeader# {{{
-    def getHeader() -> list[str]:
+    @classmethod  # header  # {{{
+    def header(cls) -> list[str]:
         header = list()
         header.append("name")
-        for column_name in Summary.__FUNCTIONS:
+        for column_name in cls.__FUNCTIONS:
             header.append(column_name)
         return header
 
     # }}}
-    @staticmethod  # calculate# {{{
-    def calculate(tlist: TradeList) -> pd.DataFrame:
+    @classmethod  # save  # {{{
+    def save(cls, summary: Summary, file_path: str) -> None:
+        logger.debug(f"{self.__class__.__name__}.__save()")
+
+        report.__df.to_csv(file_path, sep=";")
+
+    # }}}
+
+    def __calculate(cls, trade_list: TradeList) -> pd.DataFrame:  # {{{
         dct = dict()
-        dct["name"] = tlist.name
-        results = Summary._getResults(tlist)
+        dct["name"] = trade_list.name
+        results = Summary.__getResults(trade_list)
 
         for column, function in Summary.__FUNCTIONS.items():
             value = round(function(results), 2)
             dct[column] = value
 
         df = pd.DataFrame([dct])
-        for tl in tlist.childs:
+        for tl in trade_list.childs:
             df_child = Summary.calculate(tl)
             df = pd.concat([df, df_child], ignore_index=True)
 
@@ -89,24 +68,10 @@ class Summary:
 
     # }}}
 
-    def update(self):  # {{{
-        # TODO: вообще косяк с название метода...
-        # update - это из серии save load delete update
-        # это про обновление объекта на диске
-        # здесь же пересчет recalculate или просто
-        # calculate нужно назвать...
-        assert False, "пересделать"
-
-    # }}}
-    def clear(self):  # {{{
-        indexes = self.__df.index
-        self.__df.drop(indexes)
-
-    # }}}
-
-    @staticmethod  # _grossProfit# {{{
-    def _grossProfit(results: list) -> float:
+    @staticmethod  # __grossProfit# {{{
+    def __grossProfit(results: list) -> float:
         """Возвращает валовую прибыль всех <results>"""
+
         value = 0.0
         for i in results:
             if i > 0.0:
@@ -114,9 +79,10 @@ class Summary:
         return value
 
     # }}}
-    @staticmethod  # _grossLoss# {{{
-    def _grossLoss(results: list) -> float:
+    @staticmethod  # __grossLoss# {{{
+    def __grossLoss(results: list) -> float:
         """Возвращает валовый убыток всех <results>"""
+
         value = 0.0
         for i in results:
             if i < 0.0:
@@ -124,21 +90,26 @@ class Summary:
         return value
 
     # }}}
-    @staticmethod  # _totalNetProfit# {{{
-    def _totalNetProfit(results: list) -> float:
+    @staticmethod  # __totalNetProfit# {{{
+    def __totalNetProfit(results: list) -> float:
+        """Чистая прибыль всех <results>"""
+
         value = 0.0
         for i in results:
             value += i
         return round(value, 2)
 
     # }}}
-    @staticmethod  # _totalTrades# {{{
-    def _totalTrades(results: list) -> int:
+    @staticmethod  # __totalTrades# {{{
+    def __totalTrades(results: list) -> int:
+        """Общее количество трейдов"""
+
         return len(results)
 
     # }}}
-    @staticmethod  # _winningTrades# {{{
-    def _winningTrades(results: list) -> int:
+    @staticmethod  # __winningTrades# {{{
+    def __winningTrades(results: list) -> int:
+        """Количество выигранных трейдов"""
         value = 0
         for i in results:
             if i > 0.0:
@@ -146,8 +117,10 @@ class Summary:
         return value
 
     # }}}
-    @staticmethod  # _losingTrades# {{{
-    def _losingTrades(results: list) -> int:
+    @staticmethod  # __losingTrades# {{{
+    def __losingTrades(results: list) -> int:
+        """Количество проигранных трейдов"""
+
         value = 0
         for i in results:
             if i < 0.0:
@@ -155,71 +128,87 @@ class Summary:
         return value
 
     # }}}
-    @staticmethod  # _percentProfitable# {{{
-    def _percentProfitable(results: list) -> float:
-        win = Summary._winningTrades(results)
-        total = Summary._totalTrades(results)
+    @staticmethod  # __percentProfitable# {{{
+    def __percentProfitable(results: list) -> float:
+        """Процент выигрышей"""
+
+        win = Summary.__winningTrades(results)
+        total = Summary.__totalTrades(results)
         if total == 0:
             return 0
         else:
             return win / total * 100
 
     # }}}
-    @staticmethod  # _percentUnprofitable# {{{
-    def _percentUnprofitable(results: list) -> float:
-        loss = Summary._losingTrades(results)
-        total = Summary._totalTrades(results)
+    @staticmethod  # __percentUnprofitable# {{{
+    def __percentUnprofitable(results: list) -> float:
+        """Процент проигрышей"""
+
+        loss = Summary.__losingTrades(results)
+        total = Summary.__totalTrades(results)
         if total == 0:
             return 0
         else:
             return loss / total * 100
 
     # }}}
-    @staticmethod  # _largestWin# {{{
-    def _largestWin(results: list) -> float:
+    @staticmethod  # __largestWin# {{{
+    def __largestWin(results: list) -> float:
+        """Наибольший выигрыш"""
+
         if len(results) == 0:
             return 0.0
         maximum = max(results)
         return max(maximum, 0.0)
 
     # }}}
-    @staticmethod  # _largestLoss# {{{
-    def _largestLoss(results: list) -> float:
+    @staticmethod  # __largestLoss# {{{
+    def __largestLoss(results: list) -> float:
+        """Наибольший проигрыш"""
+
         if len(results) == 0:
             return 0.0
         minimum = min(results)
         return min(minimum, 0.0)
 
     # }}}
-    @staticmethod  # _averageWin# {{{
-    def _averageWin(results: list) -> float:
-        win_count = Summary._winningTrades(results)
+    @staticmethod  # __averageWin# {{{
+    def __averageWin(results: list) -> float:
+        """Средний выигрыш"""
+
+        win_count = Summary.__winningTrades(results)
         if win_count == 0:
             return 0.0
         else:
-            return Summary._grossProfit(results) / win_count
+            return Summary.__grossProfit(results) / win_count
 
     # }}}
-    @staticmethod  # _averageLoss# {{{
-    def _averageLoss(results: list) -> float:
-        loss_count = Summary._losingTrades(results)
+    @staticmethod  # __averageLoss# {{{
+    def __averageLoss(results: list) -> float:
+        """Средний проигрыш"""
+
+        loss_count = Summary.__losingTrades(results)
         if loss_count == 0:
             return 0.0
         else:
-            return Summary._grossLoss(results) / loss_count
+            return Summary.__grossLoss(results) / loss_count
 
     # }}}
-    @staticmethod  # _averageTrade# {{{
-    def _averageTrade(results: list) -> float:
-        count = Summary._totalTrades(results)
+    @staticmethod  # __averageTrade# {{{
+    def __averageTrade(results: list) -> float:
+        """Средний результат трейда"""
+
+        count = Summary.__totalTrades(results)
         if count == 0:
             return 0
         else:
-            return Summary._totalNetProfit(results) / count
+            return Summary.__totalNetProfit(results) / count
 
     # }}}
-    @staticmethod  # _maxWinSeries# {{{
-    def _maxWinSeries(results: list) -> int:
+    @staticmethod  # __maxWinSeries# {{{
+    def __maxWinSeries(results: list) -> int:
+        """Максимальное количество последовательных выигрышей"""
+
         value = 0
         series = 0
         for i in results:
@@ -231,8 +220,10 @@ class Summary:
         return value
 
     # }}}
-    @staticmethod  # _maxLossSeries# {{{
-    def _maxLossSeries(results: list) -> int:
+    @staticmethod  # __maxLossSeries# {{{
+    def __maxLossSeries(results: list) -> int:
+        """Максимальное количество последовательных проигрышей"""
+
         value = 0
         series = 0
         for i in results:
@@ -244,17 +235,21 @@ class Summary:
         return value
 
     # }}}
-    @staticmethod  # _ratio# {{{
-    def _ratio(results: list) -> float:
-        avg_loss = Summary._averageLoss(results)
+    @staticmethod  # __ratio# {{{
+    def __ratio(results: list) -> float:
+        """Отношение среднего выигрыша к среднему проигрышу"""
+
+        avg_loss = Summary.__averageLoss(results)
         if avg_loss == 0:
             return 0.0
         else:
-            return abs(Summary._averageWin(results) / avg_loss)
+            return abs(Summary.__averageWin(results) / avg_loss)
 
     # }}}
-    @staticmethod  # _getResults# {{{
-    def _getResults(tlist: TradeList) -> list[float]:
+    @staticmethod  # __getResults# {{{
+    def __getResults(tlist: TradeList) -> list[float]:
+        """Возвращает список финансовых результатов трейдов"""
+
         results = list()
         for trade in tlist.trades:
             if not trade.isBlocked():
@@ -264,44 +259,23 @@ class Summary:
     # }}}
     __FUNCTIONS = {  # {{{
         # Column: Function
-        "profit": _totalNetProfit,
-        "%": _percentProfitable,
-        "trades": _totalTrades,
-        "win": _winningTrades,
-        "loss": _losingTrades,
-        "w-seq": _maxWinSeries,
-        "l-seq": _maxLossSeries,
-        "avg": _averageTrade,
-        "avg win": _averageWin,
-        "avg loss": _averageLoss,
-        "max win": _largestWin,
-        "max loss": _largestLoss,
-        "gross profit": _grossProfit,
-        "gross loss": _grossLoss,
-        "ratio": _ratio,
+        "profit": __totalNetProfit,
+        "%": __percentProfitable,
+        "trades": __totalTrades,
+        "win": __winningTrades,
+        "loss": __losingTrades,
+        "w-seq": __maxWinSeries,
+        "l-seq": __maxLossSeries,
+        "avg": __averageTrade,
+        "avg win": __averageWin,
+        "avg loss": __averageLoss,
+        "max win": __largestWin,
+        "max loss": __largestLoss,
+        "gross profit": __grossProfit,
+        "gross loss": __grossLoss,
+        "ratio": __ratio,
     }
     # }}}
-
-
-# Summary.__FUNCTIONS ={{{
-#     # Column            Function
-#     "profit":           Summary._totalNetProfit,
-#     "%":                Summary._percentProfitable,
-#     "trades":           Summary._totalTrades,
-#     "win":              Summary._winningTrades,
-#     "loss":             Summary._losingTrades,
-#     "w-seq":            Summary._maxWinSeries,
-#     "l-seq":            Summary._maxLossSeries,
-#     "avg":              Summary._averageTrade,
-#     "avg win":          Summary._averageWin,
-#     "avg loss":         Summary._averageLoss,
-#     "max win":          Summary._largestWin,
-#     "max loss":         Summary._largestLoss,
-#     "gross profit":     Summary._grossProfit,
-#     "gross loss":       Summary._grossLoss,
-#     "ratio":            Summary._ratio,
-#     }
-# }}}
 
 
 if __name__ == "__main__":
