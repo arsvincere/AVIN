@@ -226,11 +226,6 @@ class Strategy(ABC):  # {{{
     ) -> StopLoss:
         logger.debug("Strategy.createStopLoss()")
 
-        # TODO:
-        # блять надо с этим что то делать
-        if not trade.instrument.info:
-            await trade.instrument.cacheInfo()
-
         if trade.type == Trade.Type.LONG:
             direction = Direction.SELL
         else:
