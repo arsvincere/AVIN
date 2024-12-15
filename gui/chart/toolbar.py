@@ -9,7 +9,7 @@
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 
-from avin.core import TimeFrame, TimeFrameList
+from avin.core import Asset, TimeFrame, TimeFrameList
 from avin.utils import logger
 from gui.chart.gchart import ViewType
 from gui.custom import (
@@ -71,7 +71,16 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
         self.__second_M.setChecked(False)
 
     # }}}
+    def setAsset(self, asset: Asset | None) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.setAsset()")
 
+        if asset is None:
+            self.__asset_btn.setText("ASSET")
+            return
+
+        self.__asset_btn.setText(asset.ticker)
+
+    # }}}
     def __createButtons(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createActions()")
 

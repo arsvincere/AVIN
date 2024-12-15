@@ -41,6 +41,7 @@ class ChartWidget(QtWidgets.QWidget):
         logger.debug(f"{self.__class__.__name__}.setAsset()")
 
         self.__asset = asset
+        self.toolbar.setAsset(asset)
         self.__drawChart()
 
     # }}}
@@ -50,6 +51,7 @@ class ChartWidget(QtWidgets.QWidget):
         test = tlist.owner
         assert isinstance(test, Test)
         gtrade_list = GTradeList.fromSelected(test, tlist)
+        asset = test.asset
 
         self.toolbar.setFirstTimeFrame(TimeFrame("D"))
         self.toolbar.resetSecondTimeFrames()
@@ -64,8 +66,9 @@ class ChartWidget(QtWidgets.QWidget):
         # таймфрейм
         # возможно стоит в тест вообще вернуть таймфрейм
         # думать думать думать
-        self.__asset = test.asset
         self.__tlist = tlist
+        self.__asset = asset
+        self.toolbar.setAsset(asset)
 
     # }}}
     def showTrade(self, trade: Trade):  # {{{
@@ -85,6 +88,7 @@ class ChartWidget(QtWidgets.QWidget):
 
         self.__tlist = None
         self.__asset = None
+        self.toolbar.setAsset(None)
 
     # }}}
 
