@@ -33,6 +33,7 @@ class ChartWidget(QtWidgets.QWidget):
         self.__connect()
 
         self.__asset = None
+        self.__tlist = None
 
     # }}}
 
@@ -64,24 +65,26 @@ class ChartWidget(QtWidgets.QWidget):
         # возможно стоит в тест вообще вернуть таймфрейм
         # думать думать думать
         self.__asset = test.asset
+        self.__tlist = tlist
 
     # }}}
     def showTrade(self, trade: Trade):  # {{{
         logger.debug(f"{self.__class__.__name__}.showTrade()")
 
-        # gtrade = itrade.gtrade
-        # if gtrade:
-        #     self.view.centerOnTrade(gtrade)
+        self.view.centerOnTrade(trade)
 
     # }}}
     def clearAll(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.clearAll()")
 
         self.scene.removeGChart()
-        self.scene.removeGTradeList()
+        self.scene.removeGTrades()
         # self.scene.removeIndicator()
         # self.scene.removeMark()
         self.view.resetTransform()
+
+        self.__tlist = None
+        self.__asset = None
 
     # }}}
 
@@ -89,7 +92,7 @@ class ChartWidget(QtWidgets.QWidget):
         logger.debug(f"{self.__class__.__name__}.__config()")
 
         self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
-        self.setWindowTitle("AVIN  -  Ars  Vincere")
+        self.setWindowTitle("AVIN")
         self.setStyleSheet(Css.STYLE)
 
     # }}}
@@ -122,7 +125,7 @@ class ChartWidget(QtWidgets.QWidget):
         self.toolbar.cundleViewSelected.connect(self.__onCundleView)
 
     # }}}
-    def __drawChart(self) -> None:  # {{{
+    def __drawChart(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__drawChart()")
 
         timeframe = self.toolbar.firstTimeFrame()
@@ -135,7 +138,6 @@ class ChartWidget(QtWidgets.QWidget):
         self.view.centerOnLast()
 
     # }}}
-
     @QtCore.pyqtSlot(TimeFrame)  # __onTimeframe1  # {{{
     def __onTimeframe1(self, timeframe: TimeFrame):
         logger.debug(f"{self.__class__.__name__}.__onTimeframe1()")
@@ -164,7 +166,7 @@ class ChartWidget(QtWidgets.QWidget):
     def __onBarView(self):
         logger.debug(f"{self.__class__.__name__}.__onBarView()")
 
-        gchart = self.scene.currentChart()
+        gchart = self.scene.currentGChart()
         if gchart is None:
             return
 
@@ -175,7 +177,7 @@ class ChartWidget(QtWidgets.QWidget):
     def __onCundleView(self):
         logger.debug(f"{self.__class__.__name__}.__onCundleView()")
 
-        gchart = self.scene.currentChart()
+        gchart = self.scene.currentGChart()
         if gchart is None:
             return
 

@@ -29,12 +29,12 @@ class BarInfo(QtWidgets.QWidget):  # {{{
         logger.debug(f"{self.__class__.__name__}.set(bar)")
 
         b = gbar.bar
-        local_time = Usr.localTime(bar.dt)
+        local_time = Usr.localTime(b.dt)
         day = WeekDays(b.dt.weekday()).name
         percent = b.body.percent()
 
         self.label_barinfo.setText(
-            f"{msk_time} {day} - "
+            f"{local_time} {day} - "
             f"Open: {b.open:<6} "
             f"High: {b.high:<6} "
             f"Low: {b.low:<6} "
@@ -47,7 +47,15 @@ class BarInfo(QtWidgets.QWidget):  # {{{
     def __createWidgets(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
 
-        self.label_barinfo = QtWidgets.QLabel("BAR INFO")
+        self.label_barinfo = QtWidgets.QLabel()
+        self.label_barinfo.setText(
+            "[date-time] [day] - "
+            "Open: ____ "
+            "High: ____ "
+            "Low: ____ "
+            "Close: ____ "
+            "(Body: __%)"
+        )
 
     # }}}
     def __createLayots(self):  # {{{
@@ -83,14 +91,14 @@ class VolumeInfo(QtWidgets.QWidget):  # {{{
     def set(self, gbar):  # {{{
         logger.debug(f"{self.__class__.__name__}.set(bar)")
 
-        self.label_volinfo.setText(f"Vol: {gbar.bar.vol}")
+        self.label_volinfo.setText(f"Volume: {gbar.bar.vol}")
 
     # }}}
 
     def __createWidgets(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
 
-        self.label_volinfo = QtWidgets.QLabel("VOL INFO")
+        self.label_volinfo = QtWidgets.QLabel("Volume: ")
         self.label_volinfo.setFont(Font.MONO)
 
     # }}}
@@ -113,13 +121,16 @@ class VolumeInfo(QtWidgets.QWidget):  # {{{
 
 
 # }}}
+
+
 class ChartLabels(QtWidgets.QWidget):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
-        QtWidgets.QWidget.__init__(self, parent)
+        QtWidgets.QGraphicsProxyWidget.__init__(self, parent)
 
-        self.vbox = QtWidgets.QVBoxLayout(self)
-        self.__config()
+        self.vbox = QtWidgets.QVBoxLayout()
+        self.setLayout(self.vbox)
+        self.setStyleSheet(Css.CHART_LABEL)
 
     # }}}
 
@@ -133,13 +144,6 @@ class ChartLabels(QtWidgets.QWidget):  # {{{
         logger.debug(f"{self.__class__.__name__}.remove()")
 
         self.vbox.removeWidget(widget)
-
-    # }}}
-
-    def __config(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__configPalette()")
-
-        self.setStyleSheet(Css.CHART_LABEL)
 
     # }}}
 

@@ -194,6 +194,26 @@ class GTradeList(QtWidgets.QGraphicsItemGroup):  # {{{
         self.__createGTrades()
 
     # }}}
+
+    @classmethod  # fromTest  # {{{
+    def fromTest(cls, test: Test) -> GTradeList:
+        logger.debug(f"{cls.__name__}.fromTest()")
+
+        gtrade_list = cls(test, test.trade_list)
+        return gtrade_list
+
+    # }}}
+    @classmethod  # fromSelected  # {{{
+    def fromSelected(
+        cls, test: Test, selected_trades: TradeList
+    ) -> GTradeList:
+        logger.debug(f"{cls.__name__}.fromSelected()")
+
+        gtrade_list = cls(test, selected_trades)
+        return gtrade_list
+
+    # }}}
+
     def __createGChart(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createGChart()")
 
@@ -217,25 +237,6 @@ class GTradeList(QtWidgets.QGraphicsItemGroup):  # {{{
         for trade in self.trade_list:
             gtrade = GTrade(trade, self.gchart)
             self.gtrades.addToGroup(gtrade)
-
-    # }}}
-
-    @classmethod  # fromTest  # {{{
-    def fromTest(cls, test: Test) -> GTradeList:
-        logger.debug(f"{cls.__name__}.fromTest()")
-
-        gtrade_list = cls(test, test.trade_list)
-        return gtrade_list
-
-    # }}}
-    @classmethod  # fromSelected  # {{{
-    def fromSelected(
-        cls, test: Test, selected_trades: TradeList
-    ) -> GTradeList:
-        logger.debug(f"{cls.__name__}.fromSelected()")
-
-        gtrade_list = cls(test, selected_trades)
-        return gtrade_list
 
     # }}}
 

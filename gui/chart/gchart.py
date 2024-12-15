@@ -231,6 +231,20 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
 
     # }}}
 
+    @property  # first  # {{{
+    def first(self) -> GBar:
+        assert len(self.gbars)
+
+        return self.gbars[0]
+
+    # }}}
+    @property  # last  # {{{
+    def last(self) -> GBar:
+        assert len(self.gbars)
+
+        return self.gbars[-1]
+
+    # }}}
     def drawBack(self, timeframe: TimeFrame) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.drawBack()")
 

@@ -71,6 +71,7 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
         self.__second_M.setChecked(False)
 
     # }}}
+
     def __createButtons(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createActions()")
 
@@ -111,8 +112,6 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
         self.addWidget(Label(" Background:", self))
         self.addWidget(self.__second_1H)
         self.addWidget(self.__second_D)
-        self.addSeparator()
-        self.setStyleSheet(Css.TOOL_BAR)
         self.addWidget(self.__second_W)
         self.addWidget(self.__second_M)
         self.addWidget(VLine(width=10))
@@ -130,12 +129,6 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
         self.__first_tf_btn.setPopupMode(
             QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup
         )
-
-        # self.__second_tf_menu = _SecondTFMenu(self)
-        # self.__second_tf_btn.setMenu(self.__second_tf_menu)
-        # self.__second_tf_btn.setPopupMode(
-        #     QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup
-        # )
 
     # }}}
     def __config(self):  # {{{
@@ -271,48 +264,6 @@ class _FirstTFMenu(Menu):  # {{{
         self.addAction(self.t_D)
         self.addAction(self.t_W)
         self.addAction(self.t_M)
-
-    # }}}
-
-
-# }}}
-class _SecondTFMenu(Menu):  # {{{
-    def __init__(self, parent=None):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__init()")
-        Menu.__init__(self, parent=parent)
-
-        self.__config()
-        self.__createActions()
-
-    # }}}
-    def __config(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__config()")
-
-        self.setFixedWidth(64)
-
-    # }}}
-    def __createActions(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createActions()")
-
-        self.t_1H = QtGui.QAction("1H", self)
-        self.t_D = QtGui.QAction("D", self)
-        self.t_W = QtGui.QAction("W", self)
-        self.t_M = QtGui.QAction("M", self)
-
-        self.t_1H.setData(TimeFrame("1H"))
-        self.t_D.setData(TimeFrame("D"))
-        self.t_W.setData(TimeFrame("W"))
-        self.t_M.setData(TimeFrame("M"))
-
-        self.addAction(self.t_1H)
-        self.addAction(self.t_D)
-        self.addAction(self.t_W)
-        self.addAction(self.t_M)
-
-        self.t_1H.setCheckable(True)
-        self.t_D.setCheckable(True)
-        self.t_W.setCheckable(True)
-        self.t_M.setCheckable(True)
 
     # }}}
 
