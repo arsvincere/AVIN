@@ -130,7 +130,7 @@ class GTrade(QtWidgets.QGraphicsItemGroup):  # {{{
         if stop_loss_price is None:
             return
 
-        self.y_stop = self.__gchart.yFromPrice(stop_loss_price)
+        self.y_stop = self.gchart.yFromPrice(stop_loss_price)
         stop_loss = QtWidgets.QGraphicsLineItem(
             self.x_opn,
             self.y_stop,
@@ -148,7 +148,7 @@ class GTrade(QtWidgets.QGraphicsItemGroup):  # {{{
         if take_profit_price is None:
             return
 
-        self.y_take = self.__gchart.yFromPrice(take_profit_price)
+        self.y_take = self.gchart.yFromPrice(take_profit_price)
         take_profit = QtWidgets.QGraphicsLineItem(
             self.x_opn,
             self.y_take,
