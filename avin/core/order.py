@@ -506,7 +506,7 @@ class StopLoss(Order):  # {{{
         lots: int,
         quantity: int,
         stop_price: float,
-        exec_price: float,
+        exec_price: float | None,
         status: Order.Status = Order.Status.NEW,
         order_id: Optional[Id] = None,
         trade_id: Optional[Id] = None,
