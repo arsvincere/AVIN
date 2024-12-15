@@ -29,7 +29,7 @@ class Usr:  # {{{
     TIME_DIF = timedelta(hours=3)
 
     @classmethod  # localTime
-    def localTime(dt: datetime) -> str:
+    def localTime(cls, dt: datetime) -> str:
         return (dt + Usr.TIME_DIF).strftime("%Y-%m-%d %H:%M")
 
     # Your applications
