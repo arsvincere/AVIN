@@ -27,7 +27,7 @@ from avin.utils import AsyncSignal, logger, now
 class Asset(Instrument, ABC):  # {{{
     @abstractmethod  # __init__# {{{
     def __init__(self, info: dict):
-        logger.debug(f"{self.__class__.name}.__init__()")
+        logger.debug(f"{self.__class__.__name__}.__init__()")
         Instrument.__init__(self, info)
 
         # private fields
@@ -60,13 +60,13 @@ class Asset(Instrument, ABC):  # {{{
 
     # }}}
     def setChart(self, chart: Chart) -> None:  # {{{
-        logger.debug(f"{self.__class__.name}.setChart()")
+        logger.debug(f"{self.__class__.__name__}.setChart()")
 
         self.__charts[chart.timeframe] = chart
 
     # }}}
     def clearCache(self) -> None:  # {{{
-        logger.debug(f"{self.__class__.name}.clearCache()")
+        logger.debug(f"{self.__class__.__name__}.clearCache()")
         self.__charts.clear()
 
     # }}}
@@ -108,7 +108,7 @@ class Asset(Instrument, ABC):  # {{{
         begin: datetime,
         end: datetime,
     ) -> pd.DataFrame:
-        logger.debug(f"{self.__class__.name}.loadData()")
+        logger.debug(f"{self.__class__.__name__}.loadData()")
 
         # check and convert args
         assert begin <= end
@@ -288,7 +288,7 @@ class Asset(Instrument, ABC):  # {{{
 # }}}
 class Index(Asset):  # {{{
     def __init__(self, info: dict):  # {{{
-        logger.debug(f"{self.__class__.name}.__init__()")
+        logger.debug(f"{self.__class__.__name__}.__init__()")
         assert info["type"] == Asset.Type.INDEX
 
         super().__init__(info)
@@ -299,7 +299,7 @@ class Index(Asset):  # {{{
 # }}}
 class Share(Asset):  # {{{
     def __init__(self, info: dict):  # {{{
-        logger.debug(f"{self.__class__.name}.__init__()")
+        logger.debug(f"{self.__class__.__name__}.__init__()")
         assert info["type"] == Asset.Type.SHARE.name
 
         super().__init__(info)
