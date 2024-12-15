@@ -411,6 +411,18 @@ class TradeTree(QtWidgets.QTreeWidget):  # {{{
     def setTradeList(self, tlist: TradeList) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.setTradeList()")
 
+        # FIX: в базе остаются трейды со статусом INITIAL и тп
+        # после тестера, надо сделать чтобы сама стратегия их
+        # удаляла когда они не актуальны, а потом еще
+        # тестер в конце теста подчищает все такое безобразие
+        # и выдает какую то сводку, мол тест окончен, еще
+        # столько то трейдов висело незавершенных - они выкинуты
+        # или сложнее... INITIAL трейды тоже можно сохранять
+        # но надо их корректно обрабатывать, у них нет result()
+        # и тп...
+        # Пока ставлю заглушку - пропускаю все трейды кроме CLOSED
+        # tlist = tlist.selectStatus(Trade.Status.CLOSED)
+
         self.clearTrades()
         for trade in tlist:
             item = TradeItem(trade)
