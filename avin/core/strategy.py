@@ -12,7 +12,7 @@ import importlib
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Iterator, Optional
+from typing import Iterator, Optional, TypeVar
 
 from avin.config import Usr
 from avin.const import Res
@@ -29,8 +29,14 @@ from avin.core.order import (
 )
 from avin.core.timeframe import TimeFrame, TimeFrameList
 from avin.core.trade import Trade, TradeList
+from avin.data import Instrument
 from avin.keeper import Keeper
 from avin.utils import AsyncSignal, Cmd, logger, round_price
+
+# all user strategys must have class name UStrategy for dynamic import
+# see method Strategy.load(name, version)
+# TypeVar declarate only for 'mypy' type checker
+UStrategy = TypeVar("UStrategy")
 
 
 class Strategy(ABC):  # {{{
@@ -47,12 +53,12 @@ class Strategy(ABC):  # {{{
         self.__name = name
         self.__version = version
         self.__cfg = None
-        self.__account = None
+        self.__account: Optional[Account] = None
         self.__active_trades = TradeList(name="")
 
     # }}}
     @abstractmethod  # timeframe_list  # {{{
-    def timeframe_list() -> list[TimeFrame]:
+    def timeframe_list(self) -> list[TimeFrame]:
         pass
 
     # }}}
@@ -100,7 +106,7 @@ class Strategy(ABC):  # {{{
         return f"Strategy={self.name}-{self.version}"
 
     # }}}
-    def __eq__(self, other: Strategy):  # {{{
+    def __eq__(self, other):  # {{{
         assert isinstance(other, Strategy)
         return self.name == other.name and self.version == other.version
 
@@ -202,7 +208,7 @@ class Strategy(ABC):  # {{{
         instrument: Instrument,
         lots: int,
         price: float,
-    ) -> MarketOrder:
+    ) -> LimitOrder:
         logger.debug("Strategy.createMarketOrder()")
 
         order = LimitOrder(
@@ -222,78 +228,43 @@ class Strategy(ABC):  # {{{
 
     # }}}
     async def createStopLoss(  # {{{
-        self, trade: Trade, stop_percent: float
+        self,
+        trade: Trade,
+        stop_percent: Optional[float] = None,
+        stop_price: Optional[float] = None,
     ) -> StopLoss:
         logger.debug("Strategy.createStopLoss()")
 
-        if trade.type == Trade.Type.LONG:
-            direction = Direction.SELL
-        else:
-            direction = Direction.BUY
+        if stop_percent is not None:
+            order = await self.__createStopLossByPercent(trade, stop_percent)
+            return order
 
-        if trade.type == Trade.Type.LONG:
-            stop = trade.average() * (1 - stop_percent / 100)
-            stop = round_price(stop, trade.instrument.min_price_step)
-        else:
-            stop = trade.average() * (1 + stop_percent / 100)
-            stop = round_price(stop, trade.instrument.min_price_step)
+        if stop_price is not None:
+            order = await self.__createStopLossByPrice(trade, stop_price)
+            return order
 
-        stop_loss = StopLoss(
-            account_name=self.account.name,
-            direction=direction,
-            instrument=trade.instrument,
-            lots=trade.lots(),
-            quantity=trade.quantity(),
-            stop_price=stop,
-            exec_price=None,
-            status=Order.Status.NEW,
-            order_id=Id.newId(),
-            trade_id=trade.trade_id,
-        )
-        logger.info(f"  {self} create order {stop_loss}")
-
-        await Order.save(stop_loss)
-        await trade.attachOrder(stop_loss)
-        return stop_loss
+        assert False, "stop_percent or stop_price must be not None"
 
     # }}}
     async def createTakeProfit(  # {{{
-        self, trade: Trade, take_percent: float
+        self,
+        trade: Trade,
+        take_percent: Optional[float] = None,
+        take_price: Optional[float] = None,
     ) -> TakeProfit:
         logger.debug("Strategy.createStopLoss()")
 
-        if not trade.instrument.info:
-            await trade.instrument.cacheInfo()
+        if take_percent is not None:
+            order = await self.__createTakeProfitByPercent(
+                trade, take_percent
+            )
+            return order
 
-        if trade.type == Trade.Type.LONG:
-            direction = Direction.SELL
-        else:
-            direction = Direction.BUY
+        if take_price is not None:
+            order = await self.__createTakeProfitByPrice(trade, take_price)
+            return order
 
-        if trade.type == Trade.Type.LONG:
-            take = trade.average() * (1 + take_percent / 100)
-            take = round_price(take, trade.instrument.min_price_step)
-        else:
-            take = trade.average() * (1 - take_percent / 100)
-            take = round_price(take, trade.instrument.min_price_step)
-
-        take_profit = TakeProfit(
-            account_name=self.account.name,
-            direction=direction,
-            instrument=trade.instrument,
-            lots=trade.lots(),
-            quantity=trade.quantity(),
-            stop_price=take,
-            exec_price=take,
-            status=Order.Status.NEW,
-            order_id=Id.newId(),
-            trade_id=trade.trade_id,
-        )
-        logger.info(f"  {self} create order {take_profit}")
-
-        await Order.save(take_profit)
-        await trade.attachOrder(take_profit)
-        return take_profit
+        assert False, "take_percent or take_price must be not None"
 
     # }}}
     async def postOrder(self, order: Order):  # {{{
@@ -437,7 +408,7 @@ class Strategy(ABC):  # {{{
     @classmethod  # renameVersion  # {{{
     async def renameVersion(
         cls, strategy: Strategy, new_name: str
-    ) -> UStrategy | None:
+    ) -> Strategy | None:
         logger.debug(f"{cls.__name__}.renameVersion()")
 
         # check new name
@@ -557,10 +528,7 @@ class Strategy(ABC):  # {{{
         logger.debug(f"{cls.__name__}.checkStrategyName()")
 
         existed_names = cls.requestAll()
-        if name in existed_names:
-            return False
-
-        return True
+        return name not in existed_names
 
     # }}}
     @classmethod  # checkVersionName  # {{{
@@ -568,10 +536,7 @@ class Strategy(ABC):  # {{{
         logger.debug(f"{cls.__name__}.checkVersionName()")
 
         existed_versions = cls.versions(strategy.name)
-        if new_name in existed_versions:
-            return False
-
-        return True
+        return new_name not in existed_versions
 
     # }}}
 
@@ -588,6 +553,140 @@ class Strategy(ABC):  # {{{
         trade.closed.aconnect(self.onTradeClosed)
 
     # }}}
+    async def __createStopLossByPercent(  # {{{
+        self, trade: Trade, stop_percent: float
+    ) -> StopLoss:
+        logger.debug("Strategy.__createStopLossByPercent()")
+
+        if trade.type == Trade.Type.LONG:
+            direction = Direction.SELL
+        else:
+            direction = Direction.BUY
+
+        if trade.type == Trade.Type.LONG:
+            stop = trade.average() * (1 - stop_percent / 100)
+            stop = round_price(stop, trade.instrument.min_price_step)
+        else:
+            stop = trade.average() * (1 + stop_percent / 100)
+            stop = round_price(stop, trade.instrument.min_price_step)
+
+        stop_loss = StopLoss(
+            account_name=self.account.name,
+            direction=direction,
+            instrument=trade.instrument,
+            lots=trade.lots(),
+            quantity=trade.quantity(),
+            stop_price=stop,
+            exec_price=None,
+            status=Order.Status.NEW,
+            order_id=Id.newId(),
+            trade_id=trade.trade_id,
+        )
+        logger.info(f"  {self} create order {stop_loss}")
+
+        await Order.save(stop_loss)
+        await trade.attachOrder(stop_loss)
+        return stop_loss
+
+    # }}}
+    async def __createStopLossByPrice(  # {{{
+        self, trade: Trade, stop_price: float
+    ) -> StopLoss:
+        logger.debug("Strategy.__createStopLossByPrice()")
+
+        if trade.type == Trade.Type.LONG:
+            direction = Direction.SELL
+        else:
+            direction = Direction.BUY
+
+        stop_loss = StopLoss(
+            account_name=self.account.name,
+            direction=direction,
+            instrument=trade.instrument,
+            lots=trade.lots(),
+            quantity=trade.quantity(),
+            stop_price=stop_price,
+            exec_price=None,
+            status=Order.Status.NEW,
+            order_id=Id.newId(),
+            trade_id=trade.trade_id,
+        )
+        logger.info(f"  {self} create order {stop_loss}")
+
+        await Order.save(stop_loss)
+        await trade.attachOrder(stop_loss)
+        return stop_loss
+
+    # }}}
+    async def __createTakeProfitByPercent(  # {{{
+        self,
+        trade: Trade,
+        take_percent: float,
+    ) -> TakeProfit:
+        logger.debug("Strategy.__createTakeProfitByPercent()")
+
+        if trade.type == Trade.Type.LONG:
+            direction = Direction.SELL
+        else:
+            direction = Direction.BUY
+
+        if trade.type == Trade.Type.LONG:
+            take = trade.average() * (1 + take_percent / 100)
+            take = round_price(take, trade.instrument.min_price_step)
+        else:
+            take = trade.average() * (1 - take_percent / 100)
+            take = round_price(take, trade.instrument.min_price_step)
+
+        take_profit = TakeProfit(
+            account_name=self.account.name,
+            direction=direction,
+            instrument=trade.instrument,
+            lots=trade.lots(),
+            quantity=trade.quantity(),
+            stop_price=take,
+            exec_price=take,
+            status=Order.Status.NEW,
+            order_id=Id.newId(),
+            trade_id=trade.trade_id,
+        )
+        logger.info(f"  {self} create order {take_profit}")
+
+        await Order.save(take_profit)
+        await trade.attachOrder(take_profit)
+        return take_profit
+
+    # }}}
+    async def __createTakeProfitByPrice(  # {{{
+        self,
+        trade: Trade,
+        take_price: float,
+    ) -> TakeProfit:
+        logger.debug("Strategy.__createTakeProfitByPrice()")
+
+        if trade.type == Trade.Type.LONG:
+            direction = Direction.SELL
+        else:
+            direction = Direction.BUY
+
+        take_profit = TakeProfit(
+            account_name=self.account.name,
+            direction=direction,
+            instrument=trade.instrument,
+            lots=trade.lots(),
+            quantity=trade.quantity(),
+            stop_price=take_price,
+            exec_price=take_price,
+            status=Order.Status.NEW,
+            order_id=Id.newId(),
+            trade_id=trade.trade_id,
+        )
+        logger.info(f"  {self} create order {take_profit}")
+
+        await Order.save(take_profit)
+        await trade.attachOrder(take_profit)
+        return take_profit
+
+    # }}}
 
 
 # }}}
@@ -596,7 +695,7 @@ class StrategyList:  # {{{
         logger.debug(f"StrategyList.__init__({name})")
 
         self.__name = name
-        self.__strategys = list()
+        self.__strategys: list[Strategy] = list()
 
     # }}}
     def __iter__(self) -> Iterator:  # {{{
@@ -646,7 +745,7 @@ class StrategyList:  # {{{
             self.__strategys.append(strategy)
             return
 
-        logger.warning(f"{asset} already in list '{self.name}'")
+        logger.warning(f"{strategy} already in list '{self.name}'")
 
     # }}}
     def remove(self, strategy: Strategy) -> None:  # {{{
@@ -720,8 +819,8 @@ class StrategySet:  # {{{
 
         self.__name: str = name
         self.__nodes: list[StrategySetNode] = items if items else list()
-        self.__asset_list = None
-        self.__strategy_list = None
+        self.__asset_list: Optional[AssetList] = None
+        self.__strategy_list: Optional[StrategyList] = None
 
     # }}}
     def __getitem__(self, strategy: Strategy) -> list[StrategySetNode]:  # {{{
@@ -804,6 +903,7 @@ class StrategySet:  # {{{
             strategy = self.__strategy_list.find(node.strategy, node.version)
             if not strategy:
                 strategy = await Strategy.load(node.strategy, node.version)
+                assert strategy is not None
                 self.__strategy_list.add(strategy)
 
         return self.__strategy_list
