@@ -118,6 +118,7 @@ class Trade:  # {{{
         self.trade_list_name = trade_list_name
         self.orders = orders if orders else list()
         self.operations = operations if operations else list()
+        self.info = dict()
         self.__blocked = False
 
         # signals
