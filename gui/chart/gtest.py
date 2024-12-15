@@ -162,19 +162,18 @@ class GTrade(QtWidgets.QGraphicsItemGroup):  # {{{
     def __createAnnotation(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createAnnotation()")
 
-        msk_dt = self.dt + Usr.TIME_DIF
-        str_dt = msk_dt.strftime("%Y-%m-%d  %H:%M")
+        local_time = Usr.localTime(self.trade.dt)
         text = (
             "<div style='background-color:#333333;'>"
-            f"{str_dt}<br>"
-            f"Result: {self.result}<br>"
-            f"Days: {self.holding}<br>"
-            f"PPD: {self.percent_per_day}% "
+            f"{local_time}<br>"
+            f"Result: {self.trade.result()}<br>"
+            f"Days: {self.trade.holdingDays()}<br>"
+            f"PPD: {self.trade.percentPerDay()}% "
             "</div>"
         )
         self.annotation = QtWidgets.QGraphicsTextItem()
         self.annotation.setHtml(text)
-        self.annotation.setPos(self.x_opn, self.y0 - 200)
+        self.annotation.setPos(self.x_opn, self.y0 - 100)
         self.annotation.hide()
         self.addToGroup(self.annotation)
 
