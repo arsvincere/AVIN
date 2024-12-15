@@ -7,7 +7,7 @@
 # ============================================================================
 
 import os
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from avin.const import Dir
 
@@ -27,6 +27,10 @@ class Usr:  # {{{
     # set it if you want see time with offset-aware
     # for example for Moscow +3 hours, set 0 if you want see default UTC time
     TIME_DIF = timedelta(hours=3)
+
+    @classmethod  # localTime
+    def localTime(dt: datetime) -> str:
+        return (dt + Usr.TIME_DIF).strftime("%Y-%m-%d %H:%M")
 
     # Your applications
     TERMINAL = "alacritty"
