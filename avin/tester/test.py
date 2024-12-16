@@ -16,36 +16,6 @@ from avin.core import Asset, Strategy, Summary, TradeList
 from avin.keeper import Keeper
 from avin.utils import Signal, logger
 
-# TODO:
-# (x) 1. Сделать тест атомарным: одна стратегия, один актив, один TradeList
-# (x) 2. Summary - можно пределать теперь к трейд листу
-# (x) 3. Tester - прогоняет тест, просто и очевидно все
-#        Возможно в будущем появится более сложный тестер который
-#        будет учитывать и несколько стретегий и несколько активов и
-#        и деньги на счету...
-# ( ) 4. GUI визуализация - это будет уже надстройка над Test
-#        а не над TradeList, а из теста можно будет достать
-#        и asset, begin, end, trades
-#        и без всяких там owner и прочей хуйни можно будет
-#        визуализировать тест.
-#        GTest - придет на смену GTradeList
-# ( ) 5. Над тестами можно построить TestList
-#        Который сможет объединять сколько угодно тестов
-#        по разным стратегиям, по разным активам, как угодно, лишь бы
-#        без дублей, один и тот же тест нельзя добавить.
-#        И вот тут уже можно делать более сложную версию Report
-#        которая будет не просто там трейд лист смотреть и делать по нему
-#        Summary а делать разрезы...
-#        по дням, неделям, месяцам, кварталам, годам
-#        по стратегиям, по версиям
-#        по аккаунтом по брокерам...
-#        как это делать - вот дойдет до этого время там и буду делать.
-#        Но если на входе отдельные трейд листы - то не проблема повыбирать
-#        из них то что нужно.
-#        В крайнем случае - это будет отдельный модуль
-#        он будет принимать в себя даже не трейд листы а просто кучу трейдов
-#        и будет работать с ними через базу данных
-
 
 class Test:
     class Status(enum.Enum):  # {{{
@@ -67,13 +37,13 @@ class Test:
 
     # }}}
 
-    def __init__(self, strategy: Strategy, asset: Asset):  # {{{
+    def __init__(self, name: str):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
 
         # default values:
-        self.__status = Test.Status.NEW
-        self.__strategy = strategy
-        self.__asset = asset
+        self.__name = name
+        self.__strategy = None
+        self.__asset = None
         self.__enable_long = True
         self.__enable_short = True
         self.__trade_list = TradeList(f"{self}-trade_list")
@@ -84,6 +54,7 @@ class Test:
         self.__description = ""
         self.__account = "_backtest"
         self.__time_step = ONE_MINUTE
+        self.__status = Test.Status.NEW
 
         # set owner
         self.__trade_list.setOwner(self)
@@ -99,29 +70,41 @@ class Test:
 
     @property  # name  # {{{
     def name(self):
-        string = (
-            f"{self.__strategy.name}-{self.__strategy.version}-"
-            f"{self.__asset.ticker}"
-        )
-        return string
+        return self.__name
+
+    @name.setter
+    def name(self, name: str):
+        self.__name = name
 
     # }}}
     @property  # strategy  # {{{
     def strategy(self):
         return self.__strategy
 
+    @strategy.setter
+    def strategy(self, strategy: Strategy):
+        self.__strategy = strategy
+
     # }}}
     @property  # asset  # {{{
     def asset(self):
         return self.__asset
+
+    @asset.setter
+    def asset(self, asset: Asset):
+        self.__asset = asset
 
     # }}}
     @property  # trade_list  # {{{
     def trade_list(self):
         return self.__trade_list
 
-    # }}}
+    @trade_list.setter
+    def trade_list(self, trade_list: TradeList):
+        trade_list.name = f"{self}-trade_list"
+        self.__trade_list = trade_list
 
+    # }}}
     @property  # enable_long  # {{{
     def enable_long(self):
         return self.__enable_long
@@ -308,7 +291,7 @@ class Test:
 
     # }}}
 
-    @classmethod  # toJson{{{
+    @classmethod  # toJson  # {{{
     def toJson(cls, test: Test) -> dict:
         logger.debug(f"{cls.__name__}.toJson()")
 
@@ -328,7 +311,7 @@ class Test:
         return obj
 
     # }}}
-    @classmethod  # fromJson{{{
+    @classmethod  # fromJson  # {{{
     async def fromJson(cls, obj) -> Test:
         logger.debug(f"{cls.__name__}.fromJson()")
 
@@ -349,8 +332,7 @@ class Test:
 
         return test
 
-
-# }}}
+    # }}}
 
 
 if __name__ == "__main__":
