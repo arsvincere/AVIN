@@ -1,6 +1,7 @@
 {
-    "strategy": "Every",
-    "version": "day",
+    "name": "____",
+    "strategy": "____",
+    "version": "____",
     "asset": "MOEX-SHARE-SBER",
     "enable_long": true,
     "enable_short": true,
