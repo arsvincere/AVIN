@@ -375,6 +375,10 @@ class Trade:  # {{{
     def openDateTime(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.openDateTime()")
 
+        # FIX:
+        # возможно из БД они в произвольном порядке загрузятся...
+        # надо проверить, добавить сортировку по дате при загрузке
+
         assert self.status.value >= Trade.Status.OPENED.value
         return self.operations[0].dt
 
