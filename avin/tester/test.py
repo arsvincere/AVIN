@@ -216,7 +216,16 @@ class Test:
             record["version"],
         )
 
-        test = Test(strategy, asset)
+        test = Test(record["name"])
+        test.__strategy = strategy
+        test.__asset = asset
+        test.__enable_long = record["enable_long"]
+        test.__enable_short = record["enable_short"]
+        test.__deposit = record["deposit"]
+        test.__commission = record["commission"]
+        test.__begin = record["begin_date"]
+        test.__end = record["end_date"]
+        test.__description = record["description"]
         test.__status = Test.Status.fromStr(record["status"])
 
         # request trade list
@@ -224,12 +233,6 @@ class Test:
         assert loaded is not None
         test.__trade_list = loaded
         test.__trade_list.setOwner(test)
-
-        test.__deposit = record["deposit"]
-        test.__commission = record["commission"]
-        test.__begin = record["begin_date"]
-        test.__end = record["end_date"]
-        test.__description = record["description"]
 
         return test
 
@@ -296,6 +299,7 @@ class Test:
         logger.debug(f"{cls.__name__}.toJson()")
 
         obj = {
+            "name": test.name,
             "strategy": test.strategy.name,
             "version": test.strategy.version,
             "asset": str(test.asset),
@@ -315,12 +319,9 @@ class Test:
     async def fromJson(cls, obj) -> Test:
         logger.debug(f"{cls.__name__}.fromJson()")
 
-        name = obj["strategy"]
-        version = obj["version"]
-        strategy = await Strategy.load(name, version)
-        asset = await Asset.fromStr(obj["asset"])
-
-        test = Test(strategy, asset)
+        test = Test(obj["name"])
+        test.strategy = await Strategy.load(obj["strategy"], obj["version"])
+        test.asset = await Asset.fromStr(obj["asset"])
         test.enable_long = obj["enable_long"]
         test.enable_short = obj["enable_short"]
         test.deposit = obj["deposit"]

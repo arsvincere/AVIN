@@ -35,19 +35,17 @@ async def test_BarStream():
 # }}}
 @pytest.mark.asyncio  # test_Test  # {{{
 async def test_Test():
+    test = Test("_unittest_test")
+    assert test.name == "_unittest_test"
     asset = await Asset.fromStr("MOEX-SHARE-SBER")
     strategy = await Strategy.load("Every", "day")
-
-    test = Test(strategy, asset)
-
-    assert test.name == "Every-day-SBER"
-    assert test.strategy == strategy
-    assert test.asset == asset
+    test.strategy = strategy
+    test.asset = asset
 
     # default values
     assert test.enable_long
     assert test.enable_short
-    assert test.trade_list.name == "Test=Every-day-SBER-trade_list"
+    assert test.trade_list.name == "Test=_unittest_test-trade_list"
     assert test.deposit == 100_000.0
     assert test.commission == 0.0005
     assert test.begin == date(2018, 1, 1)
@@ -65,12 +63,12 @@ async def test_Test():
     await Test.update(test)
 
     # load
-    loaded = await Test.load("Every-day-SBER")
+    loaded = await Test.load("_unittest_test")
     assert loaded.status == Test.Status.EDITED
 
     # delete
     await Test.delete(test)
-    loaded = await Test.load("Every-day-SBER")
+    loaded = await Test.load("_unittest_test")
     assert loaded is None
 
 
@@ -97,7 +95,7 @@ async def test_Tester():
 
 @pytest.mark.asyncio  # test_clear_all_test_vars  # {{{
 async def test_clear_all_test_vars():
-    test_name = "Every-day-SBER"
+    test_name = "_unittest_test"
     test = await Test.load(test_name)
     if test is not None:
         await Test.delete(test)

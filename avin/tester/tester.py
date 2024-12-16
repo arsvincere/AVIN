@@ -25,6 +25,7 @@ class Tester:
 
     async def run(self, test: Test):  # {{{
         logger.debug(f"{self.__class__.__name__}.run()")
+        assert test is not None
 
         logger.info(f":: Tester run {test}")
         self.__test = test

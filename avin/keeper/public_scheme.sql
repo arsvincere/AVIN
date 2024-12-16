@@ -169,14 +169,16 @@ CREATE TABLE IF NOT EXISTS "Test" ( -- {{{
     version         text,
     FOREIGN KEY (strategy, version) REFERENCES "Strategy" (name, version) ON UPDATE CASCADE,
     figi            text REFERENCES "Asset"(figi),
+    enable_long     bool NOT NULL,
+    enable_short    bool NOT NULL,
     trade_list      text REFERENCES "TradeList"(name) ON UPDATE CASCADE,
     account         text REFERENCES "Account"(name) ON UPDATE CASCADE,
     status          "Test.Status" NOT NULL,
-    deposit         float,
-    commission      float,
-    begin_date      date,
-    end_date        date,
-    description     text
+    deposit         float NOT NULL,
+    commission      float NOT NULL,
+    begin_date      date NOT NULL,
+    end_date        date NOT NULL,
+    description     text NOT NULL
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "Trader" ( -- {{{
