@@ -44,10 +44,6 @@ class GTrade(QtWidgets.QGraphicsItemGroup):  # {{{
         self.gchart = gchart
         self.annotation = None
 
-        # TODO:
-        # сделать отображение и не закрытых трейдов, отмененных и тп
-        # серым цветом шейп можно сделать или что такое.
-        # пока отрисовываю только закрытые трейды
         self.__calcCoordinates()
         self.__createTradeShape()
         self.__createOpenItem()
