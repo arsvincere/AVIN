@@ -10,12 +10,12 @@ from datetime import date
 
 import pytest
 from avin import *
-from avin.tester._stream import _BarStream
+from avin.tester.stream import BarStream
 
 
 @pytest.mark.asyncio  # test_BarStream  # {{{
 async def test_BarStream():
-    stream = _BarStream()
+    stream = BarStream()
 
     afks = await Asset.fromTicker(Exchange.MOEX, Asset.Type.SHARE, "AFKS")
     aflt = await Asset.fromTicker(Exchange.MOEX, Asset.Type.SHARE, "AFLT")
@@ -78,7 +78,9 @@ async def test_Tester():
     asset = await Asset.fromStr("MOEX-SHARE-SBER")
     strategy = await Strategy.load("Every", "day")
 
-    test = Test(strategy, asset)
+    test = Test("_unittest_test")
+    test.strategy = strategy
+    test.asset = asset
     test.begin = date(2023, 8, 1)
     test.end = date(2023, 8, 2)
     test.description = "unit test <class Tester>"
