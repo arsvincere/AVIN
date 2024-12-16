@@ -9,8 +9,8 @@
 from __future__ import annotations
 
 from avin.core import BarChangedEvent, Chart, NewHistoricalBarEvent
-from avin.tester._virtual_broker import _VirtualBroker
 from avin.tester.test import Test
+from avin.tester.virtual_broker import VirtualBroker
 from avin.utils import logger
 
 
@@ -51,7 +51,7 @@ class Tester:
     def __loadBroker(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__loadBroker()")
 
-        self.__broker = _VirtualBroker
+        self.__broker = VirtualBroker
         self.__broker.setTest(self.__test)
         self.__broker.new_bar.aconnect(self.__onBarEvent)
         self.__broker.bar_changed.aconnect(self.__onBarEvent)

@@ -37,7 +37,7 @@ from avin.utils import logger
 # Надо подумать как бы сделать так.
 
 
-class _BarStream:
+class BarStream:
     def __init__(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         self.__subscriptions: defaultdict[Asset, TimeFrameList] = defaultdict(

@@ -27,12 +27,12 @@ from avin.core import (
     Transaction,
     TransactionEvent,
 )
-from avin.tester._stream import _BarStream
+from avin.tester.stream import BarStream
 from avin.tester.test import Test
 from avin.utils import AsyncSignal, logger
 
 
-class _VirtualBroker(Broker):
+class VirtualBroker(Broker):
     name = "_VirtualBroker"
 
     new_bar = AsyncSignal(NewHistoricalBarEvent)
@@ -41,7 +41,7 @@ class _VirtualBroker(Broker):
 
     __test: Optional[Test] = None
     __account: Optional[Account] = None
-    __data_stream: Optional[_BarStream] = None
+    __data_stream: Optional[BarStream] = None
     __current_asset: Optional[Asset] = None
     __limit_orders: list[LimitOrder] = list()
     __stop_orders: list[Union[StopOrder, StopLoss, TakeProfit]] = list()
@@ -219,7 +219,7 @@ class _VirtualBroker(Broker):
         logger.debug(f"{cls.__name__}.createBarStream({asset}, {timeframe})")
 
         if not cls.__data_stream:
-            cls.__data_stream = _BarStream()
+            cls.__data_stream = BarStream()
 
         cls.__data_stream.subscribe(asset, timeframe)
 
