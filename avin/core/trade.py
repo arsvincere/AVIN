@@ -399,6 +399,10 @@ class Trade:  # {{{
         logger.debug(f"{self.__class__.__name__}.closeDateTime()")
         assert self.status == Trade.Status.CLOSED
 
+        # FIX:
+        # возможно из БД они в произвольном порядке загрузятся...
+        # надо проверить, добавить сортировку по дате при загрузке
+
         return self.operations[-1].dt
 
     # }}}
