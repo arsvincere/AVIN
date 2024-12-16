@@ -323,6 +323,25 @@ class Strategy(ABC):  # {{{
         await self.postOrder(order)
 
     # }}}
+    async def cancelTrade(self, trade: Trade):  # {{{
+        logger.debug(f"Strategy.cancelTrade({trade})")
+
+        assert trade.status.value < Trade.Status.OPENED.value
+
+        # TODO: здесь еще надо проверять оставшиеся лимитные и
+        # стоп ордера по этому трейду и их тоже отменять
+        # лучше на аккаунт это переложить, там он пусть
+        # разбирается с наличием активных ордеров по этому
+        # трейду, ему там проще от брокера статус актуальный
+        # запросить, чем отсюда ориентироваться на статусы
+        # ордеров в runtime, лучше уж наверняка - у брокера узнать
+        # for order in trade.orders:
+        #     await self.account.cancelOrdersOf(trade)
+
+        await trade.setStatus(Trade.Status.CANCELED)
+        logger.info(f"  Trade canceled: '{trade}'")
+
+    # }}}
 
     @classmethod  # new  # {{{
     async def new(cls, name: str) -> UStrategy | None:
