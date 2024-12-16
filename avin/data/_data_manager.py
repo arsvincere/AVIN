@@ -25,7 +25,7 @@ from avin.utils import Cmd, logger, now
 
 
 class _DataManager:
-    __AUTO_UPDATE = Usr.AUTO_UPDATE_MARKET_DATA
+    __AUTO_UPDATE = Auto.UPDATE_MARKET_DATA
     __LAST_UPDATE_FILE = Cmd.path(Usr.DATA, "last_update")
     __DATA_IS_UP_TO_DATE = None
 

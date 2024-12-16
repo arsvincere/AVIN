@@ -54,10 +54,6 @@ class Usr:  # {{{
     # 'usr/connect/moex/account.txt'
     MOEX_ACCOUNT = os.path.join(CONNECT, "moex", "account.txt")
 
-    # Auto update
-    AUTO_UPDATE_ASSET_CACHE = True  # TODO: move to class Auto
-    AUTO_UPDATE_MARKET_DATA = True  # TODO: move to class Auto
-
     # Postresql settings
     PG_USER = "alex"
     PG_PASSWORD = ""
