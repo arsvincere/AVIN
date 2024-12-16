@@ -28,13 +28,94 @@ from avin.utils import logger
 # и тогда (я сейчас перенес сигнал progress в класс Test)
 # можно будет от сюда дергать этот сигнал.
 
-# TODO: нихера не помню как он отправляет свечи
-# надо проверить - и задокументировать.
-# и еще подумать как лучше все таки выдавать свечи 5M 1H
-# в конце периода перед новой 1М свечей? или после новой 1М свечи?
-# Логичнее в конце периода.
-# Сейчас наверное не так работает.
-# Надо подумать как бы сделать так.
+"""BarStream - выдает бары по очереди в хронологическом порядке
+
+Пока работает только с одним активом. Assert если попытаться подписаться
+на несколько разных активов.
+
+Выдает свечи сначала младшего таймфрейма, потом старшего 1M - 5M - 1H - D ...
+
+Сначала выдает историческую свечу, потом 'реал-тайм', выдача выглядит так:
+
+stream: 2024-12-16 16:18:57 [DEBUG] BarStream.getNextBar()# {{{
+1M-2023-08-01 06:59:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-01 07:00:00+00:00 BAR_CHANGED
+5M-2023-08-01 06:55:00+00:00 NEW_HISTORICAL_BAR
+5M-2023-08-01 07:00:00+00:00 BAR_CHANGED
+1H-2023-08-01 06:00:00+00:00 NEW_HISTORICAL_BAR
+1H-2023-08-01 07:00:00+00:00 BAR_CHANGED
+1M-2023-08-01 07:00:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-01 07:01:00+00:00 BAR_CHANGED
+1M-2023-08-01 07:01:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-01 07:02:00+00:00 BAR_CHANGED
+1M-2023-08-01 07:02:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-01 07:03:00+00:00 BAR_CHANGED
+1M-2023-08-01 07:03:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-01 07:04:00+00:00 BAR_CHANGED
+1M-2023-08-01 07:04:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-01 07:05:00+00:00 BAR_CHANGED
+5M-2023-08-01 07:00:00+00:00 NEW_HISTORICAL_BAR
+5M-2023-08-01 07:05:00+00:00 BAR_CHANGED
+1M-2023-08-01 07:05:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-01 07:06:00+00:00 BAR_CHANGED
+1M-2023-08-01 07:06:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-01 07:07:00+00:00 BAR_CHANGED
+1M-2023-08-01 07:07:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-01 07:08:00+00:00 BAR_CHANGED
+1M-2023-08-01 07:08:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-01 07:09:00+00:00 BAR_CHANGED
+1M-2023-08-01 07:09:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-01 07:10:00+00:00 BAR_CHANGED
+5M-2023-08-01 07:05:00+00:00 NEW_HISTORICAL_BAR
+5M-2023-08-01 07:10:00+00:00 BAR_CHANGED
+1M-2023-08-01 07:10:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-01 07:11:00+00:00 BAR_CHANGED
+1M-2023-08-01 07:11:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-01 07:12:00+00:00 BAR_CHANGED
+1M-2023-08-01 07:12:00+00:00 NEW_HISTORICAL_BAR
+...
+1M-2023-08-01 20:45:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-01 20:46:00+00:00 BAR_CHANGED
+1M-2023-08-01 20:46:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-01 20:47:00+00:00 BAR_CHANGED
+1M-2023-08-01 20:47:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-01 20:48:00+00:00 BAR_CHANGED
+1M-2023-08-01 20:48:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-01 20:49:00+00:00 BAR_CHANGED
+1M-2023-08-01 20:49:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-02 06:59:00+00:00 BAR_CHANGED
+5M-2023-08-01 20:45:00+00:00 NEW_HISTORICAL_BAR
+5M-2023-08-02 06:55:00+00:00 BAR_CHANGED
+1H-2023-08-01 20:00:00+00:00 NEW_HISTORICAL_BAR
+1H-2023-08-02 06:00:00+00:00 BAR_CHANGED
+D-2023-08-01 00:00:00+00:00 NEW_HISTORICAL_BAR
+D-2023-08-02 00:00:00+00:00 BAR_CHANGED
+1M-2023-08-02 06:59:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-02 07:00:00+00:00 BAR_CHANGED
+5M-2023-08-02 06:55:00+00:00 NEW_HISTORICAL_BAR
+5M-2023-08-02 07:00:00+00:00 BAR_CHANGED
+1H-2023-08-02 06:00:00+00:00 NEW_HISTORICAL_BAR
+1H-2023-08-02 07:00:00+00:00 BAR_CHANGED
+1M-2023-08-02 07:00:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-02 07:01:00+00:00 BAR_CHANGED
+1M-2023-08-02 07:01:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-02 07:02:00+00:00 BAR_CHANGED
+1M-2023-08-02 07:02:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-02 07:03:00+00:00 BAR_CHANGED
+1M-2023-08-02 07:03:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-02 07:04:00+00:00 BAR_CHANGED
+1M-2023-08-02 07:04:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-02 07:05:00+00:00 BAR_CHANGED
+5M-2023-08-02 07:00:00+00:00 NEW_HISTORICAL_BAR
+5M-2023-08-02 07:05:00+00:00 BAR_CHANGED
+1M-2023-08-02 07:05:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-02 07:06:00+00:00 BAR_CHANGED
+1M-2023-08-02 07:06:00+00:00 NEW_HISTORICAL_BAR
+1M-2023-08-02 07:07:00+00:00 BAR_CHANGED
+1M-2023-08-02 07:07:00+00:00 NEW_HISTORICAL_BAR
+...
+# }}}
+"""
 
 
 class BarStream:
@@ -82,17 +163,17 @@ class BarStream:
     def subscribe(self, asset, timeframe) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.subscribe()")
 
-        tflist = TimeFrameList([timeframe])
-        self.__subscriptions[asset] += tflist
+        self.__subscriptions[asset].add(timeframe)
 
-        # WARN:
-        # костыль пока работает только по 1 активу
-        # когда понадобится делать стрим на несколько активов
-        # тогда и переделаю.
-        # Пока из этой переменной класс берет фиги, для
-        # создания NewBarEvent, подразумевая что актив всегда
-        # один и тот же, и в списке баров только бары этого актива
-        self.__asset = asset
+        if self.__asset is None:
+            self.__asset = asset  # сохраняем ассет от первой подписки
+        else:
+            # NOTE:
+            # пока можно подписываться только на один и тот же ассет
+            # на разные таймфреймы. Выдача баров по нескольким активам
+            # одновременно не реализована.
+            # Чтобы не забыть - впилю тут асерт
+            assert self.__asset == asset
 
     # }}}
     async def loadData(self, begin: date, end: date):  # {{{
