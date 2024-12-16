@@ -14,7 +14,7 @@ from avin.config import Usr
 from avin.const import Dir, Res
 from avin.tester import Test
 from avin.utils import Cmd, logger
-from gui.custom import Css, Icon, LineEdit, ToolButton
+from gui.custom import Css, Dialog, Icon, LineEdit, ToolButton
 from gui.strategy import StrategySetWidget
 from gui.tester.thread import Thread
 
@@ -36,10 +36,12 @@ class TestEditDialog(QtWidgets.QDialog):
     def newTest(self) -> Test | None:  # {{{
         logger.debug(f"{self.__class__.__name__}.newTest()")
 
+        # copy template test cfg in tmp dir
         template_path = Cmd.path(Res.TEMPLATE, "test", "cfg.json")
         tmp_path = Cmd.path(Dir.TMP, "new_test.json")
         Cmd.copy(template_path, tmp_path)
 
+        # edit cfg.json file
         command = (
             Usr.TERMINAL,
             *Usr.OPT,
@@ -49,6 +51,11 @@ class TestEditDialog(QtWidgets.QDialog):
         )
         Cmd.subprocess(command)
 
+        # confirmation
+        if not Dialog.confirm("Save test?"):
+            return None
+
+        # save test in database
         obj = Cmd.loadJson(tmp_path)
         new_test = Thread.fromJson(obj)
         Thread.saveTest(new_test)  # save in db
@@ -77,10 +84,12 @@ class TestEditDialog(QtWidgets.QDialog):
     def editTest(self, test: Test):  # {{{
         logger.debug(f"{self.__class__.__name__}.editTest()")
 
+        # save test as json in tmp dir
         obj = test.toJson(test)
         tmp_path = Cmd.path(Dir.TMP, "new_test.json")
         Cmd.saveJson(obj, tmp_path)
 
+        # read json file
         command = (
             Usr.TERMINAL,
             *Usr.OPT,
@@ -90,6 +99,11 @@ class TestEditDialog(QtWidgets.QDialog):
         )
         Cmd.subprocess(command)
 
+        # confirmation
+        if not Dialog.confirm("Save test?"):
+            return None
+
+        # save test in database
         obj = Cmd.loadJson(tmp_path)
         test = Thread.fromJson(obj)
         test.status = Test.Status.EDITED

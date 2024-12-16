@@ -188,8 +188,9 @@ class TradeItem(QtWidgets.QTreeWidgetItem):  # {{{
         Date = 0
         Type = 1
         Ticker = 2
-        Result = 3
-        PPD = 4
+        Status = 3
+        Result = 4
+        PPD = 5
 
     # }}}
     def __init__(self, trade: Trade, parent=None):  # {{{
@@ -207,8 +208,11 @@ class TradeItem(QtWidgets.QTreeWidgetItem):  # {{{
         self.setText(self.Column.Date, dt)
         self.setText(self.Column.Type, trade.type.name)
         self.setText(self.Column.Ticker, trade.instrument.ticker)
-        self.setText(self.Column.Result, str(trade.result()))
-        self.setText(self.Column.PPD, str(trade.percentPerDay()) + "%")
+        self.setText(self.Column.Status, trade.status.name)
+
+        if trade.status == Trade.Status.CLOSED:
+            self.setText(self.Column.Result, str(trade.result()))
+            self.setText(self.Column.PPD, str(trade.percentPerDay()) + "%")
 
     # }}}
 
