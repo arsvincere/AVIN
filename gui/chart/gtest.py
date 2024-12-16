@@ -18,7 +18,7 @@ from avin.tester import Test
 from avin.utils import logger
 from gui.chart.gchart import GBar, GChart
 from gui.chart.thread import Thread
-from gui.custom import Theme
+from gui.custom import Css, Theme
 
 
 class GTrade(QtWidgets.QGraphicsItemGroup):  # {{{
@@ -42,7 +42,12 @@ class GTrade(QtWidgets.QGraphicsItemGroup):  # {{{
 
         self.trade = trade
         self.gchart = gchart
+        self.annotation = None
 
+        # TODO:
+        # сделать отображение и не закрытых трейдов, отмененных и тп
+        # серым цветом шейп можно сделать или что такое.
+        # пока отрисовываю только закрытые трейды
         self.__calcCoordinates()
         self.__createTradeShape()
         self.__createOpenItem()
@@ -54,14 +59,17 @@ class GTrade(QtWidgets.QGraphicsItemGroup):  # {{{
     def showAnnotation(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.showAnnotation()")
 
-        self.__createAnnotation()
+        if self.annotation is None:
+            self.__createAnnotation()
+
         self.annotation.show()
 
     # }}}
     def hideAnnotation(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.hideAnnotation()")
 
-        self.annotation.hide()
+        if self.annotation is not None:
+            self.annotation.hide()
 
     # }}}
 
@@ -70,47 +78,38 @@ class GTrade(QtWidgets.QGraphicsItemGroup):  # {{{
 
         gchart = self.gchart
         trade = self.trade
-        self.x_opn = gchart.xFromDatetime(trade.openDateTime())
-        self.x_cls = gchart.xFromDatetime(trade.closeDateTime())
-        gbar = gchart.barFromDatetime(trade.openDateTime())
-        y_hgh = gbar.high_pos.y()
-        self.y0 = y_hgh - 50
-        self.trade_pos = QtCore.QPointF(self.x_opn, self.y0)
+
+        match trade.status:
+            case Trade.Status.CLOSED:
+                self.x_init = gchart.xFromDatetime(trade.dt)
+                self.x_opn = gchart.xFromDatetime(trade.openDateTime())
+                self.x_cls = gchart.xFromDatetime(trade.closeDateTime())
+                gbar = gchart.barFromDatetime(trade.openDateTime())
+                y_hgh = gbar.high_pos.y()
+                self.y0 = y_hgh - 50
+                self.trade_pos = QtCore.QPointF(self.x_opn, self.y0)
+            case _:
+                self.x_init = gchart.xFromDatetime(trade.dt)
+                self.x_opn = self.x_init
+                self.x_cls = self.x_init
+                gbar = gchart.barFromDatetime(trade.dt)
+                y_hgh = gbar.high_pos.y()
+                self.y0 = y_hgh - 50
+                self.trade_pos = QtCore.QPointF(self.x_opn, self.y0)
 
     # }}}
     def __createTradeShape(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createTradeShape()")
 
-        x0 = self.x_opn
-        x1 = x0 + GBar.WIDTH
-        x_center = (x0 + x1) / 2
-        y0 = self.y0
-        y1 = y0 - GBar.WIDTH
-
-        if self.trade.isLong():
-            p1 = QtCore.QPointF(x0, y0)
-            p2 = QtCore.QPointF(x1, y0)
-            p3 = QtCore.QPointF(x_center, y1)
-            triangle = QtGui.QPolygonF([p1, p2, p3])
-        else:
-            p1 = QtCore.QPointF(x0, y1)
-            p2 = QtCore.QPointF(x1, y1)
-            p3 = QtCore.QPointF(x_center, y0)
-            triangle = QtGui.QPolygonF([p1, p2, p3])
-        triangle = QtWidgets.QGraphicsPolygonItem(triangle)
-
-        if self.trade.isWin():
-            triangle.setPen(Theme.Chart.TRADE_WIN)
-            triangle.setBrush(Theme.Chart.TRADE_WIN)
-        else:
-            triangle.setPen(Theme.Chart.TRADE_LOSS)
-            triangle.setBrush(Theme.Chart.TRADE_LOSS)
-
-        self.addToGroup(triangle)
+        shape = GTradeShape(self)
+        self.addToGroup(shape)
 
     # }}}
     def __createOpenItem(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createOpenItem()")
+
+        if self.trade.status != Trade.Status.CLOSED:
+            return
 
         open_price = self.trade.openPrice()
         self.y_opn = self.gchart.yFromPrice(open_price)
@@ -162,20 +161,108 @@ class GTrade(QtWidgets.QGraphicsItemGroup):  # {{{
     def __createAnnotation(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createAnnotation()")
 
-        local_time = Usr.localTime(self.trade.dt)
-        text = (
-            "<div style='background-color:#333333;'>"
-            f"{local_time}<br>"
-            f"Result: {self.trade.result()}<br>"
-            f"Days: {self.trade.holdingDays()}<br>"
-            f"PPD: {self.trade.percentPerDay()}% "
-            "</div>"
-        )
-        self.annotation = QtWidgets.QGraphicsTextItem()
-        self.annotation.setHtml(text)
-        self.annotation.setPos(self.x_opn, self.y0 - 100)
-        self.annotation.hide()
+        self.annotation = GTradeAnnotation(self)
         self.addToGroup(self.annotation)
+
+    # }}}
+
+
+# }}}
+class GTradeShape(QtWidgets.QGraphicsPolygonItem):  # {{{
+    def __init__(self, gtrade: GTrade):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createTradeShape()")
+
+        # calc coordinates
+        x0 = gtrade.x_opn
+        x1 = x0 + GBar.WIDTH
+        x_center = (x0 + x1) / 2
+        y0 = gtrade.y0
+        y1 = y0 - GBar.WIDTH
+
+        # create triangle
+        if gtrade.trade.isLong():
+            p1 = QtCore.QPointF(x0, y0)
+            p2 = QtCore.QPointF(x1, y0)
+            p3 = QtCore.QPointF(x_center, y1)
+            triangle = QtGui.QPolygonF([p1, p2, p3])
+        else:
+            p1 = QtCore.QPointF(x0, y1)
+            p2 = QtCore.QPointF(x1, y1)
+            p3 = QtCore.QPointF(x_center, y0)
+            triangle = QtGui.QPolygonF([p1, p2, p3])
+
+        # choose color
+        if gtrade.trade.status != Trade.Status.CLOSED:
+            color = Theme.Chart.TRADE_UNDEFINE
+        elif gtrade.trade.isWin():
+            color = Theme.Chart.TRADE_WIN
+        else:
+            color = Theme.Chart.TRADE_LOSS
+
+        # init self
+        QtWidgets.QGraphicsPolygonItem.__init__(self, triangle)
+
+        # set color
+        self.setPen(color)
+        self.setBrush(color)
+
+    # }}}
+
+
+# }}}
+class GTradeAnnotation(QtWidgets.QGraphicsProxyWidget):  # {{{
+    def __init__(self, gtrade: GTrade, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QGraphicsProxyWidget.__init__(self, parent)
+
+        local_time = Usr.localTime(gtrade.trade.dt)
+        status = gtrade.trade.status.name
+        match gtrade.trade.status:
+            case Trade.Status.CLOSED:
+                days = gtrade.trade.holdingDays()
+                result = gtrade.trade.result()
+                ppd = gtrade.trade.percentPerDay()
+                text = f"""
+                    <table>
+                      <tbody>
+                        <tr>
+                          <td><b>{local_time}  </b></td>
+                          <th>{status}</th>
+                        </tr>
+                        <tr>
+                          <td>Days:</td>
+                          <td>{days}</td>
+                        </tr>
+                        <tr>
+                        <td>Result:</td>
+                          <td>{result}</td>
+                        </tr>
+                        <tr>
+                          <td>PPD:</td>
+                          <td>{ppd}%</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    """
+                y0 = gtrade.y0 - 100
+            case _:
+                text = f"""
+                    <table>
+                      <tbody>
+                        <tr>
+                          <td><b>{local_time}  </b></td>
+                          <th>{status}</th>
+                        </tr>
+                      </tbody>
+                    </table>
+                    """
+                y0 = gtrade.y0 - 50
+
+        label = QtWidgets.QLabel(text)
+        label.setStyleSheet(Css.TRADE_LABEL)
+
+        self.setWidget(label)
+        self.setPos(gtrade.x_opn, y0)
 
     # }}}
 
