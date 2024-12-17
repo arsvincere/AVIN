@@ -198,10 +198,11 @@ class Trade:  # {{{
     # }}}
     async def chart(self, timeframe: TimeFrame) -> Chart:  # {{{
         logger.debug(f"{self.__class__.__name__}.chart()")
-
         assert self.instrument.type == Instrument.Type.SHARE
+
         end = self.dt
         begin = self.dt - Chart.DEFAULT_BARS_COUNT * timeframe
+
         chart = await Chart.load(self.instrument, timeframe, begin, end)
         return chart
 
