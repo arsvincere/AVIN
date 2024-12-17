@@ -87,16 +87,22 @@ class Strategy(ABC):  # {{{
         # ордеров просто общая для всех стратегий... но если
         # уж очень надо то можно и переопределить, а так то
         # херли, пусть будет не абстрактной
-        logger.info(f"  Trade opened: '{trade}'")
-        logger.info(f"  Trade open dt: '{trade.openDateTime()}'")
+
+        dt = Usr.localTime(trade.openDateTime())
+        string = (
+            f"Trade="
+            f"{dt} [{trade.status.name}] {trade.strategy}-{trade.version} "
+            f"{trade.instrument.ticker} {trade.type.name.lower()}"
+        )
+
+        logger.info(f"   {string}")
 
         await Trade.update(trade)
 
     # }}}
     @abstractmethod  # onTradeClosed  # {{{
     async def onTradeClosed(self, trade: Trade):
-        logger.info(f"  Trade closed: '{trade}'")
-        logger.info(f"  Trade closed result: {trade.result()}")
+        logger.info(f"   {trade} result: {trade.result()}")
 
         self.active_trades.remove(trade)
 
@@ -174,7 +180,7 @@ class Strategy(ABC):  # {{{
         )
         await self.__connectTradeSignals(trade)
         self.__active_trades.add(trade)
-        logger.info(f"  {self} created trade {trade}")
+        logger.info(f"  {trade}")
 
         # update db
         await Trade.save(trade)
@@ -196,7 +202,7 @@ class Strategy(ABC):  # {{{
             status=Order.Status.NEW,
             order_id=Id.newId(),
         )
-        logger.info(f"  {self} create order {order}")
+        # logger.info(f"  {self} create order {order}")
 
         await Order.save(order)
         return order
@@ -221,7 +227,7 @@ class Strategy(ABC):  # {{{
             status=Order.Status.NEW,
             order_id=Id.newId(),
         )
-        logger.info(f"  {self} create order {order}")
+        # logger.info(f"  {self} create order {order}")
 
         await Order.save(order)
         return order
@@ -339,7 +345,7 @@ class Strategy(ABC):  # {{{
         #     await self.account.cancelOrdersOf(trade)
 
         await trade.setStatus(Trade.Status.CANCELED)
-        logger.info(f"  Trade canceled: '{trade}'")
+        logger.info(f"   {trade}")
 
     # }}}
 
@@ -601,7 +607,7 @@ class Strategy(ABC):  # {{{
             order_id=Id.newId(),
             trade_id=trade.trade_id,
         )
-        logger.info(f"  {self} create order {stop_loss}")
+        # logger.info(f"  {self} create order {stop_loss}")
 
         await Order.save(stop_loss)
         await trade.attachOrder(stop_loss)
@@ -630,7 +636,7 @@ class Strategy(ABC):  # {{{
             order_id=Id.newId(),
             trade_id=trade.trade_id,
         )
-        logger.info(f"  {self} create order {stop_loss}")
+        # logger.info(f"  {self} create order {stop_loss}")
 
         await Order.save(stop_loss)
         await trade.attachOrder(stop_loss)
@@ -668,7 +674,7 @@ class Strategy(ABC):  # {{{
             order_id=Id.newId(),
             trade_id=trade.trade_id,
         )
-        logger.info(f"  {self} create order {take_profit}")
+        # logger.info(f"  {self} create order {take_profit}")
 
         await Order.save(take_profit)
         await trade.attachOrder(take_profit)
@@ -699,7 +705,7 @@ class Strategy(ABC):  # {{{
             order_id=Id.newId(),
             trade_id=trade.trade_id,
         )
-        logger.info(f"  {self} create order {take_profit}")
+        # logger.info(f"  {self} create order {take_profit}")
 
         await Order.save(take_profit)
         await trade.attachOrder(take_profit)
