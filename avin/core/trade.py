@@ -133,6 +133,7 @@ class Trade:  # {{{
         dt = self.dt + Usr.TIME_DIF
         dt = dt.strftime("%Y-%m-%d %H:%M")
         string = (
+            f"Trade="
             f"{dt} [{self.status.name}] {self.strategy}-{self.version} "
             f"{self.instrument.ticker} {self.type.name.lower()}"
         )
