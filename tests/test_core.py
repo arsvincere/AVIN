@@ -284,8 +284,6 @@ def test_TransactionList():  # {{{
 
 
 # }}}
-
-
 @pytest.mark.asyncio  # test_Chart  # {{{
 async def test_Chart(event_loop):
     sber = await Asset.fromTicker(
@@ -882,6 +880,61 @@ async def test_TradeList():
     tlist.clear()  # only in RAM, not in db
     # delete
     await TradeList.delete(tlist)  # del in db tlist & del trades too
+
+
+# }}}
+@pytest.mark.asyncio  # test_Filter  # {{{
+async def test_Filter():
+    code = """# {{{
+import avin
+
+def condition(asset: avin.Asset) -> bool:
+    chart = asset.chart("D")
+
+    if chart[3] is None:
+        return False
+
+    b3 = chart[3]
+    b2 = chart[2]
+    b1 = chart[1]
+
+    if b3.isBull() and b2.isBull() and b1.isBull():
+        return True
+
+    return False
+
+"""  # }}}
+    f = Filter("_bull_3", code)
+
+    asset = await Asset.fromStr("MOEX-SHARE-AFKS")
+    timeframe = TimeFrame("D")
+    begin = datetime(2023, 1, 1, tzinfo=UTC)
+    end = datetime(2024, 1, 1, tzinfo=UTC)
+    await asset.cacheChart(timeframe, begin, end)
+
+    chart = asset.chart("D")
+
+    chart.setHeadIndex(0)
+    while chart.nextHead():
+        if f.check(asset):
+            assert chart[3].isBull()
+            assert chart[2].isBull()
+            assert chart[1].isBull()
+
+    Filter.save(f)
+    file_path = Cmd.path(Usr.FILTER, "_bull_3.py")
+    assert Cmd.isExist(file_path)
+
+    Filter.rename(f, "_bbb")
+    file_path = Cmd.path(Usr.FILTER, "_bbb.py")
+    assert Cmd.isExist(file_path)
+
+    loaded = Filter.load("_bbb")
+    assert loaded.name == f.name
+    assert loaded.code == f.code
+
+    loaded = Filter.delete(loaded)
+    assert not Cmd.isExist(file_path)
 
 
 # }}}

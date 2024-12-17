@@ -18,6 +18,7 @@ from avin.core.event import (
     NewHistoricalBarEvent,
     TransactionEvent,
 )
+from avin.core.filter import Filter
 from avin.core.id import Id
 from avin.core.operation import Operation
 from avin.core.order import (
@@ -74,4 +75,5 @@ __all__ = (
     "Account",
     "Broker",
     "Summary",
+    "Filter",
 )
