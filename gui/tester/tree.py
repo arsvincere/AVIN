@@ -241,11 +241,11 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         if not renamed_test:
             return
 
-        # delete old item
+        # delete old item from tree
         index = self.indexFromItem(item).row()
         self.takeTopLevelItem(index)
 
-        # add renamed test
+        # add renamed item
         self.addTest(renamed_test)
 
     # }}}
