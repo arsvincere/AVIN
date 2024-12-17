@@ -274,6 +274,22 @@ class Test:
         await Keeper.update(test)
 
     # }}}
+    @classmethod  # rename  # {{{
+    async def rename(cls, test: Test, new_name: str) -> Test | None:
+        logger.debug(f"{cls.__name__}.rename()")
+
+        existed_names = await Test.requestAll()
+        if new_name in existed_names:
+            logger.error(f"{new_name} already exist, cancel rename test")
+            return None
+
+        await Test.delete(test)
+        test.name = new_name
+        await Test.save(test)
+
+        return test
+
+    # }}}
     @classmethod  # requestAll  # {{{
     async def requestAll(cls) -> list[str]:
         logger.debug(f"{cls.__name__}.requestAll()")
