@@ -56,6 +56,25 @@ class Filter:
 
     # }}}
 
+    @classmethod  # new  # {{{
+    async def new(cls, name: str) -> Filter | None:
+        logger.debug(f"{cls.__name__}.new()")
+
+        # check name
+        if not cls.__checkName(name):
+            return None
+
+        # copy template to user directory
+        template_path = Cmd.path(Res.TEMPLATE, "filter", "filter.py")
+        user_path = Cmd.path(Usr.FILTER, f"{name}.py")
+        Cmd.copy(template_path, user_path)
+
+        # load
+        f = cls.load(name)
+
+        return f
+
+    # }}}
     @classmethod  # save  # {{{
     def save(cls, f: Filter, file_path=None) -> None:
         logger.debug(f"{cls.__name__}.save()")
@@ -121,6 +140,14 @@ class Filter:
         func = context["condition"]
 
         return func
+
+    # }}}
+    @classmethod  # __checkName  # {{{
+    def __checkName(cls, name) -> bool:
+        logger.debug(f"{cls.__name__}.__checkName()")
+
+        existed_names = cls.requestAll()
+        return name not in existed_names
 
     # }}}
 
