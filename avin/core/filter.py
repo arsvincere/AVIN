@@ -12,6 +12,9 @@ from typing import Callable
 
 from avin.config import Usr
 from avin.const import Res
+from avin.core.asset import Asset
+from avin.core.chart import Chart
+from avin.core.trade import Trade
 from avin.utils import Cmd, logger
 
 
@@ -50,7 +53,7 @@ class Filter:
 
     # }}}
 
-    def check(self, item: Asset | Trade) -> bool:  # {{{
+    def check(self, item: Asset | Trade | Chart) -> bool:  # {{{
         logger.debug(f"{self.__class__.__name__}.check()")
 
         return self.__condition(item)
@@ -80,13 +83,13 @@ class Filter:
     def edit(cls, f: Filter) -> Filter:
         logger.debug(f"{cls.__name__}.edit()")
 
-        command = (
+        command = [
             Usr.TERMINAL,
             *Usr.OPT,
             Usr.EXEC,
             Usr.EDITOR,
             f.path,
-        )
+        ]
         Cmd.subprocess(command)
 
         code = Cmd.read(f.path)
