@@ -17,7 +17,17 @@ from PyQt6.QtCore import Qt
 from avin.core import Filter
 from avin.utils import logger
 from gui.chart.gchart import GBar
-from gui.custom import Color, Css, Icon, Label, Spacer, ToolButton
+from gui.custom import (
+    Color,
+    Css,
+    Icon,
+    Label,
+    LineEdit,
+    PushButton,
+    Spacer,
+    ToolButton,
+)
+from gui.filter.dialog_select import FilterSelectDialog
 from gui.filter.item import FilterItem
 
 
@@ -138,7 +148,7 @@ class Shape(QtWidgets.QGraphicsPixmapItem):  # {{{
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         painter.setPen(self.color.value)
         painter.setBrush(self.color.value)
-        painter.drawEllipse(0, 0, width, height)
+        painter.drawEllipse(x, y, width, height)
         painter.end()
 
         self.setPixmap(pixmap)
@@ -160,7 +170,7 @@ class Shape(QtWidgets.QGraphicsPixmapItem):  # {{{
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         painter.setPen(self.color.value)
         painter.setBrush(self.color.value)
-        painter.drawRect(QtCore.QRect(0, 0, width, height))
+        painter.drawRect(QtCore.QRect(x, y, width, height))
         painter.end()
 
         self.setPixmap(pixmap)
@@ -227,6 +237,8 @@ class Shape(QtWidgets.QGraphicsPixmapItem):  # {{{
 
 
 # }}}
+
+
 class ShapeSelectDialog(QtWidgets.QDialog):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
@@ -241,12 +253,16 @@ class ShapeSelectDialog(QtWidgets.QDialog):  # {{{
         self.__updatePreview()
 
     # }}}
+
     def selectShape(self) -> Shape | None:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectFilters()")
 
         result = self.exec()
         if result == QtWidgets.QDialog.DialogCode.Rejected:
             return None
+
+        shape = self.__currentShape()
+        return shape
 
     # }}}
 
@@ -260,7 +276,7 @@ class ShapeSelectDialog(QtWidgets.QDialog):  # {{{
     def __createWidgets(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
 
-        self.__toolbar = _ToolBar(self)
+        self.__toolbar = _ShapeToolBar(self)
         self.__type_combobox = QtWidgets.QComboBox(self)
         self.__size_combobox = QtWidgets.QComboBox(self)
         self.__color_combobox = QtWidgets.QComboBox(self)
@@ -301,9 +317,6 @@ class ShapeSelectDialog(QtWidgets.QDialog):  # {{{
         for i in Shape.Color:
             self.__color_combobox.addItem(i.name, userData=i)
 
-        size = QtCore.QSize(
-            Shape.Size.VERY_BIG.value, Shape.Size.VERY_BIG.value
-        )
         self.__priview_label.setFixedSize(32, 32)
 
     # }}}
@@ -318,14 +331,21 @@ class ShapeSelectDialog(QtWidgets.QDialog):  # {{{
         self.__color_combobox.currentTextChanged.connect(self.__updatePreview)
 
     # }}}
-    def __updatePreview(self) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.__updatePreview()")
+    def __currentShape(self) -> Shape:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__currentShape()")
 
         typ = self.__type_combobox.currentData()
         size = self.__size_combobox.currentData()
         color = self.__color_combobox.currentData()
 
         shape = Shape(typ, size, color)
+        return shape
+
+    # }}}
+    def __updatePreview(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__updatePreview()")
+
+        shape = self.__currentShape()
         pixmap = shape.pixmap()
         self.__priview_label.setPixmap(pixmap)
 
@@ -357,8 +377,8 @@ class _Tree(QtWidgets.QTreeWidget):  # {{{
 
         # config header
         labels = list()
-        for l in FilterItem.Column:
-            labels.append(l.name)
+        for i in FilterItem.Column:
+            labels.append(i.name)
         self.setHeaderLabels(labels)
         self.header().setStyleSheet(Css.TREE_HEADER)
 
@@ -377,7 +397,7 @@ class _Tree(QtWidgets.QTreeWidget):  # {{{
 
 
 # }}}
-class _ToolBar(QtWidgets.QToolBar):  # {{{
+class _ShapeToolBar(QtWidgets.QToolBar):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QToolBar.__init__(self, parent)
@@ -418,8 +438,163 @@ class Marker:  # {{{
 # }}}
 
 
+class MarkerEditDialog(QtWidgets.QDialog):  # {{{
+    def __init__(self, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QDialog.__init__(self, parent)
+
+        self.__config()
+        self.__createWidgets()
+        self.__createForm()
+        self.__createLayots()
+        self.__connect()
+
+        self.__currentName = None
+        self.__currentFilter = None
+        self.__currentShape = None
+
+    # }}}
+
+    def newMarker(self) -> Marker | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__onFilterBtn()")
+
+        result = self.exec()
+        if result == QtWidgets.QDialog.DialogCode.Rejected:
+            return None
+
+        if self.__currentName is None:
+            return None
+        if self.__currentFilter is None:
+            return None
+        if self.__currentShape is None:
+            return None
+
+        m = Marker(
+            self.__currentName,
+            self.__currentFilter,
+            self.__currentShape,
+        )
+        return m
+
+    # }}}
+
+    def __config(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__config()")
+        self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
+        self.setStyleSheet(Css.DIALOG)
+        self.setWindowTitle("AVIN")
+
+    # }}}
+    def __createWidgets(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createWidgets()")
+
+        self.__toolbar = _MarkerToolBar(self)
+        self.__name_lineedit = LineEdit("Enter name...")
+        self.__filter_btn = PushButton(text="Click for select...")
+        self.__shape_btn = PushButton(text="Click for select...")
+
+    # }}}
+    def __createForm(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createForm()")
+
+        form = QtWidgets.QFormLayout()
+        form.addRow("Name", self.__name_lineedit)
+        form.addRow("Filter", self.__filter_btn)
+        form.addRow("Shape", self.__shape_btn)
+        self.__form = form
+
+    # }}}
+    def __createLayots(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createLayots()")
+
+        vbox = QtWidgets.QVBoxLayout()
+        vbox.addWidget(self.__toolbar)
+        vbox.addLayout(self.__form)
+
+        self.setLayout(vbox)
+
+    # }}}
+    def __connect(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__connect()")
+
+        self.__toolbar.btn_ok.clicked.connect(self.accept)
+        self.__toolbar.btn_cancel.clicked.connect(self.reject)
+
+        self.__name_lineedit.textChanged.connect(self.__onNameEdit)
+        self.__filter_btn.clicked.connect(self.__onFilterBtn)
+        self.__shape_btn.clicked.connect(self.__onShapeBtn)
+
+    # }}}
+
+    @QtCore.pyqtSlot()  # __onNameEdit  # {{{
+    def __onNameEdit(self):
+        logger.debug(f"{self.__class__.__name__}.__onNameEdit()")
+
+        name = self.__name_lineedit.text()
+        if name:
+            self.__currentName = name
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onFilterBtn  # {{{
+    def __onFilterBtn(self):
+        logger.debug(f"{self.__class__.__name__}.__onFilterBtn()")
+
+        dial = FilterSelectDialog()
+        f = dial.selectFilter()
+        if f is None:
+            return
+        else:
+            self.__filter_btn.setText(f.name)
+            self.__currentFilter = f
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onShapeBtn  # {{{
+    def __onShapeBtn(self):
+        logger.debug(f"{self.__class__.__name__}.__onShapeBtn()")
+
+        dial = ShapeSelectDialog()
+        shape = dial.selectShape()
+        if shape is None:
+            return
+        else:
+            icon = QtGui.QIcon(shape.pixmap())
+            self.__shape_btn.setText("")
+            self.__shape_btn.setIcon(icon)
+            self.__currentShape = shape
+
+    # }}}
+
+
+# }}}
+class _MarkerToolBar(QtWidgets.QToolBar):  # {{{
+    def __init__(self, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QToolBar.__init__(self, parent)
+
+        self.__createWidgets()
+
+    # }}}
+    def __createWidgets(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createWidgets()")
+
+        title = Label("| Add marker:", parent=self)
+        title.setStyleSheet(Css.TITLE)
+        self.addWidget(title)
+        self.addWidget(Spacer())
+
+        self.btn_ok = ToolButton(Icon.OK, "Ok", parent=self)
+        self.btn_cancel = ToolButton(Icon.CANCEL, "Cancel", parent=self)
+        self.addWidget(self.btn_ok)
+        self.addWidget(self.btn_cancel)
+
+    # }}}
+
+
+# }}}
+
+
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    w = ShapeSelectDialog()
+    w = MarkerEditDialog()
     w.show()
     sys.exit(app.exec())
