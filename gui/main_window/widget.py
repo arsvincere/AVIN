@@ -21,6 +21,7 @@ from gui.chart import ChartWidget
 from gui.console import ConsoleDockWidget
 from gui.custom import Css
 from gui.data import DataDockWidget
+from gui.filter import FilterDockWidget
 from gui.main_window.toolbar import LeftToolBar, RightToolBar
 from gui.strategy import StrategyDockWidget
 from gui.summary import SummaryDockWidget
@@ -155,6 +156,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.data_widget = None
         self.asset_widget = None
+        self.filter_widget = None
         self.strategy_widget = None
         self.tester_widget = None
         self.summary_widget = None
@@ -169,8 +171,8 @@ class MainWindow(QtWidgets.QMainWindow):
         # left tools
         self.ltool.data.triggered.connect(self.__onData)
         self.ltool.asset.triggered.connect(self.__onAsset)
-        # self.ltool.filter.triggered.connect(self.__onFilter)
         # self.ltool.analytic.triggered.connect(self.__onAnalytic)
+        self.ltool.filter.triggered.connect(self.__onFilter)
         self.ltool.strategy.triggered.connect(self.__onStrategy)
         self.ltool.note.triggered.connect(self.__onNote)
         self.ltool.tester.triggered.connect(self.__onTester)
@@ -255,6 +257,20 @@ class MainWindow(QtWidgets.QMainWindow):
 
         btn = self.ltool.widgetForAction(self.ltool.note)
         btn.setChecked(False)
+
+    # }}}
+    @pyqtSlot()  # __onFilter  # {{{
+    def __onFilter(self):
+        logger.debug(f"{self.__class__.__name__}.__onFilter()")
+
+        if self.filter_widget is None:
+            self.filter_widget = FilterDockWidget(self)
+            area = Qt.DockWidgetArea.LeftDockWidgetArea
+            self.addDockWidget(area, self.filter_widget)
+            return
+
+        state = self.filter_widget.isVisible()
+        self.filter_widget.setVisible(not state)
 
     # }}}
     @pyqtSlot()  # __onStrategy  # {{{
