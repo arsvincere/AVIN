@@ -84,6 +84,12 @@ class Cfg:  # {{{
         SHADOW_WIDTH = 1
 
     # }}}
+    class ShapeSize:
+        VERY_SMALL = 4  # px
+        SMALL = 6
+        NORMAL = 8
+        BIG = 12
+        VERY_BIG = 16
 
 
 # }}}
