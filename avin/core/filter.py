@@ -97,6 +97,21 @@ class Filter:
         Cmd.delete(f.path)
 
     # }}}
+    @classmethod  # requestAll  # {{{
+    def requestAll(cls) -> list[str]:
+        logger.debug(f"{cls.__name__}.requestAll()")
+
+        files = Cmd.getFiles(Usr.FILTER)
+        files = Cmd.select(files, extension=".py")
+
+        all_names = list()
+        for file in files:
+            name = Cmd.name(file)
+            all_names.append(name)
+
+        return all_names
+
+    # }}}
 
     def __createCondition(self, code: str) -> Callable:  # {{{
         logger.debug(f"{self.__class__.__name__}.__createCondition()")
