@@ -8,10 +8,17 @@
 
 import bisect
 import os
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 
 from avin.utils.cmd import Cmd
+
+# alias
+Date = date
+Time = time
+DateTime = datetime
+TimeDelta = timedelta
+TimeZone = timezone
 
 
 def now():  # {{{
@@ -20,9 +27,9 @@ def now():  # {{{
 
 # }}}
 def round_price(price: float, min_price_step: float):  # {{{
-    price = Decimal(price)
-    price -= price % Decimal(min_price_step)
-    return float(price)
+    p = Decimal(price)
+    p -= p % Decimal(min_price_step)
+    return float(p)
 
 
 # }}}
