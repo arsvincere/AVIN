@@ -75,6 +75,8 @@ class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
             item.setVisible(False)
             self.removeFromGroup(item)
 
+        self.shapes.clear()
+
     def updateView(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.updateView()")
 
