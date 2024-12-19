@@ -28,6 +28,7 @@ class Usr:  # {{{
     # for example for Moscow +3 hours, set 0 if you want see default UTC time
     TIME_DIF = timedelta(hours=3)
 
+    # TODO: move to utils
     @classmethod  # localTime
     def localTime(cls, dt: datetime) -> str:
         return (dt + Usr.TIME_DIF).strftime("%Y-%m-%d %H:%M")
@@ -74,6 +75,18 @@ class Auto:  # {{{
 
 
 # }}}
+class Cfg:  # {{{
+    class Chart:  # {{{
+        BAR_WIDTH = 8
+        BAR_HEIGHT = 10  # px на 1% цены
+        BAR_INDENT = 1
+        CUNDLE_INDENT = 2
+        SHADOW_WIDTH = 1
+
+    # }}}
 
 
-__all__ = ("Usr", "Auto")
+# }}}
+
+
+__all__ = ("Usr", "Auto", "Cfg")
