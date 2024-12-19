@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Callable
 
 from avin.config import Usr
+from avin.const import Res
 from avin.utils import Cmd, logger
 
 
@@ -57,7 +58,7 @@ class Filter:
     # }}}
 
     @classmethod  # new  # {{{
-    async def new(cls, name: str) -> Filter | None:
+    def new(cls, name: str) -> Filter | None:
         logger.debug(f"{cls.__name__}.new()")
 
         # check name
@@ -71,6 +72,25 @@ class Filter:
 
         # load
         f = cls.load(name)
+
+        return f
+
+    # }}}
+    @classmethod  # edit  # {{{
+    def edit(cls, f: Filter) -> Filter:
+        logger.debug(f"{cls.__name__}.edit()")
+
+        command = (
+            Usr.TERMINAL,
+            *Usr.OPT,
+            Usr.EXEC,
+            Usr.EDITOR,
+            f.path,
+        )
+        Cmd.subprocess(command)
+
+        code = Cmd.read(f.path)
+        f.code = code
 
         return f
 
@@ -99,14 +119,35 @@ class Filter:
         return f
 
     # }}}
+    @classmethod  # copy  # {{{
+    def copy(cls, f: Filter, new_name: str) -> Filter | None:
+        logger.debug(f"{cls.__name__}.copy()")
+
+        if not cls.__checkName(new_name):
+            logger.error(f"{new_name} already exist, copy canceled")
+            return None
+
+        new_path = Cmd.path(Usr.FILTER, f"{new_name}.py")
+        Cmd.copy(f.path, new_path)
+
+        f_copy = Filter.load(new_name)
+        return f_copy
+
+    # }}}
     @classmethod  # rename  # {{{
-    def rename(cls, f: Filter, new_name: str) -> None:
+    def rename(cls, f: Filter, new_name: str) -> Filter | None:
         logger.debug(f"{cls.__name__}.rename()")
+
+        if not cls.__checkName(new_name):
+            logger.error(f"{new_name} already exist, rename canceled")
+            return None
 
         if Cmd.isExist(f.path):
             new_path = Cmd.path(Usr.FILTER, f"{new_name}.py")
             Cmd.rename(f.path, new_path)
-        f.__name = new_name
+
+        renamed = Filter.load(new_name)
+        return renamed
 
     # }}}
     @classmethod  # delete  # {{{
