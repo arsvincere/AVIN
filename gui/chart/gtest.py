@@ -17,6 +17,7 @@ from avin.core import TimeFrame, Trade, TradeList
 from avin.tester import Test
 from avin.utils import logger
 from gui.chart.gchart import GBar, GChart
+from gui.chart.gmark import Shape
 from gui.chart.thread import Thread
 from gui.custom import Css, Theme
 
@@ -97,7 +98,26 @@ class GTrade(QtWidgets.QGraphicsItemGroup):  # {{{
     def __createTradeShape(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createTradeShape()")
 
-        shape = GTradeShape(self)
+        # choose form
+        if self.trade.isLong():
+            typ = Shape.Type.TRIANGLE_UP
+        else:
+            typ = Shape.Type.TRIANGLE_DOWN
+
+        # choose color
+        if self.trade.status != Trade.Status.CLOSED:
+            color = Shape.Color.WHITE
+        elif self.trade.isWin():
+            color = Shape.Color.GREEN
+        else:
+            color = Shape.Color.RED
+
+        # create shape
+        shape = Shape(typ, Shape.Size.NORMAL, color)
+
+        # set position
+        shape.setPos(self.x_opn, self.y0)
+
         self.addToGroup(shape)
 
     # }}}
@@ -159,48 +179,6 @@ class GTrade(QtWidgets.QGraphicsItemGroup):  # {{{
 
         self.annotation = GTradeAnnotation(self)
         self.addToGroup(self.annotation)
-
-    # }}}
-
-
-# }}}
-class GTradeShape(QtWidgets.QGraphicsPolygonItem):  # {{{
-    def __init__(self, gtrade: GTrade):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createTradeShape()")
-
-        # calc coordinates
-        x0 = gtrade.x_opn
-        x1 = x0 + GBar.WIDTH
-        x_center = (x0 + x1) / 2
-        y0 = gtrade.y0
-        y1 = y0 - GBar.WIDTH
-
-        # create triangle
-        if gtrade.trade.isLong():
-            p1 = QtCore.QPointF(x0, y0)
-            p2 = QtCore.QPointF(x1, y0)
-            p3 = QtCore.QPointF(x_center, y1)
-            triangle = QtGui.QPolygonF([p1, p2, p3])
-        else:
-            p1 = QtCore.QPointF(x0, y1)
-            p2 = QtCore.QPointF(x1, y1)
-            p3 = QtCore.QPointF(x_center, y0)
-            triangle = QtGui.QPolygonF([p1, p2, p3])
-
-        # choose color
-        if gtrade.trade.status != Trade.Status.CLOSED:
-            color = Theme.Chart.TRADE_UNDEFINE
-        elif gtrade.trade.isWin():
-            color = Theme.Chart.TRADE_WIN
-        else:
-            color = Theme.Chart.TRADE_LOSS
-
-        # init self
-        QtWidgets.QGraphicsPolygonItem.__init__(self, triangle)
-
-        # set color
-        self.setPen(color)
-        self.setBrush(color)
 
     # }}}
 
