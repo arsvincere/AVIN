@@ -9,17 +9,20 @@
 from __future__ import annotations
 
 import enum
+import sys
 
 from PyQt6 import QtCore, QtGui, QtWidgets
+from PyQt6.QtCore import Qt
 
+from avin.core import Filter
 from avin.utils import logger
 from gui.chart.gchart import GBar
-from gui.custom import Color
+from gui.custom import Color, Css, Icon, Label, Spacer, ToolButton
+from gui.filter.item import FilterItem
 
 
-class Shape(QtWidgets.QGraphicsItemGroup):  # {{{
+class Shape(QtWidgets.QGraphicsPixmapItem):  # {{{
     class Type(enum.Enum):  # {{{
-        DEFAULT = 0
         CIRCLE = 1
         SQARE = 2
         TRIANGLE_UP = 3
@@ -27,7 +30,6 @@ class Shape(QtWidgets.QGraphicsItemGroup):  # {{{
 
     # }}}
     class Size(enum.Enum):  # {{{
-        DEFAULT = GBar.WIDTH
         VERY_SMALL = GBar.WIDTH * 0.5
         SMALL = GBar.WIDTH * 0.75
         NORMAL = GBar.WIDTH
@@ -97,7 +99,7 @@ class Shape(QtWidgets.QGraphicsItemGroup):  # {{{
         self, t: Shape.Type, s: Shape.Size, c: Shape.Color, parent=None
     ):
         logger.debug(f"{self.__class__.__name__}.__init__()")
-        QtWidgets.QGraphicsItemGroup.__init__(self, parent)
+        QtWidgets.QGraphicsPixmapItem.__init__(self, parent)
 
         self.type = t
         self.size = s
@@ -125,14 +127,21 @@ class Shape(QtWidgets.QGraphicsItemGroup):  # {{{
 
         x = 0
         y = 0
-        width = self.size.value
-        height = self.size.value
+        width = int(self.size.value)
+        height = int(self.size.value)
 
-        circle = QtWidgets.QGraphicsEllipseItem(x, y, width, height)
-        circle.setPen(self.color.value)
-        circle.setBrush(self.color.value)
+        pixmap = QtGui.QPixmap(width + 2, height + 2)  # +2 иначе подрезает...
+        pixmap.fill(Qt.GlobalColor.transparent)
 
-        self.addToGroup(circle)
+        painter = QtGui.QPainter()
+        painter.begin(pixmap)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        painter.setPen(self.color.value)
+        painter.setBrush(self.color.value)
+        painter.drawEllipse(0, 0, width, height)
+        painter.end()
+
+        self.setPixmap(pixmap)
 
     # }}}
     def __drawShapeSqare(self) -> None:  # {{{
@@ -143,16 +152,25 @@ class Shape(QtWidgets.QGraphicsItemGroup):  # {{{
         width = self.size.value
         height = self.size.value
 
-        sqare = QtWidgets.QGraphicsRectItem(x, y, width, height)
-        sqare.setPen(self.color.value)
-        sqare.setBrush(self.color.value)
+        pixmap = QtGui.QPixmap(width + 2, height + 2)  # +2 иначе подрезает...
+        pixmap.fill(Qt.GlobalColor.transparent)
 
-        self.addToGroup(sqare)
+        painter = QtGui.QPainter()
+        painter.begin(pixmap)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        painter.setPen(self.color.value)
+        painter.setBrush(self.color.value)
+        painter.drawRect(QtCore.QRect(0, 0, width, height))
+        painter.end()
+
+        self.setPixmap(pixmap)
 
     # }}}
     def __drawShapeTriangleUp(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__drawShapeTriangleUp()")
 
+        width = self.size.value
+        height = self.size.value
         x0 = 0
         x1 = x0 + self.size.value
         x_center = (x0 + x1) / 2
@@ -162,18 +180,26 @@ class Shape(QtWidgets.QGraphicsItemGroup):  # {{{
         p1 = QtCore.QPointF(x_center, y0)
         p2 = QtCore.QPointF(x0, y1)
         p3 = QtCore.QPointF(x1, y1)
-        triangle = QtGui.QPolygonF([p1, p2, p3])
 
-        graphic_triangle = QtWidgets.QGraphicsPolygonItem(triangle)
-        graphic_triangle.setPen(self.color.value)
-        graphic_triangle.setBrush(self.color.value)
+        pixmap = QtGui.QPixmap(width + 2, height + 2)  # +2 иначе подрезает...
+        pixmap.fill(Qt.GlobalColor.transparent)
 
-        self.addToGroup(graphic_triangle)
+        painter = QtGui.QPainter()
+        painter.begin(pixmap)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        painter.setPen(self.color.value)
+        painter.setBrush(self.color.value)
+        painter.drawPolygon(p1, p2, p3)
+        painter.end()
+
+        self.setPixmap(pixmap)
 
     # }}}
     def __drawShapeTriangleDown(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__drawShapeTriangleDown()")
 
+        width = self.size.value
+        height = self.size.value
         x0 = 0
         x1 = x0 + self.size.value
         x_center = (x0 + x1) / 2
@@ -183,18 +209,201 @@ class Shape(QtWidgets.QGraphicsItemGroup):  # {{{
         p1 = QtCore.QPointF(x_center, y1)
         p2 = QtCore.QPointF(x0, y0)
         p3 = QtCore.QPointF(x1, y0)
-        triangle = QtGui.QPolygonF([p1, p2, p3])
 
-        graphic_triangle = QtWidgets.QGraphicsPolygonItem(triangle)
-        graphic_triangle.setPen(self.color.value)
-        graphic_triangle.setBrush(self.color.value)
+        pixmap = QtGui.QPixmap(width + 2, height + 2)  # +2 иначе подрезает...
+        pixmap.fill(Qt.GlobalColor.transparent)
 
-        self.addToGroup(graphic_triangle)
+        painter = QtGui.QPainter()
+        painter.begin(pixmap)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        painter.setPen(self.color.value)
+        painter.setBrush(self.color.value)
+        painter.drawPolygon(p1, p2, p3)
+        painter.end()
+
+        self.setPixmap(pixmap)
 
     # }}}
 
 
 # }}}
+class ShapeSelectDialog(QtWidgets.QDialog):  # {{{
+    def __init__(self, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QDialog.__init__(self, parent)
+
+        self.__config()
+        self.__createWidgets()
+        self.__createForm()
+        self.__createLayots()
+        self.__initUI()
+        self.__connect()  # важноk после initUI делать конект!
+        self.__updatePreview()
+
+    # }}}
+    def selectShape(self) -> Shape | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectFilters()")
+
+        result = self.exec()
+        if result == QtWidgets.QDialog.DialogCode.Rejected:
+            return None
+
+    # }}}
+
+    def __config(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__config()")
+        self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
+        self.setStyleSheet(Css.DIALOG)
+        self.setWindowTitle("AVIN")
+
+    # }}}
+    def __createWidgets(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createWidgets()")
+
+        self.__toolbar = _ToolBar(self)
+        self.__type_combobox = QtWidgets.QComboBox(self)
+        self.__size_combobox = QtWidgets.QComboBox(self)
+        self.__color_combobox = QtWidgets.QComboBox(self)
+        self.__priview_label = QtWidgets.QLabel(self)
+
+    # }}}
+    def __createForm(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createForm()")
+
+        form = QtWidgets.QFormLayout()
+        form.addRow("Form", self.__type_combobox)
+        form.addRow("Size", self.__size_combobox)
+        form.addRow("Color", self.__color_combobox)
+        form.addRow("Preview", self.__priview_label)
+        self.__form = form
+
+    # }}}
+    def __createLayots(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createLayots()")
+
+        vbox = QtWidgets.QVBoxLayout()
+        vbox.addWidget(self.__toolbar)
+        vbox.addLayout(self.__form)
+
+        self.setLayout(vbox)
+
+    # }}}
+    def __initUI(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__initUI()")
+
+        for i in Shape.Type:
+            self.__type_combobox.addItem(i.name, userData=i)
+
+        for i in Shape.Size:
+            self.__size_combobox.addItem(i.name, userData=i)
+        self.__size_combobox.setCurrentIndex(2)  # Shape.Size.NORMAL
+
+        for i in Shape.Color:
+            self.__color_combobox.addItem(i.name, userData=i)
+
+        size = QtCore.QSize(
+            Shape.Size.VERY_BIG.value, Shape.Size.VERY_BIG.value
+        )
+        self.__priview_label.setFixedSize(32, 32)
+
+    # }}}
+    def __connect(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__connect()")
+
+        self.__toolbar.btn_ok.clicked.connect(self.accept)
+        self.__toolbar.btn_cancel.clicked.connect(self.reject)
+
+        self.__type_combobox.currentTextChanged.connect(self.__updatePreview)
+        self.__size_combobox.currentTextChanged.connect(self.__updatePreview)
+        self.__color_combobox.currentTextChanged.connect(self.__updatePreview)
+
+    # }}}
+    def __updatePreview(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__updatePreview()")
+
+        typ = self.__type_combobox.currentData()
+        size = self.__size_combobox.currentData()
+        color = self.__color_combobox.currentData()
+
+        shape = Shape(typ, size, color)
+        pixmap = shape.pixmap()
+        self.__priview_label.setPixmap(pixmap)
+
+    # }}}
+
+
+# }}}
+class _Tree(QtWidgets.QTreeWidget):  # {{{
+    def __init__(self, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QTreeWidget.__init__(self, parent)
+
+        self.__config()
+
+    # }}}
+    def __iter__(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__iter__()")
+
+        all_items = list()
+        for i in range(self.topLevelItemCount()):
+            item = self.topLevelItem(i)
+            all_items.append(item)
+
+        return iter(all_items)
+
+    # }}}
+    def __config(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__config()")
+
+        # config header
+        labels = list()
+        for l in FilterItem.Column:
+            labels.append(l.name)
+        self.setHeaderLabels(labels)
+        self.header().setStyleSheet(Css.TREE_HEADER)
+
+        # config sorting
+        self.setSortingEnabled(True)
+        self.sortByColumn(FilterItem.Column.Name, Qt.SortOrder.AscendingOrder)
+
+        # config width
+        self.setColumnWidth(FilterItem.Column.Name, 150)
+
+        # config style
+        self.setStyleSheet(Css.TREE)
+        self.setContentsMargins(0, 0, 0, 0)
+
+    # }}}
+
+
+# }}}
+class _ToolBar(QtWidgets.QToolBar):  # {{{
+    def __init__(self, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QToolBar.__init__(self, parent)
+
+        self.__createWidgets()
+
+    # }}}
+    def __createWidgets(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createWidgets()")
+
+        title = Label("| Select shape:", parent=self)
+        title.setStyleSheet(Css.TITLE)
+        self.addWidget(title)
+        self.addWidget(Spacer())
+
+        self.btn_ok = ToolButton(Icon.OK, "Ok", parent=self)
+        self.btn_cancel = ToolButton(Icon.CANCEL, "Cancel", parent=self)
+        self.addWidget(self.btn_ok)
+        self.addWidget(self.btn_cancel)
+
+    # }}}
+
+
+# }}}
+
+
 class Marker:  # {{{
     def __init__(  # {{{
         self, name: str, filter: Filter, shape: Shape, parent=None
@@ -210,4 +419,7 @@ class Marker:  # {{{
 
 
 if __name__ == "__main__":
-    ...
+    app = QtWidgets.QApplication(sys.argv)
+    w = ShapeSelectDialog()
+    w.show()
+    sys.exit(app.exec())
