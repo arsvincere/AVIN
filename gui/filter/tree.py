@@ -110,7 +110,7 @@ class FilterTree(QtWidgets.QTreeWidget):  # {{{
 
     # }}}
 
-    @QtCore.pyqtSlot()  # __onNew# {{{
+    @QtCore.pyqtSlot()  # __onNew  # {{{
     def __onNew(self):
         logger.debug(f"{self.__class__.__name__}.__onNew()")
 
@@ -123,7 +123,7 @@ class FilterTree(QtWidgets.QTreeWidget):  # {{{
             self.addFilter(f)
 
     # }}}
-    @QtCore.pyqtSlot()  # __onEdit# {{{
+    @QtCore.pyqtSlot()  # __onEdit  # {{{
     def __onEdit(self):
         logger.debug(f"{self.__class__.__name__}.__onEdit()")
 
@@ -131,7 +131,7 @@ class FilterTree(QtWidgets.QTreeWidget):  # {{{
         Filter.edit(f)
 
     # }}}
-    @QtCore.pyqtSlot()  # __onCopy# {{{
+    @QtCore.pyqtSlot()  # __onCopy  # {{{
     def __onCopy(self):
         logger.debug(f"{self.__class__.__name__}.__onCopy()")
 
@@ -145,7 +145,7 @@ class FilterTree(QtWidgets.QTreeWidget):  # {{{
             self.addFilter(copy)
 
     # }}}
-    @QtCore.pyqtSlot()  # __onRename# {{{
+    @QtCore.pyqtSlot()  # __onRename  # {{{
     def __onRename(self):
         logger.debug(f"{self.__class__.__name__}.__onRename()")
 
@@ -162,7 +162,7 @@ class FilterTree(QtWidgets.QTreeWidget):  # {{{
             self.addFilter(renamed)
 
     # }}}
-    @QtCore.pyqtSlot()  # __onDelete# {{{
+    @QtCore.pyqtSlot()  # __onDelete  # {{{
     def __onDelete(self):
         logger.debug(f"{self.__class__.__name__}.delete()")
 
