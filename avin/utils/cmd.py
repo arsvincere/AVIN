@@ -153,7 +153,8 @@ class Cmd:
     # }}}
     @staticmethod  # select# {{{
     def select(files, name=None, extension=None):
-        """Возвращает список файлов c расширением 'extension'"""
+        """Список файлов c именем 'name', и/или расширением 'extension'"""
+
         selected = list()
         for file in files:
             if name and name == Cmd.name(file):
