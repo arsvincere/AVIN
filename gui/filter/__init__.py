@@ -6,9 +6,11 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
+from gui.filter.dialog_select import FilterSelectDialog
 from gui.filter.widget import FilterDockWidget, FilterWidget
 
 __all__ = (
-    "FilterWidget",
+    "FilterSelectDialog",
     "FilterDockWidget",
+    "FilterWidget",
 )

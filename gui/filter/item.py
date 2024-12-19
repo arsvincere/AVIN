@@ -26,7 +26,9 @@ class FilterItem(QtWidgets.QTreeWidgetItem):  # {{{
 
         self.filter = filter
         self.setFlags(
-            Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
+            Qt.ItemFlag.ItemIsSelectable
+            | Qt.ItemFlag.ItemIsEnabled
+            | Qt.ItemFlag.ItemIsUserCheckable
         )
 
         self.setText(self.Column.Name, self.filter.name)
