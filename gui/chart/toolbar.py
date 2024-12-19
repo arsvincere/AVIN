@@ -12,6 +12,7 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 from avin.core import Asset, TimeFrame, TimeFrameList
 from avin.utils import logger
 from gui.chart.gchart import ViewType
+from gui.chart.gmark import Marker, MarkerEditDialog
 from gui.custom import (
     Css,
     Icon,
@@ -27,6 +28,7 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
     secondTimeFrameChanged = QtCore.pyqtSignal(TimeFrame, bool)
     barViewSelected = QtCore.pyqtSignal()
     cundleViewSelected = QtCore.pyqtSignal()
+    newMarker = QtCore.pyqtSignal(Marker)
 
     __ICON_SIZE = QtCore.QSize(32, 32)
 
@@ -81,6 +83,7 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
         self.__asset_btn.setText(asset.ticker)
 
     # }}}
+
     def __createButtons(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createActions()")
 
@@ -114,6 +117,9 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
             text="Indicator", width=96, parent=self
         )
 
+        # marker
+        self.__marker_btn = ToolButton(text="Marker", width=70, parent=self)
+
         # add widgets
         self.addWidget(self.__asset_btn)
         self.addWidget(self.__first_tf_btn)
@@ -128,6 +134,7 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
         self.addWidget(self.__cundle_btn)
         self.addWidget(VLine(width=10))
         self.addWidget(self.__indicator_btn)
+        self.addWidget(self.__marker_btn)
 
     # }}}
     def __createMenus(self):  # {{{
@@ -158,6 +165,7 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
         self.__second_M.clicked.connect(self.__onSecond_M)
         self.__bar_btn.clicked.connect(self.__onBarBtn)
         self.__cundle_btn.clicked.connect(self.__onCundleBtn)
+        self.__marker_btn.clicked.connect(self.__onMarkerBtn)
 
     # }}}
 
@@ -225,6 +233,16 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
         self.__bar_btn.setChecked(False)
 
         self.cundleViewSelected.emit()
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onMarkerBtn  # {{{
+    def __onMarkerBtn(self):
+        logger.debug(f"{self.__class__.__name__}.__onMarkerBtn()")
+
+        dial = MarkerEditDialog()
+        marker = dial.newMarker()
+        if marker is not None:
+            self.newMarker.emit(marker)
 
     # }}}
 

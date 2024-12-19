@@ -14,6 +14,7 @@ from avin.core import Asset, Chart, TimeFrame, Trade, TradeList
 from avin.tester import Test
 from avin.utils import logger, now
 from gui.chart.gchart import GChart, ViewType
+from gui.chart.gmark import Marker
 from gui.chart.gtest import GTradeList
 from gui.chart.scene import ChartScene
 from gui.chart.thread import Thread
@@ -34,6 +35,7 @@ class ChartWidget(QtWidgets.QWidget):
 
         self.__asset = None
         self.__tlist = None
+        self.__markers: list[Marker] = list()
 
     # }}}
 
@@ -139,6 +141,7 @@ class ChartWidget(QtWidgets.QWidget):
         self.toolbar.secondTimeFrameChanged.connect(self.__onTimeframe2)
         self.toolbar.barViewSelected.connect(self.__onBarView)
         self.toolbar.cundleViewSelected.connect(self.__onCundleView)
+        self.toolbar.newMarker.connect(self.__onNewMarker)
 
     # }}}
     def __drawChart(self):  # {{{
@@ -154,6 +157,7 @@ class ChartWidget(QtWidgets.QWidget):
         self.view.centerOnLast()
 
     # }}}
+
     @QtCore.pyqtSlot(TimeFrame)  # __onTimeframe1  # {{{
     def __onTimeframe1(self, timeframe: TimeFrame):
         logger.debug(f"{self.__class__.__name__}.__onTimeframe1()")
@@ -198,6 +202,19 @@ class ChartWidget(QtWidgets.QWidget):
             return
 
         gchart.setViewType(ViewType.CUNDLE)
+
+    # }}}
+    @QtCore.pyqtSlot(Marker)  # __onNewMarker  # {{{
+    def __onNewMarker(self, marker: Marker):
+        logger.debug(f"{self.__class__.__name__}.__onNewMarker()")
+
+        if self.__asset is None:
+            return
+
+        self.__markers.append(marker)
+
+        gchart = self.scene.currentGChart()
+        gchart.addMarker(marker)
 
     # }}}
 

@@ -14,9 +14,9 @@ import sys
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt
 
+from avin.config import Cfg
 from avin.core import Filter
 from avin.utils import logger
-from gui.chart.gchart import GBar
 from gui.custom import (
     Color,
     Css,
@@ -40,11 +40,11 @@ class Shape(QtWidgets.QGraphicsPixmapItem):  # {{{
 
     # }}}
     class Size(enum.Enum):  # {{{
-        VERY_SMALL = GBar.WIDTH * 0.5
-        SMALL = GBar.WIDTH * 0.75
-        NORMAL = GBar.WIDTH
-        BIG = GBar.WIDTH * 1.5
-        VERY_BIG = GBar.WIDTH * 2
+        VERY_SMALL = Cfg.ShapeSize.VERY_SMALL
+        SMALL = Cfg.ShapeSize.SMALL
+        NORMAL = Cfg.ShapeSize.NORMAL
+        BIG = Cfg.ShapeSize.BIG
+        VERY_BIG = Cfg.ShapeSize.VERY_BIG
 
     # }}}
     class Color(enum.Enum):  # {{{
@@ -428,11 +428,27 @@ class Marker:  # {{{
     def __init__(  # {{{
         self, name: str, filter: Filter, shape: Shape, parent=None
     ):
-        self.name = name
-        self.filter = filter
-        self.shape = shape
+        self.__name = name
+        self.__filter = filter
+        self.__shape = shape
 
     # }}}
+
+    @property  # name
+    def name(self):
+        return self.__name
+
+    @property  # filter
+    def filter(self):
+        return self.__filter
+
+    @property  # shape
+    def shape(self):
+        # create new shape graphic item
+        shape = Shape(
+            self.__shape.type, self.__shape.size, self.__shape.color
+        )
+        return shape
 
 
 # }}}

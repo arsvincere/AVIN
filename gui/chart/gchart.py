@@ -12,6 +12,7 @@ import enum
 
 from PyQt6 import QtCore, QtWidgets
 
+from avin.config import Cfg
 from avin.const import ONE_DAY, ONE_HOUR, ONE_WEEK
 from avin.core import (
     Bar,
@@ -19,6 +20,7 @@ from avin.core import (
     TimeFrame,
 )
 from avin.utils import find_left, logger, next_month
+from gui.chart.gmark import Marker, Shape
 from gui.custom import Theme
 
 
@@ -29,11 +31,11 @@ class ViewType(enum.Enum):  # {{{
 
 # }}}
 class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
-    WIDTH = 8
-    HEIGHT = 10  # px на 1% цены
-    CUNDLE_INDENT = 2
-    BAR_INDENT = 1
-    SHADOW_WIDTH = 1
+    WIDTH = Cfg.Chart.BAR_WIDTH
+    HEIGHT = Cfg.Chart.BAR_HEIGHT
+    CUNDLE_INDENT = Cfg.Chart.CUNDLE_INDENT
+    BAR_INDENT = Cfg.Chart.BAR_INDENT
+    SHADOW_WIDTH = Cfg.Chart.SHADOW_WIDTH
 
     def __init__(self, bar: Bar, n: int, gchart: GChart):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
@@ -42,6 +44,7 @@ class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
         self.bar = bar
         self.n = n
         self.gchart = gchart
+        self.shapes = list()
 
         self.__calcCoordinates()
         self.__setColor()
@@ -53,7 +56,26 @@ class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
 
     # }}}
 
-    def updateView(self):  # {{{
+    def addShape(self, shape: Shape) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.addShape()")
+
+        self.shapes.append(shape)
+
+        x = self.X0
+        y = self.y_hgh - 20 * len(self.shapes)
+
+        shape.setPos(x, y)
+        self.addToGroup(shape)
+
+    # }}}
+    def clearShapes(self) -> None:
+        logger.debug(f"{self.__class__.__name__}.clearShapes()")
+
+        for item in self.shapes:
+            item.setVisible(False)
+            self.removeFromGroup(item)
+
+    def updateView(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.updateView()")
 
         view_type = self.gchart.viewType()
@@ -245,6 +267,40 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
         return self.gbars[-1]
 
     # }}}
+
+    def addMarker(self, marker: Marker) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.addMarker()")
+
+        chart = self.chart
+        f = marker.filter
+        chart.setHeadIndex(0)
+        while chart.nextHead():
+            if f.check(chart):
+                dt = chart.now.dt
+                gbar = self.barFromDatetime(dt)
+                gbar.addShape(marker.shape)
+
+    # }}}
+    def clearMarkers(self):
+        logger.debug(f"{self.__class__.__name__}.addMarker()")
+
+        for gbar in self.gbars:
+            gbar.clearShapes()
+
+    def viewType(self) -> ViewType:  # {{{
+        logger.debug(f"{self.__class__.__name__}.viewType()")
+
+        return GChart.__VIEW_TYPE
+
+    # }}}
+    def setViewType(self, t: ViewType) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.setViewType()")
+
+        GChart.__VIEW_TYPE = t
+        for gbar in self.gbars:
+            gbar.updateView()
+
+    # }}}
     def drawBack(self, timeframe: TimeFrame) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.drawBack()")
 
@@ -275,21 +331,6 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
                 self.__clearBack_W()
             case "M":
                 self.__clearBack_M()
-
-    # }}}
-
-    def viewType(self) -> ViewType:  # {{{
-        logger.debug(f"{self.__class__.__name__}.viewType()")
-
-        return GChart.__VIEW_TYPE
-
-    # }}}
-    def setViewType(self, t: ViewType):  # {{{
-        logger.debug(f"{self.__class__.__name__}.setViewType()")
-
-        GChart.__VIEW_TYPE = t
-        for gbar in self.gbars:
-            gbar.updateView()
 
     # }}}
 
