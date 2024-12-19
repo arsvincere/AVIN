@@ -402,7 +402,6 @@ class TradeTree(QtWidgets.QTreeWidget):  # {{{
         logger.debug(f"{self.__class__.__name__}.contextMenuEvent(e)")
 
         item = self.itemAt(e.pos())
-        self.__resetActions()
         self.__setVisibleActions(item)
         self.menu.exec(QtGui.QCursor.pos())
         return e.ignore()
