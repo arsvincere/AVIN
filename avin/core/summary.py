@@ -18,7 +18,7 @@ class Summary:
         logger.debug(f"{self.__class__.__name__}.__init__()")
 
         self.__trade_list = trade_list
-        self.__df = self.__calculate(trade_list)
+        self.__df = self.calculate(trade_list)
 
     # }}}
     def __str__(self):  # {{{
@@ -42,15 +42,8 @@ class Summary:
         return header
 
     # }}}
-    @classmethod  # save  # {{{
-    def save(cls, summary: Summary, file_path: str) -> None:
-        logger.debug(f"{self.__class__.__name__}.__save()")
-
-        report.__df.to_csv(file_path, sep=";")
-
-    # }}}
-
-    def __calculate(cls, trade_list: TradeList) -> pd.DataFrame:  # {{{
+    @classmethod  # calculate  # {{{
+    def calculate(cls, trade_list: TradeList) -> pd.DataFrame:
         dct = dict()
         dct["name"] = trade_list.name
         results = Summary.__getResults(trade_list)
@@ -65,6 +58,13 @@ class Summary:
             df = pd.concat([df, df_child], ignore_index=True)
 
         return df
+
+    # }}}
+    @classmethod  # save  # {{{
+    def save(cls, summary: Summary, file_path: str) -> None:
+        logger.debug(f"{self.__class__.__name__}.__save()")
+
+        report.__df.to_csv(file_path, sep=";")
 
     # }}}
 
