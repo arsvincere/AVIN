@@ -139,9 +139,10 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     # }}}
     def __str__(self):  # {{{
         string = (
-            f"type={self.type.name} "
-            f"status={self.status.name} "
-            f"acc={self.account_name} "
+            f"id={self.order_id} "
+            f"[{self.type.name}] "
+            f"[{self.status.name}] "
+            f"({self.account_name}) "
             f"{self.direction.name} "
             f"{self.instrument.ticker} "
             f"{self.exec_lots}/{self.lots} lot"
