@@ -27,7 +27,7 @@ from avin.core.order import (
     StopLoss,
     TakeProfit,
 )
-from avin.core.timeframe import TimeFrame, TimeFrameList
+from avin.core.timeframe import TimeFrameList
 from avin.core.trade import Trade, TradeList
 from avin.data import Instrument
 from avin.keeper import Keeper
@@ -57,8 +57,8 @@ class Strategy(ABC):  # {{{
         self.__active_trades = TradeList(name="")
 
     # }}}
-    @abstractmethod  # timeframe_list  # {{{
-    def timeframe_list(self) -> list[TimeFrame]:
+    @abstractmethod  # timeframes  # {{{
+    def timeframes(self) -> TimeFrameList:
         pass
 
     # }}}
