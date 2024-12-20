@@ -15,7 +15,8 @@ from avin.core import TradeList
 from avin.tester import Test
 from avin.utils import logger
 from gui.custom import Css, Dialog, Menu
-from gui.tester.dialog_edit import TestEditDialog
+from gui.tester.dialog_test_edit import TestEditDialog
+from gui.tester.dialog_trade_info import TradeInfoDialog
 from gui.tester.item import TestItem, TradeItem, TradeListItem
 from gui.tester.thread import Thread, TRunTest
 
@@ -47,12 +48,12 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
     def contextMenuEvent(self, e: QtGui.QContextMenuEvent):  # {{{
         logger.debug(f"{self.__class__.__name__}.contextMenuEvent(e)")
 
-        item = self.itemAt(e.pos())
-        if item is None:
+        self.__current_item = self.itemAt(e.pos())
+        if self.__current_item is None:
             self.test_menu.exec(QtGui.QCursor.pos())
-        if isinstance(item, TestItem):
+        if isinstance(self.__current_item, TestItem):
             self.test_menu.exec(QtGui.QCursor.pos())
-        elif isinstance(item, TradeListItem):
+        elif isinstance(self.__current_item, TradeListItem):
             self.tlist_menu.exec(QtGui.QCursor.pos())
         return e.ignore()
 
@@ -89,12 +90,12 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         self.sortByColumn(TestItem.Column.Name, Qt.SortOrder.AscendingOrder)
 
         # config width
-        self.setColumnWidth(TestItem.Column.Name, 200)
+        self.setColumnWidth(TestItem.Column.Name, 250)
         self.setColumnWidth(TestItem.Column.Status, 80)
-        self.setColumnWidth(TestItem.Column.Trades, 60)
+        self.setColumnWidth(TestItem.Column.Trades, 50)
         self.setColumnWidth(TestItem.Column.Win, 50)
         self.setColumnWidth(TestItem.Column.Loss, 50)
-        self.setMinimumWidth(460)
+        self.setMinimumWidth(500)
 
         # config style
         self.setStyleSheet(Css.TREE)
@@ -141,15 +142,20 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         return False
 
     # }}}
-    @QtCore.pyqtSlot()  # __threadFinished# {{{
-    def __threadFinished(self):
-        logger.debug(f"{self.__class__.__name__}.__threadFinished()")
+    @QtCore.pyqtSlot()  # __onTestComplete# {{{
+    def __onTestComplete(self):
+        logger.debug(f"{self.__class__.__name__}.__onTestComplete()")
 
         # find and update test item text
         test = self.thread.test
-        for item in self:
-            if item.test.name == test.name:
-                item.updateText()
+        # for item in self:
+        #     if item.test.name == test.name:
+        #         item.updateText()
+
+        # reload test
+        self.removeTest(test)
+        test = Thread.loadTest(test.name)
+        self.addTest(test)
 
         self.thread = None
 
@@ -162,11 +168,10 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         if self.__isBusy():
             return
 
-        item = self.currentItem()
-        test = item.test
+        test = self.__current_item.test
 
         self.thread = TRunTest(test)
-        self.thread.finished.connect(self.__threadFinished)
+        self.thread.finished.connect(self.__onTestComplete)
         self.thread.start()
 
     # }}}
@@ -198,8 +203,7 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         if not new_name:
             return
 
-        item = self.currentItem()
-        test = item.test
+        test = self.__current_item.test
 
         new_test = Thread.copyTest(test, new_name)
         if new_test:
@@ -212,8 +216,7 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
     def __onEdit(self):
         logger.debug(f"{self.__class__.__name__}.__onEdit()")
 
-        item = self.currentItem()
-        test = item.test
+        test = self.__current_item.test
 
         dial = TestEditDialog()
         edited = dial.editTest(test)
@@ -233,19 +236,18 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
             return
 
         # get current test
-        item = self.currentItem()
-        test = item.test
+        test = self.__current_item.test
 
         # try rename test
         renamed_test = Thread.renameTest(test, new_name)
         if not renamed_test:
             return
 
-        # delete old item
+        # delete old item from tree
         index = self.indexFromItem(item).row()
         self.takeTopLevelItem(index)
 
-        # add renamed test
+        # add renamed item
         self.addTest(renamed_test)
 
     # }}}
@@ -256,8 +258,7 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         if not Dialog.confirm():
             return
 
-        item = self.currentItem()
-        test = item.test
+        test = self.__current_item.test
 
         # delete test
         Thread.deleteTest(test)
@@ -280,50 +281,59 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
     def __onSelectStrategy(self):
         logger.debug(f"{self.__class__.__name__}.__onSelectStrategy()")
 
-        # itlist = self.currentItem()
-        # itlist.selectFilter()
+        trade_list_item = self.__current_item
+        trade_list_item.selectStrategys()
 
     # }}}
     @QtCore.pyqtSlot()  # __onSelectLong# {{{
     def __onSelectLong(self):
         logger.debug(f"{self.__class__.__name__}.__onSelectLong()")
 
-        # itlist = self.currentItem()
-        # itlist.selectLong()
+        trade_list_item = self.__current_item
+        trade_list_item.selectLong()
 
     # }}}
     @QtCore.pyqtSlot()  # __onSelectShort# {{{
     def __onSelectShort(self):
         logger.debug(f"{self.__class__.__name__}.__onSelectShort()")
 
-        # itlist = self.currentItem()
-        # itlist.selectShort()
+        trade_list_item = self.__current_item
+        trade_list_item.selectShort()
 
     # }}}
     @QtCore.pyqtSlot()  # __onSelectWin# {{{
     def __onSelectWin(self):
         logger.debug(f"{self.__class__.__name__}.__onSelectWin()")
 
-        # itlist = self.currentItem()
-        # itlist.selectWin()
+        trade_list_item = self.__current_item
+        trade_list_item.selectWin()
 
     # }}}
     @QtCore.pyqtSlot()  # __onSelectLoss# {{{
     def __onSelectLoss(self):
         logger.debug(f"{self.__class__.__name__}.__onSelectLoss()")
 
-        # itlist = self.currentItem()
-        # itlist.selectLoss()
+        trade_list_item = self.__current_item
+        trade_list_item.selectLoss()
 
     # }}}
     @QtCore.pyqtSlot()  # __onSelectAssets# {{{
     def __onSelectAssets(self):
         logger.debug(f"{self.__class__.__name__}.__onSelectAssets()")
 
+        trade_list_item = self.__current_item
+        trade_list_item.selectAssets()
+
     # }}}
     @QtCore.pyqtSlot()  # __onSelectYears# {{{
     def __onSelectYears(self):
         logger.debug(f"{self.__class__.__name__}.__onSelectYears()")
+
+        item = self.__current_item
+        trade_list = item.trade_list
+        test = trade_list.owner
+        for year in range(test.begin.year, test.end.year):
+            item.selectYear(year)
 
     # }}}
 
@@ -397,14 +407,27 @@ class TradeTree(QtWidgets.QTreeWidget):  # {{{
         self.__createMenus()
         self.__connect()
 
+        self.__current_item = None
+
+    # }}}
+
+    def mouseDoubleClickEvent(self, e: QtGui.QMouseEvent):  # {{{
+        logger.debug(f"{self.__class__.__name__}.mouseDoubleClickEvent(e)")
+
+        trade = self.currentItem().trade
+        dial = TradeInfoDialog()
+        dial.showTradeInfo(trade)
+
+        return e.ignore()
+
     # }}}
     def contextMenuEvent(self, e: QtGui.QContextMenuEvent):  # {{{
         logger.debug(f"{self.__class__.__name__}.contextMenuEvent(e)")
 
-        item = self.itemAt(e.pos())
-        self.__resetActions()
-        self.__setVisibleActions(item)
+        self.__current_item = self.itemAt(e.pos())
+        self.menu.setVisibleActions(self.__current_item)
         self.menu.exec(QtGui.QCursor.pos())
+
         return e.ignore()
 
     # }}}
@@ -424,6 +447,7 @@ class TradeTree(QtWidgets.QTreeWidget):  # {{{
             pass
 
     # }}}
+
     def __config(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__config()")
 
@@ -443,12 +467,13 @@ class TradeTree(QtWidgets.QTreeWidget):  # {{{
         self.sortByColumn(TradeItem.Column.Date, Qt.SortOrder.AscendingOrder)
 
         # config width
-        self.setColumnWidth(TradeItem.Column.Date, 180)
-        self.setColumnWidth(TradeItem.Column.Type, 100)
-        self.setColumnWidth(TradeItem.Column.Ticker, 100)
-        self.setColumnWidth(TradeItem.Column.Result, 100)
-        self.setColumnWidth(TradeItem.Column.PPD, 100)
-        self.setMinimumWidth(600)
+        self.setColumnWidth(TradeItem.Column.Date, 160)
+        self.setColumnWidth(TradeItem.Column.Type, 60)
+        self.setColumnWidth(TradeItem.Column.Ticker, 60)
+        self.setColumnWidth(TradeItem.Column.Status, 70)
+        self.setColumnWidth(TradeItem.Column.Result, 70)
+        self.setColumnWidth(TradeItem.Column.PPD, 60)
+        self.setMinimumWidth(500)
 
     # }}}
     def __createMenus(self) -> None:  # {{{
@@ -458,18 +483,19 @@ class TradeTree(QtWidgets.QTreeWidget):  # {{{
 
     # }}}
     def __connect(self):  # {{{
-        self.menu.show_chart.triggered.connect(self.__onShowChart)
+        logger.debug(f"{self.__class__.__name__}.__connect()")
+
         self.menu.info.triggered.connect(self.__onInfo)
 
     # }}}
-    @QtCore.pyqtSlot()  # __onShowChart# {{{
-    def __onShowChart(self):
-        logger.debug(f"{self.__class__.__name__}.__onShowChart()")
 
-    # }}}
     @QtCore.pyqtSlot()  # __onInfo# {{{
     def __onInfo(self):
         logger.debug(f"{self.__class__.__name__}.__onInfo()")
+
+        trade = self.__current_item.trade
+        dial = TradeInfoDialog()
+        dial.showTradeInfo(trade)
 
     # }}}
 
@@ -480,14 +506,12 @@ class _TradeMenu(Menu):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         Menu.__init__(self, parent=parent)
 
-        self.show_chart = QtGui.QAction("Show on chart", self)
         self.info = QtGui.QAction("Info", self)
 
-        self.addAction(self.show_chart)
         self.addAction(self.info)
 
     # }}}
-    def __setVisibleActions(self, item):  # {{{
+    def setVisibleActions(self, item):  # {{{
         logger.debug(f"{self.__class__.__name__}.__setVisibleActions()")
 
         # disable all actions
@@ -497,7 +521,7 @@ class _TradeMenu(Menu):  # {{{
         # # enable availible for this item
         if item is None:
             self.info.setEnabled(False)
-        elif isinstance(item, ITrade):
+        elif isinstance(item, TradeItem):
             self.info.setEnabled(True)
 
     # }}}

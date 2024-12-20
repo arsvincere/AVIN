@@ -6,24 +6,23 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-from avin.core import Asset, Strategy, TimeFrame, TimeFrameList, Trade
-from avin.utils import Cmd
+from avin import *
 
 
 class UStrategy(Strategy):
-    def __init__(self):
+    def __init__(self):  # {{{
         name = Cmd.dirName(__file__)
         version = Cmd.name(__file__)
         Strategy.__init__(self, name, version)
 
-    @property  # timeframe_list{{{
-    def timeframe_list(self):
-        tflist = TimeFrameList(
+    # }}}
+    def timeframes(self) -> TimeFrameList:  # {{{
+        tf_list = TimeFrameList(
             [
                 TimeFrame("1M"),
             ]
         )
-        return tflist
+        return tf_list
 
     # }}}
     async def start(self):  # {{{

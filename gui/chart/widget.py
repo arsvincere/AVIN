@@ -11,8 +11,11 @@ import sys
 from PyQt6 import QtCore, QtWidgets
 
 from avin.core import Asset, Chart, TimeFrame, Trade, TradeList
+from avin.tester import Test
 from avin.utils import logger, now
 from gui.chart.gchart import GChart, ViewType
+from gui.chart.gmark import Marker
+from gui.chart.gtest import GTradeList
 from gui.chart.scene import ChartScene
 from gui.chart.thread import Thread
 from gui.chart.toolbar import ChartToolBar
@@ -31,6 +34,8 @@ class ChartWidget(QtWidgets.QWidget):
         self.__connect()
 
         self.__asset = None
+        self.__tlist = None
+        self.__markers: list[Marker] = list()
 
     # }}}
 
@@ -38,42 +43,66 @@ class ChartWidget(QtWidgets.QWidget):
         logger.debug(f"{self.__class__.__name__}.setAsset()")
 
         self.__asset = asset
+        self.toolbar.setAsset(asset)
         self.__drawChart()
 
     # }}}
     def setTradeList(self, tlist: TradeList) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.setTradeList()")
 
-        # if itlist.asset is None:
-        #     self.scene.removeGTradeList()
-        #     return
-        #
-        # gtlist = GTradeList(itlist)
-        # self.__setTimeframe1(TimeFrame("D"))
-        # self.__setTimeframe2(TimeFrame("5M"))
-        # self.__setBegin(gtlist.begin)
-        # self.__setEnd(gtlist.end)
-        #
-        # self.scene.setGTradeList(gtlist)
-        # self.view.centerOnFirst()
+        # FIX: в базе остаются трейды со статусом INITIAL и тп
+        # после тестера, надо сделать чтобы сама стратегия их
+        # удаляла когда они не актуальны, а потом еще
+        # тестер в конце теста подчищает все такое безобразие
+        # и выдает какую то сводку, мол тест окончен, еще
+        # столько то трейдов висело незавершенных - они выкинуты
+        # или сложнее... INITIAL трейды тоже можно сохранять
+        # но надо их корректно обрабатывать, у них нет result()
+        # и тп...
+        # Пока ставлю заглушку - пропускаю все трейды кроме CLOSED
+        # tlist = tlist.selectStatus(Trade.Status.CLOSED)
+
+        test = tlist.owner
+        assert isinstance(test, Test)
+        gtrade_list = GTradeList.fromSelected(test, tlist)
+        asset = test.asset
+
+        self.toolbar.setFirstTimeFrame(TimeFrame("D"))
+        self.toolbar.resetSecondTimeFrames()
+
+        self.scene.setGTradeList(gtrade_list)
+        self.view.centerOnFirst()
+
+        # FIX:
+        # во первых надо сохранять то что сейчас активен GTradeList
+        # чтобы работала смена таймфрейма
+        # во вторых при создании GTradeList надо использовать
+        # таймфрейм
+        # возможно стоит в тест вообще вернуть таймфрейм
+        # думать думать думать
+        self.__tlist = tlist
+        self.__asset = asset
+        self.toolbar.setAsset(asset)
 
     # }}}
     def showTrade(self, trade: Trade):  # {{{
         logger.debug(f"{self.__class__.__name__}.showTrade()")
 
-        # gtrade = itrade.gtrade
-        # if gtrade:
-        #     self.view.centerOnTrade(gtrade)
+        self.view.centerOnTrade(trade)
 
     # }}}
     def clearAll(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.clearAll()")
 
-        self.scene.removeChart()
-        self.scene.removeTradeList()
-        self.scene.removeIndicator()
-        self.scene.removeMark()
+        self.scene.removeGChart()
+        self.scene.removeGTrades()
+        # self.scene.removeIndicator()
+        # self.scene.removeMark()
         self.view.resetTransform()
+
+        self.__tlist = None
+        self.__asset = None
+        self.toolbar.setAsset(None)
 
     # }}}
 
@@ -81,7 +110,7 @@ class ChartWidget(QtWidgets.QWidget):
         logger.debug(f"{self.__class__.__name__}.__config()")
 
         self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
-        self.setWindowTitle("AVIN  -  Ars  Vincere")
+        self.setWindowTitle("AVIN")
         self.setStyleSheet(Css.STYLE)
 
     # }}}
@@ -112,9 +141,10 @@ class ChartWidget(QtWidgets.QWidget):
         self.toolbar.secondTimeFrameChanged.connect(self.__onTimeframe2)
         self.toolbar.barViewSelected.connect(self.__onBarView)
         self.toolbar.cundleViewSelected.connect(self.__onCundleView)
+        self.toolbar.newMarker.connect(self.__onNewMarker)
 
     # }}}
-    def __drawChart(self) -> None:  # {{{
+    def __drawChart(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__drawChart()")
 
         timeframe = self.toolbar.firstTimeFrame()
@@ -142,7 +172,7 @@ class ChartWidget(QtWidgets.QWidget):
     def __onTimeframe2(self, timeframe: TimeFrame, endbled: bool):
         logger.debug(f"{self.__class__.__name__}.__onTimeframe2()")
 
-        gchart = self.scene.currentChart()
+        gchart = self.scene.currentGChart()
         if gchart is None:
             return
 
@@ -156,7 +186,7 @@ class ChartWidget(QtWidgets.QWidget):
     def __onBarView(self):
         logger.debug(f"{self.__class__.__name__}.__onBarView()")
 
-        gchart = self.scene.currentChart()
+        gchart = self.scene.currentGChart()
         if gchart is None:
             return
 
@@ -167,11 +197,24 @@ class ChartWidget(QtWidgets.QWidget):
     def __onCundleView(self):
         logger.debug(f"{self.__class__.__name__}.__onCundleView()")
 
-        gchart = self.scene.currentChart()
+        gchart = self.scene.currentGChart()
         if gchart is None:
             return
 
         gchart.setViewType(ViewType.CUNDLE)
+
+    # }}}
+    @QtCore.pyqtSlot(Marker)  # __onNewMarker  # {{{
+    def __onNewMarker(self, marker: Marker):
+        logger.debug(f"{self.__class__.__name__}.__onNewMarker()")
+
+        if self.__asset is None:
+            return
+
+        self.__markers.append(marker)
+
+        gchart = self.scene.currentGChart()
+        gchart.addMarker(marker)
 
     # }}}
 

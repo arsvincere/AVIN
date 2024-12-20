@@ -6,8 +6,6 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-"""doc"""
-
 from __future__ import annotations
 
 import asyncio
@@ -129,7 +127,7 @@ class Account:
     # }}}
     async def post(self, order: Order) -> bool:  # {{{
         logger.debug("Account.post()")
-        logger.info(f":: {self} post order: {order}")
+        logger.info(f":: Post: {order}")
 
         self.__active_orders.append(order)
 
@@ -156,15 +154,22 @@ class Account:
     # }}}
     async def cancel(self, order) -> bool:  # {{{
         logger.debug("Account.cancel()")
-        logger.info(f":: Account {self.__name} cancel order: {order}")
+        logger.info(f":: Cancel: {order}")
+
+        # TODO: а что если такого ордера нет?
+        # что sync тогда вернте?
+        await self.broker.syncOrder(self, order)
 
         t = Order.Type
         if order.type == t.LIMIT:
-            result = self.__broker.cancelLimitOrder(self, order)
+            result = await self.__broker.cancelLimitOrder(self, order)
         elif order.type in (t.STOP, t.STOP_LOSS, t.TAKE_PROFIT):
-            result = self.__broker.cancelStopOrder(self, order)
+            result = await self.__broker.cancelStopOrder(self, order)
         else:
             assert False, f"че за тип ордера? {order.type}"
+
+        # remove order from self.__active_orders
+        self.__active_orders.remove(order)
 
         return result
 
@@ -193,15 +198,15 @@ class Account:
         logger.debug(f"Account.__onOrderFilled({order})")
         assert order.status == Order.Status.FILLED
 
+        # get order operation, save
         operation = await self.__broker.getOrderOperation(self, order)
         operation.operation_id = Id.newId()
-
         await Operation.save(operation)
-        await order.setStatus(Order.Status.EXECUTED)
-        await order.executed.async_emit(order, operation)
 
-        # remove order from self.__active_orders
+        # remove order from active, send signal 'executed'
+        await order.setStatus(Order.Status.EXECUTED)
         self.__active_orders.remove(order)
+        await order.executed.aemit(order, operation)
 
         # await commission for operation
         if operation.commission == 0:
@@ -223,6 +228,7 @@ class Account:
 
 
 # }}}
+
 
 if __name__ == "__main__":
     ...

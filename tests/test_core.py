@@ -284,8 +284,6 @@ def test_TransactionList():  # {{{
 
 
 # }}}
-
-
 @pytest.mark.asyncio  # test_Chart  # {{{
 async def test_Chart(event_loop):
     sber = await Asset.fromTicker(
@@ -682,7 +680,7 @@ async def test_Trade():
         trade_type=trade_type,
         instrument=sber,
         trade_id=trade_id,
-        trade_list=tlist_name,
+        trade_list_name=tlist_name,
     )
     assert trade.trade_id == trade_id
     assert trade.dt == dt
@@ -710,7 +708,7 @@ async def test_Trade():
     await trade.attachOrder(order)  # signals of order connect automaticaly
     assert order.trade_id == trade.trade_id  # and parent trade_id was seted
 
-    await order.posted.async_emit(order)
+    await order.posted.aemit(order)
     assert (
         trade.status == Trade.Status.AWAIT_EXEC
     )  # side effect - status changed
@@ -732,7 +730,7 @@ async def test_Trade():
         meta=None,
     )
 
-    await order.executed.async_emit(order, operation)
+    await order.executed.aemit(order, operation)
     assert trade.status == Trade.Status.OPENED  # side effect - status changed
 
     # other property availible for opened trade
@@ -782,8 +780,8 @@ async def test_Trade():
         meta=None,
     )
     await trade.attachOrder(order_2)  # signals of order connect automaticaly
-    await order_2.posted.async_emit(order_2)
-    await order_2.executed.async_emit(order_2, operation_2)
+    await order_2.posted.aemit(order_2)
+    await order_2.executed.aemit(order_2, operation_2)
 
     assert trade.status == Trade.Status.CLOSED
     assert trade.isLong()
@@ -852,7 +850,7 @@ async def test_TradeList():
         trade_type=trade_type,
         instrument=asset,
         trade_id=trade_id_1,
-        trade_list=tlist_name,
+        trade_list_name=tlist_name,
     )
     trade_id_2 = Id(1112.0)
     trade_2 = Trade(
@@ -862,7 +860,7 @@ async def test_TradeList():
         trade_type=trade_type,
         instrument=asset,
         trade_id=trade_id_2,
-        trade_list=tlist_name,
+        trade_list_name=tlist_name,
     )
     tlist.add(trade_1)  # only add in TradeList, not in db
     tlist.add(trade_2)  # only add in TradeList, not in db
@@ -882,6 +880,61 @@ async def test_TradeList():
     tlist.clear()  # only in RAM, not in db
     # delete
     await TradeList.delete(tlist)  # del in db tlist & del trades too
+
+
+# }}}
+@pytest.mark.asyncio  # test_Filter  # {{{
+async def test_Filter():
+    code = """# {{{
+import avin
+
+def condition(asset: avin.Asset) -> bool:
+    chart = asset.chart("D")
+
+    if chart[3] is None:
+        return False
+
+    b3 = chart[3]
+    b2 = chart[2]
+    b1 = chart[1]
+
+    if b3.isBull() and b2.isBull() and b1.isBull():
+        return True
+
+    return False
+
+"""  # }}}
+    f = Filter("_bull_3", code)
+
+    asset = await Asset.fromStr("MOEX-SHARE-AFKS")
+    timeframe = TimeFrame("D")
+    begin = datetime(2023, 1, 1, tzinfo=UTC)
+    end = datetime(2024, 1, 1, tzinfo=UTC)
+    await asset.cacheChart(timeframe, begin, end)
+
+    chart = asset.chart("D")
+
+    chart.setHeadIndex(0)
+    while chart.nextHead():
+        if f.check(asset):
+            assert chart[3].isBull()
+            assert chart[2].isBull()
+            assert chart[1].isBull()
+
+    Filter.save(f)
+    file_path = Cmd.path(Usr.FILTER, "_bull_3.py")
+    assert Cmd.isExist(file_path)
+
+    Filter.rename(f, "_bbb")
+    file_path = Cmd.path(Usr.FILTER, "_bbb.py")
+    assert Cmd.isExist(file_path)
+
+    loaded = Filter.load("_bbb")
+    assert loaded.name == f.name
+    assert loaded.code == f.code
+
+    loaded = Filter.delete(loaded)
+    assert not Cmd.isExist(file_path)
 
 
 # }}}

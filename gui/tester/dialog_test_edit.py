@@ -10,9 +10,11 @@ import sys
 
 from PyQt6 import QtCore, QtWidgets
 
+from avin.config import Usr
+from avin.const import Dir, Res
 from avin.tester import Test
-from avin.utils import logger
-from gui.custom import Css, Icon, LineEdit, ToolButton
+from avin.utils import Cmd, logger
+from gui.custom import Css, Dialog, Icon, LineEdit, ToolButton
 from gui.strategy import StrategySetWidget
 from gui.tester.thread import Thread
 
@@ -31,50 +33,105 @@ class TestEditDialog(QtWidgets.QDialog):
 
     # }}}
 
-    def newTest(self):  # {{{
+    def newTest(self) -> Test | None:  # {{{
         logger.debug(f"{self.__class__.__name__}.newTest()")
 
-        # create new test, and exec edit dialog
-        new_test = Test("unnamed")
-        self.__readTest(new_test)
-        result = self.exec()
+        # copy template test cfg in tmp dir
+        template_path = Cmd.path(Res.TEMPLATE, "test", "cfg.json")
+        tmp_path = Cmd.path(Dir.TMP, "new_test.json")
+        Cmd.copy(template_path, tmp_path)
 
-        # check exec status
-        if result == QtWidgets.QDialog.DialogCode.Rejected:
-            logger.info("Cancel new test")
-            return False
+        # edit cfg.json file
+        command = (
+            Usr.TERMINAL,
+            *Usr.OPT,
+            Usr.EXEC,
+            Usr.EDITOR,
+            tmp_path,
+        )
+        Cmd.subprocess(command)
 
-        # write config from UI, save
-        self.__writeTest(new_test)
-        Thread.saveTest(new_test)
+        # confirmation
+        if not Dialog.confirm("Save test?"):
+            return None
+
+        # save test in database
+        obj = Cmd.loadJson(tmp_path)
+        new_test = Thread.fromJson(obj)
+        Thread.saveTest(new_test)  # save in db
 
         logger.info(f"New test '{new_test.name}' created")
         return new_test
+
+        # # create new test, and exec edit dialog
+        # new_test = Test("unnamed")
+        # self.__readTest(new_test)
+        # result = self.exec()
+        #
+        # # check exec status
+        # if result == QtWidgets.QDialog.DialogCode.Rejected:
+        #     logger.info("Cancel new test")
+        #     return None
+        #
+        # # write config from UI, save
+        # self.__writeTest(new_test)
+        # Thread.saveTest(new_test)
+        #
+        # logger.info(f"New test '{new_test.name}' created")
+        # return new_test
 
     # }}}
     def editTest(self, test: Test):  # {{{
         logger.debug(f"{self.__class__.__name__}.editTest()")
 
-        # read test config to UI
-        self.__readTest(test)
-        result = self.exec()
+        # save test as json in tmp dir
+        obj = test.toJson(test)
+        tmp_path = Cmd.path(Dir.TMP, "new_test.json")
+        Cmd.saveJson(obj, tmp_path)
 
-        # check exec status
-        if result == QtWidgets.QDialog.DialogCode.Rejected:
-            logger.info("Cancel edit test")
-            return False
+        # read json file
+        command = (
+            Usr.TERMINAL,
+            *Usr.OPT,
+            Usr.EXEC,
+            Usr.EDITOR,
+            tmp_path,
+        )
+        Cmd.subprocess(command)
 
-        # delete old test
-        Thread.deleteTest(test)
+        # confirmation
+        if not Dialog.confirm("Save test?"):
+            return None
 
-        # create new test, write config from UI, set status, save
-        edited = Test("")
-        self.__writeTest(edited)
-        edited.status = Test.Status.EDITED
-        Thread.saveTest(edited)
+        # save test in database
+        obj = Cmd.loadJson(tmp_path)
+        test = Thread.fromJson(obj)
+        test.status = Test.Status.EDITED
+        Thread.saveTest(test)  # save in db
 
         logger.info("Test edited")
-        return edited
+        return test
+
+        # # read test config to UI
+        # self.__readTest(test)
+        # result = self.exec()
+        #
+        # # check exec status
+        # if result == QtWidgets.QDialog.DialogCode.Rejected:
+        #     logger.info("Cancel edit test")
+        #     return False
+        #
+        # # delete old test
+        # Thread.deleteTest(test)
+        #
+        # # create new test, write config from UI, set status, save
+        # edited = Test("")
+        # self.__writeTest(edited)
+        # edited.status = Test.Status.EDITED
+        # Thread.saveTest(edited)
+        #
+        # logger.info("Test edited")
+        # return edited
 
     # }}}
 

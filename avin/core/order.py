@@ -109,6 +109,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         transacts,
     ):
         logger.debug("Order.__init__()")
+        assert lots > 0
 
         self.type = order_type
         self.account_name = account_name
@@ -139,9 +140,10 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     # }}}
     def __str__(self):  # {{{
         string = (
-            f"type={self.type.name} "
-            f"status={self.status.name} "
-            f"acc={self.account_name} "
+            f"Order id={self.order_id} "
+            f"[{self.type.name}] "
+            f"[{self.status.name}] "
+            f"({self.account_name}) "
             f"{self.direction.name} "
             f"{self.instrument.ticker} "
             f"{self.exec_lots}/{self.lots} lot"
@@ -157,6 +159,34 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         return string
 
     # }}}
+    def pretty(self) -> str:  # {{{
+        logger.debug(f"{self.__class__.__name__}.pretty()")
+
+        text = f"""Order:
+    id:             {self.order_id}
+    type:           {self.type.name}
+    account:        {self.account_name}
+    direction:      {self.direction.name}
+    instrument:     {self.instrument}
+    lots:           {self.lots}
+    quantity:       {self.quantity}
+    status:         {self.status}
+    trade_id:       {self.trade_id}
+    exec_lots:      {self.exec_lots}
+    exec_quantity:  {self.exec_quantity}
+    meta:           {self.meta}
+    broker_id:      {self.broker_id}
+    transacts:      {self.transactions}
+"""
+        return text
+
+    # }}}
+
+    def isActive(self) -> bool:
+        logger.debug(f"{self.__class__.__name__}.isActive()")
+
+        return self.status.value < Order.Status.EXECUTED.value
+
     async def setStatus(self, status: Order.Status):  # {{{
         logger.debug(f"Order.setStatus({status})")
 
@@ -181,14 +211,14 @@ class Order(metaclass=abc.ABCMeta):  # {{{
 
         # emitting special signal for this status
         if status == Order.Status.POSTED:
-            await self.posted.async_emit(self)
+            await self.posted.aemit(self)
         if status == Order.Status.REJECTED:
-            await self.rejected.async_emit(self)
+            await self.rejected.aemit(self)
         if status == Order.Status.CANCELED:
-            await self.canceled.async_emit(self)
+            await self.canceled.aemit(self)
 
         # emiting common signal
-        await self.statusChanged.async_emit(self)
+        await self.statusChanged.aemit(self)
 
     # }}}
     async def setParentTrade(self, trade):  # {{{
@@ -284,7 +314,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     async def __limitOrderFromRecord(cls, record):
         logger.debug(f"Order.__limitOrderFromRecord({record})")
 
-        instrument = await Instrument.byFigi(figi=record["figi"])
+        instrument = await Instrument.fromFigi(figi=record["figi"])
         order = LimitOrder(
             account_name=record["account"],
             direction=Direction.fromStr(record["direction"]),
@@ -307,7 +337,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     async def __stopOrderFromRecord(cls, record):
         logger.debug(f"Order.__stopOrderFromRecord({record})")
 
-        instrument = await Instrument.byFigi(figi=record["figi"])
+        instrument = await Instrument.fromFigi(figi=record["figi"])
         order = StopOrder(
             account_name=record["account"],
             direction=Direction.fromStr(record["direction"]),
@@ -331,7 +361,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     async def __stopLossFromRecord(cls, record):
         logger.debug(f"Order.__stopLossFromRecord({record})")
 
-        instrument = await Instrument.byFigi(figi=record["figi"])
+        instrument = await Instrument.fromFigi(figi=record["figi"])
         order = StopLoss(
             account_name=record["account"],
             direction=Direction.fromStr(record["direction"]),
@@ -355,7 +385,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     async def __takeProfitFromRecord(cls, record):
         logger.debug(f"Order.__takeProfitFromRecord({record})")
 
-        instrument = await Instrument.byFigi(figi=record["figi"])
+        instrument = await Instrument.fromFigi(figi=record["figi"])
         order = TakeProfit(
             account_name=record["account"],
             direction=Direction.fromStr(record["direction"]),
@@ -506,7 +536,7 @@ class StopLoss(Order):  # {{{
         lots: int,
         quantity: int,
         stop_price: float,
-        exec_price: float,
+        exec_price: float | None,
         status: Order.Status = Order.Status.NEW,
         order_id: Optional[Id] = None,
         trade_id: Optional[Id] = None,

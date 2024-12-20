@@ -9,7 +9,6 @@
 import asyncio
 
 import pytest
-
 from avin import *
 
 order = "LimitOrder"
@@ -17,8 +16,7 @@ operations = ["op1", "op2", "op3"]
 
 
 def test_Signal():
-    ###
-    ...
+    return
 
 
 async def slot1(*args):
@@ -36,10 +34,10 @@ async def slot2(*args):
 @pytest.mark.asyncio  # test_AsyncSignal  # {{{
 async def test_AsyncSignal(event_loop):
     fulfilled = AsyncSignal(str, list)
-    await fulfilled.async_connect(slot1)
-    await fulfilled.async_connect(slot2)
+    fulfilled.aconnect(slot1)
+    fulfilled.aconnect(slot2)
 
-    await fulfilled.async_emit(order, operations)
+    await fulfilled.aemit(order, operations)
 
 
 # }}}

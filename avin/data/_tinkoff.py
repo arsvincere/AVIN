@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import tinkoff.invest as ti
 
-from avin.config import Usr
+from avin.config import Auto, Usr
 from avin.const import Res
 from avin.data._abstract_source import _AbstractDataSource
 from avin.data._cache import _InstrumentsInfoCache
@@ -41,7 +41,7 @@ class _TinkoffData(_AbstractDataSource):
     __TARGET = ti.constants.INVEST_GRPC_API
     __TOKEN_PATH = Usr.TINKOFF_TOKEN
     __TOKEN = None
-    __AUTO_UPDATE = Usr.AUTO_UPDATE_ASSET_CACHE
+    __AUTO_UPDATE = Auto.UPDATE_ASSET_CACHE
 
     @classmethod  # cacheInstrumentsInfo# {{{
     async def cacheInstrumentsInfo(cls) -> None:

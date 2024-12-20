@@ -11,6 +11,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Iterator, Optional
 
+from avin.config import Usr
 from avin.keeper import Keeper
 from avin.utils import logger
 
@@ -35,12 +36,14 @@ class Transaction:
     # }}}
     def __str__(self) -> str:  # {{{
         string = (
-            f"Transaction order_id={self.order_id} dt={self.dt} "
-            f"quantity={self.quantity} price={self.price}"
+            f"Transaction order_id={self.order_id} "
+            f"dt={Usr.localTime(self.dt)} "
+            f"{self.price} * {self.quantity}"
         )
         return string
 
     # }}}
+
     @classmethod  # save  # {{{
     async def save(cls, transaction: Transaction) -> None:
         await Keeper.add(transaction)

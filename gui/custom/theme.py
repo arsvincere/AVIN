@@ -66,6 +66,7 @@ class Theme:
         OPEN = QtGui.QColor("#AAAAAA")
         TRADE_WIN = QtGui.QColor("#00AA00")
         TRADE_LOSS = QtGui.QColor("#AA0000")
+        TRADE_UNDEFINE = QtGui.QColor("#888888")
         # Mark
         MARK = QtGui.QColor("#0000AA")
         # Extremum

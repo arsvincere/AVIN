@@ -6,63 +6,33 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-from PyQt6 import QtWidgets
+from PyQt6 import QtCore, QtWidgets
 
 from avin.utils import logger
 from gui.chart.gchart import GChart
 from gui.chart.glabels import BarInfo, ChartLabels, VolumeInfo
-from gui.chart.gtrade import GTradeList
+from gui.chart.gtest import GTradeList
 from gui.custom import Theme
-from gui.indicator.extremum import ExtremumHandler
 
 
 class ChartScene(QtWidgets.QGraphicsScene):
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QGraphicsScene.__init__(self, parent)
+
         self.__config()
+        self.__createEmpyRect()
         self.__createWidgets()
         self.__createChartGroup()
         self.__createTListGroup()
         self.__createIndicatorGroup()
+        self.__createIgnoreScaleList()
 
     # }}}
-    def __config(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__config()")
-        self.setBackgroundBrush(Theme.Chart.BG)
 
-    # }}}
-    def __createWidgets(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createWidgets()")
-        self.labels = self.addWidget(ChartLabels())
-        self.bar_info = BarInfo()
-        self.vol_info = VolumeInfo()
-        eh = ExtremumHandler()
-        self.extr_label = eh.getLabel()
-        self.labels.widget().add(self.bar_info)
-        self.labels.widget().add(self.vol_info)
-        self.labels.widget().add(self.extr_label)
-
-    # }}}
-    def __createChartGroup(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createChartGroup()")
-        self.__has_chart = False
-        self.gchart = None
-
-    # }}}
-    def __createTListGroup(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createTListGroup()")
-        self.__has_gtlist = False
-        self.gtlist = None
-
-    # }}}
-    def __createIndicatorGroup(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createIndicatorGroup()")
-        self.indicators = QtWidgets.QGraphicsItemGroup()
-        self.addItem(self.indicators)
-
-    # }}}
     def mouseMoveEvent(self, e: QtWidgets.QGraphicsSceneMouseEvent):  # {{{
+        logger.debug(f"{self.__class__.__name__}.mouseMoveEvent()")
+
         # print(e.pos())
         # print(e.scenePos())
         # print(e.screenPos())
@@ -79,26 +49,32 @@ class ChartScene(QtWidgets.QGraphicsScene):
             return e.ignore()
         self.bar_info.set(bar)
         self.vol_info.set(bar)
+
         return e.ignore()
 
     # }}}
     def mousePressEvent(self, e: QtWidgets.QGraphicsSceneMouseEvent):  # {{{
+        logger.debug(f"{self.__class__.__name__}.mousePressEvent()")
+
         pos = e.scenePos()
         items = self.items(pos)
         for i in items:
             if isinstance(i, QtWidgets.QGraphicsProxyWidget):
                 self.extr_label.mousePressEventtt()
-        # return e.ignore()
 
-    # }}}
-    def mouseReleaseEvent(self, e):  # {{{
-        view = self.views()[0]
-        p = view.mapToScene(0, 0)
-        self.labels.setPos(p)
         return e.ignore()
 
     # }}}
-    def mouseDoubleClickEvent(self, e):  # {{{
+    def mouseReleaseEvent(self, e: QtWidgets.QGraphicsSceneMouseEvent):  # {{{
+        logger.debug(f"{self.__class__.__name__}.mouseReleaseEvent()")
+
+        return e.ignore()
+
+    # }}}
+    def mouseDoubleClickEvent(  # {{{
+        self, e: QtWidgets.QGraphicsSceneMouseEvent
+    ):
+        logger.debug(f"{self.__class__.__name__}.mouseReleaseEvent()")
         """
         загрузить новый график, именно за этот период (бар)
         стереть станый график.
@@ -144,56 +120,124 @@ class ChartScene(QtWidgets.QGraphicsScene):
         #             i += 1
 
     # }}}
-    def setGChart(self, gchart: GChart):  # {{{
+
+    def setGChart(self, gchart: GChart) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.setGChart()")
+
         self.removeGChart()
         self.setSceneRect(gchart.rect)
         self.addItem(gchart)
         self.gchart = gchart
         self.__has_chart = True
-        return True
 
     # }}}
-    def setGTradeList(self, gtlist: GTradeList):  # {{{
-        logger.debug(f"{self.__class__.__name__}.setGTradeList()")
-        self.removeGTradeList()
-        self.gchart = gtlist.gchart
-        self.gtlist = gtlist
-        self.__has_chart = True
-        self.__has_gtlist = True
-        self.setSceneRect(self.gchart.rect)
-        self.addItem(self.gchart)
-        self.addItem(self.gtlist)
-
-    # }}}
-    def addIndicator(self, gi):  # {{{
-        logger.debug(f"{self.__class__.__name__}.addIndicator()")
-        self.indicators.addToGroup(gi)
-
-    # }}}
-    def removeGChart(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.removeGChart()")
-        if self.__has_chart:
-            self.removeItem(self.gchart)
-            self.__has_chart = False
-
-    # }}}
-    def removeGTradeList(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.removeGTradeList()")
-        if self.__has_chart:
-            self.removeItem(self.gchart)
-            self.__has_chart = False
-        if self.__has_gtlist:
-            self.removeItem(self.gtlist)
-            self.__has_gtlist = False
-
-    # }}}
-    def currentChart(self):  # {{{
+    def currentGChart(self) -> GChart:  # {{{
         logger.debug(f"{self.__class__.__name__}.currentChart()")
+
         return self.gchart
 
+    # }}}
+    def removeGChart(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.removeGChart()")
 
-# }}}
+        if self.__has_chart:
+            self.removeItem(self.gchart)
+            self.__has_chart = False
+
+    # }}}
+
+    def setGTradeList(self, gtrade_list: GTradeList) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.setGTradeList()")
+
+        self.setGChart(gtrade_list.gchart)
+
+        self.removeGTrades()
+        self.gtrades = gtrade_list.gtrades
+        self.addItem(self.gtrades)
+        self.__has_gtrades = True
+
+        # TODO: это порно код, подумай как лучше сделать
+        view = self.views()[0]
+        view.resetCurrentGTrade()
+
+    # }}}
+    def removeGTrades(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.removeGTrades()")
+
+        if self.__has_gtrades:
+            self.removeItem(self.gtrades)
+            self.__has_gtrades = False
+
+    # }}}
+
+    def addIndicator(self, gi):  # {{{
+        logger.debug(f"{self.__class__.__name__}.addIndicator()")
+
+        # TODO: it
+        assert False
+
+    # }}}
+
+    def __config(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__config()")
+
+        self.setBackgroundBrush(Theme.Chart.BG)
+
+    # }}}
+    def __createEmpyRect(self):  # {{{
+        """Инициализируем сцену произвольным прямоугольником
+
+        Просто для того чтобы потом scene.labels нормально в верхнем
+        углу расположить.
+        """
+        logger.debug(f"{self.__class__.__name__}.__createEmpyRect()")
+
+        rect = QtCore.QRectF(0, 0, 800, 600)
+        self.setSceneRect(rect)
+
+    # }}}
+    def __createWidgets(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createWidgets()")
+
+        # create widgets
+        self.bar_info = BarInfo()
+        self.vol_info = VolumeInfo()
+
+        # create QtWidgets.QGraphicsProxyWidget
+        self.labels = self.addWidget(ChartLabels())
+
+        # add
+        self.labels.widget().add(self.bar_info)
+        self.labels.widget().add(self.vol_info)
+
+    # }}}
+    def __createChartGroup(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createChartGroup()")
+
+        self.__has_chart = False
+        self.gchart = None
+
+    # }}}
+    def __createTListGroup(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createTListGroup()")
+
+        self.__has_gtrades = False
+        self.gtrades = None
+
+    # }}}
+    def __createIndicatorGroup(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createIndicatorGroup()")
+
+        self.indicators = QtWidgets.QGraphicsItemGroup()
+        self.addItem(self.indicators)
+
+    # }}}
+    def __createIgnoreScaleList(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createIgnoreScaleList()")
+
+        self.ignore_scale = list()
+
+    # }}}
 
 
 if __name__ == "__main__":

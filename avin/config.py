@@ -7,7 +7,7 @@
 # ============================================================================
 
 import os
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from avin.const import Dir
 
@@ -27,6 +27,11 @@ class Usr:  # {{{
     # set it if you want see time with offset-aware
     # for example for Moscow +3 hours, set 0 if you want see default UTC time
     TIME_DIF = timedelta(hours=3)
+
+    # TODO: move to utils
+    @classmethod  # localTime
+    def localTime(cls, dt: datetime) -> str:
+        return (dt + Usr.TIME_DIF).strftime("%Y-%m-%d %H:%M")
 
     # Your applications
     TERMINAL = "alacritty"
@@ -50,10 +55,6 @@ class Usr:  # {{{
     # 'usr/connect/moex/account.txt'
     MOEX_ACCOUNT = os.path.join(CONNECT, "moex", "account.txt")
 
-    # Auto update
-    AUTO_UPDATE_ASSET_CACHE = True  # TODO: move to class Auto
-    AUTO_UPDATE_MARKET_DATA = True  # TODO: move to class Auto
-
     # Postresql settings
     PG_USER = "alex"
     PG_PASSWORD = ""
@@ -74,6 +75,24 @@ class Auto:  # {{{
 
 
 # }}}
+class Cfg:  # {{{
+    class Chart:  # {{{
+        BAR_WIDTH = 8
+        BAR_HEIGHT = 10  # px на 1% цены
+        BAR_INDENT = 1
+        CUNDLE_INDENT = 2
+        SHADOW_WIDTH = 1
+
+    # }}}
+    class ShapeSize:
+        VERY_SMALL = 4  # px
+        SMALL = 6
+        NORMAL = 8
+        BIG = 12
+        VERY_BIG = 16
 
 
-__all__ = ("Usr", "Auto")
+# }}}
+
+
+__all__ = ("Usr", "Auto", "Cfg")

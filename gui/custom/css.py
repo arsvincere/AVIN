@@ -266,6 +266,22 @@ class Css:
         padding: 4px;
     """
     # }}}
+    # TRADE_LABEL  # {{{
+    TRADE_LABEL = f"""
+        QLabel {{
+            font-family: Monospace;
+            font-size: 12px;
+            line-height: 20px;
+            background-color: {Theme.bg_mild};
+            color: {Theme.fg_normal};
+            padding: 8px;
+            border-width: 1px;
+            border-radius: 4px;
+            border-style: solid;
+            border-color: {Theme.bg_high};
+        }}
+    """
+    # }}}
     # TITLE   # {{{
     TITLE = f"""
         font-family: Sans;

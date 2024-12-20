@@ -38,20 +38,20 @@ class Keeper:
     DATABASE = Usr.PG_DATABASE
     HOST = Usr.PG_HOST
 
-    __DATA_SCHEME = Cmd.path(Dir.LIB, "keeper", "data_scheme.sql")
-    __ENUMS = Cmd.path(Dir.LIB, "keeper", "enums.sql")
-    __FUNCTIONS = Cmd.path(Dir.LIB, "keeper", "functions.sql")
-    __PUBLIC_SCHEME = Cmd.path(Dir.LIB, "keeper", "public_scheme.sql")
-
     @classmethod  # createDataBase  # {{{
     async def createDataBase(cls) -> None:
         logger.debug(f"{cls.__name__}.createDataBase()")
 
+        data_scheme = Cmd.path(Dir.LIB, "keeper", "data_scheme.sql")
+        enums = Cmd.path(Dir.LIB, "keeper", "enums.sql")
+        functions = Cmd.path(Dir.LIB, "keeper", "functions.sql")
+        public_scheme = Cmd.path(Dir.LIB, "keeper", "public_scheme.sql")
+
         os.system(f"createdb {cls.DATABASE}")
-        os.system(f"psql -d {cls.DATABASE} < {cls.__ENUMS}")
-        os.system(f"psql -d {cls.DATABASE} < {cls.__DATA_SCHEME}")
-        os.system(f"psql -d {cls.DATABASE} < {cls.__PUBLIC_SCHEME}")
-        os.system(f"psql -d {cls.DATABASE} < {cls.__FUNCTIONS}")
+        os.system(f"psql -d {cls.DATABASE} < {enums}")
+        os.system(f"psql -d {cls.DATABASE} < {data_scheme}")
+        os.system(f"psql -d {cls.DATABASE} < {public_scheme}")
+        os.system(f"psql -d {cls.DATABASE} < {functions}")
 
         logger.info("Database has been created")
 
@@ -260,6 +260,7 @@ class Keeper:
             "TakeProfit": cls.__updateOrder,
             "Operation": cls.__updateOperation,
             "_InstrumentsInfoCache": cls.__updateCache,
+            "Test": cls.__updateTest,
         }
 
         # Update object
@@ -499,13 +500,13 @@ class Keeper:
 
     # }}}
     @classmethod  # __addTradeList  # {{{
-    async def __addTradeList(cls, tlist: TradeList) -> None:
+    async def __addTradeList(cls, trade_list: TradeList) -> None:
         logger.debug(f"{cls.__name__}.__addTradeList()")
 
         # Add trade list
         request = f"""
             INSERT INTO "TradeList" (name)
-            VALUES ('{tlist.name}');
+            VALUES ('{trade_list.name}');
             """
         await cls.transaction(request)
 
@@ -517,11 +518,18 @@ class Keeper:
         # Add trade
         request = f"""
             INSERT INTO "Trade" (
-                trade_id, tlist, figi, strategy, version, dt, status, type
+                trade_id,
+                trade_list,
+                figi,
+                strategy,
+                version,
+                dt,
+                status,
+                type
                 )
             VALUES (
                 '{trade.trade_id}',
-                '{trade.trade_list}',
+                '{trade.trade_list_name}',
                 '{trade.instrument.figi}',
                 '{trade.strategy}',
                 '{trade.version}',
@@ -643,9 +651,13 @@ class Keeper:
         request = f"""
             INSERT INTO "Test" (
                 name,
-                account,
-                strategy_set,
+                strategy,
+                version,
+                figi,
+                enable_long,
+                enable_short,
                 trade_list,
+                account,
                 status,
                 deposit,
                 commission,
@@ -655,9 +667,13 @@ class Keeper:
                 )
             VALUES (
                 '{test.name}',
-                '{test.account}',
-                '{test.strategy_set.name}',
+                '{test.strategy.name}',
+                '{test.strategy.version}',
+                '{test.asset.figi}',
+                {test.enable_long},
+                {test.enable_short},
                 '{test.trade_list.name}',
+                '{test.account}',
                 '{test.status.name}',
                 {test.deposit},
                 {test.commission},
@@ -1151,7 +1167,7 @@ class Keeper:
         request = f"""
             SELECT
                 "Trade".trade_id,
-                "Trade".tlist,
+                "Trade".trade_list,
                 "Trade".strategy,
                 "Trade".version,
                 "Trade".dt,
@@ -1160,13 +1176,13 @@ class Keeper:
                 "Asset".info
             FROM "Trade"
             JOIN "Asset" ON "Trade".figi = "Asset".figi
-            WHERE tlist = '{name}';
+            WHERE trade_list = '{name}';
             """
         records = await cls.transaction(request)
 
         # create TradeList from trade records
-        tlist = await TradeList.fromRecord(name, records)
-        return tlist
+        trade_list = await TradeList.fromRecord(name, records)
+        return trade_list
 
     # }}}
     @classmethod  # __getTrade  # {{{
@@ -1319,6 +1335,7 @@ class Keeper:
                 broker_id
             FROM "Order"
             WHERE {pg_condition}
+            ORDER BY order_id
             ;
             """
         order_records = await cls.transaction(request)
@@ -1352,13 +1369,27 @@ class Keeper:
 
         # return test if kwargs["name"]
         name = kwargs.get("name")
+        assert name is not None
         request = f"""
             SELECT
-                name, account, strategy_set, trade_list, status,
-                deposit, commission, begin_date, end_date,
-                description
+                "Test".name,
+                "Test".strategy,
+                "Test".version,
+                "Test".figi,
+                "Test".enable_long,
+                "Test".enable_short,
+                "Test".trade_list,
+                "Test".account,
+                "Test".status,
+                "Test".deposit,
+                "Test".commission,
+                "Test".begin_date,
+                "Test".end_date,
+                "Test".description,
+                "Asset".info
             FROM "Test"
-            WHERE name = '{name}'
+            JOIN "Asset" ON "Test".figi = "Asset".figi
+            WHERE "Test".name = '{name}'
             ;
             """
         records = await cls.transaction(request)
@@ -1546,23 +1577,27 @@ class Keeper:
 
     # }}}
     @classmethod  # __deleteTradeList  # {{{
-    async def __deleteTradeList(cls, tlist: TradeList, kwargs: dict) -> None:
+    async def __deleteTradeList(
+        cls, trade_list: TradeList, kwargs: dict
+    ) -> None:
         logger.debug(f"{cls.__name__}.__deleteTradeList()")
+
+        only_trades = kwargs.get("only_trades")
 
         # delete trades
         request = f"""
             DELETE FROM "Trade"
-            WHERE tlist = '{tlist.name}';
+            WHERE trade_list = '{trade_list.name}';
             """
         await cls.transaction(request)
 
-        # delete trade list ?
-        only_trades = kwargs.get("only_trades")
         if only_trades:
             return
+
+        # delete trade list
         request = f"""
             DELETE FROM "TradeList"
-            WHERE name = '{tlist.name}';
+            WHERE name = '{trade_list.name}';
             """
         await cls.transaction(request)
 
@@ -1774,6 +1809,32 @@ class Keeper:
         # что нибудь. Пока это рано. Пока пусть в файлах - это более гибко.
         # когда выработается понимание какие даты будут храниться, тогда
         # и делать таблицу
+
+    # }}}
+    @classmethod  # __updateTest  # {{{
+    async def __updateTest(cls, test: Test, kwargs: dict) -> None:
+        logger.debug(f"{cls.__name__}.__updateTest()")
+
+        request = f"""
+            UPDATE "Test"
+            SET
+                name = '{test.name}',
+                strategy = '{test.strategy.name}',
+                version = '{test.strategy.version}',
+                figi = '{test.asset.figi}',
+                enable_long = {test.enable_long},
+                enable_short = {test.enable_short},
+                status = '{test.status.name}',
+                deposit = {test.deposit},
+                commission = {test.commission},
+                begin_date = '{test.begin}',
+                end_date = '{test.end}',
+                description = '{test.description}'
+            WHERE
+                name = '{test.name}';
+            """
+
+        await cls.transaction(request)
 
     # }}}
 

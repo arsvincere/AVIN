@@ -23,8 +23,8 @@ class TesterDockWidget(QtWidgets.QDockWidget):  # {{{
     def __init__(self, parent=None):  # {{{
         QtWidgets.QDockWidget.__init__(self, "Tester", parent)
 
-        widget = TesterWidget(self)
-        self.setWidget(widget)
+        self.widget = TesterWidget(self)
+        self.setWidget(self.widget)
         self.setStyleSheet(Css.DOCK_WIDGET)
 
         self.setAllowedAreas(
@@ -113,9 +113,9 @@ class TesterWidget(QtWidgets.QWidget):  # {{{
                 self.trade_tree.setTradeList(test.trade_list)
                 self.testChanged.emit(test)
             case "TradeListItem":
-                tlist = item.tlist
-                self.trade_tree.setTradeList(tlist)
-                self.tlistChanged.emit(tlist)
+                trade_list = item.trade_list
+                self.trade_tree.setTradeList(trade_list)
+                self.tlistChanged.emit(trade_list)
 
     # }}}
     @QtCore.pyqtSlot()  # __onTradeTreeClicked# {{{

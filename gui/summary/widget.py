@@ -11,7 +11,7 @@ import sys
 from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import Qt
 
-from avin.core import Summary
+from avin import Summary, TradeList
 from avin.utils import logger
 from gui.custom import Css
 
@@ -40,6 +40,13 @@ class SummaryDockWidget(QtWidgets.QDockWidget):  # {{{
 
         # }}}
 
+    def showSummary(self, tlist: TradeList) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.showSummary()")
+
+        self.widget.showSummary(tlist)
+
+    # }}}
+
 
 # }}}
 class SummaryWidget(QtWidgets.QTableWidget):
@@ -57,11 +64,11 @@ class SummaryWidget(QtWidgets.QTableWidget):
 
     # }}}
 
-    def showSummary(self, itlist):  # {{{
+    def showSummary(self, tlist) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.showSummary()")
 
         self.__clear()
-        df = Summary.calculate(itlist)
+        df = Summary.calculate(tlist)
         for i in df.index:
             for n, val in enumerate(df.loc[i], 0):
                 item = QtWidgets.QTableWidgetItem()
@@ -87,7 +94,7 @@ class SummaryWidget(QtWidgets.QTableWidget):
     def __createHeader(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__createHeader()")
 
-        header = Summary.getHeader()
+        header = Summary.header()
         self.setColumnCount(len(header))
         self.setHorizontalHeaderLabels(header)
 

@@ -18,11 +18,7 @@ import pandas as pd
 from avin.core.chart import Chart
 from avin.core.event import Event
 from avin.core.timeframe import TimeFrame
-from avin.data import (
-    Data,
-    DataType,
-    Instrument,
-)
+from avin.data import Data, DataType, Exchange, Instrument
 from avin.exceptions import AssetError
 from avin.keeper import Keeper
 from avin.utils import AsyncSignal, logger, now
@@ -31,7 +27,7 @@ from avin.utils import AsyncSignal, logger, now
 class Asset(Instrument, ABC):  # {{{
     @abstractmethod  # __init__# {{{
     def __init__(self, info: dict):
-        logger.debug(f"{self.__class__.name}.__init__()")
+        logger.debug(f"{self.__class__.__name__}.__init__()")
         Instrument.__init__(self, info)
 
         # private fields
@@ -64,13 +60,13 @@ class Asset(Instrument, ABC):  # {{{
 
     # }}}
     def setChart(self, chart: Chart) -> None:  # {{{
-        logger.debug(f"{self.__class__.name}.setChart()")
+        logger.debug(f"{self.__class__.__name__}.setChart()")
 
         self.__charts[chart.timeframe] = chart
 
     # }}}
     def clearCache(self) -> None:  # {{{
-        logger.debug(f"{self.__class__.name}.clearCache()")
+        logger.debug(f"{self.__class__.__name__}.clearCache()")
         self.__charts.clear()
 
     # }}}
@@ -112,7 +108,7 @@ class Asset(Instrument, ABC):  # {{{
         begin: datetime,
         end: datetime,
     ) -> pd.DataFrame:
-        logger.debug(f"{self.__class__.name}.loadData()")
+        logger.debug(f"{self.__class__.__name__}.loadData()")
 
         # check and convert args
         assert begin <= end
@@ -140,7 +136,7 @@ class Asset(Instrument, ABC):  # {{{
 
         if event.type == Event.Type.BAR_CHANGED:
             chart.updateNowBar(event.bar)
-            await self.updated.async_emit(self, chart)
+            await self.updated.aemit(self, chart)
 
         if event.type == Event.Type.NEW_HISTORICAL_BAR:
             chart.addHistoricalBar(event.bar)
@@ -154,7 +150,23 @@ class Asset(Instrument, ABC):  # {{{
                 "M": self.newBarM,
             }
             signal = signals[str(timeframe)]
-            await signal.async_emit(self, chart)
+            await signal.aemit(self, chart)
+
+    # }}}
+    @classmethod  # fromStr# {{{
+    async def fromStr(cls, string: str) -> Asset:
+        logger.debug(f"{cls.__name__}.fromStr()")
+
+        # string is like "MOEX-SHARE-SBER"
+        exchange, itype, ticker = string.split("-")
+
+        # convert types
+        exchange = Exchange.fromStr(exchange)
+        itype = Asset.Type.fromStr(itype)
+
+        # request and return asset
+        asset = await cls.fromTicker(exchange, itype, ticker)
+        return asset
 
     # }}}
     @classmethod  # fromRecord# {{{
@@ -276,7 +288,7 @@ class Asset(Instrument, ABC):  # {{{
 # }}}
 class Index(Asset):  # {{{
     def __init__(self, info: dict):  # {{{
-        logger.debug(f"{self.__class__.name}.__init__()")
+        logger.debug(f"{self.__class__.__name__}.__init__()")
         assert info["type"] == Asset.Type.INDEX
 
         super().__init__(info)
@@ -287,7 +299,7 @@ class Index(Asset):  # {{{
 # }}}
 class Share(Asset):  # {{{
     def __init__(self, info: dict):  # {{{
-        logger.debug(f"{self.__class__.name}.__init__()")
+        logger.debug(f"{self.__class__.__name__}.__init__()")
         assert info["type"] == Asset.Type.SHARE.name
 
         super().__init__(info)

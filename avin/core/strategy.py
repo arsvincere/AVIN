@@ -12,7 +12,7 @@ import importlib
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Iterator, Optional
+from typing import Iterator, Optional, TypeVar
 
 from avin.config import Usr
 from avin.const import Res
@@ -27,10 +27,16 @@ from avin.core.order import (
     StopLoss,
     TakeProfit,
 )
-from avin.core.timeframe import TimeFrame, TimeFrameList
+from avin.core.timeframe import TimeFrameList
 from avin.core.trade import Trade, TradeList
+from avin.data import Instrument
 from avin.keeper import Keeper
 from avin.utils import AsyncSignal, Cmd, logger, round_price
+
+# all user strategys must have class name UStrategy for dynamic import
+# see method Strategy.load(name, version)
+# TypeVar declarate only for 'mypy' type checker
+UStrategy = TypeVar("UStrategy")
 
 
 class Strategy(ABC):  # {{{
@@ -47,20 +53,12 @@ class Strategy(ABC):  # {{{
         self.__name = name
         self.__version = version
         self.__cfg = None
-        self.__account = None
+        self.__account: Optional[Account] = None
         self.__active_trades = TradeList(name="")
 
     # }}}
-    @property  # @abstractmethod timeframe_list  # {{{
-    @abstractmethod
-    def timeframe_list() -> list[TimeFrame]:
-        # TODO:
-        # сделай это просто функцией а не абстрактным свойством.
-        # опять же тупо ради однообразия синтаксиса
-        # в группе абстрактных методов.
-        # и название timeframe_list не канает.
-        # нужно что то типо "нужныеДляРаботыТаймфреймы"
-        # или "используемыеТаймфреймы", "необходимыеТаймфреймы"
+    @abstractmethod  # timeframes  # {{{
+    def timeframes(self) -> TimeFrameList:
         pass
 
     # }}}
@@ -89,19 +87,24 @@ class Strategy(ABC):  # {{{
         # ордеров просто общая для всех стратегий... но если
         # уж очень надо то можно и переопределить, а так то
         # херли, пусть будет не абстрактной
-        logger.info(f"  Trade opened: '{trade}'")
-        logger.info(f"  Trade open dt: '{trade.openDateTime()}'")
 
-        self.active_trades.add(trade)
+        dt = Usr.localTime(trade.openDateTime())
+        string = (
+            f"Trade="
+            f"{dt} [{trade.status.name}] {trade.strategy}-{trade.version} "
+            f"{trade.instrument.ticker} {trade.type.name.lower()}"
+        )
+
+        logger.info(f"   {string}")
+
         await Trade.update(trade)
 
     # }}}
     @abstractmethod  # onTradeClosed  # {{{
     async def onTradeClosed(self, trade: Trade):
-        logger.info(f"  Trade closed: '{trade}'")
-        logger.info(f"  Trade closed result: {trade.result()}")
+        logger.info(f"   {trade} result: {trade.result()}")
 
-        self.active_trades.remove(trade)
+        await self.__cancelActiveOrders(trade)
 
     # }}}
 
@@ -109,7 +112,7 @@ class Strategy(ABC):  # {{{
         return f"Strategy={self.name}-{self.version}"
 
     # }}}
-    def __eq__(self, other: Strategy):  # {{{
+    def __eq__(self, other):  # {{{
         assert isinstance(other, Strategy)
         return self.name == other.name and self.version == other.version
 
@@ -161,6 +164,7 @@ class Strategy(ABC):  # {{{
         #
 
     # }}}
+
     async def createTrade(  # {{{
         self, dt: datetime, trade_type: Trade.Type, instrument: Instrument
     ):
@@ -177,7 +181,7 @@ class Strategy(ABC):  # {{{
         )
         await self.__connectTradeSignals(trade)
         self.__active_trades.add(trade)
-        logger.info(f"  {self} created trade {trade}")
+        logger.info(f"   {trade}")
 
         # update db
         await Trade.save(trade)
@@ -199,7 +203,7 @@ class Strategy(ABC):  # {{{
             status=Order.Status.NEW,
             order_id=Id.newId(),
         )
-        logger.info(f"  {self} create order {order}")
+        # logger.info(f"  {self} create order {order}")
 
         await Order.save(order)
         return order
@@ -211,7 +215,7 @@ class Strategy(ABC):  # {{{
         instrument: Instrument,
         lots: int,
         price: float,
-    ) -> MarketOrder:
+    ) -> LimitOrder:
         logger.debug("Strategy.createMarketOrder()")
 
         order = LimitOrder(
@@ -224,90 +228,50 @@ class Strategy(ABC):  # {{{
             status=Order.Status.NEW,
             order_id=Id.newId(),
         )
-        logger.info(f"  {self} create order {order}")
+        # logger.info(f"  {self} create order {order}")
 
         await Order.save(order)
         return order
 
     # }}}
     async def createStopLoss(  # {{{
-        self, trade: Trade, stop_percent: float
+        self,
+        trade: Trade,
+        stop_percent: Optional[float] = None,
+        stop_price: Optional[float] = None,
     ) -> StopLoss:
         logger.debug("Strategy.createStopLoss()")
 
-        # TODO:
-        # блять надо с этим что то делать
-        if not trade.instrument.info:
-            await trade.instrument.cacheInfo()
+        if stop_percent is not None:
+            order = await self.__createStopLossByPercent(trade, stop_percent)
+            return order
 
-        if trade.type == Trade.Type.LONG:
-            direction = Direction.SELL
-        else:
-            direction = Direction.BUY
+        if stop_price is not None:
+            order = await self.__createStopLossByPrice(trade, stop_price)
+            return order
 
-        if trade.type == Trade.Type.LONG:
-            stop = trade.average() * (1 - stop_percent / 100)
-            stop = round_price(stop, trade.instrument.min_price_step)
-        else:
-            stop = trade.average() * (1 + stop_percent / 100)
-            stop = round_price(stop, trade.instrument.min_price_step)
-
-        stop_loss = StopLoss(
-            account_name=self.account.name,
-            direction=direction,
-            instrument=trade.instrument,
-            lots=trade.lots(),
-            quantity=trade.quantity(),
-            stop_price=stop,
-            exec_price=None,
-            status=Order.Status.NEW,
-            order_id=Id.newId(),
-            trade_id=trade.trade_id,
-        )
-        logger.info(f"  {self} create order {stop_loss}")
-
-        await Order.save(stop_loss)
-        await trade.attachOrder(stop_loss)
-        return stop_loss
+        assert False, "stop_percent or stop_price must be not None"
 
     # }}}
     async def createTakeProfit(  # {{{
-        self, trade: Trade, take_percent: float
+        self,
+        trade: Trade,
+        take_percent: Optional[float] = None,
+        take_price: Optional[float] = None,
     ) -> TakeProfit:
         logger.debug("Strategy.createStopLoss()")
 
-        if not trade.instrument.info:
-            await trade.instrument.cacheInfo()
+        if take_percent is not None:
+            order = await self.__createTakeProfitByPercent(
+                trade, take_percent
+            )
+            return order
 
-        if trade.type == Trade.Type.LONG:
-            direction = Direction.SELL
-        else:
-            direction = Direction.BUY
+        if take_price is not None:
+            order = await self.__createTakeProfitByPrice(trade, take_price)
+            return order
 
-        if trade.type == Trade.Type.LONG:
-            take = trade.average() * (1 + take_percent / 100)
-            take = round_price(take, trade.instrument.min_price_step)
-        else:
-            take = trade.average() * (1 - take_percent / 100)
-            take = round_price(take, trade.instrument.min_price_step)
-
-        take_profit = TakeProfit(
-            account_name=self.account.name,
-            direction=direction,
-            instrument=trade.instrument,
-            lots=trade.lots(),
-            quantity=trade.quantity(),
-            stop_price=take,
-            exec_price=take,
-            status=Order.Status.NEW,
-            order_id=Id.newId(),
-            trade_id=trade.trade_id,
-        )
-        logger.info(f"  {self} create order {take_profit}")
-
-        await Order.save(take_profit)
-        await trade.attachOrder(take_profit)
-        return take_profit
+        assert False, "take_percent or take_price must be not None"
 
     # }}}
     async def postOrder(self, order: Order):  # {{{
@@ -341,6 +305,16 @@ class Strategy(ABC):  # {{{
         # автоматическое поведение для частых случаев.
 
     # }}}
+    async def cancelOrder(self, order: Order):  # {{{
+        logger.debug(f"Strategy.cancelOrder({order})")
+
+        result = await self.account.cancel(order)
+
+        # TODO: что делать если ордер не отменился???
+        if not result:
+            assert False, "ордер не отменился"
+
+    # }}}
     async def closeTrade(self, trade: Trade):  # {{{
         logger.debug(f"Strategy.closeTrade({trade})")
 
@@ -355,15 +329,34 @@ class Strategy(ABC):  # {{{
         # стоп ордера по этому трейду и их тоже отменять
 
         # create order
-        lots = abs(trade.lots())
-        d = Direction.SELL if trade.lots() > 0 else Direction.BUY
+        lots = trade.lots()
+        d = Direction.SELL if lots > 0 else Direction.BUY
         order = await self.createMarketOrder(
-            direction=d, instrument=trade.instrument, lots=lots
+            direction=d, instrument=trade.instrument, lots=abs(lots)
         )
 
         # attach & post this order
         await trade.attachOrder(order)
         await self.postOrder(order)
+
+    # }}}
+    async def cancelTrade(self, trade: Trade):  # {{{
+        logger.debug(f"Strategy.cancelTrade({trade})")
+
+        assert trade.status.value < Trade.Status.OPENED.value
+
+        # TODO: здесь еще надо проверять оставшиеся лимитные и
+        # стоп ордера по этому трейду и их тоже отменять
+        # лучше на аккаунт это переложить, там он пусть
+        # разбирается с наличием активных ордеров по этому
+        # трейду, ему там проще от брокера статус актуальный
+        # запросить, чем отсюда ориентироваться на статусы
+        # ордеров в runtime, лучше уж наверняка - у брокера узнать
+        # for order in trade.orders:
+        #     await self.account.cancelOrdersOf(trade)
+
+        await trade.setStatus(Trade.Status.CANCELED)
+        logger.info(f"   {trade}")
 
     # }}}
 
@@ -451,7 +444,7 @@ class Strategy(ABC):  # {{{
     @classmethod  # renameVersion  # {{{
     async def renameVersion(
         cls, strategy: Strategy, new_name: str
-    ) -> UStrategy | None:
+    ) -> Strategy | None:
         logger.debug(f"{cls.__name__}.renameVersion()")
 
         # check new name
@@ -571,10 +564,7 @@ class Strategy(ABC):  # {{{
         logger.debug(f"{cls.__name__}.checkStrategyName()")
 
         existed_names = cls.requestAll()
-        if name in existed_names:
-            return False
-
-        return True
+        return name not in existed_names
 
     # }}}
     @classmethod  # checkVersionName  # {{{
@@ -582,10 +572,7 @@ class Strategy(ABC):  # {{{
         logger.debug(f"{cls.__name__}.checkVersionName()")
 
         existed_versions = cls.versions(strategy.name)
-        if new_name in existed_versions:
-            return False
-
-        return True
+        return new_name not in existed_versions
 
     # }}}
 
@@ -598,8 +585,151 @@ class Strategy(ABC):  # {{{
 
     # }}}
     async def __connectTradeSignals(self, trade: Trade):  # {{{
-        await trade.opened.async_connect(self.onTradeOpened)
-        await trade.closed.async_connect(self.onTradeClosed)
+        trade.opened.aconnect(self.onTradeOpened)
+        trade.closed.aconnect(self.onTradeClosed)
+
+    # }}}
+    async def __createStopLossByPercent(  # {{{
+        self, trade: Trade, stop_percent: float
+    ) -> StopLoss:
+        logger.debug("Strategy.__createStopLossByPercent()")
+
+        if trade.type == Trade.Type.LONG:
+            direction = Direction.SELL
+        else:
+            direction = Direction.BUY
+
+        if trade.type == Trade.Type.LONG:
+            stop = trade.average() * (1 - stop_percent / 100)
+            stop = round_price(stop, trade.instrument.min_price_step)
+        else:
+            stop = trade.average() * (1 + stop_percent / 100)
+            stop = round_price(stop, trade.instrument.min_price_step)
+
+        stop_loss = StopLoss(
+            account_name=self.account.name,
+            direction=direction,
+            instrument=trade.instrument,
+            lots=abs(trade.lots()),  # lots may be < 0 if short trade
+            quantity=abs(trade.quantity()),
+            stop_price=stop,
+            exec_price=None,
+            status=Order.Status.NEW,
+            order_id=Id.newId(),
+            trade_id=trade.trade_id,
+        )
+        # logger.info(f"  {self} create order {stop_loss}")
+
+        await Order.save(stop_loss)
+        await trade.attachOrder(stop_loss)
+        return stop_loss
+
+    # }}}
+    async def __createStopLossByPrice(  # {{{
+        self, trade: Trade, stop_price: float
+    ) -> StopLoss:
+        logger.debug("Strategy.__createStopLossByPrice()")
+
+        if trade.type == Trade.Type.LONG:
+            direction = Direction.SELL
+        else:
+            direction = Direction.BUY
+
+        stop_loss = StopLoss(
+            account_name=self.account.name,
+            direction=direction,
+            instrument=trade.instrument,
+            lots=abs(trade.lots()),  # lots may be < 0 if short trade
+            quantity=abs(trade.quantity()),
+            stop_price=stop_price,
+            exec_price=None,
+            status=Order.Status.NEW,
+            order_id=Id.newId(),
+            trade_id=trade.trade_id,
+        )
+        # logger.info(f"  {self} create order {stop_loss}")
+
+        await Order.save(stop_loss)
+        await trade.attachOrder(stop_loss)
+        return stop_loss
+
+    # }}}
+    async def __createTakeProfitByPercent(  # {{{
+        self,
+        trade: Trade,
+        take_percent: float,
+    ) -> TakeProfit:
+        logger.debug("Strategy.__createTakeProfitByPercent()")
+
+        if trade.type == Trade.Type.LONG:
+            direction = Direction.SELL
+        else:
+            direction = Direction.BUY
+
+        if trade.type == Trade.Type.LONG:
+            take = trade.average() * (1 + take_percent / 100)
+            take = round_price(take, trade.instrument.min_price_step)
+        else:
+            take = trade.average() * (1 - take_percent / 100)
+            take = round_price(take, trade.instrument.min_price_step)
+
+        take_profit = TakeProfit(
+            account_name=self.account.name,
+            direction=direction,
+            instrument=trade.instrument,
+            lots=abs(trade.lots()),  # lots may be < 0 if short trade
+            quantity=abs(trade.quantity()),
+            stop_price=take,
+            exec_price=take,
+            status=Order.Status.NEW,
+            order_id=Id.newId(),
+            trade_id=trade.trade_id,
+        )
+        # logger.info(f"  {self} create order {take_profit}")
+
+        await Order.save(take_profit)
+        await trade.attachOrder(take_profit)
+        return take_profit
+
+    # }}}
+    async def __createTakeProfitByPrice(  # {{{
+        self,
+        trade: Trade,
+        take_price: float,
+    ) -> TakeProfit:
+        logger.debug("Strategy.__createTakeProfitByPrice()")
+
+        if trade.type == Trade.Type.LONG:
+            direction = Direction.SELL
+        else:
+            direction = Direction.BUY
+
+        take_profit = TakeProfit(
+            account_name=self.account.name,
+            direction=direction,
+            instrument=trade.instrument,
+            lots=abs(trade.lots()),  # lots may be < 0 if short trade
+            quantity=abs(trade.quantity()),
+            stop_price=take_price,
+            exec_price=take_price,
+            status=Order.Status.NEW,
+            order_id=Id.newId(),
+            trade_id=trade.trade_id,
+        )
+        # logger.info(f"  {self} create order {take_profit}")
+
+        await Order.save(take_profit)
+        await trade.attachOrder(take_profit)
+        return take_profit
+
+    # }}}
+    async def __cancelActiveOrders(self, trade: Trade):  # {{{
+        logger.debug("Strategy.__cancelActiveOrders()")
+
+        # проверить не осталось ли активных ордеров:
+        for order in trade.orders:
+            if order.isActive():
+                await self.cancelOrder(order)
 
     # }}}
 
@@ -610,7 +740,7 @@ class StrategyList:  # {{{
         logger.debug(f"StrategyList.__init__({name})")
 
         self.__name = name
-        self.__strategys = list()
+        self.__strategys: list[Strategy] = list()
 
     # }}}
     def __iter__(self) -> Iterator:  # {{{
@@ -660,7 +790,7 @@ class StrategyList:  # {{{
             self.__strategys.append(strategy)
             return
 
-        logger.warning(f"{asset} already in list '{self.name}'")
+        logger.warning(f"{strategy} already in list '{self.name}'")
 
     # }}}
     def remove(self, strategy: Strategy) -> None:  # {{{
@@ -734,8 +864,8 @@ class StrategySet:  # {{{
 
         self.__name: str = name
         self.__nodes: list[StrategySetNode] = items if items else list()
-        self.__asset_list = None
-        self.__strategy_list = None
+        self.__asset_list: Optional[AssetList] = None
+        self.__strategy_list: Optional[StrategyList] = None
 
     # }}}
     def __getitem__(self, strategy: Strategy) -> list[StrategySetNode]:  # {{{
@@ -818,6 +948,7 @@ class StrategySet:  # {{{
             strategy = self.__strategy_list.find(node.strategy, node.version)
             if not strategy:
                 strategy = await Strategy.load(node.strategy, node.version)
+                assert strategy is not None
                 self.__strategy_list.add(strategy)
 
         return self.__strategy_list

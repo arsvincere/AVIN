@@ -80,6 +80,17 @@ class Thread:  # {{{
         return thread.result
 
     # }}}
+    @classmethod  # fromJson  # {{{
+    def fromJson(cls, obj) -> Test:
+        logger.debug(f"{cls.__name__}.fromJson()")
+
+        thread = _TFromJson(obj)
+        thread.start()
+        awaitQThread(thread)
+
+        return thread.result
+
+    # }}}
 
 
 # }}}
@@ -226,6 +237,30 @@ class _TRequestAllTest(QtCore.QThread):  # {{{
 
 
 # }}}
+class _TFromJson(QtCore.QThread):  # {{{
+    def __init__(self, obj, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtCore.QThread.__init__(self, parent)
+
+        self.__obj = obj
+        self.result = None
+
+    # }}}
+    def run(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.run()")
+
+        asyncio.run(self.__arun())
+
+    # }}}
+    async def __arun(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__arun()")
+
+        self.result = await Test.fromJson(self.__obj)
+
+    # }}}
+
+
+# }}}
 
 
 class TRunTest(QtCore.QThread):  # {{{
@@ -246,8 +281,7 @@ class TRunTest(QtCore.QThread):  # {{{
         logger.debug(f"{self.__class__.__name__}.__anew()")
 
         t = Tester()
-        t.setTest(self.test)
-        await t.runTest()
+        await t.run(self.test)
 
     # }}}
 

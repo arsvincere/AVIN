@@ -9,98 +9,157 @@
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt
 
-from gui.chart.gtrade import GTrade
+from avin.core import Trade
+from avin.utils import logger
 
 
 class ChartView(QtWidgets.QGraphicsView):
     def __init__(self, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QGraphicsView.__init__(self, parent)
+
         # включает режим перетаскивания сцены внутри QGraphicsView
         # мышкой с зажатой левой кнопкой
         self.setDragMode(QtWidgets.QGraphicsView.DragMode.ScrollHandDrag)
+
         self.current_gtrade = None
 
     # }}}
 
     def wheelEvent(self, e):  # {{{
+        logger.debug(f"{self.__class__.__name__}.wheelEvent()")
+        # super().wheelEvent(e)  # ломает позиционирование все нахер
+
         ctrl = QtCore.Qt.KeyboardModifier.ControlModifier
         no = QtCore.Qt.KeyboardModifier.NoModifier
+
         if e.modifiers() == no:
             if e.angleDelta().y() < 0:
                 self.scale(0.9, 1)
             else:
                 self.scale(1.1, 1)
+
         if e.modifiers() == ctrl:
             if e.angleDelta().y() < 0:
                 self.scale(1, 0.9)
             else:
                 self.scale(1, 1.1)
+
         self.__resetTranformation()
 
     # }}}
-    def enterEvent(self, e: QtGui.QEnterEvent):  # {{{
+    def enterEvent(self, e: QtGui.QEnterEvent | None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.enterEvent()")
+        assert e is not None
         super().enterEvent(e)
 
-        self.viewport().setCursor(Qt.CursorShape.CrossCursor)
+        self.__setCrossCursor()
+        return e.ignore()
 
     # }}}
-    def mousePressEvent(self, e: QtGui.QMouseEvent):  # {{{
+    def mousePressEvent(self, e: QtGui.QMouseEvent | None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.mousePressEvent()")
+        assert e is not None
         super().mousePressEvent(e)
 
-        self.viewport().setCursor(Qt.CursorShape.CrossCursor)
+        self.__setCrossCursor()
         return e.ignore()
 
     # }}}
-    def mouseReleaseEvent(self, e: QtGui.QMouseEvent):  # {{{
+    def mouseReleaseEvent(self, e: QtGui.QMouseEvent | None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.mouseReleaseEvent()")
+        assert e is not None
         super().mouseReleaseEvent(e)
 
-        self.viewport().setCursor(Qt.CursorShape.CrossCursor)
+        self.__setCrossCursor()
         return e.ignore()
 
     # }}}
-    # def mouseMoveEvent(self, e: QtGui.QMouseEvent):{{{
-    #     ...
-    #     super().mouseMoveEvent(e)
-    #     return e.ignore()
+    def mouseMoveEvent(self, e: QtGui.QMouseEvent | None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.mouseMoveEvent()")
+        assert e is not None
+        super().mouseMoveEvent(e)
+
+        # move labels
+        p = self.mapToScene(0, 0)
+        scene = self.scene()
+        assert scene is not None
+        scene.labels.setPos(p)
+
+        return e.ignore()
+
     # }}}
 
     def centerOnFirst(self):  # {{{
-        logger.debug("ChartView.centerOnFirst()")
+        logger.debug(f"{self.__class__.__name__}.centerOnFirst()")
+
         scene = self.scene()
-        first_bar_item = scene.gchart.childItems()[0]
+        first_bar_item = scene.gchart.first
         pos = first_bar_item.close_pos
+
         self.centerOn(pos)
 
     # }}}
     def centerOnLast(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.centerOnLast()")
+
         scene = self.scene()
-        last_bar_item = scene.gchart.childItems()[-1]
+        last_bar_item = scene.gchart.last
         pos = last_bar_item.close_pos
+
         self.centerOn(pos)
 
     # }}}
-    def centerOnTrade(self, gtrade: GTrade):  # {{{
-        logger.debug(
-            f"ChartView.centerOnTrade(trade)" f"trade.dt = {gtrade.dt}"
-        )
+    def centerOnTrade(self, trade: Trade):  # {{{
+        logger.debug(f"{self.__class__.__name__}.centerOnTrade()")
+
         if self.current_gtrade is not None:
             self.current_gtrade.hideAnnotation()
-        self.current_gtrade = gtrade
-        gtrade.showAnnotation()
-        pos = gtrade.trade_pos
-        self.centerOn(pos)
+
+        gtrades: QtWidgets.QGraphicsItemGroup = self.scene().gtrades
+        if gtrades is None:
+            return
+
+        for gtrade in gtrades.childItems():
+            if gtrade.trade.dt == trade.dt:
+                self.current_gtrade = gtrade
+                gtrade.showAnnotation()
+                self.centerOn(gtrade.trade_pos)
+                return
+
+    # }}}
+    def resetCurrentGTrade(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.resetCurrentGTrade()")
+
+        self.current_gtrade = None
 
     # }}}
 
     def __resetTranformation(self):  # {{{
-        tr = self.transform()
-        tr = tr.inverted()[0]
-        pos = self.mapToScene(0, 0)
-        info = self.scene().labels
-        info.setTransform(tr)
-        info.setPos(pos)
+        logger.debug(f"{self.__class__.__name__}.__resetTranformation()")
+
+        trans = self.transform().inverted()[0]
+
+        # chart labels: bar info, vol info, indicators
+        labels = self.scene().labels
+        labels.setTransform(trans)
+        labels.setPos(self.mapToScene(0, 0))
+
+        # current gtrade
         if self.current_gtrade:
-            self.current_gtrade.annotation.setTransform(tr)
+            self.current_gtrade.annotation.setTransform(trans)
+
+        # other ignore scale items on scene
+        for item in self.scene().ignore_scale:
+            item.setTransform(trans)
+
+    # }}}
+    def __setCrossCursor(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__setCrossCursor()")
+
+        port = self.viewport()
+        assert port is not None
+        port.setCursor(Qt.CursorShape.CrossCursor)
 
     # }}}
 

@@ -14,7 +14,7 @@ from datetime import UTC, date, datetime, time, timedelta
 import httpx
 import moexalgo
 
-from avin.config import Usr
+from avin.config import Auto, Usr
 from avin.const import ONE_DAY, ONE_WEEK
 from avin.data._abstract_source import _AbstractDataSource
 from avin.data._bar import _Bar, _BarsData
@@ -46,7 +46,7 @@ class _MoexData(_AbstractDataSource):
     __LOGIN = None
     __PASSWORD = None
     __AUTHORIZATION = None
-    __AUTO_UPDATE = Usr.AUTO_UPDATE_ASSET_CACHE
+    __AUTO_UPDATE = Auto.UPDATE_ASSET_CACHE
 
     # }}}
     @classmethod  # cacheInstrumentsInfo  # {{{

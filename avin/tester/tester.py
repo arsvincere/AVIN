@@ -8,215 +8,150 @@
 
 from __future__ import annotations
 
-from avin.core import Chart
-from avin.tester._virtual_broker import _VirtualBroker
+from avin.core import BarChangedEvent, Chart, NewHistoricalBarEvent
 from avin.tester.test import Test
+from avin.tester.virtual_broker import VirtualBroker
 from avin.utils import logger
-
-# TODO: нахер все эти заморочки с setTest, clearAll...
-# здесь нужен только один публичный метод - запустить тест
-# и все.
-
-# TODO: log причесать по всем функциям
 
 
 class Tester:
     def __init__(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+
         self.__test = None
-        self.__slist = None
-        self.__alist = None
-        self.__current_asset = None
-        self.__time = None
+        self.__broker = None
 
     # }}}
 
-    def setTest(self, test: Test):  # {{{
-        self.__clearAll()
+    async def run(self, test: Test):  # {{{
+        logger.debug(f"{self.__class__.__name__}.run()")
+        assert test is not None
+
+        logger.info(f":: Tester run {test}")
         self.__test = test
 
-    # }}}
-    async def runTest(self):  # {{{
-        logger.info(f":: Tester run {self.__test}")
-        assert self.__test is not None
-
-        await self.__test.clear()
-        self.__test.status = Test.Status.PROCESS
-
-        await self.__loadBroker()
-        await self.__loadAssetList()
-        await self.__loadStrategyList()
-        self.__createTimeFrameList()
+        self.__loadBroker()
         self.__setAccount()
         self.__setTradeList()
+        self.__createEmptyCharts()
+        self.__createBarStream()
 
-        for asset in self.__alist:
-            self.__setCurrentAsset(asset)
-            self.__createEmptyCharts()
-            await self.__connectStrategy()
-            await self.__startTest()
-            await self.__finishTest()
+        await self.__clearTest()
+        await self.__connectStrategy()
+        await self.__startStrategy()
+        await self.__runDataStream()
+        await self.__finishStrategy()
+        await self.__updateTest()
 
-        # FIX: в БД статус сейчас не обновляется...
-        # а сделать тупо сейв нельзя из за того как реализовано
-        # сохранение объектов у меня сейчас - оно всегда удаляет все старое..
-        # выход я вижу такой:
-        # добавить объектам так же метод .update
-        # для явного обновления полей в БД
-        # без удаления и сохранения объекта.. объект уже должен
-        # быть в БД.
-        # и то что уже есть в БД нужно проконтролировать.
-        # и посмотреть что будет если в БД попробовать UPDATE
-        # не существующей записи
-        # сделать pytest на эти вещи
-        self.__test.status = Test.Status.COMPLETE
-        # self.__createReport()
-        # await self.__saveTest() # XXX: тут и так все сохранено в БД!
         logger.info(f":: {self.__test} complete!")
         self.__clearAll()
 
     # }}}
 
-    def __clearAll(self) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.__clearAll()")
+    def __loadBroker(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__loadBroker()")
 
-        self.__test = None
-        self.__broker = None
-        self.__alist = None  # common asset list
-        self.__slist = None  # common strategy list
-        self.__tflist = None  # common timeframe list
-        self.__current_asset = None
-        self.__time = None
-        self.__total_time = None
-        self.__last_emit = None
-
-    # }}}
-    async def __loadBroker(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__setVirtualBroker()")
-
-        self.__broker = _VirtualBroker
+        self.__broker = VirtualBroker
         self.__broker.setTest(self.__test)
-        await self.__broker.new_bar.async_connect(self.__onNewBar)
-        await self.__broker.bar_changed.async_connect(self.__onNewBar)
-
-        # TODO:
-        # self.__broker.reset()  # clear orders, subscriptions...
-
-    # }}}
-    async def __loadAssetList(self) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.__loadAssetList()")
-
-        self.__alist = await self.__test.strategy_set.createAssetList()
-
-    # }}}
-    async def __loadStrategyList(self) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.__loadStrategyList()")
-
-        self.__slist = await self.__test.strategy_set.createStrategyList()
-
-    # }}}
-    def __createTimeFrameList(self) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createTimeFrameList()")
-
-        self.__tflist = self.__slist.createTimeFrameList()
+        self.__broker.new_bar.aconnect(self.__onBarEvent)
+        self.__broker.bar_changed.aconnect(self.__onBarEvent)
 
     # }}}
     def __setAccount(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__setAccount()")
 
         account = self.__broker.getAccount(self.__test.account)
-        for strategy in self.__slist:
-            strategy.setAccount(account)
+        self.__test.strategy.setAccount(account)
 
     # }}}
     def __setTradeList(self) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.__setAccount()")
+        logger.debug(f"{self.__class__.__name__}.__setTradeList()")
 
-        tlist = self.__test.trade_list
-        for strategy in self.__slist:
-            strategy.setTradeList(tlist)
-
-    # }}}
-    def __setCurrentAsset(self, asset: Asset) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.__setCurrentAsset()")
-
-        self.__current_asset = asset
-        for timeframe in self.__tflist:
-            self.__broker.createBarStream(asset, timeframe)
+        trade_list = self.__test.trade_list
+        self.__test.strategy.setTradeList(trade_list)
 
     # }}}
     def __createEmptyCharts(self) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createCharts()")
+        logger.debug(f"{self.__class__.__name__}.__createEmptyCharts()")
 
-        for timeframe in self.__tflist:
-            chart = Chart(self.__current_asset, timeframe, [])
-            self.__current_asset.setChart(chart)
+        for timeframe in self.__test.strategy.timeframes():
+            chart = Chart(self.__test.asset, timeframe, [])
+            self.__test.asset.setChart(chart)
+
+    # }}}
+    def __createBarStream(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createBarStream()")
+
+        timeframe_list = self.__test.strategy.timeframes()
+        asset = self.__test.asset
+
+        for timeframe in timeframe_list:
+            self.__broker.createBarStream(asset, timeframe)
+
+    # }}}
+    def __clearAll(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__clearAll()")
+
+        self.__broker.reset()  # clear orders, subscriptions...
+        self.__test.asset.clearCache()
+        self.__broker = None
+        self.__test = None
+
+    # }}}
+
+    async def __clearTest(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__clearTest()")
+
+        await Test.deleteTrades(self.__test)
+        self.__test.status = Test.Status.PROCESS
+        await Test.update(self.__test)
 
     # }}}
     async def __connectStrategy(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__connectStrategy()")
 
-        for strategy in self.__slist:
-            items = self.__test.strategy_set[strategy]
-            items = filter(
-                lambda x: x.figi == self.__current_asset.figi, items
-            )
-            for i in items:
-                await strategy.connect(self.__current_asset, i.long, i.short)
+        strategy = self.__test.strategy
+        asset = self.__test.asset
+        long = self.__test.enable_long
+        short = self.__test.enable_short
+
+        await strategy.connect(asset, long, short)
+
+    # }}}
+    async def __startStrategy(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__startStrategy()")
+        logger.info(f":: Start {self.__test.strategy}")
+
+        await self.__test.strategy.start()
+
+    # }}}
+    async def __runDataStream(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__runDataStream()")
+        logger.info(":: Run data stream")
+
+        await self.__broker.runDataStream()
+
+    # }}}
+    async def __finishStrategy(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__finishStrategy()")
+
+        await self.__test.strategy.finish()
+
+    # }}}
+    async def __updateTest(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__updateTest()")
+
+        self.__test.status = Test.Status.COMPLETE
+        await Test.update(self.__test)
 
     # }}}
 
-    async def __startTest(self) -> None:  # {{{
-        logger.info(f":: Start testing {self.__current_asset.ticker}")
-
-        # initialize strategy
-        for strategy in self.__slist:
-            await strategy.start()
-
-        # start time
-        await self.__broker.startDataStream()
-
-    # }}}
-    async def __onNewBar(  # {{{
-        self, event: NewBarEvent | BarChanged
+    async def __onBarEvent(  # {{{
+        self, event: NewHistoricalBarEvent | BarChangedEvent
     ) -> None:
-        logger.info(f"-> receive {event}")
+        logger.debug(f"{self.__class__.__name__}.__onBarEvent()")
 
-        # TODO:
-        # сюда теперь приходят и новые исторические бары и
-        # и обновленные реал тайм бары
-        # теперь название функции не очень подходящее
-        # вообще возможно весь этот треш нужно внутри
-        # брокера оставить, я ведь передаю ему ассеты когда подписываюсь
-        # так что список у него есть вот пусть он их там и обновляет
-        # нахер не нужен тут еще один вызов функции
-
-        asset = self.__alist.find(figi=event.figi)
-        await asset.receive(event)
-
-    # }}}
-
-    async def __finishTest(self):  # {{{
-        logger.info(f"Finish test {self.__current_asset.ticker}")
-
-        for i in self.__slist:
-            await i.finish()
-
-        self.__current_asset.clearCache()
-
-    # }}}
-    #     def __createReport(self):  # {{{
-    #         self.test.updateReport()
-    #
-    #     # }}}
-    async def __saveTest(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__saveTest()")
-
-        # XXX: и так все в БД сохраняется по ходу теста, этот метод -
-        # пережиток прошлого
-        # удалить его нахуй?
-
-        # await Test.save(self.__test)
-        # logger.info("Test saved")
+        await self.__test.asset.receive(event)
 
     # }}}
 

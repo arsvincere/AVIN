@@ -14,12 +14,14 @@ from PyQt6.QtCore import Qt, pyqtSlot
 from avin.config import Usr
 from avin.const import Dir
 from avin.core import Account, Asset, Broker, Trade, TradeList
+from avin.tester import Test
 from avin.utils import Cmd, logger
 from gui.asset import AssetListDockWidget
 from gui.chart import ChartWidget
 from gui.console import ConsoleDockWidget
 from gui.custom import Css
 from gui.data import DataDockWidget
+from gui.filter import FilterDockWidget
 from gui.main_window.toolbar import LeftToolBar, RightToolBar
 from gui.strategy import StrategyDockWidget
 from gui.summary import SummaryDockWidget
@@ -154,6 +156,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.data_widget = None
         self.asset_widget = None
+        self.filter_widget = None
         self.strategy_widget = None
         self.tester_widget = None
         self.summary_widget = None
@@ -168,8 +171,8 @@ class MainWindow(QtWidgets.QMainWindow):
         # left tools
         self.ltool.data.triggered.connect(self.__onData)
         self.ltool.asset.triggered.connect(self.__onAsset)
-        # self.ltool.filter.triggered.connect(self.__onFilter)
         # self.ltool.analytic.triggered.connect(self.__onAnalytic)
+        self.ltool.filter.triggered.connect(self.__onFilter)
         self.ltool.strategy.triggered.connect(self.__onStrategy)
         self.ltool.note.triggered.connect(self.__onNote)
         self.ltool.tester.triggered.connect(self.__onTester)
@@ -189,7 +192,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # self.rtool.report.triggered.connect(self.__onReport)
 
         # widget signals
-        # TesterWidget.tlistChanged.connect(self.__onTradeListChanged)
+        # TesterWidget.tlistChanged.connect(self.__onTestChanged)
         # TesterWidget.tradeChanged.connect(self.__onTradeChanged)
         # self.widget_broker.connectEnabled.connect(self.__onConnect)
         # self.widget_broker.connectDisabled.connect(self.__onDisconnect)
@@ -199,7 +202,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def __initUI(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__initUI()")
 
-        self.ltool.asset.trigger()
+        self.ltool.tester.trigger()
         self.ltool.console.trigger()
         self.rtool.chart.trigger()
 
@@ -256,6 +259,20 @@ class MainWindow(QtWidgets.QMainWindow):
         btn.setChecked(False)
 
     # }}}
+    @pyqtSlot()  # __onFilter  # {{{
+    def __onFilter(self):
+        logger.debug(f"{self.__class__.__name__}.__onFilter()")
+
+        if self.filter_widget is None:
+            self.filter_widget = FilterDockWidget(self)
+            area = Qt.DockWidgetArea.LeftDockWidgetArea
+            self.addDockWidget(area, self.filter_widget)
+            return
+
+        state = self.filter_widget.isVisible()
+        self.filter_widget.setVisible(not state)
+
+    # }}}
     @pyqtSlot()  # __onStrategy  # {{{
     def __onStrategy(self):
         logger.debug(f"{self.__class__.__name__}.__onStrategy()")
@@ -275,9 +292,21 @@ class MainWindow(QtWidgets.QMainWindow):
         logger.debug(f"{self.__class__.__name__}.__onTester()")
 
         if self.tester_widget is None:
+            # create dock widget
             self.tester_widget = TesterDockWidget(self)
             area = Qt.DockWidgetArea.LeftDockWidgetArea
             self.addDockWidget(area, self.tester_widget)
+
+            # connect signal
+            self.tester_widget.widget.testChanged.connect(
+                self.__onTestChanged
+            )
+            self.tester_widget.widget.tlistChanged.connect(
+                self.__onTradeListChanged
+            )
+            self.tester_widget.widget.tradeChanged.connect(
+                self.__onTradeChanged
+            )
             return
 
         state = self.tester_widget.isVisible()
@@ -389,17 +418,34 @@ class MainWindow(QtWidgets.QMainWindow):
         # self.widget_order.setAsset(iasset)
 
     # }}}
+    @pyqtSlot(Test)  # __onTestChanged # {{{
+    def __onTestChanged(self, test: Test):
+        logger.debug(f"{self.__class__.__name__}.__onTestChanged()")
+
+        if self.chart_widget is not None:
+            self.chart_widget.clearAll()
+
+        if self.summary_widget is not None:
+            self.summary_widget.showSummary(test.trade_list)
+
+    # }}}
     @pyqtSlot(TradeList)  # __onTradeListChanged # {{{
-    def __onTradeListChanged(self, tlist: TradeList):
+    def __onTradeListChanged(self, trade_list: TradeList):
         logger.debug(f"{self.__class__.__name__}.__onTradeListChanged()")
-        self.widget_chart.showTradeList(tlist)
-        self.widget_report.showSummary(tlist)
+
+        if self.chart_widget is not None:
+            self.chart_widget.setTradeList(trade_list)
+
+        if self.summary_widget is not None:
+            self.summary_widget.showSummary(trade_list)
 
     # }}}
     @pyqtSlot(Trade)  # __onTradeChanged  # {{{
     def __onTradeChanged(self, trade: Trade):
         logger.debug(f"{self.__class__.__name__}.__onTradeChanged()")
-        self.widget_chart.showTrade(trade)
+
+        if self.chart_widget is not None:
+            self.chart_widget.showTrade(trade)
 
     # }}}
     @pyqtSlot(Broker)  # __onConnect  # {{{
