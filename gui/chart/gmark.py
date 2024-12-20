@@ -28,7 +28,6 @@ from gui.custom import (
     ToolButton,
 )
 from gui.filter.dialog_select import FilterSelectDialog
-from gui.filter.item import FilterItem
 
 
 class Shape(QtWidgets.QGraphicsPixmapItem):  # {{{
@@ -348,50 +347,6 @@ class ShapeSelectDialog(QtWidgets.QDialog):  # {{{
         shape = self.__currentShape()
         pixmap = shape.pixmap()
         self.__priview_label.setPixmap(pixmap)
-
-    # }}}
-
-
-# }}}
-class _Tree(QtWidgets.QTreeWidget):  # {{{
-    def __init__(self, parent=None):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__init__()")
-        QtWidgets.QTreeWidget.__init__(self, parent)
-
-        self.__config()
-
-    # }}}
-    def __iter__(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__iter__()")
-
-        all_items = list()
-        for i in range(self.topLevelItemCount()):
-            item = self.topLevelItem(i)
-            all_items.append(item)
-
-        return iter(all_items)
-
-    # }}}
-    def __config(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__config()")
-
-        # config header
-        labels = list()
-        for i in FilterItem.Column:
-            labels.append(i.name)
-        self.setHeaderLabels(labels)
-        self.header().setStyleSheet(Css.TREE_HEADER)
-
-        # config sorting
-        self.setSortingEnabled(True)
-        self.sortByColumn(FilterItem.Column.Name, Qt.SortOrder.AscendingOrder)
-
-        # config width
-        self.setColumnWidth(FilterItem.Column.Name, 150)
-
-        # config style
-        self.setStyleSheet(Css.TREE)
-        self.setContentsMargins(0, 0, 0, 0)
 
     # }}}
 
