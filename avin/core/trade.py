@@ -140,6 +140,28 @@ class Trade:  # {{{
         return string
 
     # }}}
+    def pretty(self):
+        logger.debug(f"{self.__class__.__name__}.pretty()")
+
+        text = f"""Trade:
+id: {self.trade_id}
+dt: {self.dt.isoformat()}
+strategy: {self.strategy}
+version: {self.version}
+type: {self.type.name}
+instrument: {self.instrument}
+status: {self.status.name}
+trade_list: {self.trade_list_name}
+info: {self.info}
+blocked: {self.__blocked}
+
+Orders:
+    ...
+
+Operations:
+    ...
+"""
+        return text
 
     # @async_slot  #onOrderPosted # {{{
     async def onOrderPosted(self, order):
