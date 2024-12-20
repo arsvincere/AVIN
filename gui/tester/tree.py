@@ -90,7 +90,7 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         self.sortByColumn(TestItem.Column.Name, Qt.SortOrder.AscendingOrder)
 
         # config width
-        self.setColumnWidth(TestItem.Column.Name, 200)
+        self.setColumnWidth(TestItem.Column.Name, 300)
         self.setColumnWidth(TestItem.Column.Status, 80)
         self.setColumnWidth(TestItem.Column.Trades, 60)
         self.setColumnWidth(TestItem.Column.Win, 50)
