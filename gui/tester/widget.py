@@ -113,9 +113,9 @@ class TesterWidget(QtWidgets.QWidget):  # {{{
                 self.trade_tree.setTradeList(test.trade_list)
                 self.testChanged.emit(test)
             case "TradeListItem":
-                tlist = item.tlist
-                self.trade_tree.setTradeList(tlist)
-                self.tlistChanged.emit(tlist)
+                trade_list = item.trade_list
+                self.trade_tree.setTradeList(trade_list)
+                self.tlistChanged.emit(trade_list)
 
     # }}}
     @QtCore.pyqtSlot()  # __onTradeTreeClicked# {{{

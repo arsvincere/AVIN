@@ -97,11 +97,11 @@ class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
 
     # }}}
 
-    def __init__(self, tlist: TradeList, parent=None):  # {{{
+    def __init__(self, trade_list: TradeList, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QTreeWidget.__init__(self, parent)
 
-        self.tlist = tlist
+        self.trade_list = trade_list
 
         # flags
         self.setFlags(
@@ -109,10 +109,10 @@ class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
         )
 
         # text
-        has_parent = tlist.parent_tlist is not None
-        name = tlist.subname if has_parent else "trades"
+        has_parent = trade_list.parent_tlist is not None
+        name = trade_list.subname if has_parent else "trades"
         self.setText(self.Column.Name, name)
-        self.setText(self.Column.Trades, str(len(tlist)))
+        self.setText(self.Column.Trades, str(len(trade_list)))
         self.setText(self.Column.Win, "???")
         self.setText(self.Column.Loss, "???")
 
@@ -127,7 +127,7 @@ class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
     def selectStrategy(self, name: str, version: str) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectStrategy()")
 
-        child = self.tlist.selectStrategy(name, version)
+        child = self.trade_list.selectStrategy(name, version)
         child_item = TradeListItem(child)
         self.addChild(child_item)
 
@@ -135,7 +135,7 @@ class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
     def selectLong(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectLong()")
 
-        child = self.tlist.selectLong()
+        child = self.trade_list.selectLong()
         child_item = TradeListItem(child)
         self.addChild(child_item)
 
@@ -143,7 +143,7 @@ class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
     def selectShort(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectShort()")
 
-        child = self.tlist.selectShort()
+        child = self.trade_list.selectShort()
         child_item = TradeListItem(child)
         self.addChild(child_item)
 
@@ -151,7 +151,7 @@ class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
     def selectWin(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectWin()")
 
-        child = self.tlist.selectWin()
+        child = self.trade_list.selectWin()
         child_item = TradeListItem(child)
         self.addChild(child_item)
 
@@ -159,7 +159,7 @@ class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
     def selectLoss(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectLoss()")
 
-        child = self.tlist.selectLoss()
+        child = self.trade_list.selectLoss()
         child_item = TradeListItem(child)
         self.addChild(child_item)
 
@@ -167,7 +167,7 @@ class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
     def selectAsset(self, asset: Asset) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectAsset()")
 
-        child = self.tlist.selectAsset(asset)
+        child = self.trade_list.selectAsset(asset)
         child_item = TradeListItem(child)
         self.addChild(child_item)
 
@@ -175,7 +175,7 @@ class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
     def selectYear(self, year: int) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectYear()")
 
-        child = self.tlist.selectYear(year)
+        child = self.trade_list.selectYear(year)
         child_item = TradeListItem(child)
         self.addChild(child_item)
 
