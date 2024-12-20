@@ -195,6 +195,7 @@ class GTradeAnnotation(QtWidgets.QGraphicsProxyWidget):  # {{{
             case Trade.Status.CLOSED:
                 days = gtrade.trade.holdingDays()
                 result = gtrade.trade.result()
+                p = gtrade.trade.percent()
                 ppd = gtrade.trade.percentPerDay()
                 text = f"""
                     <table>
@@ -212,8 +213,8 @@ class GTradeAnnotation(QtWidgets.QGraphicsProxyWidget):  # {{{
                           <td>{result}</td>
                         </tr>
                         <tr>
-                          <td>PPD:</td>
-                          <td>{ppd}%</td>
+                          <td>P/PPD:</td>
+                          <td>{p} / {ppd}%</td>
                         </tr>
                       </tbody>
                     </table>
