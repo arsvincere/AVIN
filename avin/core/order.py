@@ -159,6 +159,29 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         return string
 
     # }}}
+    def pretty(self) -> str:  # {{{
+        logger.debug(f"{self.__class__.__name__}.pretty()")
+
+        text = f"""Order:
+    id:             {self.order_id}
+    type:           {self.type.name}
+    account:        {self.account_name}
+    direction:      {self.direction.name}
+    instrument:     {self.instrument}
+    lots:           {self.lots}
+    quantity:       {self.quantity}
+    status:         {self.status}
+    trade_id:       {self.trade_id}
+    exec_lots:      {self.exec_lots}
+    exec_quantity:  {self.exec_quantity}
+    meta:           {self.meta}
+    broker_id:      {self.broker_id}
+    transacts:      {self.transactions}
+"""
+        return text
+
+    # }}}
+
     async def setStatus(self, status: Order.Status):  # {{{
         logger.debug(f"Order.setStatus({status})")
 
