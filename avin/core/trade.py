@@ -833,7 +833,7 @@ class TradeList:  # {{{
             if trade.dt.year == year:
                 selected.append(trade)
 
-        child = self._createChild(selected, year)
+        child = self._createChild(selected, str(year))
         return child
 
     # }}}
@@ -901,7 +901,7 @@ class TradeList:  # {{{
             name=self.name,
             trades=trades,
             parent=self,
-            subname=f"- {subname}",
+            subname=subname,
         )
 
         child.__asset = self.__asset
