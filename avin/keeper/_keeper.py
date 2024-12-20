@@ -1335,6 +1335,7 @@ class Keeper:
                 broker_id
             FROM "Order"
             WHERE {pg_condition}
+            ORDER BY order_id
             ;
             """
         order_records = await cls.transaction(request)
