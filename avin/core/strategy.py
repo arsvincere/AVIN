@@ -318,10 +318,10 @@ class Strategy(ABC):  # {{{
         # стоп ордера по этому трейду и их тоже отменять
 
         # create order
-        lots = abs(trade.lots())
-        d = Direction.SELL if trade.lots() > 0 else Direction.BUY
+        lots = trade.lots()
+        d = Direction.SELL if lots > 0 else Direction.BUY
         order = await self.createMarketOrder(
-            direction=d, instrument=trade.instrument, lots=lots
+            direction=d, instrument=trade.instrument, lots=abs(lots)
         )
 
         # attach & post this order
@@ -600,7 +600,7 @@ class Strategy(ABC):  # {{{
             direction=direction,
             instrument=trade.instrument,
             lots=abs(trade.lots()),  # lots may be < 0 if short trade
-            quantity=trade.quantity(),
+            quantity=abs(trade.quantity()),
             stop_price=stop,
             exec_price=None,
             status=Order.Status.NEW,
@@ -629,7 +629,7 @@ class Strategy(ABC):  # {{{
             direction=direction,
             instrument=trade.instrument,
             lots=abs(trade.lots()),  # lots may be < 0 if short trade
-            quantity=trade.quantity(),
+            quantity=abs(trade.quantity()),
             stop_price=stop_price,
             exec_price=None,
             status=Order.Status.NEW,
@@ -667,7 +667,7 @@ class Strategy(ABC):  # {{{
             direction=direction,
             instrument=trade.instrument,
             lots=abs(trade.lots()),  # lots may be < 0 if short trade
-            quantity=trade.quantity(),
+            quantity=abs(trade.quantity()),
             stop_price=take,
             exec_price=take,
             status=Order.Status.NEW,
@@ -698,7 +698,7 @@ class Strategy(ABC):  # {{{
             direction=direction,
             instrument=trade.instrument,
             lots=abs(trade.lots()),  # lots may be < 0 if short trade
-            quantity=trade.quantity(),
+            quantity=abs(trade.quantity()),
             stop_price=take_price,
             exec_price=take_price,
             status=Order.Status.NEW,
