@@ -919,6 +919,9 @@ class Tinkoff(Broker):
         logger.debug(f"Tinkoff.cancelLimitOrder({account}, {order})")
         assert cls.__connect is not None
 
+        # TODO: тут бы проверить сначала а выставлен ли этот ордер
+        # а какой у него статус...
+
         try:
             response: ti.CancelOrderResponse = (
                 await cls.__connect.orders.cancel_order(
@@ -960,6 +963,9 @@ class Tinkoff(Broker):
         """  # }}}
         logger.debug(f"Tinkoff.cancelStopOrder({account}, {order})")
         assert cls.__connect is not None
+
+        # TODO: тут бы проверить сначала а выставлен ли этот ордер
+        # а какой у него статус...
 
         try:
             response = await cls.__connect.stop_orders.cancel_stop_order(
