@@ -14,7 +14,7 @@ from typing import Optional
 
 from avin.config import Usr
 from avin.const import ONE_DAY
-from avin.core.asset import Asset
+from avin.core.asset import Asset, AssetList
 from avin.core.chart import Chart
 from avin.core.direction import Direction
 from avin.core.id import Id
@@ -823,6 +823,24 @@ class TradeList:  # {{{
         child = self._createChild(selected, asset.ticker)
         child.__asset = asset
         return child
+
+    # }}}
+    def selectAssets(self) -> list[TradeList]:  # {{{
+        logger.debug(f"{self.__class__.__name__}.collectAssetList()")
+
+        asset_list = AssetList(name="")
+        for i in self.__trades:
+            instrument = i.instrument
+            asset = Asset.fromInstrument(instrument)
+            if asset not in asset_list:
+                asset_list.add(asset)
+
+        all_childs = list()
+        for asset in asset_list:
+            child = self.selectAsset(asset)
+            all_childs.append(child)
+
+        return all_childs
 
     # }}}
     def selectYear(self, year):  # {{{
