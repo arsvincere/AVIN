@@ -140,28 +140,52 @@ class Trade:  # {{{
         return string
 
     # }}}
-    def pretty(self):
+    def pretty(self) -> str:  # {{{
         logger.debug(f"{self.__class__.__name__}.pretty()")
 
-        text = f"""Trade:
-id: {self.trade_id}
-dt: {self.dt.isoformat()}
-strategy: {self.strategy}
-version: {self.version}
-type: {self.type.name}
+        orders_text = ""
+        for order in self.orders:
+            text = order.pretty()
+            orders_text += text
+
+        operations_text = ""
+        for operation in self.operations:
+            text = operation.pretty()
+            operations_text += text
+
+        trade_text = f"""
+id:         {self.trade_id}
+dt:         {Usr.localTime(self.dt)}
+strategy:   {self.strategy}
+version:    {self.version}
+type:       {self.type.name}
 instrument: {self.instrument}
-status: {self.status.name}
+status:     {self.status.name}
 trade_list: {self.trade_list_name}
-info: {self.info}
-blocked: {self.__blocked}
+info:       {self.info}
+blocked:    {self.__blocked}
+------------------------------------------------------------------------------
+buy:        {self.buyAverage()} * {self.buyQuantity()} = {self.buyAmount()}
+sell:       {self.sellAverage()} * {self.sellQuantity()} = {self.sellAmount()}
+commission: {self.commission()}
+open_dt:    {Usr.localTime(self.openDateTime())}
+close_dt:   {Usr.localTime(self.closeDateTime())}
+stop:       {self.stopPrice()}
+take:       {self.takePrice()}
+------------------------------------------------------------------------------
+result:     {self.result()}
+days:       {self.holdingDays()}
+percent:    {self.percent()}
+ppd:        {self.percentPerDay()}
 
-Orders:
-    ...
-
-Operations:
-    ...
+== Orders ====================================================================
+{orders_text}
+== Operations ================================================================
+{operations_text}
 """
-        return text
+        return trade_text
+
+    # }}}
 
     # @async_slot  #onOrderPosted # {{{
     async def onOrderPosted(self, order):
@@ -464,12 +488,7 @@ Operations:
         logger.debug(f"{self.__class__.__name__}.result()")
         assert self.status == Trade.Status.CLOSED
 
-        result = (
-            self.sellAmount()
-            - self.buyAmount()
-            - self.buyCommission()
-            - self.sellCommission()
-        )
+        result = self.sellAmount() - self.buyAmount() - self.commission()
         return round(result, 2)
 
     # }}}
