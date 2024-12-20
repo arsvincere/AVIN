@@ -64,6 +64,28 @@ class Operation:
         return string
 
     # }}}
+    def pretty(self) -> str:  # {{{
+        logger.debug(f"{self.__class__.__name__}.pretty()")
+
+        text = f"""Operation:
+    id:             {self.operation_id}
+    account:        {self.account_name}
+    dt:             {Usr.localTime(self.dt)}
+    direction:      {self.direction.name}
+    instrument:     {self.instrument}
+    lots:           {self.lots}
+    quantity:       {self.quantity}
+    price:          {self.price}
+    amount:         {self.amount}
+    commission:     {self.commission}
+    order_id:       {self.order_id}
+    trade_it:       {self.trade_id}
+    meta:           {self.meta}
+"""
+        return text
+
+    # }}}
+
     async def setParentTrade(self, trade):  # {{{
         logger.debug(f"Operation.setParentTrade({trade})")
         self.trade_id = trade.trade_id
