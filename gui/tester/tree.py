@@ -15,7 +15,7 @@ from avin.core import TradeList
 from avin.tester import Test
 from avin.utils import logger
 from gui.custom import Css, Dialog, Menu
-from gui.tester.dialog_edit import TestEditDialog
+from gui.tester.dialog_test_edit import TestEditDialog
 from gui.tester.item import TestItem, TradeItem, TradeListItem
 from gui.tester.thread import Thread, TRunTest
 
@@ -141,15 +141,20 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         return False
 
     # }}}
-    @QtCore.pyqtSlot()  # __threadFinished# {{{
-    def __threadFinished(self):
-        logger.debug(f"{self.__class__.__name__}.__threadFinished()")
+    @QtCore.pyqtSlot()  # __onTestComplete# {{{
+    def __onTestComplete(self):
+        logger.debug(f"{self.__class__.__name__}.__onTestComplete()")
 
         # find and update test item text
         test = self.thread.test
-        for item in self:
-            if item.test.name == test.name:
-                item.updateText()
+        # for item in self:
+        #     if item.test.name == test.name:
+        #         item.updateText()
+
+        # reload test
+        self.removeTest(test)
+        test = Thread.loadTest(test.name)
+        self.addTest(test)
 
         self.thread = None
 
@@ -166,7 +171,7 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         test = item.test
 
         self.thread = TRunTest(test)
-        self.thread.finished.connect(self.__threadFinished)
+        self.thread.finished.connect(self.__onTestComplete)
         self.thread.start()
 
     # }}}
