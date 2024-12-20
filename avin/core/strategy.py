@@ -599,7 +599,7 @@ class Strategy(ABC):  # {{{
             account_name=self.account.name,
             direction=direction,
             instrument=trade.instrument,
-            lots=trade.lots(),
+            lots=abs(trade.lots()),  # lots may be < 0 if short trade
             quantity=trade.quantity(),
             stop_price=stop,
             exec_price=None,
@@ -628,7 +628,7 @@ class Strategy(ABC):  # {{{
             account_name=self.account.name,
             direction=direction,
             instrument=trade.instrument,
-            lots=trade.lots(),
+            lots=abs(trade.lots()),  # lots may be < 0 if short trade
             quantity=trade.quantity(),
             stop_price=stop_price,
             exec_price=None,
@@ -666,7 +666,7 @@ class Strategy(ABC):  # {{{
             account_name=self.account.name,
             direction=direction,
             instrument=trade.instrument,
-            lots=trade.lots(),
+            lots=abs(trade.lots()),  # lots may be < 0 if short trade
             quantity=trade.quantity(),
             stop_price=take,
             exec_price=take,
@@ -697,7 +697,7 @@ class Strategy(ABC):  # {{{
             account_name=self.account.name,
             direction=direction,
             instrument=trade.instrument,
-            lots=trade.lots(),
+            lots=abs(trade.lots()),  # lots may be < 0 if short trade
             quantity=trade.quantity(),
             stop_price=take_price,
             exec_price=take_price,
