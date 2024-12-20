@@ -132,6 +132,15 @@ class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
         self.addChild(child_item)
 
     # }}}
+    def selectStrategys(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectStrategys()")
+
+        childs = self.trade_list.selectStrategys()
+        for child in childs:
+            child_item = TradeListItem(child)
+            self.addChild(child_item)
+
+    # }}}
     def selectLong(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectLong()")
 

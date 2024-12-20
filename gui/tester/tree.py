@@ -281,8 +281,8 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
     def __onSelectStrategy(self):
         logger.debug(f"{self.__class__.__name__}.__onSelectStrategy()")
 
-        # itlist = self.currentItem()
-        # itlist.selectFilter()
+        trade_list_item = self.__current_item
+        trade_list_item.selectStrategys()
 
     # }}}
     @QtCore.pyqtSlot()  # __onSelectLong# {{{

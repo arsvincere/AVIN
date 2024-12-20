@@ -764,6 +764,31 @@ class TradeList:  # {{{
         return child
 
     # }}}
+    def selectStrategys(self) -> list[TradeList]:  # {{{
+        logger.debug(f"{self.__class__.__name__}.collectStrategyList()")
+
+        all_strategys = dict()
+        # create keys = strategy_name, values = [versions, ]
+        for trade in self.__trades:
+            name = trade.strategy
+            version = trade.version
+
+            if name not in all_strategys:
+                all_strategys[name] = list()
+
+            if version not in all_strategys[name]:
+                all_strategys[name].append(version)
+
+        all_childs = list()
+        for name, versions in all_strategys.items():
+            for ver in versions:
+                child = self.selectStrategy(name, ver)
+                all_childs.append(child)
+
+        return all_childs
+
+    # }}}
+
     def selectLong(self) -> TradeList:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectLong()")
 
