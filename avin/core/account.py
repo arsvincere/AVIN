@@ -105,7 +105,7 @@ class Account:
     # }}}
     async def post(self, order: Order) -> bool:  # {{{
         logger.debug("Account.post()")
-        logger.info(f":: {self} post order: {order}")
+        logger.info(f":: Post order: {order}")
 
         self.__active_orders.append(order)
 
