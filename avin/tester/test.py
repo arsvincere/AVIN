@@ -290,6 +290,32 @@ class Test:
         return test
 
     # }}}
+    @classmethod  # copy  # {{{
+    async def copy(cls, test: Test, new_name: str) -> Test | None:
+        logger.debug(f"{cls.__name__}.copy()")
+
+        existed_names = await Test.requestAll()
+        if new_name in existed_names:
+            logger.error(f"{new_name} already exist, cancel copy test")
+            return None
+
+        copy = Test(new_name)
+        copy.strategy = test.strategy
+        copy.asset = test.asset
+        copy.enable_long = test.enable_long
+        copy.enable_short = test.enable_short
+        copy.deposit = test.deposit
+        copy.commission = test.commission
+        copy.begin = test.begin
+        copy.end = test.end
+        copy.description = test.description
+        copy.account = test.account
+        copy.time_step = test.time_step
+        copy.status = Test.Status.NEW
+
+        return copy
+
+    # }}}
     @classmethod  # requestAll  # {{{
     async def requestAll(cls) -> list[str]:
         logger.debug(f"{cls.__name__}.requestAll()")
