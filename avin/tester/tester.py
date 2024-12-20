@@ -77,7 +77,7 @@ class Tester:
     def __createEmptyCharts(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__createEmptyCharts()")
 
-        for timeframe in self.__test.strategy.timeframe_list():
+        for timeframe in self.__test.strategy.timeframes():
             chart = Chart(self.__test.asset, timeframe, [])
             self.__test.asset.setChart(chart)
 
@@ -85,7 +85,7 @@ class Tester:
     def __createBarStream(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__createBarStream()")
 
-        timeframe_list = self.__test.strategy.timeframe_list()
+        timeframe_list = self.__test.strategy.timeframes()
         asset = self.__test.asset
 
         for timeframe in timeframe_list:
