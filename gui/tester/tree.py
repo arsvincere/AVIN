@@ -48,12 +48,12 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
     def contextMenuEvent(self, e: QtGui.QContextMenuEvent):  # {{{
         logger.debug(f"{self.__class__.__name__}.contextMenuEvent(e)")
 
-        item = self.itemAt(e.pos())
-        if item is None:
+        self.__current_item = self.itemAt(e.pos())
+        if self.__current_item is None:
             self.test_menu.exec(QtGui.QCursor.pos())
-        if isinstance(item, TestItem):
+        if isinstance(self.__current_item, TestItem):
             self.test_menu.exec(QtGui.QCursor.pos())
-        elif isinstance(item, TradeListItem):
+        elif isinstance(self.__current_item, TradeListItem):
             self.tlist_menu.exec(QtGui.QCursor.pos())
         return e.ignore()
 
@@ -168,8 +168,7 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         if self.__isBusy():
             return
 
-        item = self.currentItem()
-        test = item.test
+        test = self.__current_item.test
 
         self.thread = TRunTest(test)
         self.thread.finished.connect(self.__onTestComplete)
@@ -204,8 +203,7 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         if not new_name:
             return
 
-        item = self.currentItem()
-        test = item.test
+        test = self.__current_item.test
 
         new_test = Thread.copyTest(test, new_name)
         if new_test:
@@ -218,8 +216,7 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
     def __onEdit(self):
         logger.debug(f"{self.__class__.__name__}.__onEdit()")
 
-        item = self.currentItem()
-        test = item.test
+        test = self.__current_item.test
 
         dial = TestEditDialog()
         edited = dial.editTest(test)
@@ -239,8 +236,7 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
             return
 
         # get current test
-        item = self.currentItem()
-        test = item.test
+        test = self.__current_item.test
 
         # try rename test
         renamed_test = Thread.renameTest(test, new_name)
@@ -262,8 +258,7 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         if not Dialog.confirm():
             return
 
-        item = self.currentItem()
-        test = item.test
+        test = self.__current_item.test
 
         # delete test
         Thread.deleteTest(test)
@@ -294,32 +289,32 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
     def __onSelectLong(self):
         logger.debug(f"{self.__class__.__name__}.__onSelectLong()")
 
-        # itlist = self.currentItem()
-        # itlist.selectLong()
+        trade_list_item = self.__current_item
+        trade_list_item.selectLong()
 
     # }}}
     @QtCore.pyqtSlot()  # __onSelectShort# {{{
     def __onSelectShort(self):
         logger.debug(f"{self.__class__.__name__}.__onSelectShort()")
 
-        # itlist = self.currentItem()
-        # itlist.selectShort()
+        trade_list_item = self.__current_item
+        trade_list_item.selectShort()
 
     # }}}
     @QtCore.pyqtSlot()  # __onSelectWin# {{{
     def __onSelectWin(self):
         logger.debug(f"{self.__class__.__name__}.__onSelectWin()")
 
-        # itlist = self.currentItem()
-        # itlist.selectWin()
+        trade_list_item = self.__current_item
+        trade_list_item.selectWin()
 
     # }}}
     @QtCore.pyqtSlot()  # __onSelectLoss# {{{
     def __onSelectLoss(self):
         logger.debug(f"{self.__class__.__name__}.__onSelectLoss()")
 
-        # itlist = self.currentItem()
-        # itlist.selectLoss()
+        trade_list_item = self.__current_item
+        trade_list_item.selectLoss()
 
     # }}}
     @QtCore.pyqtSlot()  # __onSelectAssets# {{{
@@ -330,6 +325,12 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
     @QtCore.pyqtSlot()  # __onSelectYears# {{{
     def __onSelectYears(self):
         logger.debug(f"{self.__class__.__name__}.__onSelectYears()")
+
+        item = self.__current_item
+        trade_list = item.trade_list
+        test = trade_list.owner
+        for year in range(test.begin.year, test.end.year):
+            item.selectYear(year)
 
     # }}}
 
