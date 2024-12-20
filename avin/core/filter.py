@@ -59,6 +59,13 @@ class Filter:
         return self.__condition(item)
 
     # }}}
+    async def acheck(self, item: Asset | Trade | Chart) -> bool:  # {{{
+        logger.debug(f"{self.__class__.__name__}.check()")
+
+        result = await self.__condition(item)
+        return result
+
+    # }}}
 
     @classmethod  # new  # {{{
     def new(cls, name: str) -> Filter | None:
