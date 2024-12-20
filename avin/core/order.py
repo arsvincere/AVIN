@@ -140,7 +140,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     # }}}
     def __str__(self):  # {{{
         string = (
-            f"id={self.order_id} "
+            f"Order id={self.order_id} "
             f"[{self.type.name}] "
             f"[{self.status.name}] "
             f"({self.account_name}) "
@@ -181,6 +181,11 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         return text
 
     # }}}
+
+    def isActive(self) -> bool:
+        logger.debug(f"{self.__class__.__name__}.isActive()")
+
+        return self.status.value < Order.Status.EXECUTED.value
 
     async def setStatus(self, status: Order.Status):  # {{{
         logger.debug(f"Order.setStatus({status})")
