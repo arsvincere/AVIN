@@ -321,6 +321,9 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
     def __onSelectAssets(self):
         logger.debug(f"{self.__class__.__name__}.__onSelectAssets()")
 
+        trade_list_item = self.__current_item
+        trade_list_item.selectAssets()
+
     # }}}
     @QtCore.pyqtSlot()  # __onSelectYears# {{{
     def __onSelectYears(self):

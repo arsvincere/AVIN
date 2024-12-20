@@ -172,6 +172,15 @@ class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
         self.addChild(child_item)
 
     # }}}
+    def selectAssets(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectAsset()")
+
+        childs = self.trade_list.selectAssets()
+        for child in childs:
+            child_item = TradeListItem(child)
+            self.addChild(child_item)
+
+    # }}}
     def selectYear(self, year: int) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectYear()")
 
