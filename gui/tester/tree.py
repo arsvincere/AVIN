@@ -90,12 +90,12 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         self.sortByColumn(TestItem.Column.Name, Qt.SortOrder.AscendingOrder)
 
         # config width
-        self.setColumnWidth(TestItem.Column.Name, 300)
+        self.setColumnWidth(TestItem.Column.Name, 250)
         self.setColumnWidth(TestItem.Column.Status, 80)
-        self.setColumnWidth(TestItem.Column.Trades, 60)
+        self.setColumnWidth(TestItem.Column.Trades, 50)
         self.setColumnWidth(TestItem.Column.Win, 50)
         self.setColumnWidth(TestItem.Column.Loss, 50)
-        self.setMinimumWidth(460)
+        self.setMinimumWidth(500)
 
         # config style
         self.setStyleSheet(Css.TREE)
@@ -407,7 +407,7 @@ class TradeTree(QtWidgets.QTreeWidget):  # {{{
 
     # }}}
 
-    def mouseDoubleClickEvent(self, e: QtGui.QMouseEvent):
+    def mouseDoubleClickEvent(self, e: QtGui.QMouseEvent):  # {{{
         logger.debug(f"{self.__class__.__name__}.mouseDoubleClickEvent(e)")
 
         trade = self.currentItem().trade
@@ -416,6 +416,7 @@ class TradeTree(QtWidgets.QTreeWidget):  # {{{
 
         return e.ignore()
 
+    # }}}
     def contextMenuEvent(self, e: QtGui.QContextMenuEvent):  # {{{
         logger.debug(f"{self.__class__.__name__}.contextMenuEvent(e)")
 
@@ -462,13 +463,13 @@ class TradeTree(QtWidgets.QTreeWidget):  # {{{
         self.sortByColumn(TradeItem.Column.Date, Qt.SortOrder.AscendingOrder)
 
         # config width
-        self.setColumnWidth(TradeItem.Column.Date, 180)
-        self.setColumnWidth(TradeItem.Column.Type, 100)
-        self.setColumnWidth(TradeItem.Column.Ticker, 100)
-        self.setColumnWidth(TradeItem.Column.Status, 100)
-        self.setColumnWidth(TradeItem.Column.Result, 100)
-        self.setColumnWidth(TradeItem.Column.PPD, 100)
-        self.setMinimumWidth(700)
+        self.setColumnWidth(TradeItem.Column.Date, 160)
+        self.setColumnWidth(TradeItem.Column.Type, 60)
+        self.setColumnWidth(TradeItem.Column.Ticker, 60)
+        self.setColumnWidth(TradeItem.Column.Status, 70)
+        self.setColumnWidth(TradeItem.Column.Result, 70)
+        self.setColumnWidth(TradeItem.Column.PPD, 60)
+        self.setMinimumWidth(500)
 
     # }}}
     def __createMenus(self) -> None:  # {{{

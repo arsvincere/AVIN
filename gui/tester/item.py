@@ -212,7 +212,7 @@ class TradeItem(QtWidgets.QTreeWidgetItem):  # {{{
 
         if trade.status == Trade.Status.CLOSED:
             self.setText(self.Column.Result, str(trade.result()))
-            self.setText(self.Column.PPD, str(trade.percentPerDay()) + "%")
+            self.setText(self.Column.PPD, str(trade.percentPerDay()))
 
     # }}}
 
