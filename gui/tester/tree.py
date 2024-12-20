@@ -16,6 +16,7 @@ from avin.tester import Test
 from avin.utils import logger
 from gui.custom import Css, Dialog, Menu
 from gui.tester.dialog_test_edit import TestEditDialog
+from gui.tester.dialog_trade_info import TradeInfoDialog
 from gui.tester.item import TestItem, TradeItem, TradeListItem
 from gui.tester.thread import Thread, TRunTest
 
@@ -402,13 +403,26 @@ class TradeTree(QtWidgets.QTreeWidget):  # {{{
         self.__createMenus()
         self.__connect()
 
+        self.__current_item = None
+
     # }}}
+
+    def mouseDoubleClickEvent(self, e: QtGui.QMouseEvent):
+        logger.debug(f"{self.__class__.__name__}.mouseDoubleClickEvent(e)")
+
+        trade = self.currentItem().trade
+        dial = TradeInfoDialog()
+        dial.showTradeInfo(trade)
+
+        return e.ignore()
+
     def contextMenuEvent(self, e: QtGui.QContextMenuEvent):  # {{{
         logger.debug(f"{self.__class__.__name__}.contextMenuEvent(e)")
 
-        item = self.itemAt(e.pos())
-        self.__setVisibleActions(item)
+        self.__current_item = self.itemAt(e.pos())
+        self.menu.setVisibleActions(self.__current_item)
         self.menu.exec(QtGui.QCursor.pos())
+
         return e.ignore()
 
     # }}}
@@ -428,6 +442,7 @@ class TradeTree(QtWidgets.QTreeWidget):  # {{{
             pass
 
     # }}}
+
     def __config(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__config()")
 
@@ -463,18 +478,19 @@ class TradeTree(QtWidgets.QTreeWidget):  # {{{
 
     # }}}
     def __connect(self):  # {{{
-        self.menu.show_chart.triggered.connect(self.__onShowChart)
+        logger.debug(f"{self.__class__.__name__}.__connect()")
+
         self.menu.info.triggered.connect(self.__onInfo)
 
     # }}}
-    @QtCore.pyqtSlot()  # __onShowChart# {{{
-    def __onShowChart(self):
-        logger.debug(f"{self.__class__.__name__}.__onShowChart()")
 
-    # }}}
     @QtCore.pyqtSlot()  # __onInfo# {{{
     def __onInfo(self):
         logger.debug(f"{self.__class__.__name__}.__onInfo()")
+
+        trade = self.__current_item.trade
+        dial = TradeInfoDialog()
+        dial.showTradeInfo(trade)
 
     # }}}
 
@@ -485,14 +501,12 @@ class _TradeMenu(Menu):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         Menu.__init__(self, parent=parent)
 
-        self.show_chart = QtGui.QAction("Show on chart", self)
         self.info = QtGui.QAction("Info", self)
 
-        self.addAction(self.show_chart)
         self.addAction(self.info)
 
     # }}}
-    def __setVisibleActions(self, item):  # {{{
+    def setVisibleActions(self, item):  # {{{
         logger.debug(f"{self.__class__.__name__}.__setVisibleActions()")
 
         # disable all actions
@@ -502,7 +516,7 @@ class _TradeMenu(Menu):  # {{{
         # # enable availible for this item
         if item is None:
             self.info.setEnabled(False)
-        elif isinstance(item, ITrade):
+        elif isinstance(item, TradeItem):
             self.info.setEnabled(True)
 
     # }}}
