@@ -44,8 +44,10 @@ class Summary:
     # }}}
     @classmethod  # calculate  # {{{
     def calculate(cls, trade_list: TradeList) -> pd.DataFrame:
+        has_parent = trade_list.parent_tlist is not None
+
         dct = dict()
-        dct["name"] = trade_list.name
+        dct["name"] = trade_list.subname if has_parent else trade_list.name
         results = Summary.__getResults(trade_list)
 
         for column, function in Summary.__FUNCTIONS.items():
