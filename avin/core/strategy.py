@@ -104,7 +104,7 @@ class Strategy(ABC):  # {{{
     async def onTradeClosed(self, trade: Trade):
         logger.info(f"   {trade} result: {trade.result()}")
 
-        self.active_trades.remove(trade)
+        await self.__cancelActiveOrders(trade)
 
     # }}}
 
@@ -164,6 +164,7 @@ class Strategy(ABC):  # {{{
         #
 
     # }}}
+
     async def createTrade(  # {{{
         self, dt: datetime, trade_type: Trade.Type, instrument: Instrument
     ):
@@ -302,6 +303,16 @@ class Strategy(ABC):  # {{{
         # можно было все разрулить и потом в базе поправить если какой то
         # косяк. А там уже когда наработаются ситуации, можно будет делать
         # автоматическое поведение для частых случаев.
+
+    # }}}
+    async def cancelOrder(self, order: Order):  # {{{
+        logger.debug(f"Strategy.cancelOrder({order})")
+
+        result = await self.account.cancel(order)
+
+        # TODO: что делать если ордер не отменился???
+        if not result:
+            assert False, "ордер не отменился"
 
     # }}}
     async def closeTrade(self, trade: Trade):  # {{{
@@ -710,6 +721,15 @@ class Strategy(ABC):  # {{{
         await Order.save(take_profit)
         await trade.attachOrder(take_profit)
         return take_profit
+
+    # }}}
+    async def __cancelActiveOrders(self, trade: Trade):  # {{{
+        logger.debug("Strategy.__cancelActiveOrders()")
+
+        # проверить не осталось ли активных ордеров:
+        for order in trade.orders:
+            if order.isActive():
+                await self.cancelOrder(order)
 
     # }}}
 

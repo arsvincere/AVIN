@@ -17,6 +17,7 @@ from avin.core import (
     Broker,
     Event,
     LimitOrder,
+    MarketOrder,
     NewHistoricalBarEvent,
     Operation,
     Order,
@@ -43,6 +44,7 @@ class VirtualBroker(Broker):
     __account: Optional[Account] = None
     __data_stream: Optional[BarStream] = None
     __current_asset: Optional[Asset] = None
+    __market_orders: list[MarketOrder] = list()
     __limit_orders: list[LimitOrder] = list()
     __stop_orders: list[Union[StopOrder, StopLoss, TakeProfit]] = list()
 
@@ -65,7 +67,19 @@ class VirtualBroker(Broker):
         return cls.__account
 
     # }}}
-    @classmethod  # postMarketOrder{{{
+
+    @classmethod  # syncOrder  # {{{
+    async def syncOrder(cls, account: Account, order: Order) -> bool:
+        logger.debug(f"{cls.__name__}.syncOrder({order})")
+
+        # Это метод заглушка, аккаунт использует вызов Broker.syncOrder
+        # для синхронизации статуса ордера при торговле с Тинькофф
+        # в режиме тестера просто ничего не делаем.
+        # статус ордерам ставится в методах postLimitOrder, __executeOrder...
+        return True
+
+    # }}}
+    @classmethod  # postMarketOrder  # {{{
     async def postMarketOrder(cls, account: Account, order: Order) -> bool:
         logger.debug(f"{cls.__name__}.postMarketOrder({account}, {order})")
 
@@ -83,15 +97,13 @@ class VirtualBroker(Broker):
         order.status = Order.Status.FILLED
         order.meta = "virtual executed"
 
-        assert cls.__current_asset is not None
-        chart = cls.__current_asset.chart(TimeFrame("1M"))
-        bar = chart.now
-        await cls.__executeOrder(order, bar)
+        cls.__market_orders.append(order)
+        await order.setStatus(Order.Status.POSTED)
 
         return True
 
     # }}}
-    @classmethod  # postLimitOrder{{{
+    @classmethod  # postLimitOrder  # {{{
     async def postLimitOrder(
         cls, account: Account, order: LimitOrder
     ) -> bool:
@@ -115,7 +127,7 @@ class VirtualBroker(Broker):
         return True
 
     # }}}
-    @classmethod  # postStopOrder{{{
+    @classmethod  # postStopOrder  # {{{
     async def postStopOrder(cls, account: Account, order: StopOrder) -> bool:
         logger.debug(f"{cls.__name__}.postStopOrder({account}, {order})")
 
@@ -135,7 +147,7 @@ class VirtualBroker(Broker):
         return True
 
     # }}}
-    @classmethod  # postStopLoss{{{
+    @classmethod  # postStopLoss  # {{{
     async def postStopLoss(cls, account: Account, order: StopLoss) -> bool:
         logger.debug(f"{cls.__name__}.postStopLoss({account}, {order})")
 
@@ -155,7 +167,7 @@ class VirtualBroker(Broker):
         return True
 
     # }}}
-    @classmethod  # postTakeProfit{{{
+    @classmethod  # postTakeProfit  # {{{
     async def postTakeProfit(
         cls, account: Account, order: TakeProfit
     ) -> bool:
@@ -170,18 +182,56 @@ class VirtualBroker(Broker):
         return True
 
     # }}}
+    @classmethod  # cancelLimitOrder  # {{{
+    async def cancelLimitOrder(
+        cls, account: Account, order: LimitOrder
+    ) -> bool:
+        logger.debug(f"{cls.__name__}.cancelLimitOrder({account}, {order})")
 
-    @classmethod  # syncOrder{{{
-    async def syncOrder(cls, account: Account, order: Order) -> bool:
-        logger.debug(f"{cls.__name__}.syncOrder({order})")
+        # TODO: а что если ордер частично исполнен?
+        # ну пока такое не возможно, но в будущем в тестере это надо
+        # учесть..
 
-        # Это метод заглушка, аккаунт использует вызов Broker.syncOrder
-        # для синхронизации статуса ордера при торговле с Тинькофф
-        # в режиме тестера просто ничего не делаем.
-        # статус ордерам ставится в методах postLimitOrder, __executeOrder...
+        for posted_order in cls.__limit_orders:
+            if posted_order.order_id == order.order_id:
+                cls.__limit_orders.remove(posted_order)
+                await order.setStatus(Order.Status.CANCELED)
+                return True
+
+        logger.warning(
+            f"VirtualBroker.cancelLimitOrder() - not found {order}"
+        )
         return True
 
     # }}}
+    @classmethod  # cancelStopOrder  # {{{
+    async def cancelStopOrder(
+        cls, account: Account, order: StopOrder
+    ) -> bool:
+        logger.debug(f"{cls.__name__}.cancelStopOrder({account}, {order})")
+
+        print("---")
+        for i in cls.__stop_orders:
+            print("availible:", i)
+        input(f"VB CANCEL before {len(cls.__stop_orders)}")
+
+        for posted_order in cls.__stop_orders:
+            if posted_order.order_id == order.order_id:
+                cls.__stop_orders.remove(posted_order)
+                await order.setStatus(Order.Status.CANCELED)
+
+                print("---")
+                for i in cls.__stop_orders:
+                    print("availible:", i)
+                input(f"VB CANCEL after {len(cls.__stop_orders)}")
+
+                return True
+
+        logger.warning(f"VirtualBroker.cancelStopOrder() - not found {order}")
+        return True
+
+    # }}}
+
     @classmethod  # getOrderOperation  # {{{
     async def getOrderOperation(
         cls, account: Account, order: Order
@@ -235,13 +285,11 @@ class VirtualBroker(Broker):
 
         await cls.__data_stream.loadData(cls.__test.begin, cls.__test.end)
         for event in cls.__data_stream:
+            if event.type == Event.Type.NEW_HISTORICAL_BAR:
+                await cls.new_bar.aemit(event)
             if event.type == Event.Type.BAR_CHANGED:
                 await cls.bar_changed.aemit(event)
                 await cls.__checkOrders(event)
-            elif event.type == Event.Type.NEW_HISTORICAL_BAR:
-                await cls.new_bar.aemit(event)
-            else:
-                assert False, "так не должно быть"
 
     # }}}
 
@@ -256,6 +304,12 @@ class VirtualBroker(Broker):
 
         bar = event.bar
 
+        # check market orders
+        i = 0
+        while i < len(cls.__market_orders):
+            m_order = cls.__market_orders[i]
+            await cls.__executeOrder(m_order, bar)
+
         # check limit orders
         i = 0
         while i < len(cls.__limit_orders):
@@ -263,7 +317,7 @@ class VirtualBroker(Broker):
             price = l_order.price
             if price in bar:
                 await cls.__executeOrder(l_order, bar)
-                cls.__limit_orders.pop(i)
+                continue
 
             i += 1
 
@@ -271,18 +325,19 @@ class VirtualBroker(Broker):
         i = 0
         while i < len(cls.__stop_orders):
             s_order = cls.__stop_orders[i]
+
             # TODO: пока не парюсь с exec_price, считаю что
             # stop_price всегда равен exec_price
             # потом переделать нормально
             price = s_order.stop_price
             if price in bar:
                 await cls.__executeOrder(s_order, bar)
-                cls.__stop_orders.pop(i)
+                continue
 
             i += 1
 
     # }}}
-    @classmethod  # __executeOrder{{{
+    @classmethod  # __executeOrder  # {{{
     async def __executeOrder(cls, order, bar):
         logger.debug(f"{cls.__name__}.__executeOrder()")
 
@@ -310,6 +365,7 @@ class VirtualBroker(Broker):
         await order.attachTransaction(transaction)
         order.meta = "virtual executed"
         await order.setStatus(Order.Status.FILLED)
+        cls.__removeOrder(order)
 
         # create and send TransactionEvent
         event = TransactionEvent(
@@ -321,6 +377,30 @@ class VirtualBroker(Broker):
         )
         await cls.new_transaction.aemit(event)
         await cls.__account.receive(event)
+
+    # }}}
+    @classmethod  # __removeOrder  #{{{
+    def __removeOrder(cls, order: Order):
+        logger.debug(f"{cls.__name__}.__executeOrder()")
+
+        match order.type:
+            case Order.Type.MARKET:
+                all_orders = cls.__market_orders
+            case Order.Type.LIMIT:
+                all_orders = cls.__limit_orders
+            case Order.Type.STOP:
+                all_orders = cls.__stop_orders
+            case Order.Type.STOP_LOSS:
+                all_orders = cls.__stop_orders
+            case Order.Type.TAKE_PROFIT:
+                all_orders = cls.__stop_orders
+            case _:
+                assert False, f"че за ордер? {order}"
+
+        for i in all_orders:
+            if i.order_id == order.order_id:
+                all_orders.remove(i)
+                return
 
     # }}}
 
