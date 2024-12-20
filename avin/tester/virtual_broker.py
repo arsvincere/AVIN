@@ -54,6 +54,26 @@ class VirtualBroker(Broker):
         cls.__test = test
 
     # }}}
+    @classmethod  # reset  # {{{
+    def reset(cls):
+        logger.debug(f"{cls.__name__}.reset()")
+
+        cls.__test = None
+        cls.__account = None
+        cls.__data_stream = None
+        cls.__current_asset = None
+        cls.__market_orders = list()
+        cls.__limit_orders = list()
+        cls.__stop_orders = list()
+
+        # сброс конектов к сигналам...
+        # TODO: а может сделать прямо new_bar.disconnect(slot) ??
+        # и new_bar.disconnectAll() ??
+        cls.new_bar = AsyncSignal(NewHistoricalBarEvent)
+        cls.bar_changed = AsyncSignal(BarChangedEvent)
+        cls.new_transaction = AsyncSignal(TransactionEvent)
+
+    # }}}
     @classmethod  # getAccount  # {{{
     def getAccount(cls, account_name: str) -> Account:
         logger.debug(f"{cls.__name__}.getAccount({account_name})")
@@ -210,20 +230,10 @@ class VirtualBroker(Broker):
     ) -> bool:
         logger.debug(f"{cls.__name__}.cancelStopOrder({account}, {order})")
 
-        print("---")
-        for i in cls.__stop_orders:
-            print("availible:", i)
-        input(f"VB CANCEL before {len(cls.__stop_orders)}")
-
         for posted_order in cls.__stop_orders:
             if posted_order.order_id == order.order_id:
                 cls.__stop_orders.remove(posted_order)
                 await order.setStatus(Order.Status.CANCELED)
-
-                print("---")
-                for i in cls.__stop_orders:
-                    print("availible:", i)
-                input(f"VB CANCEL after {len(cls.__stop_orders)}")
 
                 return True
 

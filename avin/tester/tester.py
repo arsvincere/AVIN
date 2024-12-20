@@ -56,9 +56,6 @@ class Tester:
         self.__broker.new_bar.aconnect(self.__onBarEvent)
         self.__broker.bar_changed.aconnect(self.__onBarEvent)
 
-        # TODO:
-        # self.__broker.reset()  # clear orders, subscriptions...
-
     # }}}
     def __setAccount(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__setAccount()")
@@ -95,6 +92,7 @@ class Tester:
     def __clearAll(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__clearAll()")
 
+        self.__broker.reset()  # clear orders, subscriptions...
         self.__test.asset.clearCache()
         self.__broker = None
         self.__test = None
