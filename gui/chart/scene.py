@@ -156,6 +156,10 @@ class ChartScene(QtWidgets.QGraphicsScene):
         self.addItem(self.gtrades)
         self.__has_gtrades = True
 
+        # TODO: это порно код, подумай как лучше сделать
+        view = self.views()[0]
+        view.resetCurrentGTrade()
+
     # }}}
     def removeGTrades(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.removeGTrades()")

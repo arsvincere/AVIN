@@ -128,6 +128,12 @@ class ChartView(QtWidgets.QGraphicsView):
                 return
 
     # }}}
+    def resetCurrentGTrade(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.resetCurrentGTrade()")
+
+        self.current_gtrade = None
+
+    # }}}
 
     def __resetTranformation(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__resetTranformation()")
