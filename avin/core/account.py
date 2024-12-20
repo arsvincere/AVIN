@@ -6,8 +6,6 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-"""doc"""
-
 from __future__ import annotations
 
 import asyncio
@@ -199,6 +197,7 @@ class Account:
 
 
 # }}}
+
 
 if __name__ == "__main__":
     ...
