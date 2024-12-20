@@ -180,7 +180,7 @@ class Strategy(ABC):  # {{{
         )
         await self.__connectTradeSignals(trade)
         self.__active_trades.add(trade)
-        logger.info(f"  {trade}")
+        logger.info(f"   {trade}")
 
         # update db
         await Trade.save(trade)
