@@ -21,13 +21,13 @@ def test_Signal():
 
 async def slot1(*args):
     print("\nslot1", args)
-    await asyncio.sleep(3)
+    await asyncio.sleep(0.1)
     print("slot1 complete")
 
 
 async def slot2(*args):
     print("slot2", args)
-    await asyncio.sleep(3)
+    await asyncio.sleep(0.1)
     print("slot2 complete")
 
 
