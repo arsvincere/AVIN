@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import pandas as pd
 
+from avin.core.trade import Trade, TradeList
 from avin.utils import logger
 
 
@@ -250,12 +251,18 @@ class Summary:
     # }}}
     @staticmethod  # __getResults# {{{
     def __getResults(tlist: TradeList) -> list[float]:
-        """Возвращает список финансовых результатов трейдов"""
+        """Возвращает список финансовых результатов трейдов
+
+        Учитываются только закрытые трейды
+        """
 
         results = list()
         for trade in tlist.trades:
-            if not trade.isBlocked():
+            if trade.isBlocked():
+                continue
+            if trade.status == Trade.Status.CLOSED:
                 results.append(trade.result())
+
         return results
 
     # }}}
