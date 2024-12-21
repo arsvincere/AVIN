@@ -12,7 +12,7 @@ from PyQt6 import QtCore, QtWidgets
 
 from avin.core import Asset, Chart, TimeFrame, Trade, TradeList
 from avin.tester import Test
-from avin.utils import logger, now
+from avin.utils import DateTime, logger, now
 from gui.chart.gchart import GChart, ViewType
 from gui.chart.gmark import Marker
 from gui.chart.gtest import GTradeList
@@ -42,6 +42,7 @@ class ChartWidget(QtWidgets.QWidget):
     def setAsset(self, asset: Asset) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.setAsset()")
 
+        self.clearAll()
         self.__asset = asset
         self.toolbar.setAsset(asset)
         self.__drawChart()
@@ -50,6 +51,7 @@ class ChartWidget(QtWidgets.QWidget):
     def setTradeList(self, trade_list: TradeList) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.setTradeList()")
 
+        self.clearAll()
         self.__trade_list = trade_list
         self.__drawTradeList()
 
@@ -73,6 +75,8 @@ class ChartWidget(QtWidgets.QWidget):
         self.__asset = None
         self.__markers: list[Marker] = list()
         self.toolbar.setAsset(None)
+        self.toolbar.setFirstTimeFrame(TimeFrame("D"))
+        self.toolbar.resetSecondTimeFrames()
 
     # }}}
 
@@ -113,6 +117,7 @@ class ChartWidget(QtWidgets.QWidget):
         self.toolbar.barViewSelected.connect(self.__onBarView)
         self.toolbar.cundleViewSelected.connect(self.__onCundleView)
         self.toolbar.newMarker.connect(self.__onNewMarker)
+        self.toolbar.periodChanged.connect(self.__onPeriod)
 
     # }}}
     def __drawChart(self) -> None:  # {{{
@@ -146,6 +151,7 @@ class ChartWidget(QtWidgets.QWidget):
         self.__asset = asset
 
     # }}}
+
     @QtCore.pyqtSlot(TimeFrame)  # __onTimeframe1  # {{{
     def __onTimeframe1(self, timeframe: TimeFrame):
         logger.debug(f"{self.__class__.__name__}.__onTimeframe1()")
@@ -206,6 +212,28 @@ class ChartWidget(QtWidgets.QWidget):
 
         gchart = self.scene.currentGChart()
         gchart.addMarker(marker)
+
+    # }}}
+    @QtCore.pyqtSlot(DateTime, DateTime)  # __onPeriod  # {{{
+    def __onPeriod(self, begin: DateTime, end: DateTime):
+        logger.debug(f"{self.__class__.__name__}.__onPeriod()")
+
+        # NOTE:
+        # если перерисовать трейд лист - трейды поедут по датам
+        # пока эта функция особо не нужна для трейд листов
+        # так что работать будет только если на виджете
+        # отображается только график, установлен только ассет
+        if self.__trade_list is not None:
+            return
+        if self.__asset is None:
+            return
+
+        timeframe = self.toolbar.firstTimeFrame()
+        chart = Thread.loadChart(self.__asset, timeframe, begin, end)
+        gchart = GChart(chart)
+
+        self.scene.setGChart(gchart)
+        self.view.centerOnLast()
 
     # }}}
 

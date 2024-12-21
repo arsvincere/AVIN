@@ -10,7 +10,8 @@
 from PyQt6 import QtCore, QtGui, QtWidgets
 
 from avin.core import Asset, TimeFrame, TimeFrameList
-from avin.utils import logger
+from avin.utils import DateTime, logger
+from gui.chart.dialog_period import ChartPeriodDialog
 from gui.chart.gchart import ViewType
 from gui.chart.gmark import Marker, MarkerEditDialog
 from gui.custom import (
@@ -29,6 +30,7 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
     barViewSelected = QtCore.pyqtSignal()
     cundleViewSelected = QtCore.pyqtSignal()
     newMarker = QtCore.pyqtSignal(Marker)
+    periodChanged = QtCore.pyqtSignal(DateTime, DateTime)
 
     __ICON_SIZE = QtCore.QSize(32, 32)
 
@@ -120,6 +122,10 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
         # marker
         self.__marker_btn = ToolButton(text="Marker", width=70, parent=self)
 
+        # period
+        self.__period_btn = ToolButton(text="Period", width=70, parent=self)
+        self.__period_dialog = None
+
         # add widgets
         self.addWidget(self.__asset_btn)
         self.addWidget(self.__first_tf_btn)
@@ -135,6 +141,7 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
         self.addWidget(VLine(width=10))
         self.addWidget(self.__indicator_btn)
         self.addWidget(self.__marker_btn)
+        self.addWidget(self.__period_btn)
 
     # }}}
     def __createMenus(self):  # {{{
@@ -166,6 +173,7 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
         self.__bar_btn.clicked.connect(self.__onBarBtn)
         self.__cundle_btn.clicked.connect(self.__onCundleBtn)
         self.__marker_btn.clicked.connect(self.__onMarkerBtn)
+        self.__period_btn.clicked.connect(self.__onPeriodBtn)
 
     # }}}
 
@@ -243,6 +251,18 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
         marker = dial.newMarker()
         if marker is not None:
             self.newMarker.emit(marker)
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onPeriodBtn  # {{{
+    def __onPeriodBtn(self):
+        logger.debug(f"{self.__class__.__name__}.__onPeriodBtn()")
+
+        if self.__period_dialog is None:
+            self.__period_dialog = ChartPeriodDialog()
+
+        begin, end = self.__period_dialog.selectPeriod()
+        if begin and end:
+            self.periodChanged.emit(begin, end)
 
     # }}}
 
