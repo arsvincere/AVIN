@@ -20,6 +20,7 @@ from avin.core.direction import Direction
 from avin.core.id import Id
 from avin.core.operation import Operation
 from avin.core.order import Order
+from avin.core.range import Range
 from avin.core.timeframe import TimeFrame
 from avin.data import Instrument
 from avin.keeper import Keeper
@@ -170,8 +171,9 @@ sell:       {self.sellAverage()} * {self.sellQuantity()} = {self.sellAmount()}
 commission: {self.commission()}
 open_dt:    {Usr.localTime(self.openDateTime())}
 close_dt:   {Usr.localTime(self.closeDateTime())}
-stop:       {self.stopPrice()}
-take:       {self.takePrice()}
+open:       {self.openPrice()}
+stop:       {self.stopPrice()} / {self.stopPercent()}
+take:       {self.takePrice()} / {self.takePercent()}
 ------------------------------------------------------------------------------
 result:     {self.result()}
 days:       {self.holdingDays()}
@@ -486,6 +488,40 @@ ppd:        {self.percentPerDay()}
                 return order.stop_price
 
         return None
+
+    # }}}
+    def stopPercent(self) -> float | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.stopPercent()")
+
+        open_price = self.openPrice()
+        stop_price = self.stopPrice()
+        if stop_price is None:
+            return None
+
+        if self.type == Trade.Type.LONG:
+            stop_range = Range(stop_price, open_price)
+        else:
+            stop_range = Range(open_price, stop_price)
+
+        percent = stop_range.percent()
+        return percent
+
+    # }}}
+    def takePercent(self) -> float | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.takePercent()")
+
+        open_price = self.openPrice()
+        take_price = self.takePrice()
+        if take_price is None:
+            return None
+
+        if self.type == Trade.Type.LONG:
+            take_range = Range(open_price, take_price)
+        else:
+            take_range = Range(take_price, open_price)
+
+        percent = take_range.percent()
+        return percent
 
     # }}}
     def result(self):  # {{{
