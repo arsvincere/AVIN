@@ -15,6 +15,7 @@ from avin.core import TradeList
 from avin.tester import Test
 from avin.utils import logger
 from gui.custom import Css, Dialog, Menu
+from gui.filter.dialog_select import FilterSelectDialog
 from gui.tester.dialog_test_edit import TestEditDialog
 from gui.tester.dialog_trade_info import TradeInfoDialog
 from gui.tester.item import TestItem, TradeItem, TradeListItem
@@ -273,8 +274,13 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
     def __onSelectFilter(self):
         logger.debug(f"{self.__class__.__name__}.__onSelectFilter()")
 
-        # itlist = self.currentItem()
-        # itlist.selectFilter()
+        dial = FilterSelectDialog()
+        f = dial.selectFilter()
+        if f is None:
+            return
+
+        trade_list_item = self.__current_item
+        trade_list_item.selectFilter(f)
 
     # }}}
     @QtCore.pyqtSlot()  # __onSelectStrategy# {{{

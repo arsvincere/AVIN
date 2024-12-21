@@ -10,8 +10,7 @@ import asyncio
 
 from PyQt6 import QtCore
 
-from avin.tester import Test, Tester
-from avin.utils import logger
+from avin import Filter, Test, Tester, TradeList, logger
 from gui.custom import awaitQThread
 
 
@@ -85,6 +84,18 @@ class Thread:  # {{{
         logger.debug(f"{cls.__name__}.fromJson()")
 
         thread = _TFromJson(obj)
+        thread.start()
+        awaitQThread(thread)
+
+        return thread.result
+
+    # }}}
+
+    @classmethod  # selectFilter  # {{{
+    def selectFilter(cls, trade_list: TradeList, filter: Filter) -> Test:
+        logger.debug(f"{cls.__name__}.selectFilter()")
+
+        thread = _TSelectFilter(trade_list, filter)
         thread.start()
         awaitQThread(thread)
 
@@ -256,6 +267,31 @@ class _TFromJson(QtCore.QThread):  # {{{
         logger.debug(f"{self.__class__.__name__}.__arun()")
 
         self.result = await Test.fromJson(self.__obj)
+
+    # }}}
+
+
+# }}}
+class _TSelectFilter(QtCore.QThread):  # {{{
+    def __init__(self, trade_list, filter, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtCore.QThread.__init__(self, parent)
+
+        self.__trade_list = trade_list
+        self.__filter = filter
+        self.result = None
+
+    # }}}
+    def run(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.run()")
+
+        asyncio.run(self.__arun())
+
+    # }}}
+    async def __arun(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__arun()")
+
+        self.result = await self.__trade_list.selectFilter(self.__filter)
 
     # }}}
 

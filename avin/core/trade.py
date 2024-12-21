@@ -242,14 +242,18 @@ ppd:        {self.percentPerDay()}
             await self.setStatus(Trade.Status.CLOSED)
 
     # }}}
-    async def chart(self, timeframe: TimeFrame) -> Chart:  # {{{
+    async def loadChart(self, timeframe: TimeFrame | str) -> Chart:  # {{{
         logger.debug(f"{self.__class__.__name__}.chart()")
         assert self.instrument.type == Instrument.Type.SHARE
+
+        if isinstance(timeframe, str):
+            timeframe = TimeFrame(timeframe)
 
         end = self.dt
         begin = self.dt - Chart.DEFAULT_BARS_COUNT * timeframe
 
         chart = await Chart.load(self.instrument, timeframe, begin, end)
+        chart.setHeadDatetime(self.dt)
         return chart
 
     # }}}
@@ -740,6 +744,20 @@ class TradeList:  # {{{
         self.__owner = owner
 
     # }}}
+
+    async def selectFilter(self, f) -> TradeList:  # {{{
+        logger.debug(f"{self.__class__.__name__}.filter()")
+
+        selected = list()
+        for trade in self.__trades:
+            result = await f.acheck(trade)
+            if result:
+                selected.append(trade)
+
+        child = self._createChild(selected, f.name)
+        return child
+
+    # }}}
     def selectStatus(self, status: Trade.Status) -> TradeList:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectStatus()")
 
@@ -788,7 +806,6 @@ class TradeList:  # {{{
         return all_childs
 
     # }}}
-
     def selectLong(self) -> TradeList:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectLong()")
 
@@ -878,11 +895,6 @@ class TradeList:  # {{{
 
         child = self._createChild(selected, str(year))
         return child
-
-    # }}}
-    def selectFilter(self, f) -> TradeList:  # {{{
-        logger.debug(f"{self.__class__.__name__}.filter()")
-        assert False, "не написана"
 
     # }}}
 

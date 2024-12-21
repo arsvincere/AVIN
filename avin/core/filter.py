@@ -8,8 +8,6 @@
 
 from __future__ import annotations
 
-from typing import Callable
-
 from avin.config import Usr
 from avin.const import Res
 from avin.core.asset import Asset
@@ -24,7 +22,7 @@ class Filter:
 
         self.__name = name
         self.__code = code
-        self.__condition = self.__createCondition(code)
+        self.__createCondition()
 
     # }}}
 
@@ -53,16 +51,18 @@ class Filter:
 
     # }}}
 
-    def check(self, item: Asset | Trade | Chart) -> bool:  # {{{
-        logger.debug(f"{self.__class__.__name__}.check()")
-
-        return self.__condition(item)
-
-    # }}}
     async def acheck(self, item: Asset | Trade | Chart) -> bool:  # {{{
         logger.debug(f"{self.__class__.__name__}.check()")
 
-        result = await self.__condition(item)
+        class_name = item.__class__.__name__
+        match class_name:
+            case "Chart":
+                result = await self.__conditionChart(item)
+            case "Asset":
+                result = await self.__conditionAsset(item)
+            case "Trade":
+                result = await self.__conditionTrade(item)
+
         return result
 
     # }}}
@@ -183,14 +183,15 @@ class Filter:
 
     # }}}
 
-    def __createCondition(self, code: str) -> Callable:  # {{{
+    def __createCondition(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__createCondition()")
 
         context = globals().copy()
-        exec(code, context)
-        func = context["condition"]
+        exec(self.__code, context)
 
-        return func
+        self.__conditionChart = context["conditionChart"]
+        self.__conditionAsset = context["conditionAsset"]
+        self.__conditionTrade = context["conditionTrade"]
 
     # }}}
     @classmethod  # __checkName  # {{{

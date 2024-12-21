@@ -6,6 +6,8 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
+from __future__ import annotations
+
 import asyncio
 from datetime import datetime
 
@@ -29,6 +31,15 @@ class Thread:  # {{{
         awaitQThread(thread)
 
         return thread.result
+
+    # }}}
+    @classmethod  # addMarker  # {{{
+    def addMarker(cls, gchart: GChart, marker: Marker) -> None:
+        logger.debug(f"{cls.__name__}.addMarker()")
+
+        thread = _TAddMarker(gchart, marker)
+        thread.start()
+        awaitQThread(thread)
 
     # }}}
 
@@ -69,6 +80,41 @@ class _TLoadChart(QtCore.QThread):  # {{{
             self.__begin,
             self.__end,
         )
+
+    # }}}
+
+
+# }}}
+class _TAddMarker(QtCore.QThread):  # {{{
+    def __init__(self, gchart: GChart, marker: Marker, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtCore.QThread.__init__(self, parent)
+
+        self.__gchart = gchart
+        self.__marker = marker
+
+    # }}}
+    def run(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.run()")
+
+        asyncio.run(self.__arun())
+
+    # }}}
+    async def __arun(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__arun()")
+
+        gchart = self.__gchart
+        marker = self.__marker
+        chart = self.__gchart.chart
+        f = self.__marker.filter
+
+        chart.setHeadIndex(0)
+        while chart.nextHead():
+            result = await f.acheck(chart)
+            if result:
+                dt = chart.now.dt
+                gbar = gchart.barFromDatetime(dt)
+                gbar.addShape(marker.shape)
 
     # }}}
 

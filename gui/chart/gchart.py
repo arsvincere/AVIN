@@ -21,6 +21,7 @@ from avin.core import (
 )
 from avin.utils import find_left, logger, next_month
 from gui.chart.gmark import Marker, Shape
+from gui.chart.thread import Thread
 from gui.custom import Theme
 
 
@@ -273,14 +274,7 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
     def addMarker(self, marker: Marker) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.addMarker()")
 
-        chart = self.chart
-        f = marker.filter
-        chart.setHeadIndex(0)
-        while chart.nextHead():
-            if f.check(chart):
-                dt = chart.now.dt
-                gbar = self.barFromDatetime(dt)
-                gbar.addShape(marker.shape)
+        Thread.addMarker(self, marker)
 
     # }}}
     def clearMarkers(self):

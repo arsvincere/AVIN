@@ -11,11 +11,9 @@ import enum
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
 
-from avin.config import Usr
-from avin.core import Asset, Trade, TradeList
-from avin.tester import Test
-from avin.utils import logger
+from avin import Asset, Filter, Test, Trade, TradeList, Usr, logger
 from gui.tester.progress_bar import TestProgressBar
+from gui.tester.thread import Thread
 
 
 class TestItem(QtWidgets.QTreeWidgetItem):  # {{{
@@ -124,6 +122,14 @@ class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
 
     # }}}
 
+    def selectFilter(self, f: Filter) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectFilter()")
+
+        child = Thread.selectFilter(self.trade_list, f)
+        child_item = TradeListItem(child)
+        self.addChild(child_item)
+
+    # }}}
     def selectStrategy(self, name: str, version: str) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectStrategy()")
 
