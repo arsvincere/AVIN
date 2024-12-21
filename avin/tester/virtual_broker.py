@@ -320,6 +320,12 @@ class VirtualBroker(Broker):
             m_order = cls.__market_orders[i]
             await cls.__executeOrder(m_order, bar)
 
+        # FIX: Ахтунг!!!!!!!!!!!
+        # надо же проверять выполнение лимитных и стоп ордеров не
+        # только при попадании цены в бар, но и больше меньше цены
+        # сработки, наступал уже на эти грабли в старом тестере
+        # ..................................
+
         # check limit orders
         i = 0
         while i < len(cls.__limit_orders):
