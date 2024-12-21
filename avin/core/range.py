@@ -31,6 +31,7 @@ class Range:  # {{{
     """
 
     # }}}
+
     class Type(enum.Enum):  # {{{
         UNDEFINE = 0
         RANGE = 1
@@ -58,9 +59,12 @@ class Range:  # {{{
         BLACKSWAN_BIG = 7
 
     # }}}
+
     def __init__(  # {{{
         self, min_: float, max_: float, type_=Type.UNDEFINE, bar=None
     ):
+        assert min_ <= max_
+
         self.__min = min_
         self.__max = max_
         self.__type = type_
@@ -106,6 +110,7 @@ class Range:  # {{{
         return f"Range[{self.min}, {self.max}]"
 
     # }}}
+
     @property  # min# {{{
     def min(self):
         return self.__min
@@ -129,6 +134,7 @@ class Range:  # {{{
         return self.__bar
 
     # }}}
+
     def percent(self) -> float:  # {{{
         """doc
         Return percent of range
