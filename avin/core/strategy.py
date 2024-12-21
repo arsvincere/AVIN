@@ -27,6 +27,7 @@ from avin.core.order import (
     StopLoss,
     TakeProfit,
 )
+from avin.core.risk import Risk
 from avin.core.timeframe import TimeFrameList
 from avin.core.trade import Trade, TradeList
 from avin.data import Instrument
@@ -141,6 +142,18 @@ class Strategy(ABC):  # {{{
     @property  # active_trades  # {{{
     def active_trades(self):
         return self.__active_trades
+
+    # }}}
+    @property  # r_trade  # {{{
+    def r_trade(self):
+        """Риск на одну сделку из конфига"""
+        return self.__cfg["r_trade"]
+
+    # }}}
+    @property  # r_strategy  # {{{
+    def r_strategy(self):
+        """Максимальный риск на всю стратегию до отключения"""
+        return self.__cfg["r_strategy"]
 
     # }}}
 
@@ -364,6 +377,20 @@ class Strategy(ABC):  # {{{
 
         await trade.setStatus(Trade.Status.CANCELED)
         logger.info(f"   {trade}")
+
+    # }}}
+
+    def maxLots(self, trade: Trade) -> int:  # {{{
+        logger.debug("Strategy.max_lots()")
+
+        max_lots = Risk.maxLotsByRisk(
+            r_trade=self.r_trade,
+            open_price=trade.info["open_price"],
+            stop_price=trade.info["stop_price"],
+            lotX=trade.instrument.lot,
+        )
+
+        return max_lots
 
     # }}}
 

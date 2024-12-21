@@ -284,6 +284,27 @@ def test_TransactionList():  # {{{
 
 
 # }}}
+def test_Risk():  # {{{
+    deposit = 100_000
+    r_trade = 1000
+    open_price = 100
+    stop_price = 90
+    take_price = 150
+    lotX = 10
+
+    max_lots = Risk.maxLotsByRisk(r_trade, open_price, stop_price, lotX)
+    assert max_lots == 10
+
+    max_lots = Risk.maxLotsByDeposit(deposit, open_price, lotX)
+    assert max_lots == 100
+
+    pr = Risk.pr(open_price, stop_price, take_price)
+    assert pr == 5.0
+
+
+# }}}
+
+
 @pytest.mark.asyncio  # test_Chart  # {{{
 async def test_Chart(event_loop):
     sber = await Asset.fromTicker(

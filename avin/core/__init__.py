@@ -30,6 +30,7 @@ from avin.core.order import (
     TakeProfit,
 )
 from avin.core.range import Range
+from avin.core.risk import Risk
 from avin.core.strategy import (
     Strategy,
     StrategyList,
@@ -76,4 +77,5 @@ __all__ = (
     "Broker",
     "Summary",
     "Filter",
+    "Risk",
 )
