@@ -277,12 +277,13 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
         Thread.addMarker(self, marker)
 
     # }}}
-    def clearMarkers(self):
+    def clearMarkers(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.addMarker()")
 
         for gbar in self.gbars:
             gbar.clearShapes()
 
+    # }}}
     def viewType(self) -> ViewType:  # {{{
         logger.debug(f"{self.__class__.__name__}.viewType()")
 

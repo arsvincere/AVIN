@@ -217,7 +217,8 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
     def __onEdit(self):
         logger.debug(f"{self.__class__.__name__}.__onEdit()")
 
-        test = self.__current_item.test
+        item = self.__current_item
+        test = item.test
 
         dial = TestEditDialog()
         edited = dial.editTest(test)

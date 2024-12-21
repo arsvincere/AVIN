@@ -34,7 +34,7 @@ class ChartWidget(QtWidgets.QWidget):
         self.__connect()
 
         self.__asset = None
-        self.__tlist = None
+        self.__trade_list = None
         self.__markers: list[Marker] = list()
 
     # }}}
@@ -47,51 +47,20 @@ class ChartWidget(QtWidgets.QWidget):
         self.__drawChart()
 
     # }}}
-    def setTradeList(self, tlist: TradeList) -> None:  # {{{
+    def setTradeList(self, trade_list: TradeList) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.setTradeList()")
 
-        # FIX: в базе остаются трейды со статусом INITIAL и тп
-        # после тестера, надо сделать чтобы сама стратегия их
-        # удаляла когда они не актуальны, а потом еще
-        # тестер в конце теста подчищает все такое безобразие
-        # и выдает какую то сводку, мол тест окончен, еще
-        # столько то трейдов висело незавершенных - они выкинуты
-        # или сложнее... INITIAL трейды тоже можно сохранять
-        # но надо их корректно обрабатывать, у них нет result()
-        # и тп...
-        # Пока ставлю заглушку - пропускаю все трейды кроме CLOSED
-        # tlist = tlist.selectStatus(Trade.Status.CLOSED)
-
-        test = tlist.owner
-        assert isinstance(test, Test)
-        gtrade_list = GTradeList.fromSelected(test, tlist)
-        asset = test.asset
-
-        self.toolbar.setFirstTimeFrame(TimeFrame("D"))
-        self.toolbar.resetSecondTimeFrames()
-
-        self.scene.setGTradeList(gtrade_list)
-        self.view.centerOnFirst()
-
-        # FIX:
-        # во первых надо сохранять то что сейчас активен GTradeList
-        # чтобы работала смена таймфрейма
-        # во вторых при создании GTradeList надо использовать
-        # таймфрейм
-        # возможно стоит в тест вообще вернуть таймфрейм
-        # думать думать думать
-        self.__tlist = tlist
-        self.__asset = asset
-        self.toolbar.setAsset(asset)
+        self.__trade_list = trade_list
+        self.__drawTradeList()
 
     # }}}
-    def showTrade(self, trade: Trade):  # {{{
+    def showTrade(self, trade: Trade) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.showTrade()")
 
         self.view.centerOnTrade(trade)
 
     # }}}
-    def clearAll(self):  # {{{
+    def clearAll(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.clearAll()")
 
         self.scene.removeGChart()
@@ -100,8 +69,9 @@ class ChartWidget(QtWidgets.QWidget):
         # self.scene.removeMark()
         self.view.resetTransform()
 
-        self.__tlist = None
+        self.__trade_list = None
         self.__asset = None
+        self.__markers: list[Marker] = list()
         self.toolbar.setAsset(None)
 
     # }}}
@@ -114,16 +84,17 @@ class ChartWidget(QtWidgets.QWidget):
         self.setStyleSheet(Css.STYLE)
 
     # }}}
-    def __createWidgets(self):  # {{{
+    def __createWidgets(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
 
         self.toolbar = ChartToolBar(self)
         self.view = ChartView(self)
         self.scene = ChartScene(self)
+
         self.view.setScene(self.scene)
 
     # }}}
-    def __createLayots(self):  # {{{
+    def __createLayots(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__createLayots()")
 
         vbox = QtWidgets.QVBoxLayout()
@@ -134,7 +105,7 @@ class ChartWidget(QtWidgets.QWidget):
         self.setLayout(vbox)
 
     # }}}
-    def __connect(self):  # {{{
+    def __connect(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__connect()")
 
         self.toolbar.firstTimeFrameChanged.connect(self.__onTimeframe1)
@@ -144,7 +115,7 @@ class ChartWidget(QtWidgets.QWidget):
         self.toolbar.newMarker.connect(self.__onNewMarker)
 
     # }}}
-    def __drawChart(self):  # {{{
+    def __drawChart(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__drawChart()")
 
         timeframe = self.toolbar.firstTimeFrame()
@@ -157,15 +128,35 @@ class ChartWidget(QtWidgets.QWidget):
         self.view.centerOnLast()
 
     # }}}
+    def __drawTradeList(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__drawTradeList()")
 
+        trade_list = self.__trade_list
+        test = trade_list.owner
+        assert isinstance(test, Test)
+        asset = test.asset
+        timeframe = self.toolbar.firstTimeFrame()
+        gtrade_list = GTradeList.fromSelected(test, trade_list, timeframe)
+
+        self.toolbar.resetSecondTimeFrames()
+        self.toolbar.setAsset(asset)
+        self.scene.setGTradeList(gtrade_list)
+        self.view.centerOnFirst()
+
+        self.__asset = asset
+
+    # }}}
     @QtCore.pyqtSlot(TimeFrame)  # __onTimeframe1  # {{{
     def __onTimeframe1(self, timeframe: TimeFrame):
         logger.debug(f"{self.__class__.__name__}.__onTimeframe1()")
 
-        if self.__asset is None:
+        if self.__trade_list is not None:
+            self.__drawTradeList()
             return
 
-        self.__drawChart()
+        if self.__asset is not None:
+            self.__drawChart()
+            return
 
     # }}}
     @QtCore.pyqtSlot(TimeFrame, bool)  # __onTimeframe2  # {{{

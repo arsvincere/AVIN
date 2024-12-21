@@ -244,33 +244,35 @@ class GTradeAnnotation(QtWidgets.QGraphicsProxyWidget):  # {{{
 
 # }}}
 class GTradeList(QtWidgets.QGraphicsItemGroup):  # {{{
-    def __init__(self, test: Test, trade_list, parent=None):  # {{{
+    def __init__(  # {{{
+        self,
+        test: Test,
+        trade_list: TradeList,
+        timeframe: TimeFrame,
+        parent=None,
+    ):
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QGraphicsItemGroup.__init__(self, parent)
 
         self.test = test
         self.trade_list = trade_list
+        self.timeframe = timeframe
 
         self.__createGChart()
         self.__createGTrades()
 
     # }}}
 
-    @classmethod  # fromTest  # {{{
-    def fromTest(cls, test: Test) -> GTradeList:
-        logger.debug(f"{cls.__name__}.fromTest()")
-
-        gtrade_list = cls(test, test.trade_list)
-        return gtrade_list
-
-    # }}}
     @classmethod  # fromSelected  # {{{
     def fromSelected(
-        cls, test: Test, selected_trades: TradeList
+        cls,
+        test: Test,
+        selected_trades: TradeList,
+        timeframe: TimeFrame,
     ) -> GTradeList:
         logger.debug(f"{cls.__name__}.fromSelected()")
 
-        gtrade_list = cls(test, selected_trades)
+        gtrade_list = cls(test, selected_trades, timeframe)
         return gtrade_list
 
     # }}}
@@ -283,7 +285,7 @@ class GTradeList(QtWidgets.QGraphicsItemGroup):  # {{{
 
         chart = Thread.loadChart(
             self.test.asset,
-            TimeFrame("D"),
+            self.timeframe,
             begin,
             end,
         )

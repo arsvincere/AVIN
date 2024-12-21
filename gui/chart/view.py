@@ -116,6 +116,8 @@ class ChartView(QtWidgets.QGraphicsView):
         if self.current_gtrade is not None:
             self.current_gtrade.hideAnnotation()
 
+        # TODO: ебать тут порно код... с использованием переменных
+        # связанных виджетов... надо это все через интерфейсы сделать
         gtrades: QtWidgets.QGraphicsItemGroup = self.scene().gtrades
         if gtrades is None:
             return
