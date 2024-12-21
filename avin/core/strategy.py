@@ -262,6 +262,9 @@ class Strategy(ABC):  # {{{
     ) -> StopLoss:
         logger.debug("Strategy.createStopLoss()")
 
+        s = Trade.Status
+        assert trade.status not in (s.CLOSED, s.CANCELED, s.BLOCKED)
+
         if stop_percent is not None:
             order = await self.__createStopLossByPercent(trade, stop_percent)
             return order
@@ -281,6 +284,9 @@ class Strategy(ABC):  # {{{
     ) -> TakeProfit:
         logger.debug("Strategy.createStopLoss()")
 
+        s = Trade.Status
+        assert trade.status not in (s.CLOSED, s.CANCELED, s.BLOCKED)
+
         if take_percent is not None:
             order = await self.__createTakeProfitByPercent(
                 trade, take_percent
@@ -296,6 +302,7 @@ class Strategy(ABC):  # {{{
     # }}}
     async def postOrder(self, order: Order):  # {{{
         logger.debug(f"Strategy.postOrder({order})")
+
         trade = self.active_trades.find(order.trade_id)
         await trade.setStatus(Trade.Status.POST_ORDER)
 
