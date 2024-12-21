@@ -334,6 +334,17 @@ class Chart:
             return None
 
     # }}}
+    def prevHead(self) -> Bar | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.prevHead()")
+
+        if self.__head > 0:
+            self.__head -= 1
+            self.__now = self.__bars[self.__head]
+            return self.__now
+        else:
+            return None
+
+    # }}}
 
     @classmethod  # load# {{{
     async def load(
