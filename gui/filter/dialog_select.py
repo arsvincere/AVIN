@@ -8,7 +8,7 @@
 
 import sys
 
-from PyQt6 import QtCore, QtGui, QtWidgets
+from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import Qt
 
 from avin.core import Filter
@@ -105,9 +105,6 @@ class FilterSelectDialog(QtWidgets.QDialog):  # {{{
             f = Filter.load(name)
             item = FilterItem(f)
             self.__tree.addTopLevelItem(item)
-
-        QtWidgets.QLabel.setPixmap
-        QtGui.QPixmap
 
     # }}}
 
