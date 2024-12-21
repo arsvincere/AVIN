@@ -1,8 +1,8 @@
 {
-    "name": "____",
-    "strategy": "____",
-    "version": "____",
-    "asset": "MOEX-SHARE-SBER",
+    "name": "_",
+    "strategy": "_",
+    "version": "_",
+    "asset": "MOEX-SHARE-AFKS",
     "enable_long": true,
     "enable_short": true,
     "deposit": 100000.0,
