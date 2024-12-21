@@ -25,6 +25,7 @@ class TestItem(QtWidgets.QTreeWidgetItem):  # {{{
         Loss = 4
 
     # }}}
+
     def __init__(self, test: Test, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QTreeWidgetItem.__init__(self, parent)
@@ -39,6 +40,7 @@ class TestItem(QtWidgets.QTreeWidgetItem):  # {{{
         self.__createTradeListChild()
 
     # }}}
+
     def updateText(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.update()")
 
@@ -74,7 +76,7 @@ class TestItem(QtWidgets.QTreeWidgetItem):  # {{{
 
     # }}}
 
-    def __createTradeListChild(self) -> None:
+    def __createTradeListChild(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__createTradeListChild()")
 
         if self.test.status != Test.Status.COMPLETE:
@@ -82,6 +84,8 @@ class TestItem(QtWidgets.QTreeWidgetItem):  # {{{
 
         tlist_item = TradeListItem(self.test.trade_list)
         self.addChild(tlist_item)
+
+    # }}}
 
 
 # }}}

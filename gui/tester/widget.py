@@ -15,7 +15,6 @@ from avin.core import Trade, TradeList
 from avin.tester import Test
 from avin.utils import logger
 from gui.custom import Css
-from gui.tester.thread import Thread
 from gui.tester.tree import TestTree, TradeTree
 
 
@@ -56,13 +55,14 @@ class TesterWidget(QtWidgets.QWidget):  # {{{
         self.__createWidgets()
         self.__createLayots()
         self.__connect()
-        self.__loadUserTests()
 
     # }}}
     def __config(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__config()")
 
+        self.setWindowTitle("AVIN")
         self.setStyleSheet(Css.STYLE)
+        self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
 
     # }}}
     def __createWidgets(self) -> None:  # {{{
@@ -92,15 +92,7 @@ class TesterWidget(QtWidgets.QWidget):  # {{{
         self.trade_tree.clicked.connect(self.__onTradeTreeClicked)
 
     # }}}
-    def __loadUserTests(self) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.__loadUserTests()")
 
-        all_names = Thread.requestAllTest()
-        for name in all_names:
-            test = Thread.loadTest(name)
-            self.test_tree.addTest(test)
-
-    # }}}
     @QtCore.pyqtSlot()  # __onTestTreeClicked# {{{
     def __onTestTreeClicked(self) -> None:
         logger.debug(f"{self.__class__.__name__}.__onTestTreeClicked()")
@@ -132,7 +124,5 @@ class TesterWidget(QtWidgets.QWidget):  # {{{
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     w = TestWidget()
-    w.setWindowTitle("AVIN")
-    w.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
     w.show()
     sys.exit(app.exec())

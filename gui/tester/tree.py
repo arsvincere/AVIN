@@ -17,6 +17,7 @@ from avin.utils import logger
 from gui.custom import Css, Dialog, Menu
 from gui.filter.dialog_select import FilterSelectDialog
 from gui.tester.dialog_test_edit import TestEditDialog
+from gui.tester.dialog_test_select import TestSelectDialog
 from gui.tester.dialog_trade_info import TradeInfoDialog
 from gui.tester.item import TestItem, TradeItem, TradeListItem
 from gui.tester.thread import Thread, TRunTest
@@ -117,6 +118,7 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         self.test_menu.pause.triggered.connect(self.__onPause)
         self.test_menu.stop.triggered.connect(self.__onStop)
         self.test_menu.new.triggered.connect(self.__onNew)
+        self.test_menu.load.triggered.connect(self.__onLoad)
         self.test_menu.copy.triggered.connect(self.__onCopy)
         self.test_menu.edit.triggered.connect(self.__onEdit)
         self.test_menu.rename.triggered.connect(self.__onRename)
@@ -186,6 +188,7 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         logger.debug(f"{self.__class__.__name__}.__onStop()")
 
     # }}}
+
     @QtCore.pyqtSlot()  # __onNew# {{{
     def __onNew(self):
         logger.debug(f"{self.__class__.__name__}.__onNew()")
@@ -194,6 +197,20 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         test = dial.newTest()
         if test:
             self.addTest(test)
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onLoad# {{{
+    def __onLoad(self):
+        logger.debug(f"{self.__class__.__name__}.__onLoad()")
+
+        dial = TestSelectDialog()
+        name = dial.selectTestName()
+        if name is None:
+            return
+
+        test = Thread.loadTest(name)
+        self.removeTest(test)  # на случай если его уже грузили, передобавить
+        self.addTest(test)
 
     # }}}
     @QtCore.pyqtSlot()  # __onCopy# {{{
@@ -232,13 +249,14 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
     def __onRename(self):
         logger.debug(f"{self.__class__.__name__}.__onRename()")
 
+        # get current test
+        item = self.__current_item
+        test = self.__current_item.test
+
         # enter new name
-        new_name = Dialog.name("New name...")
+        new_name = Dialog.name(f"{test.name}")
         if not new_name:
             return
-
-        # get current test
-        test = self.__current_item.test
 
         # try rename test
         renamed_test = Thread.renameTest(test, new_name)
@@ -260,10 +278,10 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         if not Dialog.confirm():
             return
 
-        test = self.__current_item.test
+        item = self.__current_item
 
         # delete test
-        Thread.deleteTest(test)
+        Thread.deleteTest(item.test)
 
         # delete item from tree
         index = self.indexFromItem(item).row()
@@ -355,6 +373,7 @@ class _TestMenu(Menu):  # {{{
         self.pause = QtGui.QAction("Pause", self)
         self.stop = QtGui.QAction("Stop", self)
         self.new = QtGui.QAction("New", self)
+        self.load = QtGui.QAction("Load", self)
         self.copy = QtGui.QAction("Copy", self)
         self.edit = QtGui.QAction("Edit", self)
         self.rename = QtGui.QAction("Rename", self)
@@ -366,6 +385,7 @@ class _TestMenu(Menu):  # {{{
         self.addAction(self.stop)
         self.addTextSeparator("Test")
         self.addAction(self.new)
+        self.addAction(self.load)
         self.addAction(self.copy)
         self.addAction(self.edit)
         self.addAction(self.rename)
