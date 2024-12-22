@@ -7,7 +7,7 @@
 # ============================================================================
 
 from avin.data._data import Data
-from avin.data.convert import ConvertTask, ConvertTaskList
+from avin.data.convert_task import ConvertTask, ConvertTaskList
 from avin.data.data_info import DataInfo, DataInfoNode
 from avin.data.data_source import DataSource
 from avin.data.data_type import DataType

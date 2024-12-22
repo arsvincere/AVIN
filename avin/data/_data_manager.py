@@ -15,7 +15,7 @@ from avin.const import DAY_BEGIN, DAY_END, WeekDays
 from avin.data._bar import _Bar, _BarsData
 from avin.data._moex import _MoexData
 from avin.data._tinkoff import _TinkoffData
-from avin.data.convert import ConvertTaskList
+from avin.data.convert_task import ConvertTaskList
 from avin.data.data_info import DataInfo, DataInfoNode
 from avin.data.data_source import DataSource
 from avin.data.data_type import DataType

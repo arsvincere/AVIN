@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from typing import Optional
 
 from avin.data._data_manager import _DataManager
-from avin.data.convert import ConvertTask
+from avin.data.convert_task import ConvertTask
 from avin.data.data_info import DataInfo
 from avin.data.data_source import DataSource
 from avin.data.data_type import DataType
