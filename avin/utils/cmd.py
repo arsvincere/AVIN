@@ -310,6 +310,16 @@ class Cmd:
         return string
 
     # }}}
+    @staticmethod  # fromJson# {{{
+    def fromJson(string, decoder=None) -> object:
+        logger.debug(f"Cmd.fromJson: {string}")
+        string = json.loads(
+            string,
+            object_hook=decoder,
+        )
+        return string
+
+    # }}}
     @staticmethod  # saveBin# {{{
     def saveBin(obj: object, path: str, compres=False, create_dirs=True):
         if create_dirs:
@@ -371,6 +381,7 @@ class Cmd:
         subprocess.call(command)
 
     # }}}
+
     @staticmethod  # __getFilesInDir# {{{
     def __getFilesInDir(dir_path, full_path):
         all_files = list()
