@@ -15,6 +15,7 @@ from avin.core import (
     Asset,
     BarChangedEvent,
     Broker,
+    Direction,
     Event,
     LimitOrder,
     MarketOrder,
@@ -349,6 +350,40 @@ class VirtualBroker(Broker):
             if price in bar:
                 await cls.__executeOrder(s_order, bar)
                 continue
+
+            if s_order.type == Order.Type.STOP_LOSS:
+                # Трейд в лонг.
+                # Если цена открылась ниже стоп прайса, то стоп лосс
+                # срабатывает по цене открытия бара
+                if s_order.direction == Direction.SELL:
+                    if bar.open < s_order.stop_price:
+                        await cls.__executeOrder(s_order, bar.dt, bar.open)
+                        continue
+
+                # Трейд в шорт.
+                # Если цена открылась выше стоп прайса, то стоп лосс
+                # срабатывает по цене открытия бара
+                if s_order.direction == Direction.BUY:
+                    if bar.open > s_order.stop_price:
+                        await cls.__executeOrder(s_order, bar.dt, bar.open)
+                        continue
+
+            if s_order.type == Order.Type.TAKE_PROFIT:
+                # Трейд в лонг.
+                # Если цена открылась выше стоп прайса, то тейк профит
+                # срабатывает по цене открытия бара
+                if s_order.direction == Direction.SELL:
+                    if bar.open > s_order.stop_price:
+                        await cls.__executeOrder(s_order, bar.dt, bar.open)
+                        continue
+
+                # Трейд в шорт.
+                # Если цена открылась ниже стоп прайса, то тейк профит
+                # срабатывает по цене открытия бара
+                if s_order.direction == Direction.BUY:
+                    if bar.open < s_order.stop_price:
+                        await cls.__executeOrder(s_order, bar.dt, bar.open)
+                        continue
 
             i += 1
 
