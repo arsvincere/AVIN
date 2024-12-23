@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
-from avin.const import Res
+from avin.const import ONE_WEEK, Res
 from avin.data.data_source import DataSource
 from avin.data.instrument import Instrument
 from avin.keeper import Keeper
@@ -94,10 +94,11 @@ class _InstrumentsInfoCache:
         if not Cmd.isExist(file_path):
             return False
 
-        # read file, return True if last update == today
+        # read file, return True if last update < week ago
         string = Cmd.read(file_path)
         last_update = datetime.fromisoformat(string)
-        return now().date() == last_update.date()
+
+        return (now().date() - last_update.date()) < ONE_WEEK
 
     # }}}
     @classmethod  # updateCachingDate# {{{
