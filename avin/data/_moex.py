@@ -62,7 +62,7 @@ class _MoexData(_AbstractDataSource):
 
         types = ["index", "shares", "currency", "futures"]
         for t in types:
-            logger.info(f"  - caching {t}")
+            logger.info(f"   - caching {t}")
             response = cls.__requestAvailibleInstruments(t)
             original_info = cls.__originalInstrumentInfo(response)
             formatted_info = cls.__formatInstrumentInfo(response)
@@ -174,7 +174,7 @@ class _MoexData(_AbstractDataSource):
         await cls.__authorizate()
 
         logger.info(
-            f":: Download {instrument.ticker}-{data_type.value} from {year}"
+            f":: Download {instrument.ticker}-{data_type.value} {year}"
         )
         begin, end = cls.__getPeriod(year)
         candles = cls.__getHistoricalCandles(
@@ -182,7 +182,8 @@ class _MoexData(_AbstractDataSource):
         )
         if len(candles) == 0:
             logger.warning(
-                f"No data received for {instrument.ticker}-{data_type.value}-{year}"
+                f"No data received for "
+                f"{instrument.ticker}-{data_type.value}-{year}"
             )
             return
 
@@ -223,10 +224,17 @@ class _MoexData(_AbstractDataSource):
     async def __authorizate(cls) -> None:
         logger.debug(f"{cls.__name__}.__authorizate()")
 
+        # NOTE:
+        # Чет эта авторизация последнее время зависает постоянно...
+        # Данные и без нее нормально качаются
+        # Пока отключу ее нахуй
+        # logger.warning("MOEX authorization disbaled")
+        # return True
+
         if cls.__AUTHORIZATION:
             return True
 
-        account_path = Cmd.path(Usr.CONNECT, cls.__SUB_DIR, Usr.MOEX_ACCOUNT)
+        account_path = Usr.MOEX_ACCOUNT
         if Cmd.isExist(account_path):
             login, password = Cmd.loadText(account_path)
             login, password = login.strip(), password.strip()
@@ -243,7 +251,7 @@ class _MoexData(_AbstractDataSource):
         if cls.__AUTHORIZATION:
             _MoexData.__LOGIN = login
             _MoexData.__PASSWORD = password
-            logger.info("MOEX Authorization successful")
+            logger.info("   MOEX Authorization successful")
             return True
         else:
             logger.warning(
@@ -386,12 +394,6 @@ class _MoexData(_AbstractDataSource):
     ) -> list[Candles]:
         logger.debug(f"{cls.__name__}.__requestCandles()")
 
-        # PERF:
-        # можно же сделать запрос по 10.000 баров.
-        # начиная с бегин, и до тех пор пока меньше энд..
-        # и не нужен будет этот геморой с small / big timeframe
-        # и выкачивать быстрее будет
-
         # select method
         period = data_type.toTimeDelta()
         if period < ONE_DAY:
@@ -453,7 +455,7 @@ class _MoexData(_AbstractDataSource):
         logger.debug(f"{cls.__name__}.__requestCandlesSmallTimeFrame()")
 
         all_candles = list()
-        asset = moexalgo.Ticker(instrument.ticker)
+        moex_asset = moexalgo.Ticker(instrument.ticker)
         period = cls.__convert(data_type)
         current = begin
         while current < end:
@@ -461,21 +463,44 @@ class _MoexData(_AbstractDataSource):
                 f"  - request {instrument.ticker}-{data_type.value} "
                 f"from {current.date()}"
             )
-            candles_generator = asset.candles(
+            candles_generator = moex_asset.candles(
                 start=current,
                 end=datetime.combine(current.date(), time(23, 59)),
                 period=period,
                 use_dataframe=False,
             )
+            # FIX: надо при исключении за тот же день перезапрашивать
+            # свечи, а оно сейчас его тупо пропускает и шпарит дальше
             candles = cls.__tryRequestCandless(candles_generator)
             all_candles += candles
+
+            # NOTE:
+            # Московская биржа отдает за один раз не более 10.000 свечей.
+            # В одной неделе на 1М таймфрейме около 5.000 свечей.
+            # То есть это подходящий интервал. Свечи за год на малых
+            # таймфреймах (меньше D) запрашиваются частями по одной неделе.
+            # А метод __requestCandlesBigTimeFrame запрашивает все свечи
+            # за год разом для D W M таймфреймов.
+            # Но тогда можно не получить данные за последние несколько дней:
+            # попал current в середину недели, потом + ONE_WEEK и цикл
+            # завершится и пол недели не докачается.
+            # Костыль - в конце делаю шаг по ONE_DAY, тогда все
+            # нормально докачивается
+            # if current.date() + ONE_WEEK < end.date():
+            #     current = datetime.combine(
+            #         current.date() + ONE_WEEK, time(0, 0)
+            #     )
+            # else:
+            #     current = datetime.combine(
+            #         current.date() + ONE_DAY, time(0, 0)
+            #     )
 
             current = datetime.combine(current.date() + ONE_DAY, time(0, 0))
 
         return all_candles
 
     # }}}
-    @classmethod  # __tryRequestCandless
+    @classmethod  # __tryRequestCandless  # {{{
     def __tryRequestCandless(cls, candles_generator):
         logger.debug(f"{cls.__name__}.__tryRequestCandles()")
 
@@ -500,6 +525,7 @@ class _MoexData(_AbstractDataSource):
         logger.critical("Can't download data")
         exit(5)
 
+    # }}}
     @classmethod  # __getHistoricalCandles# {{{
     def __getHistoricalCandles(
         cls,
