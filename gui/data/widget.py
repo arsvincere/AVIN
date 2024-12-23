@@ -11,13 +11,14 @@ import sys
 from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import Qt
 
-from avin.config import Usr
+from avin import ONE_DAY, UTC, DateTime, Usr
 from avin.utils import Cmd, logger
 from gui.custom import Css, Dialog
 from gui.data.download_dialog import DataDownloadDialog
+from gui.data.item import DataInfoItem, InstrumentItem
 from gui.data.thread import TConvert, TDelete, TDownload, Thread, TUpdate
-from gui.data.toolbar import DataToolBar
-from gui.data.tree import DataInfoTree
+from gui.data.toolbar import BarViewToolBar, DataToolBar
+from gui.data.tree import BarViewTree, DataInfoTree
 
 
 class DataDockWidget(QtWidgets.QDockWidget):  # {{{
@@ -60,29 +61,40 @@ class DataWidget(QtWidgets.QWidget):  # {{{
     # }}}
     def __createWidgets(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
-        self.tool_bar = DataToolBar(self)
+
+        self.data_bar = DataToolBar(self)
         self.data_tree = DataInfoTree(self)
+
+        self.view_bar = BarViewToolBar(self)
+        self.view_tree = BarViewTree(self)
 
     # }}}
     def __createLayots(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createLayots()")
-        vbox = QtWidgets.QVBoxLayout(self)
-        vbox.addWidget(self.tool_bar)
-        vbox.addWidget(self.data_tree)
+
+        vbox = QtWidgets.QVBoxLayout()
         vbox.setContentsMargins(0, 0, 0, 0)
+        vbox.addWidget(self.data_bar)
+        vbox.addWidget(self.data_tree)
+        vbox.addWidget(self.view_bar)
+        vbox.addWidget(self.view_tree)
+        self.setLayout(vbox)
 
     # }}}
     def __config(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__config()")
+
         self.setStyleSheet(Css.STYLE)
 
     # }}}
     def __connect(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__connect()")
 
-        self.tool_bar.download.triggered.connect(self.__onDownload)
-        self.tool_bar.convert.triggered.connect(self.__onConvert)
-        self.tool_bar.delete.triggered.connect(self.__onDelete)
-        self.tool_bar.update.triggered.connect(self.__onUpdate)
+        self.data_bar.download.triggered.connect(self.__onDownload)
+        self.data_bar.convert.triggered.connect(self.__onConvert)
+        self.data_bar.delete.triggered.connect(self.__onDelete)
+        self.data_bar.update.triggered.connect(self.__onUpdate)
+        self.data_tree.itemClicked.connect(self.__onItemClicked)
 
     # }}}
     def __initUI(self):  # {{{
@@ -210,6 +222,39 @@ class DataWidget(QtWidgets.QWidget):  # {{{
 
     # }}}
 
+    @QtCore.pyqtSlot()  # __onItemClicked  # {{{
+    def __onItemClicked(self) -> None:
+        logger.debug(f"{self.__class__.__name__}.__onItemClicked()")
+
+        item = self.data_tree.currentItem()
+        if isinstance(item, InstrumentItem):
+            return
+
+        if not isinstance(item, DataInfoItem):
+            assert False, "WTF, жизнь меня к этому не готовила"
+
+        # for DataInfoItem
+        instrument = item.info.instrument
+        data_type = item.info.data_type
+
+        if data_type.toTimeDelta() < ONE_DAY:
+            self.view_bar.showMonthSelector()
+            year = self.view_bar.currentYear()
+            month = self.view_bar.currentMonth()
+            begin = DateTime(year, month, 1, tzinfo=UTC)
+            end = DateTime(year, month + 1, 1, tzinfo=UTC)
+            records = Thread.requestData(instrument, data_type, begin, end)
+        else:
+            self.view_bar.hideMonthSelector()
+            year = self.view_bar.currentYear()
+            begin = DateTime(year, 1, 1, tzinfo=UTC)
+            end = DateTime(year + 1, 1, 1, tzinfo=UTC)
+            records = Thread.requestData(instrument, data_type, begin, end)
+
+        self.view_tree.setData(records)
+
+    # }}}
+
 
 # }}}
 
@@ -217,7 +262,7 @@ class DataWidget(QtWidgets.QWidget):  # {{{
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     w = DataWidget()
-    w.setWindowTitle("AVIN  -  Widget")
+    w.setWindowTitle("AVIN")
     w.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
     w.show()
     sys.exit(app.exec())

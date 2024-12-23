@@ -10,10 +10,11 @@ from __future__ import annotations
 
 import enum
 
+import asyncpg
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
 
-from avin.utils import logger
+from avin import Usr, logger
 
 
 class InstrumentItem(QtWidgets.QTreeWidgetItem):  # {{{
@@ -140,6 +141,42 @@ class DownloadItem(QtWidgets.QTreeWidgetItem):  # {{{
 
 
 # }}}
+class BarItem(QtWidgets.QTreeWidgetItem):  # {{{
+    class Column(enum.IntEnum):  # {{{
+        DateTime = 0
+        Open = 1
+        High = 2
+        Low = 3
+        Close = 4
+        Volume = 5
+
+    # }}}
+    def __init__(self, bar: asyncpg.Record, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+
+        QtWidgets.QTreeWidgetItem.__init__(self, parent)
+        self.bar_record = bar
+
+        self.setFlags(
+            Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
+        )
+        local_dt = Usr.localTime(bar["dt"])
+        self.setText(self.Column.DateTime, local_dt)
+        self.setText(self.Column.Open, str(bar["open"]))
+        self.setText(self.Column.High, str(bar["high"]))
+        self.setText(self.Column.Low, str(bar["low"]))
+        self.setText(self.Column.Close, str(bar["close"]))
+        self.setText(self.Column.Volume, str(bar["volume"]))
+
+    # }}}
+    def __str__(self):  # {{{
+        return str(self.instrument)
+
+    # }}}
+
+
+# }}}
+
 
 if __name__ == "__main__":
     ...

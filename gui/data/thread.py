@@ -51,6 +51,17 @@ class Thread:  # {{{
         awaitQThread(thread)
 
     # }}}
+    @classmethod  # requestData  # {{{
+    def requestData(cls, instrument, data_type, begin, end) -> None:
+        logger.debug(f"{cls.__name__}.firstDateTime()")
+
+        thread = _TRequestData(instrument, data_type, begin, end)
+        thread.start()
+        awaitQThread(thread)
+
+        return thread.result
+
+    # }}}
 
 
 # }}}
@@ -146,6 +157,32 @@ class _TFirstDate(QtCore.QThread):  # {{{
                 )
 
     # }}}
+
+
+# }}}
+class _TRequestData(QtCore.QThread):  # {{{
+    def __init__(self, instrument, data_type, begin, end, parent=None):  # {{{
+        QtCore.QThread.__init__(self, parent)
+
+        self.__instrument = instrument
+        self.__data_type = data_type
+        self.__begin = begin
+        self.__end = end
+        self.result = None
+
+    # }}}
+    def run(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.run()")
+
+        asyncio.run(self.__arun())
+
+    # }}}
+    async def __arun(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__arun()")
+
+        self.result = await Data.request(
+            self.__instrument, self.__data_type, self.__begin, self.__end
+        )
 
 
 # }}}

@@ -16,10 +16,10 @@ from PyQt6.QtCore import Qt
 from avin.data import DataInfo
 from avin.utils import logger
 from gui.custom import Css
-from gui.data.item import DataInfoItem, InstrumentItem
+from gui.data.item import BarItem, DataInfoItem, InstrumentItem
 
 
-class DataInfoTree(QtWidgets.QTreeWidget):
+class DataInfoTree(QtWidgets.QTreeWidget):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QTreeWidget.__init__(self, parent)
@@ -87,22 +87,76 @@ class DataInfoTree(QtWidgets.QTreeWidget):
         self.sortByColumn(column.Ticker, Qt.SortOrder.AscendingOrder)
 
     # }}}
-    def __selectUserData(self, item: IData):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__selectUserData()")
-        for i in range(item.childCount()):
-            child = item.child(i)
-            if child.type == Tree.Type.DIR:
-                self.__selectUserData(child)
-            if child.type == Tree.Type.DATA:
-                self.selected.append(child)
+    # TODO: dead code?
+    # def __selectUserData(self, item: IData):  # {{{
+    #     logger.debug(f"{self.__class__.__name__}.__selectUserData()")
+    #     for i in range(item.childCount()):
+    #         child = item.child(i)
+    #         if child.type == Tree.Type.DIR:
+    #             self.__selectUserData(child)
+    #         if child.type == Tree.Type.DATA:
+    #             self.selected.append(child)
+    #
+    # # }}}
+
+
+# }}}
+class BarViewTree(QtWidgets.QTreeWidget):  # {{{
+    def __init__(self, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QTreeWidget.__init__(self, parent)
+
+        self.__config()
+
+    # }}}
+
+    def setData(self, data: list[asyncpg.Record]) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.setData()")
+
+        self.clear()
+        for record in data:
+            item = BarItem(record)
+            self.addTopLevelItem(item)
+
+    # }}}
+
+    def __config(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__config()")
+
+        # config style
+        self.setStyleSheet(Css.TREE)
+
+        # config header
+        column = BarItem.Column
+        labels = list()
+        for i in column:
+            labels.append(i.name)
+        self.setHeaderLabels(labels)
+        self.header().setStyleSheet(Css.TREE_HEADER)
+
+        # column width
+        self.setColumnWidth(column.DateTime, 160)
+        self.setColumnWidth(column.Open, 100)
+        self.setColumnWidth(column.High, 100)
+        self.setColumnWidth(column.Low, 100)
+        self.setColumnWidth(column.Close, 100)
+        self.setColumnWidth(column.Volume, 100)
+        self.setMinimumWidth(700)
+
+        # other options
+        self.setSortingEnabled(True)
+        self.sortByColumn(column.DateTime, Qt.SortOrder.AscendingOrder)
 
     # }}}
 
 
+# }}}
+
+
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    w = DataInfoTree()
-    w.setWindowTitle("AVIN  -  Widget")
+    w = BarViewTree()
+    w.setWindowTitle("AVIN")
     w.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
     w.show()
     sys.exit(app.exec())
