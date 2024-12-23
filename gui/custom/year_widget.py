@@ -18,6 +18,8 @@ from gui.custom.tool_button import ToolButton
 
 
 class YearWidget(QtWidgets.QWidget):  # {{{
+    yearChanged = QtCore.pyqtSignal()
+
     def __init__(self, name="", year=2000, width=50, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init()")
         QtWidgets.QWidget.__init__(self, parent)
@@ -99,6 +101,7 @@ class YearWidget(QtWidgets.QWidget):  # {{{
 
         self.__year += 1
         self.year_line_edit.setText(str(self.__year))
+        self.yearChanged.emit()
 
     # }}}
     @QtCore.pyqtSlot()  # __onMinus  # {{{
@@ -107,6 +110,7 @@ class YearWidget(QtWidgets.QWidget):  # {{{
 
         self.__year -= 1
         self.year_line_edit.setText(str(self.__year))
+        self.yearChanged.emit()
 
     # }}}
     @QtCore.pyqtSlot()  # __onChanged  # {{{
@@ -116,12 +120,15 @@ class YearWidget(QtWidgets.QWidget):  # {{{
         text = self.year_line_edit.text()
         if text:
             self.__year = int(text)
+            self.yearChanged.emit()
 
     # }}}
 
 
 # }}}
 class MonthWidget(QtWidgets.QWidget):  # {{{
+    monthChanged = QtCore.pyqtSignal()
+
     def __init__(self, name="", month=1, width=50, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init()")
         QtWidgets.QWidget.__init__(self, parent)
@@ -201,16 +208,20 @@ class MonthWidget(QtWidgets.QWidget):  # {{{
     def __onPlus(self):
         logger.debug(f"{self.__class__.__name__}.__onPlus()")
 
-        self.__month += 1
-        self.month_line_edit.setText(str(self.__month))
+        if self.__month < 12:
+            self.__month += 1
+            self.month_line_edit.setText(str(self.__month))
+            self.monthChanged.emit()
 
     # }}}
     @QtCore.pyqtSlot()  # __onMinus  # {{{
     def __onMinus(self):
         logger.debug(f"{self.__class__.__name__}.__onMinus()")
 
-        self.__month -= 1
-        self.month_line_edit.setText(str(self.__month))
+        if self.__month > 1:
+            self.__month -= 1
+            self.month_line_edit.setText(str(self.__month))
+            self.monthChanged.emit()
 
     # }}}
     @QtCore.pyqtSlot()  # __onChanged  # {{{
@@ -230,6 +241,7 @@ class MonthWidget(QtWidgets.QWidget):  # {{{
 
         self.__month = val
         self.month_line_edit.setText(str(self.__month))
+        self.monthChanged.emit()
 
     # }}}
 

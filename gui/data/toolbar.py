@@ -58,6 +58,7 @@ class DataToolBar(QtWidgets.QToolBar):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createActions()")
 
         self.viewer_btn = ToolButton(text="Viewer", width=80)
+        self.viewer_btn.setCheckable(True)
         self.close_btn = ToolButton(Icon.CLOSE, "Close", parent=self)
 
         self.addWidget(self.viewer_btn)
@@ -81,6 +82,9 @@ class BarViewToolBar(QtWidgets.QWidget):  # {{{
     # этот тулбар сделан на основе виджета, иначе добавляемые
     # на него действия не ведут себя как полноценные виджеты
     # не работает self.month.hide()  self.month.show() например
+
+    yearChanged = QtCore.pyqtSignal()
+    monthChanged = QtCore.pyqtSignal()
 
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
@@ -158,6 +162,26 @@ class BarViewToolBar(QtWidgets.QWidget):  # {{{
     # }}}
     def __connect(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__connect()")
+
+        self.month.monthChanged.connect(self.__onMonthChanged)
+        self.year.yearChanged.connect(self.__onYearChanged)
+
+    # }}}
+
+    @QtCore.pyqtSlot()  # __onMonthChanged  # {{{
+    def __onMonthChanged(self):
+        logger.debug(f"{self.__class__.__name__}.__onMonthChanged()")
+
+        # просто передача сигнала выше
+        self.monthChanged.emit()
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onYearChanged  # {{{
+    def __onYearChanged(self):
+        logger.debug(f"{self.__class__.__name__}.__onYearChanged()")
+
+        # просто передача сигнала выше
+        self.yearChanged.emit()
 
     # }}}
 

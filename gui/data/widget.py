@@ -11,8 +11,7 @@ import sys
 from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import Qt
 
-from avin import ONE_DAY, UTC, DateTime, Usr
-from avin.utils import Cmd, logger
+from avin import ONE_DAY, UTC, Cmd, DateTime, Usr, logger, next_month
 from gui.custom import Css, Dialog
 from gui.data.download_dialog import DataDownloadDialog
 from gui.data.item import DataInfoItem, InstrumentItem
@@ -59,14 +58,17 @@ class DataWidget(QtWidgets.QWidget):  # {{{
         self.__initUI()
 
     # }}}
+
     def __createWidgets(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
 
-        self.data_bar = DataToolBar(self)
-        self.data_tree = DataInfoTree(self)
+        self.__data_bar = DataToolBar(self)
+        self.__data_tree = DataInfoTree(self)
 
-        self.view_bar = BarViewToolBar(self)
-        self.view_tree = BarViewTree(self)
+        self.__view_bar = BarViewToolBar(self)
+        self.__view_bar.hide()
+        self.__view_tree = BarViewTree(self)
+        self.__view_tree.hide()
 
     # }}}
     def __createLayots(self):  # {{{
@@ -74,10 +76,10 @@ class DataWidget(QtWidgets.QWidget):  # {{{
 
         vbox = QtWidgets.QVBoxLayout()
         vbox.setContentsMargins(0, 0, 0, 0)
-        vbox.addWidget(self.data_bar)
-        vbox.addWidget(self.data_tree)
-        vbox.addWidget(self.view_bar)
-        vbox.addWidget(self.view_tree)
+        vbox.addWidget(self.__data_bar)
+        vbox.addWidget(self.__data_tree)
+        vbox.addWidget(self.__view_bar)
+        vbox.addWidget(self.__view_tree)
         self.setLayout(vbox)
 
     # }}}
@@ -90,11 +92,16 @@ class DataWidget(QtWidgets.QWidget):  # {{{
     def __connect(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__connect()")
 
-        self.data_bar.download.triggered.connect(self.__onDownload)
-        self.data_bar.convert.triggered.connect(self.__onConvert)
-        self.data_bar.delete.triggered.connect(self.__onDelete)
-        self.data_bar.update.triggered.connect(self.__onUpdate)
-        self.data_tree.itemClicked.connect(self.__onItemClicked)
+        self.__data_bar.download.triggered.connect(self.__onDownload)
+        self.__data_bar.convert.triggered.connect(self.__onConvert)
+        self.__data_bar.delete.triggered.connect(self.__onDelete)
+        self.__data_bar.update.triggered.connect(self.__onUpdate)
+        self.__data_bar.viewer_btn.clicked.connect(self.__onViewer)
+
+        self.__data_tree.itemClicked.connect(self.__onItemClicked)
+
+        self.__view_bar.monthChanged.connect(self.__updateViewer)
+        self.__view_bar.yearChanged.connect(self.__updateViewer)
 
     # }}}
     def __initUI(self):  # {{{
@@ -113,6 +120,34 @@ class DataWidget(QtWidgets.QWidget):  # {{{
         return False
 
     # }}}
+    def __updateViewer(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__updateViewer()")
+
+        item = self.__data_tree.currentItem()
+        if item is None:
+            return
+
+        instrument = item.info.instrument
+        data_type = item.info.data_type
+
+        if data_type.toTimeDelta() < ONE_DAY:
+            self.__view_bar.showMonthSelector()
+            year = self.__view_bar.currentYear()
+            month = self.__view_bar.currentMonth()
+            begin = DateTime(year, month, 1, tzinfo=UTC)
+            end = next_month(begin)
+            records = Thread.requestData(instrument, data_type, begin, end)
+        else:
+            self.__view_bar.hideMonthSelector()
+            year = self.__view_bar.currentYear()
+            begin = DateTime(year, 1, 1, tzinfo=UTC)
+            end = DateTime(year + 1, 1, 1, tzinfo=UTC)
+            records = Thread.requestData(instrument, data_type, begin, end)
+
+        self.__view_tree.setData(records)
+
+    # }}}
+
     @QtCore.pyqtSlot()  # __onThreadFinish  # {{{
     def __onThreadFinish(self) -> None:
         logger.debug(f"{self.__class__.__name__}.__onThreadFinish()")
@@ -127,9 +162,9 @@ class DataWidget(QtWidgets.QWidget):  # {{{
         logger.debug(f"{self.__class__.__name__}.__updateTree()")
 
         data_info = Thread.info()
-        self.data_tree.clear()
+        self.__data_tree.clear()
         if data_info is not None:
-            self.data_tree.add(data_info)
+            self.__data_tree.add(data_info)
 
     # }}}
     @QtCore.pyqtSlot()  # __onDownload  # {{{
@@ -200,7 +235,7 @@ class DataWidget(QtWidgets.QWidget):  # {{{
         if self.__isBusy():
             return
 
-        data_info = self.data_tree.selectedData()
+        data_info = self.__data_tree.selectedData()
 
         self.__thread = TDelete(data_info)
         self.__thread.finished.connect(self.__onThreadFinish)
@@ -214,7 +249,7 @@ class DataWidget(QtWidgets.QWidget):  # {{{
         if self.__isBusy():
             return
 
-        data_info = self.data_tree.selectedData()
+        data_info = self.__data_tree.selectedData()
 
         self.__thread = TUpdate(data_info)
         self.__thread.finished.connect(self.__onThreadFinish)
@@ -222,36 +257,32 @@ class DataWidget(QtWidgets.QWidget):  # {{{
 
     # }}}
 
+    @QtCore.pyqtSlot()  # __onViewer  # {{{
+    def __onViewer(self) -> None:
+        logger.debug(f"{self.__class__.__name__}.__onViewer()")
+
+        if self.__data_bar.viewer_btn.isChecked():
+            self.__view_bar.show()
+            self.__view_tree.show()
+        else:
+            self.__view_bar.hide()
+            self.__view_tree.hide()
+            self.__updateViewer()
+
+    # }}}
     @QtCore.pyqtSlot()  # __onItemClicked  # {{{
     def __onItemClicked(self) -> None:
         logger.debug(f"{self.__class__.__name__}.__onItemClicked()")
 
-        item = self.data_tree.currentItem()
+        item = self.__data_tree.currentItem()
+        if item is None:
+            return
+
         if isinstance(item, InstrumentItem):
             return
 
-        if not isinstance(item, DataInfoItem):
-            assert False, "WTF, жизнь меня к этому не готовила"
-
-        # for DataInfoItem
-        instrument = item.info.instrument
-        data_type = item.info.data_type
-
-        if data_type.toTimeDelta() < ONE_DAY:
-            self.view_bar.showMonthSelector()
-            year = self.view_bar.currentYear()
-            month = self.view_bar.currentMonth()
-            begin = DateTime(year, month, 1, tzinfo=UTC)
-            end = DateTime(year, month + 1, 1, tzinfo=UTC)
-            records = Thread.requestData(instrument, data_type, begin, end)
-        else:
-            self.view_bar.hideMonthSelector()
-            year = self.view_bar.currentYear()
-            begin = DateTime(year, 1, 1, tzinfo=UTC)
-            end = DateTime(year + 1, 1, 1, tzinfo=UTC)
-            records = Thread.requestData(instrument, data_type, begin, end)
-
-        self.view_tree.setData(records)
+        if isinstance(item, DataInfoItem):
+            self.__updateViewer()
 
     # }}}
 
