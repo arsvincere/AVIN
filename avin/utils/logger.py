@@ -43,9 +43,11 @@ def _configStreamLog(logger):  # {{{
         "%(asctime)s [%(levelname)s] %(message)s",
         datefmt="%H:%M:%S",
     )
+
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(stream_formatter)
     stream_handler.setLevel(logging.INFO)
+
     logger.addHandler(stream_handler)
     logger.setLevel(logging.DEBUG)
 
@@ -56,9 +58,11 @@ def _configDebugLog(logger, file_path):  # {{{
         "%(module)s: %(asctime)s [%(levelname)s] %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
+
     file_handler = logging.FileHandler(file_path, mode="w")
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(file_formatter)
+
     logger.addHandler(file_handler)
 
 
@@ -68,9 +72,11 @@ def _configInfoLog(logger, file_path):  # {{{
         "%(module)s: %(asctime)s [%(levelname)s] %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
+
     file_handler = logging.FileHandler(file_path, mode="a")
     file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(file_formatter)
+
     logger.addHandler(file_handler)
 
 
@@ -78,8 +84,10 @@ def _configInfoLog(logger, file_path):  # {{{
 def _deleteOldLogfiles(log_dir: str, max_files: int) -> None:  # {{{
     contents = os.listdir(log_dir)
     contents = [os.path.join(log_dir, i) for i in contents]
+
     files = [i for i in contents if os.path.isfile(i)]
     log_files = sorted([i for i in files if i.endswith(".log")])
+
     while len(log_files) > max_files:
         os.remove(log_files[0])  # remove oldest file in sorted file list
         log_files.pop(0)
