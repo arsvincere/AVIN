@@ -416,7 +416,7 @@ class _MoexData(_AbstractDataSource):
         logger.debug(f"{cls.__name__}.__requestCandlesBigTimeFrame()")
 
         all_candles = list()
-        asset = moexalgo.Ticker(instrument.ticker)
+        moex_asset = moexalgo.Ticker(instrument.ticker)
         period = cls.__convert(data_type)
         current = begin
 
@@ -425,13 +425,12 @@ class _MoexData(_AbstractDataSource):
                 f"  - request {instrument.ticker}-{data_type.value} "
                 f"{current.date()}"
             )
-            candles_generator = asset.candles(
-                start=current,
+            candles = cls.__tryRequestCandless(
+                moex_asset=moex_asset,
+                begin=current,
                 end=current.replace(year=current.year + 1),
                 period=period,
-                use_dataframe=False,
             )
-            candles = cls.__tryRequestCandless(candles_generator)
             all_candles += candles
 
             current = current.replace(year=current.year + 1)
@@ -458,42 +457,19 @@ class _MoexData(_AbstractDataSource):
         moex_asset = moexalgo.Ticker(instrument.ticker)
         period = cls.__convert(data_type)
         current = begin
+
         while current < end:
             logger.info(
-                f"  - request {instrument.ticker}-{data_type.value} "
+                f"   - request {instrument.ticker}-{data_type.value} "
                 f"from {current.date()}"
             )
-            candles_generator = moex_asset.candles(
-                start=current,
+            candles = cls.__tryRequestCandless(
+                moex_asset=moex_asset,
+                begin=current,
                 end=datetime.combine(current.date(), time(23, 59)),
                 period=period,
-                use_dataframe=False,
             )
-            # FIX: надо при исключении за тот же день перезапрашивать
-            # свечи, а оно сейчас его тупо пропускает и шпарит дальше
-            candles = cls.__tryRequestCandless(candles_generator)
             all_candles += candles
-
-            # NOTE:
-            # Московская биржа отдает за один раз не более 10.000 свечей.
-            # В одной неделе на 1М таймфрейме около 5.000 свечей.
-            # То есть это подходящий интервал. Свечи за год на малых
-            # таймфреймах (меньше D) запрашиваются частями по одной неделе.
-            # А метод __requestCandlesBigTimeFrame запрашивает все свечи
-            # за год разом для D W M таймфреймов.
-            # Но тогда можно не получить данные за последние несколько дней:
-            # попал current в середину недели, потом + ONE_WEEK и цикл
-            # завершится и пол недели не докачается.
-            # Костыль - в конце делаю шаг по ONE_DAY, тогда все
-            # нормально докачивается
-            # if current.date() + ONE_WEEK < end.date():
-            #     current = datetime.combine(
-            #         current.date() + ONE_WEEK, time(0, 0)
-            #     )
-            # else:
-            #     current = datetime.combine(
-            #         current.date() + ONE_DAY, time(0, 0)
-            #     )
 
             current = datetime.combine(current.date() + ONE_DAY, time(0, 0))
 
@@ -501,26 +477,33 @@ class _MoexData(_AbstractDataSource):
 
     # }}}
     @classmethod  # __tryRequestCandless  # {{{
-    def __tryRequestCandless(cls, candles_generator):
+    def __tryRequestCandless(cls, moex_asset, begin, end, period):
         logger.debug(f"{cls.__name__}.__tryRequestCandles()")
 
-        candles = list()
-        for n in range(2, 6):
+        max_attempt = 5
+        attempt = 0
+        while attempt < 5:
             try:
+                candles_generator = moex_asset.candles(
+                    start=begin,
+                    end=end,
+                    period=period,
+                    use_dataframe=False,
+                )
+                candles = list()
                 for i in candles_generator:
                     candles.append(i)
-            except httpx.ConnectError as err:
-                logger.error(
-                    f"Connection error: '{err}', try {n} after 3 sec"
-                )
+
+            except httpx.ConnectError as e:
+                logger.error(f"ConnectionError '{e}' try again after 3 sec")
                 timer.sleep(3)
-            except httpx.ConnectTimeout as err:
-                logger.error(
-                    f"Connection timeout: '{err}', try {n} after 3 sec"
-                )
+            except httpx.ConnectTimeout as e:
+                logger.error(f"ConnectionTimeout '{e}' try again after 3 sec")
                 timer.sleep(3)
             else:
                 return candles
+
+            attempt += 1
 
         logger.critical("Can't download data")
         exit(5)
