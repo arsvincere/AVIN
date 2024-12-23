@@ -244,7 +244,7 @@ class _TinkoffData(_AbstractDataSource):
                 response = client.users.get_accounts()
                 if response:
                     cls.__TOKEN = token
-                    logger.info("Tinkoff Authorization successful")
+                    logger.info("   Tinkoff Authorization successful")
                     return True
         except ti.exceptions.UnauthenticatedError as err:
             logger.exception(err)
