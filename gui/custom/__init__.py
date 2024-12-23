@@ -23,7 +23,7 @@ from gui.custom.theme import Theme
 from gui.custom.timeframe_bar import TimeFrameBar
 from gui.custom.tool_button import ToolButton
 from gui.custom.utils import awaitQThread
-from gui.custom.year_widget import YearWidget
+from gui.custom.year_widget import MonthWidget, YearWidget
 
 __all__ = (
     "Color",
@@ -48,4 +48,5 @@ __all__ = (
     "ToolButton",
     "awaitQThread",
     "YearWidget",
+    "MonthWidget",
 )
