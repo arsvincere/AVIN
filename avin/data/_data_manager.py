@@ -44,11 +44,9 @@ class _DataManager:
         logger.info(":: Start caching assets info")
 
         for i in DataSource:
-            if i == DataSource.CONVERT:
-                continue
-
             class_ = cls.__getDataSourceClass(i)
-            await class_.cacheInstrumentsInfo()
+            if class_ is not None:
+                await class_.cacheInstrumentsInfo()
 
         logger.info("Cache is up to date")
 
@@ -58,7 +56,6 @@ class _DataManager:
         cls, exchange, itype, ticker, figi, name, source
     ) -> list[Instrument]:
         logger.debug(f"{cls.__name__}.find()")
-        logger.info(f":: Find instruments {source} {itype}")
 
         if source == DataSource.MOEX:
             class_ = _MoexData
@@ -73,8 +70,6 @@ class _DataManager:
 
         # find instrument
         id_list = await class_.find(exchange, itype, ticker, figi, name)
-
-        logger.info(f"Finded {len(id_list)} instruments!")
 
         return id_list
 
@@ -198,6 +193,7 @@ class _DataManager:
         logger.debug(f"{cls.__name__}.__getDataSourceClass()")
 
         classes = {
+            DataSource.CONVERT: None,
             DataSource.MOEX: _MoexData,
             DataSource.TINKOFF: _TinkoffData,
         }
