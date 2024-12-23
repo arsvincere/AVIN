@@ -13,7 +13,7 @@ classes in program turn to the database through the interface of this class
 "Keeper". Thus, the entire SQL code is collected inside this class.
 
 But if you really need to make a direct request to the database, you can use
-the 'Keeper.transaction(sql_request)' method.
+the method - Keeper.transaction(sql_request).
 """
 
 from __future__ import annotations
@@ -70,6 +70,23 @@ class Keeper:
         logger.info("Database has been deleted")
 
     # }}}
+    @classmethod  # restoreAssets
+    async def restoreAssets(cls) -> None:
+        """Проверяет схему data, если есть данные создает public."Asset" """
+        logger.debug(f"{cls.__name__}.dropDataBase()")
+
+        # Request all data info
+        request = """
+            SELECT
+                data."DataInfo".source,
+                data."DataInfo".type,
+                data."DataInfo".figi,
+                data."DataInfo".first_dt,
+                data."DataInfo".last_dt,
+            FROM data."DataInfo"
+            """
+        records = await cls.transaction(request)
+
     @classmethod  # transaction  # {{{
     async def transaction(cls, sql_request: str) -> list[asyncpg.Record]:
         logger.debug(f"{cls.__name__}.transaction()\n{sql_request}")
@@ -123,7 +140,7 @@ class Keeper:
         request = f"""
             SELECT
                 info
-            FROM "InstrumentInfo"
+            FROM data."InstrumentInfo"
             WHERE
                 {pg_source} AND {pg_itype} AND {pg_kwargs};
             """
@@ -269,6 +286,43 @@ class Keeper:
 
     # }}}
 
+    @classmethod  # __getClassName  # {{{
+    def __getClassName(cls, obj: object | Class) -> str:
+        logger.debug(f"{cls.__name__}.__getClassName()")
+
+        # Get object class name, 'obj' may be a ClassVar, when its Exchange
+        # like class: Exchange.MOEX
+        if inspect.isclass(obj):
+            return obj.__name__
+
+        return obj.__class__.__name__
+
+    # }}}
+    @classmethod  # __getTableName  # {{{
+    def __getTableName(
+        cls,
+        instrument: Instrument,
+        data_type: DataType,
+    ) -> str:
+        # table name looks like: data."MOEX_SHARE_SBER_1M"
+        logger.debug(f"{cls.__name__}.__getTableName()")
+
+        bars_table_name = (
+            f'data."{instrument.exchange.name}_'
+            f'{instrument.type.name}_{instrument.ticker}_{data_type}"'
+        )
+        return bars_table_name
+
+    # }}}
+    @classmethod  # __formatTradeInfo  # {{{
+    def __formatInfo(trade: Trade) -> str:
+        values = ""
+        json_string = Cmd.toJson(info, trade.encoderJson)
+        pg_trade_info = f"'{json_string}'"
+        return pg_trade_info
+
+    # }}}
+
     @classmethod  # __addExchange  # {{{
     async def __addExchange(cls, exchange: Exchange) -> None:
         logger.debug(f"{cls.__name__}.__addExchange()")
@@ -400,9 +454,9 @@ class Keeper:
         """
         await cls.transaction(request)
 
-        # Update table "Data" - information about availible market data
+        # Update table data."DataInfo" - about availible market data
         request = f"""
-            DELETE FROM "Data"
+            DELETE FROM data."DataInfo"
             WHERE
                 figi = '{data.instrument.figi}' AND
                 type = '{data.type.name}'
@@ -410,7 +464,7 @@ class Keeper:
             """
         await cls.transaction(request)
         request = f"""
-            INSERT INTO "Data"(figi, type, source, first_dt, last_dt)
+            INSERT INTO data."DataInfo"(figi, type, source, first_dt, last_dt)
             VALUES (
                 '{data.instrument.figi}',
                 '{data.type.name}',
@@ -525,7 +579,8 @@ class Keeper:
                 version,
                 dt,
                 status,
-                type
+                type,
+                info
                 )
             VALUES (
                 '{trade.trade_id}',
@@ -535,7 +590,8 @@ class Keeper:
                 '{trade.version}',
                 '{trade.dt}',
                 '{trade.status.name}',
-                '{trade.type.name}'
+                '{trade.type.name}',
+                {cls.__formatInfo(trade)}
                 );
             """
         await cls.transaction(request)
@@ -686,34 +742,6 @@ class Keeper:
 
     # }}}
 
-    @classmethod  # __getClassName  # {{{
-    def __getClassName(cls, obj: object | Class) -> str:
-        logger.debug(f"{cls.__name__}.__getClassName()")
-
-        # Get object class name, 'obj' may be a ClassVar, when its Exchange
-        # like class: Exchange.MOEX
-        if inspect.isclass(obj):
-            return obj.__name__
-
-        return obj.__class__.__name__
-
-    # }}}
-    @classmethod  # __getTableName  # {{{
-    def __getTableName(
-        cls,
-        instrument: Instrument,
-        data_type: DataType,
-    ) -> str:
-        # table name looks like: data."MOEX_SHARE_SBER_1M"
-        logger.debug(f"{cls.__name__}.__getTableName()")
-
-        bars_table_name = (
-            f'data."{instrument.exchange.name}_'
-            f'{instrument.type.name}_{instrument.ticker}_{data_type}"'
-        )
-        return bars_table_name
-
-    # }}}
     @classmethod  # __getInstrument  # {{{
     async def __getInstrument(
         cls,
@@ -787,21 +815,28 @@ class Keeper:
 
         # Create figi condition
         pg_figi = (
-            f"\"Data\".figi = '{instrument.figi}'" if instrument else "TRUE"
+            f"data.\"DataInfo\".figi = '{instrument.figi}'"
+            if instrument
+            else "TRUE"
         )
 
         # Create type condition
         pg_data_type = (
-            f"\"Data\".type = '{data_type.name}'" if data_type else "TRUE"
+            f"data.\"DataInfo\".type = '{data_type.name}'"
+            if data_type
+            else "TRUE"
         )
 
         # Request data info
         request = f"""
             SELECT
-                "Data".source, "Data".type, "Data".first_dt, "Data".last_dt,
+                data."DataInfo".source,
+                data."DataInfo".type,
+                data."DataInfo".first_dt,
+                data."DataInfo".last_dt,
                 "Asset".info
-            FROM "Data"
-            JOIN "Asset" ON "Data".figi = "Asset".figi
+            FROM data."DataInfo"
+            JOIN "Asset" ON data."DataInfo".figi = "Asset".figi
             WHERE
                 {pg_figi} AND {pg_data_type};
             """
@@ -824,21 +859,28 @@ class Keeper:
 
         # Create figi condition
         pg_figi = (
-            f"\"Data\".figi = '{instrument.figi}'" if instrument else "TRUE"
+            f"data.\"DataInfo\".figi = '{instrument.figi}'"
+            if instrument
+            else "TRUE"
         )
 
         # Create type condition
         pg_data_type = (
-            f"\"Data\".type = '{data_type.name}'" if data_type else "TRUE"
+            f"data.\"DataInfo\".type = '{data_type.name}'"
+            if data_type
+            else "TRUE"
         )
 
         # Request data info
         request = f"""
             SELECT
-                "Data".source, "Data".type, "Data".first_dt, "Data".last_dt,
+                data."DataInfo".source,
+                data."DataInfo".type,
+                data."DataInfo".first_dt,
+                data."DataInfo".last_dt,
                 "Asset".info
-            FROM "Data"
-            JOIN "Asset" ON "Data".figi = "Asset".figi
+            FROM data."DataInfo"
+            JOIN "Asset" ON data."DataInfo".figi = "Asset".figi
             WHERE
                 {pg_figi} AND {pg_data_type};
             """
@@ -861,7 +903,7 @@ class Keeper:
         data_type = kwargs["data_type"]
 
         request = f"""
-            SELECT (source) FROM "Data"
+            SELECT (source) FROM data."DataInfo"
             WHERE
                 figi = '{instrument.figi}' AND type = '{data_type.name}'
                 ;
@@ -880,7 +922,7 @@ class Keeper:
         instrument = kwargs["instrument"]
 
         request = f"""
-            SELECT (type) FROM "Data"
+            SELECT (type) FROM data."DataInfo"
             WHERE
                 figi = '{instrument.figi}';
             """
@@ -909,7 +951,7 @@ class Keeper:
 
         # Request data info
         request = f"""
-            SELECT * FROM "Data"
+            SELECT * FROM data."DataInfo"
             WHERE
                 {pg_figi} AND {pg_data_type};
             """
@@ -1236,7 +1278,16 @@ class Keeper:
 
         # Request trades
         request = f"""
-            SELECT trade_id, dt, status, strategy, version, type, figi
+            SELECT
+                trade_id,
+                trade_list,
+                figi,
+                strategy,
+                version,
+                dt,
+                status,
+                type,
+                info
             FROM "Trade"
             WHERE {pg_condition}
             ORDER BY dt
@@ -1478,7 +1529,7 @@ class Keeper:
             await cls.transaction(request)
             # Delete data info
             request = f"""
-                DELETE FROM "Data"
+                DELETE FROM data."DataInfo"
                 WHERE
                     figi = '{instrument.figi}' AND
                     type = '{data_type.name}'
@@ -1486,7 +1537,7 @@ class Keeper:
             await cls.transaction(request)
             # Delete asset if its not have market data ???
             request = f"""
-                SELECT * FROM "Data"
+                SELECT * FROM data."DataInfo"
                 WHERE
                     figi = '{instrument.figi}'
                 """
@@ -1503,7 +1554,7 @@ class Keeper:
         # Update table "Data" - information about availible market data
         # if after deletion, the bars remained
         request = f"""
-            UPDATE "Data"
+            UPDATE data."DataInfo"
             SET
                 first_dt = (SELECT min(dt) FROM {bars_table_name}),
                 last_dt = (SELECT max(dt) FROM {bars_table_name})
@@ -1694,12 +1745,8 @@ class Keeper:
         request = f"""
             UPDATE "Trade"
             SET
-                dt = '{trade.dt}',
                 status = '{trade.status.name}',
-                strategy = '{trade.strategy}',
-                version = '{trade.version}',
-                type = '{trade.type.name}',
-                figi = '{trade.instrument.figi}'
+                info = {cls.__formatInfo(trade)}
             WHERE
                 trade_id = '{trade.trade_id}';
             """
@@ -1755,7 +1802,7 @@ class Keeper:
 
         # Delete old cache
         request = f"""
-            DELETE FROM "InstrumentInfo"
+            DELETE FROM data."InstrumentInfo"
             WHERE
                 source = '{cache.source.name}' AND
                 type = '{cache.type.name}'
@@ -1769,6 +1816,8 @@ class Keeper:
             for info in cache.formatted:
                 pg_source = f"'{cache.source.name}'"
                 pg_itype = f"'{cache.type.name}'"
+                figi = info["figi"]
+                pg_figi = f"'{figi}'"
                 # TODO: encoderJson наверное надо сюда втащить из класса
                 # _InstrumentsInfoCache, там он вообще нигде никак не
                 # используется? или? а нет.. пока кэш в джсон тоже
@@ -1780,7 +1829,7 @@ class Keeper:
                 )
                 pg_asset_info = f"'{json_string}'"
 
-                val = f"({pg_source}, {pg_itype}, {pg_asset_info}),\n"
+                val = f"({pg_source},{pg_itype},{pg_figi},{pg_asset_info}),\n"
                 values += val
 
             values = values[0:-2]  # remove ",\n" after last value
@@ -1789,9 +1838,10 @@ class Keeper:
         # save new cache
         values = formatCache(cache)
         request = f"""
-            INSERT INTO "InstrumentInfo" (
+            INSERT INTO data."InstrumentInfo" (
                 source,
                 type,
+                figi,
                 info
                 )
             VALUES

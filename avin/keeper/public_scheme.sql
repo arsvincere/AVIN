@@ -12,12 +12,6 @@ COMMENT ON SCHEMA public
 GRANT USAGE ON SCHEMA public TO PUBLIC;
 GRANT ALL ON SCHEMA public TO pg_database_owner;
 -- }}}
-CREATE TABLE IF NOT EXISTS "InstrumentInfo" ( -- {{{
-    source "DataSource" NOT NULL,
-    type "Instrument.Type" NOT NULL,
-    info jsonb NOT NULL
-    );
--- }}}
 CREATE TABLE IF NOT EXISTS "Exchange" ( -- {{{
     name text PRIMARY KEY
     );
@@ -44,15 +38,6 @@ CREATE TABLE IF NOT EXISTS "AssetList-Asset" ( -- {{{
     figi text REFERENCES "Asset"(figi)
     );
 -- }}}
-CREATE TABLE IF NOT EXISTS "Data" ( -- {{{
-    figi text REFERENCES "Asset"(figi),
-    type "DataType" NOT NULL,
-    source "DataSource" NOT NULL,
-    first_dt TIMESTAMP WITH TIME ZONE NOT NULL,
-    last_dt TIMESTAMP WITH TIME ZONE NOT NULL
-    );
--- }}}
-
 CREATE TABLE IF NOT EXISTS "Strategy" ( -- {{{
     name text NOT NULL,
     version text NOT NULL,
@@ -109,12 +94,13 @@ CREATE TABLE IF NOT EXISTS "Trade" ( -- {{{
     trade_id    text PRIMARY KEY,
     trade_list  text REFERENCES "TradeList"(name) ON UPDATE CASCADE,
     figi        text REFERENCES "Asset"(figi),
-    strategy    text,
-    version     text,
+    strategy    text NOT NULL,
+    version     text NOT NULL,
     FOREIGN KEY (strategy, version) REFERENCES "Strategy" (name, version) ON UPDATE CASCADE,
-    dt          TIMESTAMP WITH TIME ZONE,
-    status      "Trade.Status",
-    type        "Trade.Type"
+    dt          TIMESTAMP WITH TIME ZONE NOT NULL,
+    status      "Trade.Status" NOT NULL,
+    type        "Trade.Type" NOT NULL,
+    info        jsonb NOT NULL
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "Order" ( -- {{{

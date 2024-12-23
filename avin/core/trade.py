@@ -24,7 +24,7 @@ from avin.core.range import Range
 from avin.core.timeframe import TimeFrame
 from avin.data import Instrument
 from avin.keeper import Keeper
-from avin.utils import AsyncSignal, logger
+from avin.utils import AsyncSignal, Cmd, logger
 
 
 class Trade:  # {{{
@@ -592,6 +592,9 @@ ppd:        {self.percentPerDay()}
             operations=operations,
         )
 
+        # create info
+        trade.info = Cmd.fromJson(record["info"], Trade.decoderJson)
+
         # connect signals of attached orders
         for order in trade.orders:
             await trade.__connectOrderSignals(order)
@@ -631,6 +634,21 @@ ppd:        {self.percentPerDay()}
         logger.debug(f"{cls.__name__}.update()")
 
         await Keeper.update(trade)
+
+    # }}}
+
+    @staticmethod  # encoderJson# {{{
+    def encoderJson(obj) -> Any:
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+
+    # }}}
+    @staticmethod  # decoderJson# {{{
+    def decoderJson(obj) -> Any:
+        for k, v in obj.items():
+            if isinstance(v, str) and "+00:00" in v:
+                obj[k] = datetime.fromisoformat(obj[k])
+        return obj
 
     # }}}
 
