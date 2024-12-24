@@ -14,7 +14,7 @@ from PyQt6.QtCore import Qt
 from avin.core import Strategy
 from avin.utils import logger
 from gui.custom import Css, Icon, Label, Spacer, ToolButton
-from gui.strategy.item import StrategyItem
+from gui.strategy.item import StrategyItem, VersionItem
 
 
 class StrategySelectDialog(QtWidgets.QDialog):  # {{{
@@ -27,6 +27,22 @@ class StrategySelectDialog(QtWidgets.QDialog):  # {{{
         self.__config()
         self.__connect()
         self.__loadUserStrategy()
+
+    # }}}
+
+    def selectStrategy(self) -> Strategy | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectStrategy()")
+
+        result = self.exec()
+        if result == QtWidgets.QDialog.DialogCode.Rejected:
+            return None
+
+        item = self.__tree.currentItem()
+        if isinstance(item, StrategyItem):
+            return None
+
+        if isinstance(item, VersionItem):
+            return item.strategy
 
     # }}}
     def selectStrategys(self) -> list[Strategy]:  # {{{

@@ -31,7 +31,7 @@ class StrategyItem(QtWidgets.QTreeWidgetItem):  # {{{
         self.setFlags(
             # Qt.ItemFlag.ItemIsAutoTristate
             Qt.ItemFlag.ItemIsUserCheckable
-            | Qt.ItemFlag.ItemIsSelectable
+            # | Qt.ItemFlag.ItemIsSelectable
             | Qt.ItemFlag.ItemIsEnabled
         )
         self.setText(self.Column.Name, self.name)
@@ -138,9 +138,11 @@ class StrategyItem(QtWidgets.QTreeWidgetItem):  # {{{
 
 # }}}
 class VersionItem(QtWidgets.QTreeWidgetItem):  # {{{
-    class Column(enum.IntEnum):
+    class Column(enum.IntEnum):  # {{{
         Name = 0
         Version = 1
+
+    # }}}
 
     def __init__(self, strategy, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
@@ -155,11 +157,13 @@ class VersionItem(QtWidgets.QTreeWidgetItem):  # {{{
         self.setText(StrategyItem.Column.Name, self.strategy.version)
 
     # }}}
+
     @property  # path  # {{{
     def path(self):
         return Strategy.path(self.strategy)
 
     # }}}
+
     def isChecked(self) -> bool:  # {{{
         logger.debug(f"{self.__class__.__name__}.isChecked()")
 
@@ -168,6 +172,7 @@ class VersionItem(QtWidgets.QTreeWidgetItem):  # {{{
         return check_state == Qt.CheckState.Checked
 
     # }}}
+
     @classmethod  # copy  # {{{
     def copy(cls, item, new_name) -> VersionItem | None:
         logger.debug(f"{cls.__name__}.copy()")
