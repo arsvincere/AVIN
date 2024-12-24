@@ -129,6 +129,12 @@ class MarkList:  # {{{
         self.__marks = markers
 
     # }}}
+    @property  # path  # {{{
+    def path(self) -> str:
+        file_path = Cmd.path(Usr.MARK, f"{self.__name}.csv")
+        return file_path
+
+    # }}}
 
     def add(self, mark: Mark) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.add()")
@@ -165,8 +171,8 @@ class MarkList:  # {{{
         assert isinstance(marker_list, MarkList)
 
         text = list()
-        for mark in self.__marks:
-            string = Mark.toCSV(mark)
+        for mark in marker_list.__marks:
+            string = Mark.toCSV(mark) + "\n"
             text.append(string)
 
         file_path = marker_list.path

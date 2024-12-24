@@ -13,6 +13,7 @@ from PyQt6.QtCore import Qt
 
 from avin.utils import logger
 from gui.custom import Css, Dialog, Menu
+from gui.marker.dialog_marker_edit import MarkerEditDialog
 from gui.marker.item import MarkItem
 from gui.marker.mark import Mark, MarkList
 
@@ -26,7 +27,7 @@ class MarkTree(QtWidgets.QTreeWidget):  # {{{
         self.__createMenus()
         self.__connect()
 
-        self.thread = None
+        self.__mark_list = None
 
     # }}}
     def __iter__(self):  # {{{
@@ -56,6 +57,8 @@ class MarkTree(QtWidgets.QTreeWidget):  # {{{
         logger.debug(f"{self.__class__.__name__}.setMarkList()")
 
         self.clear()
+        self.__mark_list = mark_list
+
         for mark in mark_list:
             self.addMark(mark)
 
@@ -112,6 +115,7 @@ class MarkTree(QtWidgets.QTreeWidget):  # {{{
 
         self.marker_menu.new.triggered.connect(self.__onNew)
         self.marker_menu.edit.triggered.connect(self.__onEdit)
+        self.marker_menu.remove.triggered.connect(self.__onRemove)
         self.marker_menu.delete.triggered.connect(self.__onDelete)
 
     # }}}
@@ -120,22 +124,58 @@ class MarkTree(QtWidgets.QTreeWidget):  # {{{
     def __onNew(self):
         logger.debug(f"{self.__class__.__name__}.__onNew()")
 
+        dial = MarkerEditDialog()
+        mark = dial.newMark()
+        if mark is not None:
+            # add mark in MarkList
+            self.__mark_list.add(mark)
+            MarkList.save(self.__mark_list)
+
+            # add mark in tree
+            self.addMark(mark)
+
     # }}}
     @QtCore.pyqtSlot()  # __onEdit# {{{
     def __onEdit(self):
         logger.debug(f"{self.__class__.__name__}.__onEdit()")
 
-        item = self.__current_item
+        mark = self.__current_item.mark
+        dial = MarkerEditDialog()
+        edited = dial.editMark(mark)
+
+        if edited is not None:
+            # add mark in MarkList
+            self.__mark_list.remove(mark)
+            self.__mark_list.add(edited)
+            MarkList.save(self.__mark_list)
+
+            # add mark in tree
+            self.removeMark(mark)
+            self.addMark(edited)
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onRemove# {{{
+    def __onRemove(self):
+        logger.debug(f"{self.__class__.__name__}.__onRemove()")
+
+        mark = self.__current_item.mark
+        self.__mark_list.remove(mark)
+        self.removeMark(mark)
 
     # }}}
     @QtCore.pyqtSlot()  # __onDelete# {{{
     def __onDelete(self):
-        logger.debug(f"{self.__class__.__name__}.delete()")
+        logger.debug(f"{self.__class__.__name__}.__onDelete()")
 
         if not Dialog.confirm():
             return
 
-        item = self.__current_item
+        mark = self.__current_item.mark
+
+        self.__mark_list.remove(mark)
+        MarkList.save(self.__mark_list)
+
+        self.removeMark(mark)
 
     # }}}
 
@@ -148,10 +188,12 @@ class _MarkMenu(Menu):  # {{{
 
         self.new = QtGui.QAction("New", self)
         self.edit = QtGui.QAction("Edit", self)
+        self.remove = QtGui.QAction("Remove", self)
         self.delete = QtGui.QAction("Delete", self)
 
         self.addAction(self.new)
         self.addAction(self.edit)
+        self.addAction(self.remove)
         self.addAction(self.delete)
 
     # }}}
@@ -169,6 +211,7 @@ class _MarkMenu(Menu):  # {{{
         elif isinstance(item, MarkItem):
             self.new.setEnabled(True)
             self.edit.setEnabled(True)
+            self.remove.setEnabled(True)
             self.delete.setEnabled(True)
 
     # }}}

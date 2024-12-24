@@ -20,7 +20,7 @@ from gui.chart.thread import Thread
 from gui.chart.toolbar import ChartToolBar
 from gui.chart.view import ChartView
 from gui.custom import Css
-from gui.marker import Mark
+from gui.marker import Mark, MarkList
 
 
 class ChartWidget(QtWidgets.QWidget):
@@ -116,7 +116,7 @@ class ChartWidget(QtWidgets.QWidget):
         self.toolbar.secondTimeFrameChanged.connect(self.__onTimeframe2)
         self.toolbar.barViewSelected.connect(self.__onBarView)
         self.toolbar.cundleViewSelected.connect(self.__onCundleView)
-        self.toolbar.newMark.connect(self.__onNewMark)
+        self.toolbar.markListChanged.connect(self.__onMarkList)
         self.toolbar.periodChanged.connect(self.__onPeriod)
 
     # }}}
@@ -201,17 +201,18 @@ class ChartWidget(QtWidgets.QWidget):
         gchart.setViewType(ViewType.CUNDLE)
 
     # }}}
-    @QtCore.pyqtSlot(Mark)  # __onNewMark  # {{{
-    def __onNewMark(self, mark: Mark):
-        logger.debug(f"{self.__class__.__name__}.__onNewMark()")
+    @QtCore.pyqtSlot(Mark)  # __onMarkList  # {{{
+    def __onMarkList(self, mark_list: MarkList):
+        logger.debug(f"{self.__class__.__name__}.__onMarkList()")
 
         if self.__asset is None:
             return
 
-        self.__markers.append(mark)
+        self.__mark_list = mark_list
 
         gchart = self.scene.currentGChart()
-        gchart.addMark(mark)
+        for mark in mark_list:
+            gchart.addMark(mark)
 
     # }}}
     @QtCore.pyqtSlot(DateTime, DateTime)  # __onPeriod  # {{{

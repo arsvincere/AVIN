@@ -33,11 +33,11 @@ class Thread:  # {{{
         return thread.result
 
     # }}}
-    @classmethod  # addGMarker  # {{{
-    def addGMarker(cls, gchart: GChart, gmarker: GMarker) -> None:
+    @classmethod  # addMark  # {{{
+    def addMark(cls, gchart: GChart, mark: Mark) -> None:
         logger.debug(f"{cls.__name__}.addGMarker()")
 
-        thread = _TAddMarker(gchart, gmarker)
+        thread = _TAddMarker(gchart, mark)
         thread.start()
         awaitQThread(thread)
 
@@ -86,12 +86,12 @@ class _TLoadChart(QtCore.QThread):  # {{{
 
 # }}}
 class _TAddMarker(QtCore.QThread):  # {{{
-    def __init__(self, gchart: GChart, marker: Marker, parent=None):  # {{{
+    def __init__(self, gchart: GChart, mark: Mark, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtCore.QThread.__init__(self, parent)
 
         self.__gchart = gchart
-        self.__marker = marker
+        self.__mark = mark
 
     # }}}
     def run(self):  # {{{
@@ -104,9 +104,9 @@ class _TAddMarker(QtCore.QThread):  # {{{
         logger.debug(f"{self.__class__.__name__}.__arun()")
 
         gchart = self.__gchart
-        marker = self.__marker
+        mark = self.__mark
         chart = self.__gchart.chart
-        f = self.__marker.filter
+        f = self.__mark.filter
 
         chart.setHeadIndex(0)
         while chart.nextHead():
@@ -114,7 +114,7 @@ class _TAddMarker(QtCore.QThread):  # {{{
             if result:
                 dt = chart.now.dt
                 gbar = gchart.barFromDatetime(dt)
-                gbar.addShape(marker.shape)
+                gbar.addGShape(mark.shape)
 
     # }}}
 

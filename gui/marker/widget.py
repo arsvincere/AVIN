@@ -25,12 +25,12 @@ class MarkerWidget(QtWidgets.QDialog):  # {{{
         self.__createWidgets()
         self.__createLayots()
         self.__connect()
-        self.__loadUserMarkers()
+        self.__loadUserMarks()
 
     # }}}
 
-    def selectMarkers(self) -> MarkList | None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.selectMarkers()")
+    def selectMarks(self) -> MarkList | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectMarks()")
 
         result = self.exec()
         if result == QtWidgets.QDialog.DialogCode.Rejected:
@@ -38,8 +38,8 @@ class MarkerWidget(QtWidgets.QDialog):  # {{{
 
         selected = MarkList("selected")
         for item in self.__mark_tree:
-            if item.isCheked():
-                selected.add(item.marker)
+            if item.isChecked():
+                selected.add(item.mark)
 
         return selected
 
@@ -78,10 +78,10 @@ class MarkerWidget(QtWidgets.QDialog):  # {{{
         self.__tool_bar.btn_ok.clicked.connect(self.accept)
 
     # }}}
-    def __loadUserMarkers(self) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.__loadUserMarkers()")
+    def __loadUserMarks(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__loadUserMarks()")
 
-        mark_list = MarkList.load("marker_list")
+        mark_list = MarkList.load("mark_list")
 
         self.__mark_tree.setMarkList(mark_list)
 
@@ -102,7 +102,7 @@ class _ToolBar(QtWidgets.QToolBar):  # {{{
     def __createWidgets(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
 
-        title = Label("| Select markers:", parent=self)
+        title = Label("| Select marks:", parent=self)
         title.setStyleSheet(Css.TITLE)
         self.addWidget(title)
         self.addWidget(Spacer())
@@ -120,5 +120,5 @@ class _ToolBar(QtWidgets.QToolBar):  # {{{
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     w = MarkerWidget()
-    w.show()
+    w.selectMarkers()
     sys.exit(app.exec())

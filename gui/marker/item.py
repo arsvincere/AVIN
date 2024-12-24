@@ -16,7 +16,7 @@ from PyQt6.QtCore import Qt
 from avin import logger
 
 
-class MarkItem(QtWidgets.QTreeWidgetItem):  # {{{
+class MarkItem(QtWidgets.QTreeWidgetItem):
     class Column(enum.IntEnum):  # {{{
         Filter = 0
         Shape = 1
@@ -28,11 +28,13 @@ class MarkItem(QtWidgets.QTreeWidgetItem):  # {{{
         QtWidgets.QTreeWidgetItem.__init__(self, parent)
 
         self.mark = mark
+
         self.setFlags(
             Qt.ItemFlag.ItemIsUserCheckable
             | Qt.ItemFlag.ItemIsSelectable
             | Qt.ItemFlag.ItemIsEnabled
         )
+        self.setCheckState(self.Column.Filter, Qt.CheckState.Unchecked)
 
         self.setText(self.Column.Filter, mark.filter.name)
         icon = QtGui.QIcon(mark.shape.pixmap())
@@ -40,8 +42,14 @@ class MarkItem(QtWidgets.QTreeWidgetItem):  # {{{
 
     # }}}
 
+    def isChecked(self) -> bool:  # {{{
+        logger.debug(f"{self.__class__.__name__}.isChecked()")
 
-# }}}
+        check_state = self.checkState(self.Column.Filter)
+
+        return check_state == Qt.CheckState.Checked
+
+    # }}}
 
 
 if __name__ == "__main__":

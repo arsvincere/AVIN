@@ -17,13 +17,13 @@ from gui.custom import (
     Css,
     Icon,
     Label,
-    LineEdit,
     PushButton,
     Spacer,
     ToolButton,
 )
 from gui.filter.dialog_select import FilterSelectDialog
 from gui.marker.dialog_shape_select import ShapeSelectDialog
+from gui.marker.mark import Mark
 
 
 class MarkerEditDialog(QtWidgets.QDialog):  # {{{
@@ -37,37 +37,64 @@ class MarkerEditDialog(QtWidgets.QDialog):  # {{{
         self.__createLayots()
         self.__connect()
 
-        self.__currentName = None
-        self.__currentFilter = None
-        self.__currentGShape = None
+        self.__current_filter = None
+        self.__current_gshape = None
 
     # }}}
 
-    def newMarker(self) -> Marker | None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.__onFilterBtn()")
+    def newMark(self) -> Mark | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.newMark()")
 
         result = self.exec()
         if result == QtWidgets.QDialog.DialogCode.Rejected:
             return None
 
-        if self.__currentName is None:
+        if self.__current_filter is None:
             return None
-        if self.__currentFilter is None:
-            return None
-        if self.__currentGShape is None:
+        if self.__current_gshape is None:
             return None
 
-        m = Marker(
-            self.__currentName,
-            self.__currentFilter,
-            self.__currentGShape,
+        m = Mark(
+            self.__current_filter,
+            self.__current_gshape,
         )
         return m
+
+    # }}}
+    def editMark(self, mark: Mark) -> Mark | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.editMark()")
+
+        # read mark in UI
+        self.__current_filter = mark.filter
+        self.__filter_btn.setText(mark.filter.name)
+
+        self.__current_gshape = mark.shape
+        icon = QtGui.QIcon(mark.shape.pixmap())
+        self.__shape_btn.setText("")
+        self.__shape_btn.setIcon(icon)
+
+        # exec dialog
+        result = self.exec()
+        if result == QtWidgets.QDialog.DialogCode.Rejected:
+            return None
+
+        if self.__current_filter is None:
+            return None
+        if self.__current_gshape is None:
+            return None
+
+        # create and return mark
+        mark = Mark(
+            self.__current_filter,
+            self.__current_gshape,
+        )
+        return mark
 
     # }}}
 
     def __config(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__config()")
+
         self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
         self.setStyleSheet(Css.DIALOG)
         self.setWindowTitle("AVIN")
@@ -77,16 +104,14 @@ class MarkerEditDialog(QtWidgets.QDialog):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
 
         self.__toolbar = _MarkerToolBar(self)
-        self.__name_lineedit = LineEdit("Enter name...")
-        self.__filter_btn = PushButton(text="Click for select...")
-        self.__shape_btn = PushButton(text="Click for select...")
+        self.__filter_btn = PushButton(text="Click to select")
+        self.__shape_btn = PushButton(text="Click to select")
 
     # }}}
     def __createForm(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createForm()")
 
         form = QtWidgets.QFormLayout()
-        form.addRow("Name", self.__name_lineedit)
         form.addRow("Filter", self.__filter_btn)
         form.addRow("Shape", self.__shape_btn)
         self.__form = form
@@ -108,21 +133,11 @@ class MarkerEditDialog(QtWidgets.QDialog):  # {{{
         self.__toolbar.btn_ok.clicked.connect(self.accept)
         self.__toolbar.btn_cancel.clicked.connect(self.reject)
 
-        self.__name_lineedit.textChanged.connect(self.__onNameEdit)
         self.__filter_btn.clicked.connect(self.__onFilterBtn)
         self.__shape_btn.clicked.connect(self.__onShapeBtn)
 
     # }}}
 
-    @QtCore.pyqtSlot()  # __onNameEdit  # {{{
-    def __onNameEdit(self):
-        logger.debug(f"{self.__class__.__name__}.__onNameEdit()")
-
-        name = self.__name_lineedit.text()
-        if name:
-            self.__currentName = name
-
-    # }}}
     @QtCore.pyqtSlot()  # __onFilterBtn  # {{{
     def __onFilterBtn(self):
         logger.debug(f"{self.__class__.__name__}.__onFilterBtn()")
@@ -130,10 +145,11 @@ class MarkerEditDialog(QtWidgets.QDialog):  # {{{
         dial = FilterSelectDialog()
         f = dial.selectFilter()
         if f is None:
+            self.__filter_btn.setText("Click to select")
             return
         else:
             self.__filter_btn.setText(f.name)
-            self.__currentFilter = f
+            self.__current_filter = f
 
     # }}}
     @QtCore.pyqtSlot()  # __onShapeBtn  # {{{
@@ -143,12 +159,13 @@ class MarkerEditDialog(QtWidgets.QDialog):  # {{{
         dial = ShapeSelectDialog()
         gshape = dial.selectGShape()
         if gshape is None:
+            self.__shape_btn.setText("Click to select")
             return
         else:
             icon = QtGui.QIcon(gshape.pixmap())
             self.__shape_btn.setText("")
             self.__shape_btn.setIcon(icon)
-            self.__currentGShape = gshape
+            self.__current_gshape = gshape
 
     # }}}
 
@@ -165,7 +182,7 @@ class _MarkerToolBar(QtWidgets.QToolBar):  # {{{
     def __createWidgets(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
 
-        title = Label("| Add marker:", parent=self)
+        title = Label("| Add mark:", parent=self)
         title.setStyleSheet(Css.TITLE)
         self.addWidget(title)
         self.addWidget(Spacer())

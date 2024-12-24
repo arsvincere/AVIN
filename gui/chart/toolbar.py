@@ -21,6 +21,7 @@ from gui.custom import (
     ToolButton,
     VLine,
 )
+from gui.marker import MarkerWidget, MarkList
 
 
 class ChartToolBar(QtWidgets.QToolBar):  # {{{
@@ -28,6 +29,7 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
     secondTimeFrameChanged = QtCore.pyqtSignal(TimeFrame, bool)
     barViewSelected = QtCore.pyqtSignal()
     cundleViewSelected = QtCore.pyqtSignal()
+    markListChanged = QtCore.pyqtSignal(MarkList)
     periodChanged = QtCore.pyqtSignal(DateTime, DateTime)
 
     __ICON_SIZE = QtCore.QSize(32, 32)
@@ -249,9 +251,11 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
         logger.debug(f"{self.__class__.__name__}.__onMarkerBtn()")
 
         if self.__marker_widget is None:
-            self.__marker_widget = MarkerWidget(self)
+            self.__marker_widget = MarkerWidget()
 
-        self.__marker_widget.show()
+        mark_list = self.__marker_widget.selectMarks()
+        if mark_list is not None:
+            self.markListChanged.emit(mark_list)
 
     # }}}
     @QtCore.pyqtSlot()  # __onPeriodBtn  # {{{

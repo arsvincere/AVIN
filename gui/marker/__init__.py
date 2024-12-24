@@ -11,6 +11,7 @@ from gui.marker.dialog_shape_select import ShapeSelectDialog
 from gui.marker.gshape import GShape
 from gui.marker.item import MarkItem
 from gui.marker.mark import Mark, MarkList
+from gui.marker.widget import MarkerWidget
 
 __all__ = (
     "MarkerEditDialog",
@@ -19,4 +20,5 @@ __all__ = (
     "Mark",
     "MarkList",
     "MarkItem",
+    "MarkerWidget",
 )

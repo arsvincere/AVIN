@@ -271,14 +271,14 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
 
     # }}}
 
-    def addMarker(self, mark: Mark) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.addMarker()")
+    def addMark(self, mark: Mark) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.addMark()")
 
-        Thread.addMarker(self, mark)
+        Thread.addMark(self, mark)
 
     # }}}
-    def clearMarkers(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.addMarker()")
+    def clearMarks(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.addMark()")
 
         for gbar in self.gbars:
             gbar.clearGShapes()
