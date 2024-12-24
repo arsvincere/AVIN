@@ -13,7 +13,6 @@ from avin.core import Asset, TimeFrame, TimeFrameList
 from avin.utils import DateTime, logger
 from gui.chart.dialog_period import ChartPeriodDialog
 from gui.chart.gchart import ViewType
-from gui.chart.gmark import Marker, MarkerEditDialog
 from gui.custom import (
     Css,
     Icon,
@@ -22,6 +21,7 @@ from gui.custom import (
     ToolButton,
     VLine,
 )
+from gui.marker import GMarker, MarkerEditDialog
 
 
 class ChartToolBar(QtWidgets.QToolBar):  # {{{
@@ -29,7 +29,7 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
     secondTimeFrameChanged = QtCore.pyqtSignal(TimeFrame, bool)
     barViewSelected = QtCore.pyqtSignal()
     cundleViewSelected = QtCore.pyqtSignal()
-    newMarker = QtCore.pyqtSignal(Marker)
+    newMarker = QtCore.pyqtSignal(GMarker)
     periodChanged = QtCore.pyqtSignal(DateTime, DateTime)
 
     __ICON_SIZE = QtCore.QSize(32, 32)

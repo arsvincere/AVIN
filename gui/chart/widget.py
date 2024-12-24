@@ -14,13 +14,13 @@ from avin.core import Asset, Chart, TimeFrame, Trade, TradeList
 from avin.tester import Test
 from avin.utils import DateTime, logger, now
 from gui.chart.gchart import GChart, ViewType
-from gui.chart.gmark import Marker
 from gui.chart.gtest import GTradeList
 from gui.chart.scene import ChartScene
 from gui.chart.thread import Thread
 from gui.chart.toolbar import ChartToolBar
 from gui.chart.view import ChartView
 from gui.custom import Css
+from gui.marker import GMarker
 
 
 class ChartWidget(QtWidgets.QWidget):
@@ -35,7 +35,7 @@ class ChartWidget(QtWidgets.QWidget):
 
         self.__asset = None
         self.__trade_list = None
-        self.__markers: list[Marker] = list()
+        self.__markers: list[GMarker] = list()
 
     # }}}
 
@@ -73,7 +73,7 @@ class ChartWidget(QtWidgets.QWidget):
 
         self.__trade_list = None
         self.__asset = None
-        self.__markers: list[Marker] = list()
+        self.__markers: list[GMarker] = list()
         self.toolbar.setAsset(None)
         self.toolbar.setFirstTimeFrame(TimeFrame("D"))
         self.toolbar.resetSecondTimeFrames()
@@ -116,7 +116,7 @@ class ChartWidget(QtWidgets.QWidget):
         self.toolbar.secondTimeFrameChanged.connect(self.__onTimeframe2)
         self.toolbar.barViewSelected.connect(self.__onBarView)
         self.toolbar.cundleViewSelected.connect(self.__onCundleView)
-        self.toolbar.newMarker.connect(self.__onNewMarker)
+        self.toolbar.newGMarker.connect(self.__onNewGMarker)
         self.toolbar.periodChanged.connect(self.__onPeriod)
 
     # }}}
@@ -201,9 +201,9 @@ class ChartWidget(QtWidgets.QWidget):
         gchart.setViewType(ViewType.CUNDLE)
 
     # }}}
-    @QtCore.pyqtSlot(Marker)  # __onNewMarker  # {{{
-    def __onNewMarker(self, marker: Marker):
-        logger.debug(f"{self.__class__.__name__}.__onNewMarker()")
+    @QtCore.pyqtSlot(GMarker)  # __onNewGMarker  # {{{
+    def __onNewGMarker(self, marker: GMarker):
+        logger.debug(f"{self.__class__.__name__}.__onNewGMarker()")
 
         if self.__asset is None:
             return
@@ -211,7 +211,7 @@ class ChartWidget(QtWidgets.QWidget):
         self.__markers.append(marker)
 
         gchart = self.scene.currentGChart()
-        gchart.addMarker(marker)
+        gchart.addGMarker(marker)
 
     # }}}
     @QtCore.pyqtSlot(DateTime, DateTime)  # __onPeriod  # {{{

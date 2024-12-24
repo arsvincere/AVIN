@@ -33,11 +33,11 @@ class Thread:  # {{{
         return thread.result
 
     # }}}
-    @classmethod  # addMarker  # {{{
-    def addMarker(cls, gchart: GChart, marker: Marker) -> None:
-        logger.debug(f"{cls.__name__}.addMarker()")
+    @classmethod  # addGMarker  # {{{
+    def addGMarker(cls, gchart: GChart, gmarker: GMarker) -> None:
+        logger.debug(f"{cls.__name__}.addGMarker()")
 
-        thread = _TAddMarker(gchart, marker)
+        thread = _TAddMarker(gchart, gmarker)
         thread.start()
         awaitQThread(thread)
 

@@ -17,9 +17,9 @@ from avin.core import TimeFrame, Trade, TradeList
 from avin.tester import Test
 from avin.utils import logger
 from gui.chart.gchart import GBar, GChart
-from gui.chart.gmark import Shape
 from gui.chart.thread import Thread
 from gui.custom import Css, Theme
+from gui.marker import GShape
 
 
 class GTrade(QtWidgets.QGraphicsItemGroup):  # {{{
@@ -46,7 +46,7 @@ class GTrade(QtWidgets.QGraphicsItemGroup):  # {{{
         self.annotation = None
 
         self.__calcCoordinates()
-        self.__createTradeShape()
+        self.__createTradeGShape()
         self.__createOpenItem()
         self.__createStopLossItem()
         self.__createTakeProfitItem()
@@ -95,25 +95,25 @@ class GTrade(QtWidgets.QGraphicsItemGroup):  # {{{
                 self.trade_pos = QtCore.QPointF(self.x_opn, self.y0)
 
     # }}}
-    def __createTradeShape(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createTradeShape()")
+    def __createTradeGShape(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createTradeGShape()")
 
         # choose form
         if self.trade.isLong():
-            typ = Shape.Type.TRIANGLE_UP
+            typ = GShape.Type.TRIANGLE_UP
         else:
-            typ = Shape.Type.TRIANGLE_DOWN
+            typ = GShape.Type.TRIANGLE_DOWN
 
         # choose color
         if self.trade.status != Trade.Status.CLOSED:
-            color = Shape.Color.WHITE
+            color = GShape.Color.WHITE
         elif self.trade.isWin():
-            color = Shape.Color.GREEN
+            color = GShape.Color.GREEN
         else:
-            color = Shape.Color.RED
+            color = GShape.Color.RED
 
         # create shape
-        shape = Shape(typ, Shape.Size.NORMAL, color)
+        shape = GShape(typ, GShape.Size.NORMAL, color)
 
         # set position
         shape.setPos(self.x_opn, self.y0)

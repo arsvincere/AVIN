@@ -20,9 +20,9 @@ from avin.core import (
     TimeFrame,
 )
 from avin.utils import find_left, logger, next_month
-from gui.chart.gmark import Marker, Shape
 from gui.chart.thread import Thread
 from gui.custom import Theme
+from gui.marker import GMarker
 
 
 class ViewType(enum.Enum):  # {{{
@@ -57,8 +57,8 @@ class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
 
     # }}}
 
-    def addShape(self, shape: Shape) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.addShape()")
+    def addGShape(self, shape: Shape) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.addGShape()")
 
         self.shapes.append(shape)
 
@@ -69,8 +69,8 @@ class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
         self.addToGroup(shape)
 
     # }}}
-    def clearShapes(self) -> None:
-        logger.debug(f"{self.__class__.__name__}.clearShapes()")
+    def clearGShapes(self) -> None:
+        logger.debug(f"{self.__class__.__name__}.clearGShapes()")
 
         for item in self.shapes:
             item.setVisible(False)
@@ -271,17 +271,17 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
 
     # }}}
 
-    def addMarker(self, marker: Marker) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.addMarker()")
+    def addGMarker(self, gmarker: GMarker) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.addGMarker()")
 
-        Thread.addMarker(self, marker)
+        Thread.addGMarker(self, gmarker)
 
     # }}}
-    def clearMarkers(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.addMarker()")
+    def clearGMarkers(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.addGMarker()")
 
         for gbar in self.gbars:
-            gbar.clearShapes()
+            gbar.clearGShapes()
 
     # }}}
     def viewType(self) -> ViewType:  # {{{
