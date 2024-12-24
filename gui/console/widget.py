@@ -47,7 +47,7 @@ class ConsoleWidget(QtWidgets.QPlainTextEdit):  # {{{
         self.__config()
         self.__createHandler()
         self.__connect()
-        logger.info("Welcome to AVIN Trade System!")
+        logger.info("Welcome to AVIN Trade System v0.1!")
 
     # }}}
     def __config(self):  # {{{

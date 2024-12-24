@@ -8,7 +8,7 @@
 
 
 def main():
-    print("Welcome to AVIN Trade System!")
+    print("Welcome to AVIN Trade System v0.1!")
 
     # load trader config
     ...
