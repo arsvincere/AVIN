@@ -135,7 +135,7 @@ class Instrument:
         return s
 
     # }}}
-    @classmethod  # fromStr# {{{
+    @classmethod  # fromStr # {{{
     async def fromStr(cls, string: str) -> Instrument:
         logger.debug(f"{cls.__name__}.fromStr()")
 
