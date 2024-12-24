@@ -51,12 +51,17 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         logger.debug(f"{self.__class__.__name__}.contextMenuEvent(e)")
 
         self.__current_item = self.itemAt(e.pos())
+
         if self.__current_item is None:
+            self.test_menu.setVisibleActions(self.__current_item)
             self.test_menu.exec(QtGui.QCursor.pos())
         if isinstance(self.__current_item, TestItem):
+            self.test_menu.setVisibleActions(self.__current_item)
             self.test_menu.exec(QtGui.QCursor.pos())
         elif isinstance(self.__current_item, TradeListItem):
+            self.test_menu.setVisibleActions(self.__current_item)
             self.tlist_menu.exec(QtGui.QCursor.pos())
+
         return e.ignore()
 
     # }}}
@@ -171,6 +176,9 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         if self.__isBusy():
             return
 
+        if self.__current_item is None:
+            return
+
         test = self.__current_item.test
 
         self.thread = TRunTest(test)
@@ -240,8 +248,7 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         dial = TestEditDialog()
         edited = dial.editTest(test)
         if edited:
-            index = self.indexFromItem(item).row()
-            self.takeTopLevelItem(index)
+            self.removeTest(test)
             self.addTest(edited)
 
     # }}}
@@ -263,11 +270,8 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         if not renamed_test:
             return
 
-        # delete old item from tree
-        index = self.indexFromItem(item).row()
-        self.takeTopLevelItem(index)
-
-        # add renamed item
+        # delete old item from tree, add renamed test
+        self.removeTest(test)
         self.addTest(renamed_test)
 
     # }}}
@@ -278,14 +282,13 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         if not Dialog.confirm():
             return
 
-        item = self.__current_item
+        test = self.__current_item.test
 
         # delete test
-        Thread.deleteTest(item.test)
+        Thread.deleteTest(test)
 
         # delete item from tree
-        index = self.indexFromItem(item).row()
-        self.takeTopLevelItem(index)
+        self.removeTest(test)
 
     # }}}
 
@@ -390,6 +393,30 @@ class _TestMenu(Menu):  # {{{
         self.addAction(self.edit)
         self.addAction(self.rename)
         self.addAction(self.delete)
+
+    # }}}
+
+    def setVisibleActions(self, item):  # {{{
+        logger.debug(f"{self.__class__.__name__}.setVisibleActions()")
+
+        # disable all actions
+        for i in self.actions():
+            i.setEnabled(False)
+
+        # # enable availible for this item
+        if item is None:
+            self.new.setEnabled(True)
+            self.load.setEnabled(True)
+        elif isinstance(item, TestItem):
+            self.run.setEnabled(True)
+            self.pause.setEnabled(True)
+            self.stop.setEnabled(True)
+            self.new.setEnabled(True)
+            self.load.setEnabled(True)
+            self.copy.setEnabled(True)
+            self.edit.setEnabled(True)
+            self.rename.setEnabled(True)
+            self.delete.setEnabled(True)
 
     # }}}
 

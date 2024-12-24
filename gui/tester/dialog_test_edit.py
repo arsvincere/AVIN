@@ -10,12 +10,19 @@ import sys
 
 from PyQt6 import QtCore, QtWidgets
 
-from avin.config import Usr
-from avin.const import Dir, Res
 from avin.tester import Test
-from avin.utils import Cmd, logger
-from gui.custom import Css, Dialog, Icon, LineEdit, ToolButton
-from gui.strategy import StrategySetWidget
+from avin.utils import logger
+from gui.asset import AssetSelectDialog
+from gui.custom import (
+    Css,
+    Icon,
+    Label,
+    LineEdit,
+    PushButton,
+    Spacer,
+    ToolButton,
+)
+from gui.strategy import StrategySelectDialog
 from gui.tester.thread import Thread
 
 
@@ -36,133 +43,89 @@ class TestEditDialog(QtWidgets.QDialog):
     def newTest(self) -> Test | None:  # {{{
         logger.debug(f"{self.__class__.__name__}.newTest()")
 
-        # copy template test cfg in tmp dir
-        template_path = Cmd.path(Res.TEMPLATE, "test", "cfg.json")
-        tmp_path = Cmd.path(Dir.TMP, "new_test.json")
-        Cmd.copy(template_path, tmp_path)
+        # create new test, and exec edit dialog
+        new_test = Test("auto")
+        self.__readTest(new_test)
+        result = self.exec()
 
-        # edit cfg.json file
-        command = (
-            Usr.TERMINAL,
-            *Usr.OPT,
-            Usr.EXEC,
-            Usr.EDITOR,
-            tmp_path,
-        )
-        Cmd.subprocess(command)
-
-        # confirmation
-        if not Dialog.confirm("Save test?"):
+        # check exec status
+        if result == QtWidgets.QDialog.DialogCode.Rejected:
+            logger.info("Cancel new test")
             return None
 
-        # save test in database
-        obj = Cmd.loadJson(tmp_path)
-        new_test = Thread.fromJson(obj)
-        Thread.saveTest(new_test)  # save in db
+        # write config from UI, save
+        self.__writeTest(new_test)
+        Thread.saveTest(new_test)
 
         logger.info(f"New test '{new_test.name}' created")
         return new_test
 
-        # # create new test, and exec edit dialog
-        # new_test = Test("unnamed")
-        # self.__readTest(new_test)
-        # result = self.exec()
-        #
-        # # check exec status
-        # if result == QtWidgets.QDialog.DialogCode.Rejected:
-        #     logger.info("Cancel new test")
-        #     return None
-        #
-        # # write config from UI, save
-        # self.__writeTest(new_test)
-        # Thread.saveTest(new_test)
-        #
-        # logger.info(f"New test '{new_test.name}' created")
-        # return new_test
-
     # }}}
-    def editTest(self, test: Test):  # {{{
+    def editTest(self, test: Test) -> Test | None:  # {{{
         logger.debug(f"{self.__class__.__name__}.editTest()")
 
-        # save test as json in tmp dir
-        obj = test.toJson(test)
-        tmp_path = Cmd.path(Dir.TMP, "new_test.json")
-        Cmd.saveJson(obj, tmp_path)
+        # read test config to UI
+        self.__readTest(test)
+        result = self.exec()
 
-        # read json file
-        command = (
-            Usr.TERMINAL,
-            *Usr.OPT,
-            Usr.EXEC,
-            Usr.EDITOR,
-            tmp_path,
-        )
-        Cmd.subprocess(command)
-
-        # confirmation
-        if not Dialog.confirm("Save test?"):
+        # check exec status
+        if result == QtWidgets.QDialog.DialogCode.Rejected:
+            logger.info("Cancel edit test")
             return None
 
-        # save test in database
-        obj = Cmd.loadJson(tmp_path)
-        test = Thread.fromJson(obj)
-        test.status = Test.Status.EDITED
-        Thread.saveTest(test)  # save in db
+        # delete old test
+        Thread.deleteTest(test)
+
+        # create new test, write cfg from UI, set status, save
+        edited = Test("unnamed")
+        self.__writeTest(edited)
+        edited.status = Test.Status.EDITED
+        Thread.saveTest(edited)
 
         logger.info("Test edited")
-        return test
-
-        # # read test config to UI
-        # self.__readTest(test)
-        # result = self.exec()
-        #
-        # # check exec status
-        # if result == QtWidgets.QDialog.DialogCode.Rejected:
-        #     logger.info("Cancel edit test")
-        #     return False
-        #
-        # # delete old test
-        # Thread.deleteTest(test)
-        #
-        # # create new test, write config from UI, set status, save
-        # edited = Test("")
-        # self.__writeTest(edited)
-        # edited.status = Test.Status.EDITED
-        # Thread.saveTest(edited)
-        #
-        # logger.info("Test edited")
-        # return edited
+        return edited
 
     # }}}
 
     def __config(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__config()")
+
         self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
         self.setStyleSheet(Css.DIALOG)
         self.setWindowTitle("AVIN")
+        self.setMinimumWidth(350)
 
     # }}}
     def __createWidgets(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
+
+        self.tool_bar = _ToolBar(self)
         self.testname_lineedit = LineEdit()
-        self.dblspinbox_deposit = QtWidgets.QDoubleSpinBox()
-        self.dblspinbox_commission = QtWidgets.QDoubleSpinBox()
+        self.strategy_btn = PushButton(text="Click to select", height=25)
+        self.asset_btn = PushButton(text="Click to select", height=25)
+        self.long_checkbox = QtWidgets.QCheckBox("Long")
+        self.short_checkbox = QtWidgets.QCheckBox("Short")
+        self.deposit_dblspinbox = QtWidgets.QDoubleSpinBox()
+        self.commission_dblspinbox = QtWidgets.QDoubleSpinBox()
         self.begin = QtWidgets.QDateEdit()
         self.end = QtWidgets.QDateEdit()
         self.description = QtWidgets.QPlainTextEdit()
 
-        self.sset_widget = StrategySetWidget(self)
-
-        self.ok_btn = ToolButton(Icon.OK)
-        self.cancel_btn = ToolButton(Icon.CANCEL)
-
     # }}}
     def __createForm(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createForm()")
+
+        long_short = QtWidgets.QHBoxLayout()
+        long_short.addWidget(self.long_checkbox)
+        long_short.addWidget(self.short_checkbox)
+
         form = QtWidgets.QFormLayout()
         form.addRow("Test name", self.testname_lineedit)
-        form.addRow("Deposit", self.dblspinbox_deposit)
-        form.addRow("Commission %", self.dblspinbox_commission)
+        form.addRow("Strategy", self.strategy_btn)
+        form.addRow("Asset", self.asset_btn)
+        form.addRow("Enable", long_short)
+        form.addRow("Deposit", self.deposit_dblspinbox)
+        form.addRow("Commission %", self.commission_dblspinbox)
         form.addRow("Begin date", self.begin)
         form.addRow("End date", self.end)
         form.addRow(QtWidgets.QLabel("Description"))
@@ -174,62 +137,145 @@ class TestEditDialog(QtWidgets.QDialog):
     def __createLayots(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createLayots()")
 
-        hbox = QtWidgets.QHBoxLayout()
-        hbox.addLayout(self.form)
-        hbox.addWidget(self.sset_widget)
-
-        hbox_btn = QtWidgets.QHBoxLayout()
-        hbox_btn.addStretch()
-        hbox_btn.addWidget(self.ok_btn)
-        hbox_btn.addWidget(self.cancel_btn)
-
         vbox = QtWidgets.QVBoxLayout()
-        vbox.addLayout(hbox_btn)
-        vbox.addLayout(hbox)
+        vbox.addWidget(self.tool_bar)
+        vbox.addLayout(self.form)
 
         self.setLayout(vbox)
 
     # }}}
-
     def __connect(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__connect()")
-        self.ok_btn.clicked.connect(self.accept)
-        self.cancel_btn.clicked.connect(self.reject)
+
+        self.tool_bar.btn_ok.clicked.connect(self.accept)
+        self.tool_bar.btn_cancel.clicked.connect(self.reject)
+
+        self.strategy_btn.clicked.connect(self.__onStrategy)
+        self.asset_btn.clicked.connect(self.__onAsset)
 
     # }}}
     def __initUI(self):  # {{{
-        self.dblspinbox_deposit.setMinimum(0.0)
-        self.dblspinbox_deposit.setMaximum(1_000_000_000.0)
+        logger.debug(f"{self.__class__.__name__}.__initUI()")
 
-        self.dblspinbox_commission.setMinimum(0.0)
-        self.dblspinbox_commission.setMaximum(1.0)
+        self.deposit_dblspinbox.setMinimum(0.0)
+        self.deposit_dblspinbox.setMaximum(1_000_000_000.0)
 
-        self.begin.setDisplayFormat("yyyy.MM.dd")
-        self.end.setDisplayFormat("yyyy.MM.dd")
+        self.commission_dblspinbox.setMinimum(0.0)
+        self.commission_dblspinbox.setMaximum(1.0)
+
+        self.begin.setDisplayFormat("yyyy-MM-dd")
+        self.end.setDisplayFormat("yyyy-MM-dd")
 
     # }}}
     def __writeTest(self, test: Test):  # {{{
-        test.name = self.testname_lineedit.text()
-        test.strategy_set = self.sset_widget.currentStrategySet()
-        test.deposit = self.dblspinbox_deposit.value()
-        test.commission = self.dblspinbox_commission.value() / 100
+        logger.debug(f"{self.__class__.__name__}.__writeTest()")
+
+        name = self.testname_lineedit.text()
+        if name == "auto":
+            name = (
+                f"{self.__strategy.name}-"
+                f"{self.__strategy.version}-"
+                f"{self.__asset.ticker}"
+            )
+
+        test.name = name
+        test.strategy = self.__strategy
+        test.asset = self.__asset
+        test.enable_long = self.long_checkbox.isChecked()
+        test.enable_short = self.short_checkbox.isChecked()
+        test.deposit = self.deposit_dblspinbox.value()
+        test.commission = self.commission_dblspinbox.value() / 100
         test.begin = self.begin.date().toPyDate()
         test.end = self.end.date().toPyDate()
         test.description = self.description.toPlainText()
-        return test
 
     # }}}
-    def __readTest(self, test):  # {{{
-        self.testname_lineedit.setText(test.name)
-        self.sset_widget.setStrategySet(test.strategy_set)
-        self.dblspinbox_deposit.setValue(test.deposit)
-        self.dblspinbox_commission.setValue(test.commission * 100)
-        self.begin.setDate(test.begin)
-        self.end.setDate(test.end)
-        self.description.setPlainText(test.description)
+    def __readTest(self, t: Test) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__readTest()")
+
+        self.testname_lineedit.setText(t.name)
+
+        if t.strategy is not None:
+            self.strategy_btn.setText(
+                f"{t.strategy.name}-{t.strategy.version}"
+            )
+            self.__strategy = t.strategy
+        else:
+            self.strategy_btn.setText("Click to select")
+            self.__strategy = None
+
+        if t.asset is not None:
+            self.asset_btn.setText(t.asset.ticker)
+            self.__asset = t.asset
+        else:
+            self.asset_btn.setText("Click to select")
+            self.__asset = None
+
+        self.long_checkbox.setChecked(t.enable_long)
+        self.short_checkbox.setChecked(t.enable_short)
+        self.deposit_dblspinbox.setValue(t.deposit)
+        self.commission_dblspinbox.setValue(t.commission * 100)
+        self.begin.setDate(t.begin)
+        self.end.setDate(t.end)
+        self.description.setPlainText(t.description)
 
     # }}}
 
+    @QtCore.pyqtSlot()  # __onStrategy  # {{{
+    def __onStrategy(self):
+        logger.debug(f"{self.__class__.__name__}.__onStrategy()")
+
+        dial = StrategySelectDialog()
+        strategy = dial.selectStrategy()
+        if strategy is not None:
+            self.__strategy = strategy
+            self.strategy_btn.setText(f"{strategy.name}-{strategy.version}")
+        else:
+            self.__strategy = None
+            self.strategy_btn.setText("Click to select")
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onAsset  # {{{
+    def __onAsset(self):
+        logger.debug(f"{self.__class__.__name__}.__onAsset()")
+
+        dial = AssetSelectDialog()
+        asset = dial.selectAsset()
+        if asset is not None:
+            self.__asset = asset
+            self.asset_btn.setText(asset.ticker)
+        else:
+            self.__asset = None
+            self.asset_btn.setText("Click to select")
+
+    # }}}
+
+
+class _ToolBar(QtWidgets.QToolBar):  # {{{
+    def __init__(self, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QToolBar.__init__(self, parent)
+
+        self.__createWidgets()
+
+    # }}}
+    def __createWidgets(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createWidgets()")
+
+        title = Label("| Test config", parent=self)
+        title.setStyleSheet(Css.TITLE)
+        self.addWidget(title)
+        self.addWidget(Spacer())
+
+        self.btn_ok = ToolButton(Icon.OK, "Ok", parent=self)
+        self.btn_cancel = ToolButton(Icon.CANCEL, "Cancel", parent=self)
+        self.addWidget(self.btn_ok)
+        self.addWidget(self.btn_cancel)
+
+    # }}}
+
+
+# }}}
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
