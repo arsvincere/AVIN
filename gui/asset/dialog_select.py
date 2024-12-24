@@ -61,6 +61,7 @@ class AssetSelectDialog(QtWidgets.QDialog):  # {{{
         for i in self.__tree:
             if i.isChecked():
                 selected.add(i.asset)
+
         return selected
 
     # }}}
