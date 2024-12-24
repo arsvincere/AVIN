@@ -25,12 +25,12 @@ class AssetItem(QtWidgets.QTreeWidgetItem):
         Figi = 4
 
     # }}}
+
     def __init__(self, asset: Asset, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QTreeWidgetItem.__init__(self, parent)
 
         self.asset = asset
-        QtWidgets.QTreeWidgetItemIterator
 
         self.setFlags(
             Qt.ItemFlag.ItemIsUserCheckable
