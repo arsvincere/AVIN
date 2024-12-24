@@ -70,23 +70,27 @@ class Keeper:
         logger.info("Database has been deleted")
 
     # }}}
-    @classmethod  # restoreAssets
+    @classmethod  # restoreAssets  # {{{
     async def restoreAssets(cls) -> None:
         """Проверяет схему data, если есть данные создает public."Asset" """
         logger.debug(f"{cls.__name__}.dropDataBase()")
 
-        # Request all data info
-        request = """
-            SELECT
-                data."DataInfo".source,
-                data."DataInfo".type,
-                data."DataInfo".figi,
-                data."DataInfo".first_dt,
-                data."DataInfo".last_dt,
-            FROM data."DataInfo"
-            """
-        records = await cls.transaction(request)
+        # TODO: Keeper.restoreAssets
+        assert False, "TODO_ME"
 
+        # # Request all data info
+        # request = """
+        #     SELECT
+        #         data."DataInfo".source,
+        #         data."DataInfo".type,
+        #         data."DataInfo".figi,
+        #         data."DataInfo".first_dt,
+        #         data."DataInfo".last_dt,
+        #     FROM data."DataInfo"
+        #     """
+        # records = await cls.transaction(request)
+
+    # }}}
     @classmethod  # transaction  # {{{
     async def transaction(cls, sql_request: str) -> list[asyncpg.Record]:
         logger.debug(f"{cls.__name__}.transaction()\n{sql_request}")
@@ -315,9 +319,9 @@ class Keeper:
 
     # }}}
     @classmethod  # __formatTradeInfo  # {{{
-    def __formatInfo(trade: Trade) -> str:
+    def __formatInfo(cls, trade: Trade) -> str:
         values = ""
-        json_string = Cmd.toJson(info, trade.encoderJson)
+        json_string = Cmd.toJson(trade.info, trade.encoderJson)
         pg_trade_info = f"'{json_string}'"
         return pg_trade_info
 
@@ -1215,7 +1219,8 @@ class Keeper:
                 "Trade".dt,
                 "Trade".status,
                 "Trade".type,
-                "Asset".info
+                "Trade".info AS trade_info,
+                "Asset".info AS info
             FROM "Trade"
             JOIN "Asset" ON "Trade".figi = "Asset".figi
             WHERE trade_list = '{name}';
