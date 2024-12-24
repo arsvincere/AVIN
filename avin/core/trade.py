@@ -163,7 +163,6 @@ type:       {self.type.name}
 instrument: {self.instrument}
 status:     {self.status.name}
 trade_list: {self.trade_list_name}
-info:       {self.info}
 blocked:    {self.__blocked}
 ------------------------------------------------------------------------------
 buy:        {self.buyAverage()} * {self.buyQuantity()} = {self.buyAmount()}
@@ -172,13 +171,14 @@ commission: {self.commission()}
 open_dt:    {Usr.localTime(self.openDateTime())}
 close_dt:   {Usr.localTime(self.closeDateTime())}
 open:       {self.openPrice()}
-stop:       {self.stopPrice()} / {self.stopPercent()}
-take:       {self.takePrice()} / {self.takePercent()}
+stop:       {self.stopPrice()} / {self.stopPercent()}%
+take:       {self.takePrice()} / {self.takePercent()}%
 ------------------------------------------------------------------------------
 result:     {self.result()}
 days:       {self.holdingDays()}
 percent:    {self.percent()}
 ppd:        {self.percentPerDay()}
+info:       {Cmd.toJson(self.info, indent=4)}
 
 == Orders ====================================================================
 {orders_text}
@@ -593,7 +593,7 @@ ppd:        {self.percentPerDay()}
         )
 
         # create info
-        trade.info = Cmd.fromJson(record["info"], Trade.decoderJson)
+        trade.info = Cmd.fromJson(record["trade_info"], Trade.decoderJson)
 
         # connect signals of attached orders
         for order in trade.orders:
