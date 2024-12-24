@@ -81,7 +81,7 @@ class FilterWidget(QtWidgets.QWidget):  # {{{
 
     # }}}
     def __loadUserFilters(self) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.__loadUserTests()")
+        logger.debug(f"{self.__class__.__name__}.__loadUserMarker()")
 
         all_names = Filter.requestAll()
         for name in all_names:
