@@ -49,7 +49,7 @@ class SummaryDockWidget(QtWidgets.QDockWidget):  # {{{
 
 
 # }}}
-class SummaryWidget(QtWidgets.QTableWidget):
+class SummaryWidget(QtWidgets.QTableWidget):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QTableWidget.__init__(self, parent)
@@ -136,6 +136,9 @@ class SummaryWidget(QtWidgets.QTableWidget):
         self.current_row = 0
 
     # }}}
+
+
+# }}}
 
 
 if __name__ == "__main__":
