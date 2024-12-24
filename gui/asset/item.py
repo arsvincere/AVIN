@@ -44,6 +44,7 @@ class AssetItem(QtWidgets.QTreeWidgetItem):
         self.setText(self.Column.Exchange, asset.exchange.name)
 
     # }}}
+
     def isChecked(self) -> bool:  # {{{
         logger.debug(f"{self.__class__.__name__}.isChecked()")
 

@@ -11,8 +11,7 @@ import sys
 from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import Qt
 
-from avin.core import AssetList
-from avin.utils import logger
+from avin import Asset, AssetList, logger
 from gui.asset.item import AssetItem
 from gui.asset.thread import Thread
 from gui.custom import Css, Icon, LineEdit, ToolButton
@@ -33,9 +32,42 @@ class AssetSelectDialog(QtWidgets.QDialog):  # {{{
 
     # }}}
 
+    def selectAsset(self) -> Asset | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.editAssetList()")
+
+        # self.__enableSingleMode()
+
+        result = self.exec()
+        if result == QtWidgets.QDialog.DialogCode.Rejected:
+            return None
+
+        item = self.__tree.currentItem()
+        if item is None:
+            return None
+
+        return item.asset
+
+    # }}}
+    def selectAssets(self) -> AssetList | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.editAssetList()")
+
+        self.__enableMultipleMode()
+
+        result = self.exec()
+        if result == QtWidgets.QDialog.DialogCode.Rejected:
+            return None
+
+        selected = AssetList("selected")
+        for i in self.__tree:
+            if i.isChecked():
+                selected.add(i.asset)
+        return selected
+
+    # }}}
     def editAssetList(self, editable: AssetList) -> AssetList | None:  # {{{
         logger.debug(f"{self.__class__.__name__}.editAssetList()")
 
+        self.__enableMultipleMode()
         self.__markExisting(editable)
 
         result = self.exec()
@@ -52,20 +84,6 @@ class AssetSelectDialog(QtWidgets.QDialog):  # {{{
         return editable
 
     # }}}
-    def selectAssets(self) -> AssetList | None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.editAssetList()")
-
-        result = self.exec()
-        if result == QtWidgets.QDialog.DialogCode.Rejected:
-            return None
-
-        selected = AssetList("selected")
-        for i in self.__tree:
-            if i.isChecked():
-                selected.add(i.asset)
-        return selected
-
-    # }}}
 
     def __createWidgets(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
@@ -79,19 +97,24 @@ class AssetSelectDialog(QtWidgets.QDialog):  # {{{
     # }}}
     def __createLayots(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createLayots()")
+
         hbox = QtWidgets.QHBoxLayout()
         hbox.addWidget(self.__btn_search)
         hbox.addWidget(self.__search_line)
         hbox.addStretch()
         hbox.addWidget(self.__btn_ok)
         hbox.addWidget(self.__btn_cancel)
+
         vbox = QtWidgets.QVBoxLayout()
         vbox.addLayout(hbox)
         vbox.addWidget(self.__tree)
+
         self.setLayout(vbox)
 
     # }}}
     def __config(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__config()")
+
         self.setWindowFlags(
             QtCore.Qt.WindowType.FramelessWindowHint
             | QtCore.Qt.WindowType.WindowStaysOnTopHint
@@ -101,6 +124,8 @@ class AssetSelectDialog(QtWidgets.QDialog):  # {{{
 
     # }}}
     def __connect(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__connect()")
+
         self.__btn_ok.clicked.connect(self.accept)
         self.__btn_cancel.clicked.connect(self.reject)
 
@@ -113,14 +138,36 @@ class AssetSelectDialog(QtWidgets.QDialog):  # {{{
         self.__tree.setAssetList(self.__all_assets)
 
     # }}}
+    def __enableMultipleMode(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__enableMultipleMode()")
+
+        for item in self.__tree:
+            item.setFlags(
+                Qt.ItemFlag.ItemIsUserCheckable
+                | Qt.ItemFlag.ItemIsSelectable
+                | Qt.ItemFlag.ItemIsEnabled
+            )
+
+    # }}}
+    def __enableSingleMode(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__enableSingleMode()")
+
+        for item in self.__tree:
+            item.setFlags(
+                Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
+            )
+
+    # }}}
     def __clearMark(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__clearMark()")
+
         for i in self.__tree:
             i.setCheckState(Tree.Column.Ticker, Qt.CheckState.Unchecked)
 
     # }}}
     def __markExisting(self, alist):  # {{{
         logger.debug(f"{self.__class__.__name__}.__markExisting()")
+
         for item in self.__tree:
             if item.asset in alist:
                 item.setCheckState(
@@ -163,9 +210,6 @@ class _Tree(QtWidgets.QTreeWidget):  # {{{
         self.__current_alist = alist
         for asset in alist:
             item = AssetItem(asset)
-            item.setCheckState(
-                AssetItem.Column.Ticker, Qt.CheckState.Unchecked
-            )
             self.addTopLevelItem(item)
 
     # }}}
