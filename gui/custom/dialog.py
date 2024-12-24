@@ -290,6 +290,8 @@ class _NameDialog(QtWidgets.QDialog):  # {{{
         sp = QtWidgets.QSizePolicy.Policy.Minimum
         self.setSizePolicy(sp, sp)
 
+        self.__lineedit.setMinimumWidth(250)
+
     # }}}
     def __connect(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__connect()")
