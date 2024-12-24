@@ -21,7 +21,6 @@ from gui.custom import (
     ToolButton,
     VLine,
 )
-from gui.marker import GMarker, MarkerEditDialog
 
 
 class ChartToolBar(QtWidgets.QToolBar):  # {{{
@@ -29,7 +28,6 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
     secondTimeFrameChanged = QtCore.pyqtSignal(TimeFrame, bool)
     barViewSelected = QtCore.pyqtSignal()
     cundleViewSelected = QtCore.pyqtSignal()
-    newMarker = QtCore.pyqtSignal(GMarker)
     periodChanged = QtCore.pyqtSignal(DateTime, DateTime)
 
     __ICON_SIZE = QtCore.QSize(32, 32)
@@ -42,6 +40,8 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
         self.__createButtons()
         self.__createMenus()
         self.__connect()
+
+        self.__marker_widget = None
 
     # }}}
 
@@ -121,6 +121,7 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
 
         # marker
         self.__marker_btn = ToolButton(text="Marker", width=70, parent=self)
+        self.__marker_btn.setCheckable(True)
 
         # period
         self.__period_btn = ToolButton(text="Period", width=70, parent=self)
@@ -247,10 +248,10 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
     def __onMarkerBtn(self):
         logger.debug(f"{self.__class__.__name__}.__onMarkerBtn()")
 
-        dial = MarkerEditDialog()
-        marker = dial.newMarker()
-        if marker is not None:
-            self.newMarker.emit(marker)
+        if self.__marker_widget is None:
+            self.__marker_widget = MarkerWidget(self)
+
+        self.__marker_widget.show()
 
     # }}}
     @QtCore.pyqtSlot()  # __onPeriodBtn  # {{{

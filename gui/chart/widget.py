@@ -20,7 +20,7 @@ from gui.chart.thread import Thread
 from gui.chart.toolbar import ChartToolBar
 from gui.chart.view import ChartView
 from gui.custom import Css
-from gui.marker import GMarker
+from gui.marker import Mark
 
 
 class ChartWidget(QtWidgets.QWidget):
@@ -35,7 +35,7 @@ class ChartWidget(QtWidgets.QWidget):
 
         self.__asset = None
         self.__trade_list = None
-        self.__markers: list[GMarker] = list()
+        self.__markers: list[Mark] = list()
 
     # }}}
 
@@ -73,7 +73,7 @@ class ChartWidget(QtWidgets.QWidget):
 
         self.__trade_list = None
         self.__asset = None
-        self.__markers: list[GMarker] = list()
+        self.__markers: list[Mark] = list()
         self.toolbar.setAsset(None)
         self.toolbar.setFirstTimeFrame(TimeFrame("D"))
         self.toolbar.resetSecondTimeFrames()
@@ -116,7 +116,7 @@ class ChartWidget(QtWidgets.QWidget):
         self.toolbar.secondTimeFrameChanged.connect(self.__onTimeframe2)
         self.toolbar.barViewSelected.connect(self.__onBarView)
         self.toolbar.cundleViewSelected.connect(self.__onCundleView)
-        self.toolbar.newGMarker.connect(self.__onNewGMarker)
+        self.toolbar.newMark.connect(self.__onNewMark)
         self.toolbar.periodChanged.connect(self.__onPeriod)
 
     # }}}
@@ -201,17 +201,17 @@ class ChartWidget(QtWidgets.QWidget):
         gchart.setViewType(ViewType.CUNDLE)
 
     # }}}
-    @QtCore.pyqtSlot(GMarker)  # __onNewGMarker  # {{{
-    def __onNewGMarker(self, marker: GMarker):
-        logger.debug(f"{self.__class__.__name__}.__onNewGMarker()")
+    @QtCore.pyqtSlot(Mark)  # __onNewMark  # {{{
+    def __onNewMark(self, mark: Mark):
+        logger.debug(f"{self.__class__.__name__}.__onNewMark()")
 
         if self.__asset is None:
             return
 
-        self.__markers.append(marker)
+        self.__markers.append(mark)
 
         gchart = self.scene.currentGChart()
-        gchart.addGMarker(marker)
+        gchart.addMark(mark)
 
     # }}}
     @QtCore.pyqtSlot(DateTime, DateTime)  # __onPeriod  # {{{

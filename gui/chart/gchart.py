@@ -22,7 +22,7 @@ from avin.core import (
 from avin.utils import find_left, logger, next_month
 from gui.chart.thread import Thread
 from gui.custom import Theme
-from gui.marker import GMarker
+from gui.marker import Mark
 
 
 class ViewType(enum.Enum):  # {{{
@@ -271,14 +271,14 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
 
     # }}}
 
-    def addGMarker(self, gmarker: GMarker) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.addGMarker()")
+    def addMarker(self, mark: Mark) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.addMarker()")
 
-        Thread.addGMarker(self, gmarker)
+        Thread.addMarker(self, mark)
 
     # }}}
-    def clearGMarkers(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.addGMarker()")
+    def clearMarkers(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.addMarker()")
 
         for gbar in self.gbars:
             gbar.clearGShapes()

@@ -14,7 +14,6 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt
 
 from avin.config import Cfg
-from avin.core import Filter
 from avin.utils import logger
 from gui.custom import (
     Color,
@@ -28,6 +27,18 @@ class GShape(QtWidgets.QGraphicsPixmapItem):  # {{{
         TRIANGLE_UP = 3
         TRIANGLE_DOWN = 4
 
+        @classmethod  # fromStr  #{{{
+        def fromStr(cls, string_type: str):
+            types = {
+                "CIRCLE": GShape.Type.CIRCLE,
+                "SQARE": GShape.Type.SQARE,
+                "TRIANGLE_UP": GShape.Type.TRIANGLE_UP,
+                "TRIANGLE_DOWN": GShape.Type.TRIANGLE_DOWN,
+            }
+            return types[string_type]
+
+        # }}}
+
     # }}}
     class Size(enum.Enum):  # {{{
         VERY_SMALL = Cfg.ShapeSize.VERY_SMALL
@@ -35,6 +46,19 @@ class GShape(QtWidgets.QGraphicsPixmapItem):  # {{{
         NORMAL = Cfg.ShapeSize.NORMAL
         BIG = Cfg.ShapeSize.BIG
         VERY_BIG = Cfg.ShapeSize.VERY_BIG
+
+        @classmethod  # fromStr  #{{{
+        def fromStr(cls, string_type: str):
+            types = {
+                "VERY_SMALL": GShape.Size.VERY_SMALL,
+                "SMALL": GShape.Size.SMALL,
+                "NORMAL": GShape.Size.NORMAL,
+                "BIG": GShape.Size.BIG,
+                "VERY_BIG": GShape.Size.VERY_BIG,
+            }
+            return types[string_type]
+
+        # }}}
 
     # }}}
     class Color(enum.Enum):  # {{{
@@ -92,6 +116,23 @@ class GShape(QtWidgets.QGraphicsPixmapItem):  # {{{
         BLUE = QtGui.QColor(Color.nord10)  # #5E81AC
         VIOLET = QtGui.QColor(Color.oniViolet)  # #957FB8
         PINK = QtGui.QColor(Color.sakuraPink)  # D27E99
+
+        @classmethod  # fromStr  #{{{
+        def fromStr(cls, string_type: str):
+            types = {
+                "WHITE": GShape.Color.WHITE,
+                "RED": GShape.Color.RED,
+                "ORANGE": GShape.Color.ORANGE,
+                "YELLOW": GShape.Color.YELLOW,
+                "GREEN": GShape.Color.GREEN,
+                "CYAN": GShape.Color.CYAN,
+                "BLUE": GShape.Color.BLUE,
+                "VIOLET": GShape.Color.VIOLET,
+                "PINK": GShape.Color.PINK,
+            }
+            return types[string_type]
+
+        # }}}
 
     # }}}
 
@@ -224,34 +265,6 @@ class GShape(QtWidgets.QGraphicsPixmapItem):  # {{{
         self.setPixmap(pixmap)
 
     # }}}
-
-
-# }}}
-class GMarker:  # {{{
-    def __init__(  # {{{
-        self, name: str, filter: Filter, shape: GShape, parent=None
-    ):
-        self.__name = name
-        self.__filter = filter
-        self.__shape = shape
-
-    # }}}
-
-    @property  # name
-    def name(self):
-        return self.__name
-
-    @property  # filter
-    def filter(self):
-        return self.__filter
-
-    @property  # shape
-    def shape(self):
-        # create new shape graphic item
-        shape = GShape(
-            self.__shape.type, self.__shape.size, self.__shape.color
-        )
-        return shape
 
 
 # }}}

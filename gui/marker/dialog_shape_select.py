@@ -20,7 +20,7 @@ from gui.custom import (
     Spacer,
     ToolButton,
 )
-from gui.marker.gmarker import GShape
+from gui.marker.gshape import GShape
 
 
 class ShapeSelectDialog(QtWidgets.QDialog):  # {{{

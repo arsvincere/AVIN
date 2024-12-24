@@ -8,11 +8,15 @@
 
 from gui.marker.dialog_marker_edit import MarkerEditDialog
 from gui.marker.dialog_shape_select import ShapeSelectDialog
-from gui.marker.gmarker import GMarker, GShape
+from gui.marker.gshape import GShape
+from gui.marker.item import MarkItem
+from gui.marker.mark import Mark, MarkList
 
 __all__ = (
     "MarkerEditDialog",
     "ShapeSelectDialog",
-    "GMarker",
     "GShape",
+    "Mark",
+    "MarkList",
+    "MarkItem",
 )
