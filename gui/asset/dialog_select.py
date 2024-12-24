@@ -52,6 +52,7 @@ class AssetSelectDialog(QtWidgets.QDialog):  # {{{
         logger.debug(f"{self.__class__.__name__}.editAssetList()")
 
         self.__enableMultipleMode()
+        self.__clearCheckState()
 
         result = self.exec()
         if result == QtWidgets.QDialog.DialogCode.Rejected:
@@ -69,7 +70,7 @@ class AssetSelectDialog(QtWidgets.QDialog):  # {{{
         logger.debug(f"{self.__class__.__name__}.editAssetList()")
 
         self.__enableMultipleMode()
-        self.__markExisting(editable)
+        self.__checkExisting(editable)
 
         result = self.exec()
         if result == QtWidgets.QDialog.DialogCode.Rejected:
@@ -159,15 +160,15 @@ class AssetSelectDialog(QtWidgets.QDialog):  # {{{
             )
 
     # }}}
-    def __clearMark(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__clearMark()")
+    def __clearCheckState(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__clearCheckState()")
 
         for i in self.__tree:
-            i.setCheckState(Tree.Column.Ticker, Qt.CheckState.Unchecked)
+            i.setCheckState(i.Column.Ticker, Qt.CheckState.Unchecked)
 
     # }}}
-    def __markExisting(self, alist):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__markExisting()")
+    def __checkExisting(self, alist):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__checkExisting()")
 
         for item in self.__tree:
             if item.asset in alist:
@@ -246,7 +247,5 @@ class _Tree(QtWidgets.QTreeWidget):  # {{{
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     w = AssetSelectDialog()
-    w.setWindowTitle("AVIN")
-    w.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
     w.show()
     sys.exit(app.exec())
