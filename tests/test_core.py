@@ -348,6 +348,10 @@ async def test_Chart(event_loop):
     assert chart.now.dt == datetime(2023, 8, 3, 10, 1, tzinfo=UTC)
     assert chart.last.dt == datetime(2023, 8, 3, 10, 0, tzinfo=UTC)
 
+    chart.prevHead()
+    assert chart.now.dt == datetime(2023, 8, 3, 10, 0, tzinfo=UTC)
+    assert chart.last.dt == datetime(2023, 8, 3, 9, 59, tzinfo=UTC)
+
     chart.resetHead()
     assert chart.first.dt == datetime(2023, 8, 1, 6, 59, tzinfo=UTC)
     assert chart.last.dt == datetime(2023, 8, 31, 20, 49, tzinfo=UTC)
@@ -839,11 +843,11 @@ async def test_Trade():
     await Keeper.delete(trade)
     await TradeList.save(tlist)  # save only TradeList name in db
 
-    chart = await trade.chart(TimeFrame("D"))
-    assert chart.last.dt.date() == dt.date()
+    chart = await trade.loadChart(TimeFrame("D"))
+    assert chart.now.dt.date() == dt.date()
 
-    chart = await trade.chart(TimeFrame("1M"))
-    assert chart.last.dt == dt - ONE_MINUTE
+    chart = await trade.loadChart(TimeFrame("1M"))
+    assert chart.now.dt == dt - ONE_MINUTE
 
 
 # }}}
@@ -907,11 +911,9 @@ async def test_TradeList():
 @pytest.mark.asyncio  # test_Filter  # {{{
 async def test_Filter():
     code = """# {{{
-import avin
+from avin import *
 
-def condition(asset: avin.Asset) -> bool:
-    chart = asset.chart("D")
-
+async def conditionChart(chart: Chart) -> bool:
     if chart[3] is None:
         return False
 
@@ -924,20 +926,29 @@ def condition(asset: avin.Asset) -> bool:
 
     return False
 
+async def conditionAsset(asset: Asset) -> bool:
+    assert False
+
+async def conditionTrade(trade: Trade) -> bool:
+    chart = await trade.loadChart("D")
+    result = await conditionChart(chart)
+    return result
+
 """  # }}}
     f = Filter("_bull_3", code)
 
     asset = await Asset.fromStr("MOEX-SHARE-AFKS")
     timeframe = TimeFrame("D")
-    begin = datetime(2023, 1, 1, tzinfo=UTC)
-    end = datetime(2024, 1, 1, tzinfo=UTC)
+    begin = DateTime(2023, 1, 1, tzinfo=UTC)
+    end = DateTime(2024, 1, 1, tzinfo=UTC)
     await asset.cacheChart(timeframe, begin, end)
 
     chart = asset.chart("D")
 
     chart.setHeadIndex(0)
     while chart.nextHead():
-        if f.check(asset):
+        result = await f.acheck(chart)
+        if result:
             assert chart[3].isBull()
             assert chart[2].isBull()
             assert chart[1].isBull()
@@ -946,7 +957,7 @@ def condition(asset: avin.Asset) -> bool:
     file_path = Cmd.path(Usr.FILTER, "_bull_3.py")
     assert Cmd.isExist(file_path)
 
-    Filter.rename(f, "_bbb")
+    f = Filter.rename(f, "_bbb")
     file_path = Cmd.path(Usr.FILTER, "_bbb.py")
     assert Cmd.isExist(file_path)
 
