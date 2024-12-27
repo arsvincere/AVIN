@@ -42,7 +42,7 @@ class Filter:
     @code.setter
     def code(self, code):
         self.__code = code
-        self.__condition = self.__createCondition(code)
+        self.__condition = self.__createCondition()
 
     # }}}
     @property  # path  # {{{
