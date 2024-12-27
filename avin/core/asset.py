@@ -236,6 +236,14 @@ class Asset(Instrument, ABC):  # {{{
         return assets
 
     # }}}
+    @classmethod  # toInstrument# {{{
+    def toInstrument(cls, asset: Asset) -> Instrument:
+        logger.debug(f"{cls.__name__}.toInstrument()")
+
+        instrument = Instrument(asset.info)
+        return instrument
+
+    # }}}
     @classmethod  # __formatArgs# {{{
     def __formatArgs(
         cls, timeframe, begin, end
