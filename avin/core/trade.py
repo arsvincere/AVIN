@@ -171,8 +171,8 @@ commission: {self.commission()}
 open_dt:    {Usr.localTime(self.openDateTime())}
 close_dt:   {Usr.localTime(self.closeDateTime())}
 open:       {self.openPrice()}
-stop:       {self.stopPrice()} / {self.stopPercent()}%
-take:       {self.takePrice()} / {self.takePercent()}%
+stop:       {self.stopPrice()} / {self.stopAbs()} / {self.stopPercent()}%
+take:       {self.takePrice()} / {self.takeAbs()} / {self.takePercent()}%
 ------------------------------------------------------------------------------
 result:     {self.result()}
 days:       {self.holdingDays()}
@@ -488,6 +488,30 @@ info:       {Cmd.toJson(self.info, indent=4)}
                 return order.stop_price
 
         return None
+
+    # }}}
+    def stopAbs(self) -> float | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.stopAbs()")
+
+        open_price = self.openPrice()
+        stop_price = self.stopPrice()
+        if stop_price is None:
+            return None
+
+        risk = abs(stop_price - open_price)
+        return round(risk, 2)
+
+    # }}}
+    def takeAbs(self) -> float | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.takeAbs()")
+
+        open_price = self.openPrice()
+        take_price = self.takePrice()
+        if take_price is None:
+            return None
+
+        profit = abs(take_price - open_price)
+        return round(profit, 2)
 
     # }}}
     def stopPercent(self) -> float | None:  # {{{
@@ -889,6 +913,8 @@ class TradeList:  # {{{
 
         selected = list()
         for trade in self.__trades:
+            if trade.status != Trade.Status.CLOSED:  # skip not closed
+                continue
             if trade.isWin():
                 selected.append(trade)
 
@@ -901,6 +927,8 @@ class TradeList:  # {{{
 
         selected = list()
         for trade in self.__trades:
+            if trade.status != Trade.Status.CLOSED:  # skip not closed
+                continue
             if trade.isLoss():
                 selected.append(trade)
 
