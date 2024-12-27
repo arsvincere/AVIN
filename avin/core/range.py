@@ -34,7 +34,7 @@ class Range:  # {{{
 
     class Type(enum.Enum):  # {{{
         UNDEFINE = 0
-        RANGE = 1
+        FULL = 1
         BODY = 2
         UPPER = 3
         LOWER = 4
@@ -108,6 +108,10 @@ class Range:  # {{{
     # }}}
     def __str__(self):  # {{{
         return f"Range[{self.min}, {self.max}]"
+
+    # }}}
+    def __repr__(self):  # {{{
+        return f"Range({self.min}, {self.max})"
 
     # }}}
 
