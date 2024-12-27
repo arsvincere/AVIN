@@ -72,7 +72,7 @@ def test_Bar():  # {{{
     assert bar.close == 11
     assert bar.vol == 1000
 
-    assert isinstance(bar.range, Range)
+    assert isinstance(bar.full, Range)
     assert isinstance(bar.body, Range)
     assert isinstance(bar.upper, Range)
     assert isinstance(bar.lower, Range)
