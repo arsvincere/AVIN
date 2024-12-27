@@ -1,29 +1,7 @@
-import avin
+from avin import *
 
 
-def condition(item: avin.Asset | avin.Trade | avin.Chart) -> bool:
-    class_name = item.__class__.__name__
-    match class_name:
-        case "Asset":
-            return condition_asset(item)
-        case "Trade":
-            return condition_trade(item)
-        case "Chart":
-            return condition_chart(item)
-
-
-def condition_asset(asset: avin.Asset) -> bool:
-    assert False, "todo it"
-
-
-def condition_trade(trade: avin.Trade) -> bool:
-    assert False, "todo it"
-
-
-def condition_chart(chart: avin.Chart) -> bool:
-    assert False, "todo it"
-
-    # Example:
+async def conditionChart(chart: Chart) -> bool:
     # if chart[3] is None:
     #     return False
     #
@@ -34,4 +12,16 @@ def condition_chart(chart: avin.Chart) -> bool:
     # if b3.isBull() and b2.isBull() and b1.isBull():
     #     return True
     #
-    # return False
+    return False
+
+
+async def conditionAsset(asset: Asset) -> bool:
+    chart = asset.chart("D")
+    result = await conditionChart(chart)
+    return result
+
+
+async def conditionTrade(trade: Trade) -> bool:
+    chart = await trade.loadChart("D")
+    result = await conditionChart(chart)
+    return result
