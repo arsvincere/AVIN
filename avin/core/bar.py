@@ -50,12 +50,12 @@ class Bar(_Bar):
         return self.low <= price <= self.high
 
     # }}}
-    @property  # range{{{
-    def range(self) -> Range:
-        return Range(self.low, self.high, Range.Type.RANGE, self)
+    @property  # full  # {{{
+    def full(self) -> Range:
+        return Range(self.low, self.high, Range.Type.FULL, self)
 
     # }}}
-    @property  # body{{{
+    @property  # body  # {{{
     def body(self) -> Range:
         if self.open < self.close:
             return Range(self.open, self.close, Range.Type.BODY, self)
@@ -63,7 +63,7 @@ class Bar(_Bar):
             return Range(self.close, self.open, Range.Type.BODY, self)
 
     # }}}
-    @property  # lower{{{
+    @property  # lower  # {{{
     def lower(self) -> Range:
         # вот тут бы как нибудь мин прайс степ бы учесть..
         # а то значения open close - попадают и в тело и в тени.
@@ -73,7 +73,7 @@ class Bar(_Bar):
             return Range(self.low, self.close, Range.Type.LOWER, self)
 
     # }}}
-    @property  # upper# {{{
+    @property  # upper  # {{{
     def upper(self) -> Range:
         if self.isBull():
             return Range(self.close, self.high, Range.Type.UPPER, self)
@@ -81,7 +81,7 @@ class Bar(_Bar):
             return Range(self.open, self.high, Range.Type.UPPER, self)
 
     # }}}
-    @property  # chart# {{{
+    @property  # chart  # {{{
     def chart(self):
         return self.__chart
 
