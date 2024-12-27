@@ -17,6 +17,15 @@ from avin.data.instrument import Instrument
 from avin.keeper import Keeper
 from avin.utils import logger
 
+# TODO: перемудрил...
+# DataInfo - это должна быть одна нода, один элемент про один актив один тип
+# DataInfoList - это уже список этих элементов
+# По аналогии с Asset AssetList
+# а тут у тебя порно сильно отличное от остального кода
+# надо переименовать и обновить gui и keeper
+# DataInfoNode -> DataInfo
+# DataInfo -> DataInfoList
+
 
 @dataclass  # DataInfoNode  # {{{
 class DataInfoNode:
