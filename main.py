@@ -12,25 +12,29 @@ import sys
 
 import PyQt6
 
+from avin.utils import logger
 from gui import MainWindow, Splash
 
 
 def main():
-    # start app
-    app = PyQt6.QtWidgets.QApplication(sys.argv)
+    try:
+        # start app
+        app = PyQt6.QtWidgets.QApplication(sys.argv)
 
-    # show splash
-    splash = Splash()
-    splash.show()
+        # show splash
+        splash = Splash()
+        splash.show()
 
-    # show main window
-    w = MainWindow()
-    w.show()
-    splash.finish(w)
-    code = app.exec()
+        # show main window
+        w = MainWindow()
+        w.show()
+        splash.finish(w)
+        code = app.exec()
 
-    # before quit actions
-    sys.exit(code)
+        # before quit actions
+        sys.exit(code)
+    except Exception as e:
+        logger.exception(e)
 
 
 if __name__ == "__main__":
