@@ -58,6 +58,29 @@ class Range:  # {{{
         ANOMAL_BIG = 6
         BLACKSWAN_BIG = 7
 
+        @classmethod  # fromStr#{{{
+        def fromStr(cls, string_size: str):
+            sizes = {
+                "BLACKSWAN_SMALL": Range.Size.BLACKSWAN_SMALL,
+                "ANOMAL_SMALL": Range.Size.ANOMAL_SMALL,
+                "EXTRA_SMALL": Range.Size.EXTRA_SMALL,
+                "VERY_SMALL": Range.Size.VERY_SMALL,
+                "SMALLEST": Range.Size.SMALLEST,
+                "SMALLER": Range.Size.SMALLER,
+                "SMALL": Range.Size.SMALL,
+                "NORMAL": Range.Size.NORMAL,
+                "BIG": Range.Size.BIG,
+                "BIGGER": Range.Size.BIGGER,
+                "BIGGEST": Range.Size.BIGGEST,
+                "VERY_BIG": Range.Size.VERY_BIG,
+                "EXTRA_BIG": Range.Size.EXTRA_BIG,
+                "ANOMAL_BIG": Range.Size.ANOMAL_BIG,
+                "BLACKSWAN_BIG": Range.Size.BLACKSWAN_BIG,
+            }
+            return sizes[string_size]
+
+        # }}}
+
     # }}}
 
     def __init__(  # {{{
