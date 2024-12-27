@@ -47,7 +47,7 @@ class DataType(enum.Enum):
         return periods[self.value]
 
     # }}}
-    @classmethod  # fromStr#{{{
+    @classmethod  # fromStr  #{{{
     def fromStr(cls, string_type: str):
         types = {
             "1M": DataType.BAR_1M,
@@ -71,7 +71,7 @@ class DataType(enum.Enum):
         return types[string_type]
 
     # }}}
-    @classmethod  # fromRecord#{{{
+    @classmethod  # fromRecord  #{{{
     def fromRecord(cls, record: asyncpg.Record):
         type_name = record["type"]
         typ = cls.fromStr(type_name)
