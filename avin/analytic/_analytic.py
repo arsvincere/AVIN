@@ -107,7 +107,7 @@ class AnalyticData:  # {{{
     async def save(cls, analytic_data: AnalyticData) -> None:
         logger.debug(f"{cls.__name__}.save()")
 
-        # await Keeper.delete(analytic_data)
+        await Keeper.delete(analytic_data)
         await Keeper.add(analytic_data)
 
     # }}}
