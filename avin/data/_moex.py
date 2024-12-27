@@ -422,7 +422,7 @@ class _MoexData(_AbstractDataSource):
 
         while current < end:
             logger.info(
-                f"  - request {instrument.ticker}-{data_type.value} "
+                f"   - request {instrument.ticker}-{data_type.value} "
                 f"{current.date()}"
             )
             candles = cls.__tryRequestCandless(
@@ -495,10 +495,12 @@ class _MoexData(_AbstractDataSource):
                     candles.append(i)
 
             except httpx.ConnectError as e:
-                logger.error(f"ConnectionError '{e}' try again after 3 sec")
+                logger.error(f"ConnectionError {moex_asset} {period} {e}")
+                logger.info("Try again after 3 sec")
                 timer.sleep(3)
             except httpx.ConnectTimeout as e:
-                logger.error(f"ConnectionTimeout '{e}' try again after 3 sec")
+                logger.error(f"ConnectionError {moex_asset} {period} {e}")
+                logger.info("Try again after 3 sec")
                 timer.sleep(3)
             else:
                 return candles

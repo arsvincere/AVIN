@@ -167,6 +167,8 @@ class _DataManager:
         for task in clist:
             await cls.convert(task.instrument, task.in_type, task.out_type)
 
+        logger.info("Update all market data complete!")
+
     # }}}
     @classmethod  # request  # {{{
     async def request(
@@ -208,7 +210,7 @@ class _DataManager:
 
         # Check the file with the date of the last update of the market data
         if Cmd.isExist(cls.__LAST_UPDATE_FILE):
-            string = Cmd.read(cls.__LAST_UPDATE_FILE)
+            string = Cmd.read(cls.__LAST_UPDATE_FILE).strip()
             last_update = datetime.fromisoformat(string)
             if now().date() == last_update.date():
                 cls.__DATA_IS_UP_TO_DATE = True
@@ -387,7 +389,7 @@ class _DataManager:
         source = node.source
         source_class = cls.__getDataSourceClass(source)
         last_dt = node.last_dt
-        logger.info(f"Updating {instr.ticker}-{data_type.value}")
+        logger.info(f"   Updating {instr.ticker}-{data_type.value}")
 
         # request new bars
         begin = last_dt + data_type.toTimeDelta()
@@ -399,11 +401,11 @@ class _DataManager:
         # check: is new bars found
         count = len(new_bars)
         if count == 0:
-            logger.info("  - no new bars")
+            logger.info("   - no new bars")
             return
 
         # save new bars
-        logger.info(f"  - received {count} bars -> {new_bars[-1].dt}")
+        logger.info(f"   - received {count} bars -> {new_bars[-1].dt}")
         new_data = _BarsData(source, instr, data_type, new_bars)
         await _BarsData.save(new_data)
 

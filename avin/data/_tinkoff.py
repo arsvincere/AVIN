@@ -56,7 +56,7 @@ class _TinkoffData(_AbstractDataSource):
 
         types = ["shares", "bonds", "futures", "currencies"]
         for t in types:
-            logger.info(f"  - caching {t}")
+            logger.info(f"   - caching {t}")
             response = cls.__requestAvailibleInstruments(t)
             original_info = cls.__originalInstrumentInfo(response)
             formatted_info = cls.__formatInstrumentInfo(response)
@@ -193,7 +193,8 @@ class _TinkoffData(_AbstractDataSource):
             return
 
         logger.info(
-            f"  - request {instrument.ticker}-{data_type.value} from {begin.date()}"
+            f"   - request {instrument.ticker}-{data_type.value}"
+            f"from {begin.date()}"
         )
 
         if not cls.__authorizate():
