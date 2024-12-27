@@ -259,6 +259,7 @@ class Keeper:
             "LimitOrder": cls.__deleteOrder,
             "StopOrder": cls.__deleteOrder,
             "Test": cls.__deleteTest,
+            "AnalyticData": cls.__deleteAnalyticData,
         }
         delete_method = methods[class_name]
 
@@ -1315,7 +1316,7 @@ class Keeper:
                 info
             FROM "Trade"
             WHERE {pg_condition}
-            ORDER BY dt
+            ORDER BY trade_id
             ;
             """
         trade_records = await cls.transaction(request)
@@ -1362,7 +1363,7 @@ class Keeper:
                 meta
             FROM "Operation"
             WHERE {pg_condition}
-            ORDER BY dt
+            ORDER BY operation_id
             ;
             """
         op_records = await cls.transaction(request)
@@ -1750,6 +1751,27 @@ class Keeper:
             DELETE FROM "Test"
             WHERE name = '{test.name}';
         """
+        await cls.transaction(request)
+
+    # }}}
+    @classmethod  # __deleteAnalyticData  # {{{
+    async def __deleteAnalyticData(
+        cls, analytic_data: AnalyticData, kwargs: dict
+    ) -> None:
+        logger.debug(f"{cls.__name__}.__deleteAnalyticData()")
+
+        pg_name = f"'{analytic_data.name}'"
+        pg_figi = f"'{analytic_data.asset.figi}'"
+
+        # Add analytic data
+        request = f"""
+            DELETE FROM "AnalyticData"
+            WHERE
+                "AnalyticData".analytic_name = {pg_name} AND
+                "AnalyticData".figi = {pg_figi}
+
+            ;
+            """
         await cls.transaction(request)
 
     # }}}
