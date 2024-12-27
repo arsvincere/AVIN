@@ -510,8 +510,9 @@ class Strategy(ABC):  # {{{
     async def load(cls, name: str, version: str) -> UStrategy:
         logger.debug(f"{cls.__name__}.load()")
 
-        # TODO: проверка существования файла
-        # ? сделать ли возврат None если нет такого?
+        file_path = Cmd.path(Usr.STRATEGY, name, f"{version}.py")
+        if not Cmd.isExist(file_path):
+            assert False, f"Strategy {name}-{version} not found"
 
         path = f"usr.strategy.{name}.{version}"
         modul = importlib.import_module(path)
