@@ -143,7 +143,7 @@ class VirtualBroker(Broker):
         bar = chart.now
 
         if order.price in bar:
-            await cls.__executeOrder(order, bar)
+            await cls.__executeOrder(order, bar.dt, order.price)
 
         return True
 
@@ -163,7 +163,7 @@ class VirtualBroker(Broker):
         chart = cls.__current_asset.chart(TimeFrame("1M"))
         bar = chart.now
         if order.stop_price in bar:
-            await cls.__executeOrder(order, bar)
+            await cls.__executeOrder(order, bar.dt, order.stop_price)
 
         return True
 
@@ -183,7 +183,7 @@ class VirtualBroker(Broker):
         chart = cls.__current_asset.chart(TimeFrame("1M"))
         bar = chart.now
         if order.stop_price in bar:
-            await cls.__executeOrder(order, bar)
+            await cls.__executeOrder(order, bar.dt, order.stop_price)
 
         return True
 
@@ -319,7 +319,7 @@ class VirtualBroker(Broker):
         i = 0
         while i < len(cls.__market_orders):
             m_order = cls.__market_orders[i]
-            await cls.__executeOrder(m_order, bar)
+            await cls.__executeOrder(m_order, bar.dt, bar.open)
 
         # FIX: Ахтунг!!!!!!!!!!!
         # надо же проверять выполнение лимитных и стоп ордеров не
@@ -333,7 +333,7 @@ class VirtualBroker(Broker):
             l_order = cls.__limit_orders[i]
             price = l_order.price
             if price in bar:
-                await cls.__executeOrder(l_order, bar)
+                await cls.__executeOrder(l_order, bar.dt, price)
                 continue
 
             i += 1
@@ -348,7 +348,7 @@ class VirtualBroker(Broker):
             # потом переделать нормально
             price = s_order.stop_price
             if price in bar:
-                await cls.__executeOrder(s_order, bar)
+                await cls.__executeOrder(s_order, bar.dt, price)
                 continue
 
             if s_order.type == Order.Type.STOP_LOSS:
@@ -389,26 +389,26 @@ class VirtualBroker(Broker):
 
     # }}}
     @classmethod  # __executeOrder  # {{{
-    async def __executeOrder(cls, order, bar):
+    async def __executeOrder(cls, order, dt, price):
         logger.debug(f"{cls.__name__}.__executeOrder()")
 
-        # recognise execution price
-        match order.type:
-            case Order.Type.MARKET:
-                price = bar.open
-            case Order.Type.LIMIT:
-                price = order.price
-            case Order.Type.STOP:
-                price = order.stop_price
-            case Order.Type.STOP_LOSS:
-                price = order.stop_price
-            case Order.Type.TAKE_PROFIT:
-                price = order.stop_price
+        # # recognise execution price
+        # match order.type:
+        #     case Order.Type.MARKET:
+        #         price = bar.open
+        #     case Order.Type.LIMIT:
+        #         price = order.price
+        #     case Order.Type.STOP:
+        #         price = order.stop_price
+        #     case Order.Type.STOP_LOSS:
+        #         price = order.stop_price
+        #     case Order.Type.TAKE_PROFIT:
+        #         price = order.stop_price
 
         # create transaction, then attach to order
         transaction = Transaction(
             order_id=order.order_id,
-            dt=bar.dt,
+            dt=dt,
             quantity=order.quantity,
             price=price,
             broker_id=order.broker_id,
