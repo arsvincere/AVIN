@@ -31,6 +31,7 @@ class Bar(_Bar):
         EXTREMUM = 32
 
     # }}}
+
     def __init__(  # {{{
         self,
         dt: datetime,
@@ -50,6 +51,7 @@ class Bar(_Bar):
         return self.low <= price <= self.high
 
     # }}}
+
     @property  # full  # {{{
     def full(self) -> Range:
         return Range(self.low, self.high, Range.Type.FULL, self)
@@ -86,6 +88,7 @@ class Bar(_Bar):
         return self.__chart
 
     # }}}
+
     def setChart(self, chart) -> None:  # {{{
         self.__chart = chart
 
@@ -124,6 +127,7 @@ class Bar(_Bar):
         return self.__flags & Bar.Type.EXTREMUM == Bar.Type.EXTREMUM
 
     # }}}
+
     @classmethod  # fromRecord# {{{
     def fromRecord(
         cls, record: asyncpg.Record, chart: Optional[Chart] = None
@@ -140,6 +144,7 @@ class Bar(_Bar):
         return bar
 
     # }}}
+
     def __analyse(self):  # {{{
         if self.close - self.open > 0.0:
             self.__flags = Bar.Type.BULL
