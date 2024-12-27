@@ -1,0 +1,3 @@
+source ~/env/bin/activate
+python3 /home/alex/AVIN/main.py
+deactivate
