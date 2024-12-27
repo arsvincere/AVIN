@@ -60,6 +60,8 @@ class Filter:
                 result = await self.__conditionChart(item)
             case "Asset":
                 result = await self.__conditionAsset(item)
+            case "Share":
+                result = await self.__conditionAsset(item)
             case "Trade":
                 result = await self.__conditionTrade(item)
 
