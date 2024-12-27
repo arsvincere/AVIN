@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS "AssetList-Asset" ( -- {{{
 CREATE TABLE IF NOT EXISTS "Strategy" ( -- {{{
     name text NOT NULL,
     version text NOT NULL,
-    CONSTRAINT strategy_pkey PRIMARY KEY (name, version)
+    PRIMARY KEY (name, version)
     );
     INSERT INTO "Strategy" (name, version)
     VALUES
@@ -172,5 +172,12 @@ CREATE TABLE IF NOT EXISTS "Trader" ( -- {{{
     account         text REFERENCES "Account"(name) ON UPDATE CASCADE,
     strategy_set    text REFERENCES "StrategySet"(name) ON UPDATE CASCADE,
     trade_list      text REFERENCES "TradeList"(name) ON UPDATE CASCADE
+    );
+-- }}}
+CREATE TABLE IF NOT EXISTS "AnalyticData" ( -- {{{
+    analytic_name   text,
+    figi            text REFERENCES "Asset"(figi),
+    PRIMARY KEY     (analytic_name, figi),
+    data            jsonb NOT NULL
     );
 -- }}}

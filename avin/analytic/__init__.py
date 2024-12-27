@@ -6,9 +6,12 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
+from avin.analytic._analytic import Analytic, AnalyticData
 from avin.analytic.extremum import Extremum, ExtremumList
 
 __all__ = (
+    "Analytic",
+    "AnalyticData",
     "Extremum",
     "ExtremumList",
 )

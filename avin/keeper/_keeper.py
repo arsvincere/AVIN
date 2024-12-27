@@ -189,6 +189,7 @@ class Keeper:
             "StopLoss": cls.__addOrder,
             "TakeProfit": cls.__addOrder,
             "Test": cls.__addTest,
+            "AnalyticData": cls.__addAnalyticData,
         }
         add_method = methods[class_name]
 
@@ -222,6 +223,7 @@ class Keeper:
             "Operation": cls.__getOperations,
             "Order": cls.__getOrders,
             "Test": cls.__getTest,
+            "AnalyticData": cls.__getAnalyticData,
         }
         get_method = methods[class_name]
 
@@ -320,7 +322,8 @@ class Keeper:
     # }}}
     @classmethod  # __formatTradeInfo  # {{{
     def __formatInfo(cls, trade: Trade) -> str:
-        values = ""
+        logger.debug(f"{cls.__name__}.__formatInfo()")
+
         json_string = Cmd.toJson(trade.info, trade.encoderJson)
         pg_trade_info = f"'{json_string}'"
         return pg_trade_info
@@ -741,6 +744,23 @@ class Keeper:
                 '{test.end}',
                 '{test.description}'
                 );
+            """
+        await cls.transaction(request)
+
+    # }}}
+    @classmethod  # __addAnalyticData  # {{{
+    async def __addAnalyticData(cls, analytic_data: AnalyticData) -> None:
+        logger.debug(f"{cls.__name__}.__addAnalyticData()")
+
+        pg_name = f"'{analytic_data.name}'"
+        pg_figi = f"'{analytic_data.asset.figi}'"
+        pg_data = f"'{analytic_data.json_str}'"
+
+        # Add analytic data
+        request = f"""
+            INSERT INTO "AnalyticData" (analytic_name, figi, data)
+            VALUES ({pg_name}, {pg_figi}, {pg_data})
+            ;
             """
         await cls.transaction(request)
 
@@ -1457,6 +1477,34 @@ class Keeper:
         test = await Test.fromRecord(record)
 
         return test
+
+    # }}}
+    @classmethod  # __getAnalyticData  # {{{
+    async def __getAnalyticData(cls, AnalyticData, kwargs: dict) -> None:
+        logger.debug(f"{cls.__name__}.__getAnalyticData()")
+
+        name = kwargs.get("name")
+        figi = kwargs.get("figi")
+
+        request = f"""
+            SELECT
+                "AnalyticData".analytic_name,
+                "AnalyticData".figi,
+                "AnalyticData".data,
+                "Asset".info
+            FROM "AnalyticData"
+            JOIN "Asset" ON "AnalyticData".figi = "Asset".figi
+            WHERE
+                "AnalyticData".analytic_name = '{name}' AND
+                "AnalyticData".figi = '{figi}'
+            ;
+            """
+        records = await cls.transaction(request)
+        assert len(records) == 1
+        record = records[0]
+
+        analytic_data = await AnalyticData.fromRecord(record)
+        return analytic_data
 
     # }}}
 
