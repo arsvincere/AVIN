@@ -466,6 +466,7 @@ class AssetList:  # {{{
     async def delete(cls, asset_list: AssetList) -> None:
         logger.debug(f"{cls.__name__}.delete()")
         assert isinstance(asset_list, AssetList)
+
         await Keeper.delete(asset_list)
 
     # }}}
