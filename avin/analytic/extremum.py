@@ -6,6 +6,8 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
+from __future__ import annotations
+
 import enum
 
 from avin.core import Bar, Chart
