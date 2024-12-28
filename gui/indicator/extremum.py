@@ -479,9 +479,9 @@ class _ExtremumSettings(QtWidgets.QDialog):  # {{{
         self.sline_checkbox = QtWidgets.QCheckBox("Short-term line")
         self.mline_checkbox = QtWidgets.QCheckBox("Mid-term line")
         self.lline_checkbox = QtWidgets.QCheckBox("Long-term line")
-        self.sspeed_checkbox = QtWidgets.QCheckBox("Long-term line")
-        self.mspeed_checkbox = QtWidgets.QCheckBox("Long-term line")
-        self.lspeed_checkbox = QtWidgets.QCheckBox("Long-term line")
+        self.sspeed_checkbox = QtWidgets.QCheckBox("Short-term speed")
+        self.mspeed_checkbox = QtWidgets.QCheckBox("Mid-term speed")
+        self.lspeed_checkbox = QtWidgets.QCheckBox("Long-term speed")
 
         self.ok_btn = ToolButton(Icon.OK)
         self.cancel_btn = ToolButton(Icon.CANCEL)
@@ -500,14 +500,17 @@ class _ExtremumSettings(QtWidgets.QDialog):  # {{{
         vbox.addLayout(hbox)
         vbox.addWidget(self.inside_checkbox)
         vbox.addWidget(self.outside_checkbox)
+        vbox.addSpacing(20)
 
         vbox.addWidget(self.sshape_checkbox)
         vbox.addWidget(self.mshape_checkbox)
         vbox.addWidget(self.lshape_checkbox)
+        vbox.addSpacing(20)
 
         vbox.addWidget(self.sline_checkbox)
         vbox.addWidget(self.mline_checkbox)
         vbox.addWidget(self.lline_checkbox)
+        vbox.addSpacing(20)
 
         vbox.addWidget(self.sspeed_checkbox)
         vbox.addWidget(self.mspeed_checkbox)
