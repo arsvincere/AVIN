@@ -36,15 +36,18 @@ def round_price(price: float, min_price_step: float):  # {{{
 def binary_search(seq, x, key=None):  # {{{
     left = 0
     right = len(seq) - 1
+
     while left <= right:
         mid = (right - left) // 2 + left
         mid_val = seq[mid] if key is None else key(seq[mid])
+
         if x == mid_val:
             return mid
         if x < mid_val:
             right = mid - 1
         else:
             left = mid + 1
+
     return None
 
 

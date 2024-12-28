@@ -106,6 +106,10 @@ class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
         self.m_lines = self.__createLines(self.m_points, self.__MPEN)
         self.l_lines = self.__createLines(self.l_points, self.__LPEN)
 
+        self.s_speeds = self.__createSpeedLabels(self.s_points)
+        self.m_speeds = self.__createSpeedLabels(self.m_points)
+        self.l_speeds = self.__createSpeedLabels(self.l_points)
+
         self.inside_marks = self.__createInside()
         self.outside_marks = self.__createOutside()
 
@@ -115,6 +119,9 @@ class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
         self.addToGroup(self.s_lines)
         self.addToGroup(self.m_lines)
         self.addToGroup(self.l_lines)
+        self.addToGroup(self.s_speeds)
+        self.addToGroup(self.m_speeds)
+        self.addToGroup(self.l_speeds)
         self.addToGroup(self.inside_marks)
         self.addToGroup(self.outside_marks)
 
@@ -168,6 +175,24 @@ class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
             item.setVisible(value)
 
     # }}}
+    def showShortSpeeds(self, value: bool):  # {{{
+        items = self.s_speeds.childItems()
+        for item in items:
+            item.setVisible(value)
+
+    # }}}
+    def showMidSpeeds(self, value: bool):  # {{{
+        items = self.m_speeds.childItems()
+        for item in items:
+            item.setVisible(value)
+
+    # }}}
+    def showLongSpeeds(self, value: bool):  # {{{
+        items = self.l_speeds.childItems()
+        for item in items:
+            item.setVisible(value)
+
+    # }}}
 
     def __createPoints(self, extr_list):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createPoints()")
@@ -208,6 +233,7 @@ class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
         shape.setPos(spos)
         shape.info["epos"] = epos
         shape.info["spos"] = spos
+        shape.info["extr"] = extr
 
         return shape
 
@@ -218,7 +244,7 @@ class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createLines()")
         points = points_group.childItems()
         if len(points) < 2:
-            return None  # а че None потом можно addToGroup ????
+            return None
 
         lines = QtWidgets.QGraphicsItemGroup()
         i = 0
@@ -231,6 +257,39 @@ class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
             i += 1
 
         return lines
+
+    # }}}
+    def __createSpeedLabels(self, points_group):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createSpeedLabels()")
+
+        points = points_group.childItems()
+        if len(points) < 2:
+            return None
+
+        flags = QtWidgets.QGraphicsItem.GraphicsItemFlag
+        glabels = QtWidgets.QGraphicsItemGroup()
+        i = 0
+        while i < len(points) - 1:
+            e1 = points[i].info["extr"]
+            e2 = points[i + 1].info["extr"]
+            speed = ExtremumList.speedPercent(e1, e2)
+
+            e2_x = points[i + 1].info["spos"].x()
+            e2_y = points[i + 1].info["spos"].y()
+            y = e2_y * 0.98 if e2.isMax() else e2_y * 1.01
+            label_pos = QtCore.QPointF(e2_x, y)
+
+            label = QtWidgets.QLabel(f"Speed = {speed}")
+            label.setStyleSheet(Css.TRADE_LABEL)
+            glabel = QtWidgets.QGraphicsProxyWidget()
+            glabel.setWidget(label)
+            glabel.setPos(label_pos)
+            glabel.setFlag(flags.ItemIgnoresTransformations, True)
+            glabels.addToGroup(glabel)
+
+            i += 1
+
+        return glabels
 
     # }}}
     def __createInside(self):  # {{{
@@ -379,6 +438,9 @@ class _ExtremumSettings(QtWidgets.QDialog):  # {{{
         gextr.showShortLines(self.sline_checkbox.isChecked())
         gextr.showMidLines(self.mline_checkbox.isChecked())
         gextr.showLongLines(self.lline_checkbox.isChecked())
+        gextr.showShortSpeeds(self.sspeed_checkbox.isChecked())
+        gextr.showMidSpeeds(self.mspeed_checkbox.isChecked())
+        gextr.showLongSpeeds(self.lspeed_checkbox.isChecked())
 
     # }}}
     def configure(self, gextr):  # {{{
@@ -391,14 +453,7 @@ class _ExtremumSettings(QtWidgets.QDialog):  # {{{
         if gextr is None:
             return
 
-        gextr.showInside(self.inside_checkbox.isChecked())
-        gextr.showOutside(self.outside_checkbox.isChecked())
-        gextr.showShortShapes(self.sshape_checkbox.isChecked())
-        gextr.showMidShapes(self.mshape_checkbox.isChecked())
-        gextr.showLongShapes(self.lshape_checkbox.isChecked())
-        gextr.showShortLines(self.sline_checkbox.isChecked())
-        gextr.showMidLines(self.mline_checkbox.isChecked())
-        gextr.showLongLines(self.lline_checkbox.isChecked())
+        self.configureSilent(gextr)
 
     # }}}
 
@@ -424,6 +479,9 @@ class _ExtremumSettings(QtWidgets.QDialog):  # {{{
         self.sline_checkbox = QtWidgets.QCheckBox("Short-term line")
         self.mline_checkbox = QtWidgets.QCheckBox("Mid-term line")
         self.lline_checkbox = QtWidgets.QCheckBox("Long-term line")
+        self.sspeed_checkbox = QtWidgets.QCheckBox("Long-term line")
+        self.mspeed_checkbox = QtWidgets.QCheckBox("Long-term line")
+        self.lspeed_checkbox = QtWidgets.QCheckBox("Long-term line")
 
         self.ok_btn = ToolButton(Icon.OK)
         self.cancel_btn = ToolButton(Icon.CANCEL)
@@ -451,6 +509,10 @@ class _ExtremumSettings(QtWidgets.QDialog):  # {{{
         vbox.addWidget(self.mline_checkbox)
         vbox.addWidget(self.lline_checkbox)
 
+        vbox.addWidget(self.sspeed_checkbox)
+        vbox.addWidget(self.mspeed_checkbox)
+        vbox.addWidget(self.lspeed_checkbox)
+
     # }}}
     def __connect(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__connect()")
@@ -464,12 +526,18 @@ class _ExtremumSettings(QtWidgets.QDialog):  # {{{
 
         self.inside_checkbox.setChecked(False)
         self.outside_checkbox.setChecked(False)
+
         self.sshape_checkbox.setChecked(False)
         self.mshape_checkbox.setChecked(True)
         self.lshape_checkbox.setChecked(True)
+
         self.sline_checkbox.setChecked(True)
         self.mline_checkbox.setChecked(True)
         self.lline_checkbox.setChecked(True)
+
+        self.sspeed_checkbox.setChecked(False)
+        self.mspeed_checkbox.setChecked(True)
+        self.lspeed_checkbox.setChecked(False)
 
     # }}}
 

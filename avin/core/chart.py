@@ -18,7 +18,7 @@ from avin.core.bar import Bar
 from avin.core.timeframe import TimeFrame
 from avin.data import Instrument
 from avin.keeper import Keeper
-from avin.utils import Signal, find_left, logger
+from avin.utils import Signal, binary_search, find_left, logger
 
 
 class Chart:
@@ -150,6 +150,14 @@ class Chart:
 
     # }}}
 
+    def getIndex(self, bar: Bar):  # {{{
+        logger.debug(f"{self.__class__.__name__}.getIndex()")
+
+        bars = self.getBars()  # not ignored self.__head
+        index = binary_search(bars, bar.dt, lambda x: x.dt)
+        return index
+
+    # }}}
     def getBars(self) -> list[Bar]:  # {{{
         logger.debug(f"{self.__class__.__name__}.getBars()")
 

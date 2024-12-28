@@ -223,6 +223,23 @@ class ExtremumList:  # {{{
     #
     # }}}
 
+    @classmethod  # speedPercent  # {{{
+    def speedPercent(cls, e1: Extremum, e2: Extremum) -> float:
+        assert e1.dt < e2.dt
+
+        delta = e2.price - e1.price
+        percent = delta / e1.price * 100
+
+        chart = e1.bar.chart
+        index1 = chart.getIndex(e1.bar)
+        index2 = chart.getIndex(e2.bar)
+        period = index2 - index1 + 1
+
+        speed = percent / period
+        return round(speed, 2)
+
+    # }}}
+
     def __isOverflowOf(self, this, of) -> bool:  # {{{
         if this.high > of or this.low < of.low:
             return True
