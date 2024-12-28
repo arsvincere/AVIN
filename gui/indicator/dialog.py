@@ -12,109 +12,186 @@ import sys
 from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import Qt
 
-from avin.gui.custom import (
-    Font,
+from avin import logger
+from gui.custom import (
+    Css,
     Icon,
+    Label,
+    Spacer,
     ToolButton,
 )
+from gui.indicator.extremum import ExtremumIndicator
 
 
-class Tree(QtWidgets.QTreeWidget):  # {{{
-    class Column(enum.IntEnum):  # {{{
-        Name = 0
-
-    # }}}
-    def __init__(self, parent=None):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__init__()")
-        QtWidgets.QTreeWidget.__init__(self, parent)
-        self.__config()
-
-    # }}}
-    def __config(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__config()")
-        labels = list()
-        for l in self.Column:
-            labels.append(l.name)
-        self.setHeaderLabels(labels)
-        self.setSortingEnabled(True)
-        self.sortByColumn(Tree.Column.Name, Qt.SortOrder.AscendingOrder)
-        self.setColumnWidth(Tree.Column.Name, 250)
-        self.setFont(Font.MONO)
-
-
-# }}}
-
-
-# }}}
-class IndicatorDialog(QtWidgets.QDialog):  # {{{
+class IndicatorSelectDialog(QtWidgets.QDialog):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QWidget.__init__(self, parent)
+
+        self.__config()
         self.__createWidgets()
         self.__createLayots()
         self.__connect()
         self.__loadUserIndicators()
 
     # }}}
+
+    def selectIndicators(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectIndicator()")
+
+        result = self.exec()
+        if result == QtWidgets.QDialog.DialogCode.Rejected:
+            return None
+
+        selected = self.__tree.getSelected()
+        return selected
+
+    # }}}
+
+    def __config(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__config()")
+
+        self.setWindowTitle("AVIN")
+        self.setStyleSheet(Css.DIALOG)
+        self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
+
+    # }}}
     def __createWidgets(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
-        self.tree = Tree(self)
-        self.search_line = QtWidgets.QLineEdit(self)
-        self.btn_search = ToolButton(Icon.SEARCH, self)
-        self.btn_apply = ToolButton(Icon.APPLY, self)
-        self.btn_cancel = ToolButton(Icon.CANCEL, self)
+
+        self.__toolbar = _ToolBar(self)
+        self.__tree = _Tree(self)
 
     # }}}
     def __createLayots(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createLayots()")
-        hbox = QtWidgets.QHBoxLayout()
-        hbox.addWidget(self.btn_search)
-        hbox.addWidget(self.search_line)
-        hbox.addStretch()
-        hbox.addWidget(self.btn_apply)
-        hbox.addWidget(self.btn_cancel)
+
         vbox = QtWidgets.QVBoxLayout()
-        vbox.addLayout(hbox)
-        vbox.addWidget(self.tree)
+        vbox.addWidget(self.__toolbar)
+        vbox.addWidget(self.__tree)
         self.setLayout(vbox)
 
     # }}}
     def __connect(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__connect()")
-        self.btn_apply.clicked.connect(self.accept)
-        self.btn_cancel.clicked.connect(self.reject)
+
+        self.__toolbar.ok_btn.clicked.connect(self.accept)
+        self.__toolbar.cancel_btn.clicked.connect(self.reject)
 
     # }}}
     def __loadUserIndicators(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__loadUserIndicators()")
-        i = ExtremumHandler()
-        self.__add(i)
+
+        # full list of user indicators
+        self.__indicators = [
+            ExtremumIndicator(),
+        ]
+
+        # create items in tree
+        for i in self.__indicators:
+            self.__tree.addIndicator(i)
 
     # }}}
-    def __getSelected(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__getSelected()")
+
+
+# }}}
+
+
+class _ToolBar(QtWidgets.QToolBar):  # {{{
+    def __init__(self, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QToolBar.__init__(self, parent)
+
+        self.__createWidgets()
+
+    # }}}
+    def __createWidgets(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createWidgets()")
+
+        title = Label("| Select indicator:", parent=self)
+        title.setStyleSheet(Css.TITLE)
+
+        self.search_btn = ToolButton(Icon.SEARCH, parent=self)
+        self.search_lineedit = QtWidgets.QLineEdit(parent=self)
+        self.ok_btn = ToolButton(Icon.OK, "Ok", parent=self)
+        self.cancel_btn = ToolButton(Icon.CANCEL, "Cancel", parent=self)
+
+        self.addWidget(title)
+        self.addWidget(Spacer(width=10))
+        self.addWidget(self.search_btn)
+        self.addWidget(self.search_lineedit)
+        self.addWidget(Spacer())
+        self.addWidget(self.ok_btn)
+        self.addWidget(self.cancel_btn)
+
+    # }}}
+
+
+# }}}
+class _Tree(QtWidgets.QTreeWidget):  # {{{
+    class Column(enum.IntEnum):  # {{{
+        Name = 0
+
+    # }}}
+
+    def __init__(self, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QTreeWidget.__init__(self, parent)
+        self.__config()
+
+    # }}}
+    def __iter__(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__iter__()")
+
+        all_items = list()
+        for i in range(self.topLevelItemCount()):
+            item = self.topLevelItem(i)
+            all_items.append(item)
+
+        return iter(all_items)
+
+    # }}}
+
+    def addIndicator(self, indicator):  # {{{
+        logger.debug(f"{self.__class__.__name__}.addIndicator()")
+
+        item = indicator.item()
+        self.addTopLevelItem(item)
+
+    # }}}
+    def getSelected(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.getSelected()")
+
         selected = list()
-        for i in range(self.tree.topLevelItemCount()):
-            item = self.tree.topLevelItem(i)
-            if item.checkState(Tree.Column.Name) == Qt.CheckState.Checked:
-                selected.append(item.handler)
+        for item in self:
+            if item.checkState(self.Column.Name) == Qt.CheckState.Checked:
+                selected.append(item.indicator)
+
         return selected
 
     # }}}
-    def __add(self, indicator):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__add()")
-        item = indicator.item
-        self.tree.addTopLevelItem(item)
 
-    # }}}
-    def chooseIndicator(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__loadUserIndicators()")
-        result = self.exec()
-        if result == QtWidgets.QDialog.DialogCode.Accepted:
-            selected = self.__getSelected()
-            return selected
-        else:
-            return False
+    def __config(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__config()")
+
+        # config header
+        labels = list()
+        for l in self.Column:
+            labels.append(l.name)
+        self.setHeaderLabels(labels)
+        self.header().setStyleSheet(Css.TREE_HEADER)
+
+        # config sorting
+        self.setSortingEnabled(True)
+        self.sortByColumn(self.Column.Name, Qt.SortOrder.AscendingOrder)
+
+        # config width
+        self.setColumnWidth(self.Column.Name, 280)
+        self.setMinimumWidth(300)
+
+        # config style
+        self.setStyleSheet(Css.TREE)
+        self.setContentsMargins(0, 0, 0, 0)
 
 
 # }}}
@@ -125,8 +202,6 @@ class IndicatorDialog(QtWidgets.QDialog):  # {{{
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    w = ChartWidget()
-    w.setWindowTitle("AVIN  -  Ars  Vincere")
-    w.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
+    w = IndicatorSelectDialog()
     w.show()
     sys.exit(app.exec())

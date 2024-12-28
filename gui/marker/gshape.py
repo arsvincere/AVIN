@@ -115,7 +115,7 @@ class GShape(QtWidgets.QGraphicsPixmapItem):  # {{{
         CYAN = QtGui.QColor(Color.nord7)  # #8FBCBB
         BLUE = QtGui.QColor(Color.nord10)  # #5E81AC
         VIOLET = QtGui.QColor(Color.oniViolet)  # #957FB8
-        PINK = QtGui.QColor(Color.sakuraPink)  # D27E99
+        PINK = QtGui.QColor(Color.sakuraPink)  # #D27E99
 
         @classmethod  # fromStr  #{{{
         def fromStr(cls, string_type: str):
@@ -145,6 +145,7 @@ class GShape(QtWidgets.QGraphicsPixmapItem):  # {{{
         self.type = t
         self.size = s
         self.color = c
+        self.info = dict()
 
         self.__drawGShape()
 

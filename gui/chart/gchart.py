@@ -69,7 +69,7 @@ class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
         self.addToGroup(shape)
 
     # }}}
-    def clearGShapes(self) -> None:
+    def clearGShapes(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.clearGShapes()")
 
         for item in self.shapes:
@@ -78,6 +78,7 @@ class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
 
         self.shapes.clear()
 
+    # }}}
     def updateView(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.updateView()")
 
@@ -254,6 +255,8 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
         self.__createSceneRect()
         self.__createGBars()
 
+        self.__indicators = list()
+
     # }}}
 
     @property  # first  # {{{
@@ -271,19 +274,6 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
 
     # }}}
 
-    def addMark(self, mark: Mark) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.addMark()")
-
-        Thread.addMark(self, mark)
-
-    # }}}
-    def clearMarks(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.addMark()")
-
-        for gbar in self.gbars:
-            gbar.clearGShapes()
-
-    # }}}
     def viewType(self) -> ViewType:  # {{{
         logger.debug(f"{self.__class__.__name__}.viewType()")
 
@@ -328,6 +318,37 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
                 self.__clearBack_W()
             case "M":
                 self.__clearBack_M()
+
+    # }}}
+    def addMark(self, mark: Mark) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.addMark()")
+
+        Thread.addMark(self, mark)
+
+    # }}}
+    def clearMarks(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.clearMarks()")
+
+        for gbar in self.gbars:
+            gbar.clearGShapes()
+
+    # }}}
+    def addIndicator(self, indicator) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.addIndicator()")
+
+        gitem = indicator.graphics(self)
+        self.__indicators.append(gitem)
+        self.addToGroup(gitem)
+
+    # }}}
+    def clearIndicators(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.clearIndicators()")
+
+        for gitem in self.__indicators:
+            gitem.setVisible(False)
+            self.removeFromGroup(gitem)
+
+        self.__indicators.clear()
 
     # }}}
 

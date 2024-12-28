@@ -12,13 +12,113 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt
 
 from avin.utils import logger
-from gui.custom import Css, Dialog, Menu
+from gui.custom import Css, Dialog, Icon, Label, Menu, Spacer, ToolButton
 from gui.marker.dialog_marker_edit import MarkerEditDialog
 from gui.marker.item import MarkItem
 from gui.marker.mark import Mark, MarkList
 
 
-class MarkTree(QtWidgets.QTreeWidget):  # {{{
+class MarkerSelectDialog(QtWidgets.QDialog):  # {{{
+    def __init__(self, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QDialog.__init__(self, parent)
+
+        self.__config()
+        self.__createWidgets()
+        self.__createLayots()
+        self.__connect()
+        self.__loadUserMarks()
+
+    # }}}
+
+    def selectMarks(self) -> MarkList | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectMarks()")
+
+        result = self.exec()
+        if result == QtWidgets.QDialog.DialogCode.Rejected:
+            return None
+
+        selected = MarkList("selected")
+        for item in self.__mark_tree:
+            if item.isChecked():
+                selected.add(item.mark)
+
+        return selected
+
+    # }}}
+
+    def __config(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__config()")
+
+        self.setWindowTitle("AVIN")
+        self.setStyleSheet(Css.STYLE)
+        self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
+
+    # }}}
+    def __createWidgets(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createWidgets()")
+
+        self.__tool_bar = _ToolBar(self)
+        self.__mark_tree = _MarkTree(self)
+
+    # }}}
+    def __createLayots(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createLayots()")
+
+        vbox = QtWidgets.QVBoxLayout()
+        vbox.setContentsMargins(0, 0, 0, 0)
+        vbox.addWidget(self.__tool_bar)
+        vbox.addWidget(self.__mark_tree)
+
+        self.setLayout(vbox)
+
+    # }}}
+    def __connect(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__connect()")
+
+        self.__tool_bar.btn_cancel.clicked.connect(self.reject)
+        self.__tool_bar.btn_ok.clicked.connect(self.accept)
+
+    # }}}
+    def __loadUserMarks(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__loadUserMarks()")
+
+        mark_list = MarkList.load("mark_list")
+
+        self.__mark_tree.setMarkList(mark_list)
+
+    # }}}
+
+
+# }}}
+
+
+class _ToolBar(QtWidgets.QToolBar):  # {{{
+    def __init__(self, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QToolBar.__init__(self, parent)
+
+        self.__createWidgets()
+
+    # }}}
+    def __createWidgets(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createWidgets()")
+
+        title = Label("| Select marks:", parent=self)
+        title.setStyleSheet(Css.TITLE)
+        self.addWidget(title)
+        self.addWidget(Spacer())
+
+        self.btn_ok = ToolButton(Icon.OK, "Ok", parent=self)
+        self.btn_cancel = ToolButton(Icon.CANCEL, "Cancel", parent=self)
+        self.addWidget(self.btn_ok)
+        self.addWidget(self.btn_cancel)
+
+    # }}}
+
+
+# }}}
+class _MarkTree(QtWidgets.QTreeWidget):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QTreeWidget.__init__(self, parent)
@@ -222,8 +322,6 @@ class _MarkMenu(Menu):  # {{{
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    w = MarkerTree()
-    w.setWindowTitle("AVIN")
-    w.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
+    w = MarkerSelectDialog()
     w.show()
     sys.exit(app.exec())

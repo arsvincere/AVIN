@@ -16,7 +16,6 @@ class Mark:  # {{{
     def __init__(  # {{{
         self, filter: Filter, shape: GShape, parent=None
     ):
-        self.__name = filter.name
         self.__filter = filter
         self.__shape = shape
 
@@ -24,7 +23,7 @@ class Mark:  # {{{
 
     @property  # name  # {{{
     def name(self):
-        return self.__name
+        return self.__filter.name
 
     # }}}
     @property  # filter  # {{{

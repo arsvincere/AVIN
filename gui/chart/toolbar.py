@@ -21,7 +21,8 @@ from gui.custom import (
     ToolButton,
     VLine,
 )
-from gui.marker import MarkerWidget, MarkList
+from gui.indicator import IndicatorSelectDialog
+from gui.marker import MarkerSelectDialog, MarkList
 
 
 class ChartToolBar(QtWidgets.QToolBar):  # {{{
@@ -30,6 +31,7 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
     barViewSelected = QtCore.pyqtSignal()
     cundleViewSelected = QtCore.pyqtSignal()
     markListChanged = QtCore.pyqtSignal(MarkList)
+    indListChanged = QtCore.pyqtSignal(list)  # TODO: Indicator, IndicatorList
     periodChanged = QtCore.pyqtSignal(DateTime, DateTime)
 
     __ICON_SIZE = QtCore.QSize(32, 32)
@@ -39,11 +41,10 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
         QtWidgets.QToolBar.__init__(self, parent)
 
         self.__config()
+        self.__createDialogs()
         self.__createButtons()
         self.__createMenus()
         self.__connect()
-
-        self.__marker_widget = None
 
     # }}}
 
@@ -88,8 +89,17 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
 
     # }}}
 
+    def __createDialogs(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createDialogs()")
+
+        # диалоги создаются и сохраняются при первом открытии
+        self.__mark_select_dialog = None
+        self.__ind_select_dialog = None
+        self.__period_dialog = None
+
+    # }}}
     def __createButtons(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createActions()")
+        logger.debug(f"{self.__class__.__name__}.__createButtons()")
 
         # asset
         self.__asset_btn = ToolButton(text="ASSET", width=64, parent=self)
@@ -123,11 +133,9 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
 
         # marker
         self.__marker_btn = ToolButton(text="Marker", width=70, parent=self)
-        self.__marker_btn.setCheckable(True)
 
         # period
         self.__period_btn = ToolButton(text="Period", width=70, parent=self)
-        self.__period_dialog = None
 
         # add widgets
         self.addWidget(self.__asset_btn)
@@ -173,8 +181,11 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
         self.__second_D.clicked.connect(self.__onSecond_D)
         self.__second_W.clicked.connect(self.__onSecond_W)
         self.__second_M.clicked.connect(self.__onSecond_M)
+
         self.__bar_btn.clicked.connect(self.__onBarBtn)
         self.__cundle_btn.clicked.connect(self.__onCundleBtn)
+
+        self.__indicator_btn.clicked.connect(self.__onIndicatorBtn)
         self.__marker_btn.clicked.connect(self.__onMarkerBtn)
         self.__period_btn.clicked.connect(self.__onPeriodBtn)
 
@@ -246,14 +257,26 @@ class ChartToolBar(QtWidgets.QToolBar):  # {{{
         self.cundleViewSelected.emit()
 
     # }}}
+    @QtCore.pyqtSlot()  # __onIndicatorBtn  # {{{
+    def __onIndicatorBtn(self):
+        logger.debug(f"{self.__class__.__name__}.__onIndicatorBtn()")
+
+        if self.__ind_select_dialog is None:
+            self.__ind_select_dialog = IndicatorSelectDialog()
+
+        ind_list = self.__ind_select_dialog.selectIndicators()
+        if ind_list is not None:
+            self.indListChanged.emit(ind_list)
+
+    # }}}
     @QtCore.pyqtSlot()  # __onMarkerBtn  # {{{
     def __onMarkerBtn(self):
         logger.debug(f"{self.__class__.__name__}.__onMarkerBtn()")
 
-        if self.__marker_widget is None:
-            self.__marker_widget = MarkerWidget()
+        if self.__mark_select_dialog is None:
+            self.__mark_select_dialog = MarkerSelectDialog()
 
-        mark_list = self.__marker_widget.selectMarks()
+        mark_list = self.__mark_select_dialog.selectMarks()
         if mark_list is not None:
             self.markListChanged.emit(mark_list)
 

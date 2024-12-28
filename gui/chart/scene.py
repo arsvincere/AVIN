@@ -25,7 +25,6 @@ class ChartScene(QtWidgets.QGraphicsScene):
         self.__createWidgets()
         self.__createChartGroup()
         self.__createTListGroup()
-        self.__createIndicatorGroup()
         self.__createIgnoreScaleList()
 
     # }}}
@@ -131,18 +130,18 @@ class ChartScene(QtWidgets.QGraphicsScene):
         self.__has_chart = True
 
     # }}}
-    def currentGChart(self) -> GChart:  # {{{
-        logger.debug(f"{self.__class__.__name__}.currentChart()")
-
-        return self.gchart
-
-    # }}}
     def removeGChart(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.removeGChart()")
 
         if self.__has_chart:
             self.removeItem(self.gchart)
             self.__has_chart = False
+
+    # }}}
+    def currentGChart(self) -> GChart:  # {{{
+        logger.debug(f"{self.__class__.__name__}.currentChart()")
+
+        return self.gchart
 
     # }}}
 
@@ -167,14 +166,6 @@ class ChartScene(QtWidgets.QGraphicsScene):
         if self.__has_gtrades:
             self.removeItem(self.gtrades)
             self.__has_gtrades = False
-
-    # }}}
-
-    def addIndicator(self, gi):  # {{{
-        logger.debug(f"{self.__class__.__name__}.addIndicator()")
-
-        # TODO: it
-        assert False
 
     # }}}
 
@@ -223,13 +214,6 @@ class ChartScene(QtWidgets.QGraphicsScene):
 
         self.__has_gtrades = False
         self.gtrades = None
-
-    # }}}
-    def __createIndicatorGroup(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createIndicatorGroup()")
-
-        self.indicators = QtWidgets.QGraphicsItemGroup()
-        self.addItem(self.indicators)
 
     # }}}
     def __createIgnoreScaleList(self):  # {{{
