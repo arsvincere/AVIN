@@ -46,20 +46,20 @@ class ChartScene(QtWidgets.QGraphicsScene):
         return e.ignore()
 
     # }}}
-    # def mousePressEvent(self, e: QtWidgets.QGraphicsSceneMouseEvent):  # {{{
-    #     logger.debug(f"{self.__class__.__name__}.mousePressEvent()")
-    #     super().mousePressEvent(e)
-    #
-    #     return e.ignore()
-    #
-    # # }}}
-    # def mouseReleaseEvent(self, e: QtWidgets.QGraphicsSceneMouseEvent):  # {{{
-    #     logger.debug(f"{self.__class__.__name__}.mouseReleaseEvent()")
-    #     super().mouseReleaseEvent(e)
-    #
-    #     return e.ignore()
-    #
-    # # }}}
+    def mousePressEvent(self, e: QtWidgets.QGraphicsSceneMouseEvent):  # {{{
+        logger.debug(f"{self.__class__.__name__}.mousePressEvent()")
+        super().mousePressEvent(e)
+
+        return e.ignore()
+
+    # }}}
+    def mouseReleaseEvent(self, e: QtWidgets.QGraphicsSceneMouseEvent):  # {{{
+        logger.debug(f"{self.__class__.__name__}.mouseReleaseEvent()")
+        super().mouseReleaseEvent(e)
+
+        return e.ignore()
+
+    # }}}
     def mouseDoubleClickEvent(  # {{{
         self, e: QtWidgets.QGraphicsSceneMouseEvent
     ):
@@ -206,18 +206,6 @@ class ChartScene(QtWidgets.QGraphicsScene):
         # add
         self.labels.widget().add(self.bar_info)
         self.labels.widget().add(self.vol_info)
-
-        ####
-        # TODO: del it, debug...
-        from gui.indicator.extremum import (
-            ExtremumIndicator,
-            _ExtremumGraphicsLabel,
-        )
-
-        ind = ExtremumIndicator
-        lbl = _ExtremumGraphicsLabel(ind)
-        self.addItem(lbl)
-        ####
 
     # }}}
     def __createChartGroup(self):  # {{{

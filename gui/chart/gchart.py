@@ -107,13 +107,17 @@ class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
         self.x_center = (self.X0 + self.X1) / 2
         self.x0_bar = self.X0 + self.BAR_INDENT
         self.x1_bar = self.X1 - self.BAR_INDENT
+        self.width_bar = self.x1_bar - self.x0_bar
         self.x0_cundle = self.X0 + self.CUNDLE_INDENT
         self.x1_cundle = self.X1 - self.CUNDLE_INDENT
+        self.width_cundle = self.x1_cundle - self.x0_cundle
 
         self.y_opn = gchart.yFromPrice(self.bar.open)
         self.y_cls = gchart.yFromPrice(self.bar.close)
         self.y_hgh = gchart.yFromPrice(self.bar.high)
         self.y_low = gchart.yFromPrice(self.bar.low)
+        self.full_height = self.y_hgh - self.y_low
+        self.body_height = abs(self.y_opn - self.y_cls)
 
         self.open_pos = QtCore.QPointF(self.x_center, self.y_opn)
         self.close_pos = QtCore.QPointF(self.x_center, self.y_cls)

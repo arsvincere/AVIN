@@ -61,7 +61,7 @@ class ExtremumIndicator:  # {{{
         return self.__gitem
 
     # }}}
-    def configure(self):
+    def configure(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.configure()")
 
         if self.__settings is None:
@@ -69,8 +69,12 @@ class ExtremumIndicator:  # {{{
 
         self.__settings.configure(self.__gitem)
 
+    # }}}
+
 
 # }}}
+
+
 class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
     LONGTERM_LINE_WIDTH = 4
     MIDTERM_LINE_WIDTH = 2
@@ -102,21 +106,30 @@ class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
         self.m_lines = self.__createLines(self.m_points, self.__MPEN)
         self.l_lines = self.__createLines(self.l_points, self.__LPEN)
 
+        self.inside_marks = self.__createInside()
+        self.outside_marks = self.__createOutside()
+
         self.addToGroup(self.s_points)
         self.addToGroup(self.m_points)
         self.addToGroup(self.l_points)
         self.addToGroup(self.s_lines)
         self.addToGroup(self.m_lines)
         self.addToGroup(self.l_lines)
+        self.addToGroup(self.inside_marks)
+        self.addToGroup(self.outside_marks)
 
     # }}}
 
     def showInside(self, value: bool):  # {{{
-        ...
+        items = self.inside_marks.childItems()
+        for item in items:
+            item.setVisible(value)
 
     # }}}
     def showOutside(self, value: bool):  # {{{
-        ...
+        items = self.outside_marks.childItems()
+        for item in items:
+            item.setVisible(value)
 
     # }}}
     def showShortShapes(self, value: bool):  # {{{
@@ -167,11 +180,7 @@ class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
 
     # }}}
     def __createPointShape(self, extr):  # {{{
-        """
-        (x, y)   - epos - точка экстремума на графике
-        (x0, y0) - spos - точка начала QGraphicsEllipseItem, графической
-                   метки экстремума
-        """
+        logger.debug(f"{self.__class__.__name__}.__createPointShape()")
 
         # select size and color
         if extr.isLongterm():
@@ -185,6 +194,8 @@ class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
             color = GShape.Color.CYAN
 
         # calc coordinate
+        # (x, y)   - epos - точка экстремума на графике
+        # (x0, y0) - spos - точка графической метки экстремума
         x0 = self.gchart.xFromDatetime(extr.dt)
         x = x0 + GBar.WIDTH / 2
         y = self.gchart.yFromPrice(extr.price)
@@ -204,6 +215,7 @@ class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
     def __createLines(  # {{{
         self, points_group: QtWidgets.QGraphicsItemGroup, pen
     ):
+        logger.debug(f"{self.__class__.__name__}.__createLines()")
         points = points_group.childItems()
         if len(points) < 2:
             return None  # а че None потом можно addToGroup ????
@@ -220,8 +232,67 @@ class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
 
         return lines
 
+    # }}}
+    def __createInside(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createInside()")
 
-# }}}
+        inside_marks = QtWidgets.QGraphicsItemGroup()
+        gbars = self.gchart.gbars
+        for gbar in gbars:
+            bar = gbar.bar
+            if bar.isInside():
+                shape = self.__createInsideShape(gbar)
+                inside_marks.addToGroup(shape)
+
+        return inside_marks
+
+    # }}}
+    def __createInsideShape(self, gbar):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createInsideShape()")
+
+        x = gbar.X0
+        y = gbar.y_low
+        w = gbar.WIDTH
+        h = gbar.full_height
+
+        rect = QtWidgets.QGraphicsRectItem(x, y, w, h)
+        color = QtGui.QColor("#CC000000")
+        rect.setPen(color)
+        rect.setBrush(color)
+
+        return rect
+
+    # }}}
+    def __createOutside(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createOutside()")
+
+        outside_marks = QtWidgets.QGraphicsItemGroup()
+        gbars = self.gchart.gbars
+        for gbar in gbars:
+            bar = gbar.bar
+            if bar.isOutside():
+                shape = self.__createOutsideShape(gbar)
+                outside_marks.addToGroup(shape)
+
+        return outside_marks
+
+    # }}}
+    def __createOutsideShape(self, gbar):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createOutsideShape()")
+
+        x = gbar.X0
+        y = gbar.y_low
+        w = gbar.WIDTH
+        h = gbar.full_height
+
+        rect = QtWidgets.QGraphicsRectItem(x, y, w, h)
+        color = QtGui.QColor("#33FFFFFF")
+        rect.setPen(color)
+        rect.setBrush(color)
+
+        return rect
+
+    # }}}
 
 
 # }}}
@@ -267,54 +338,14 @@ class _ExtremumLabel(QtWidgets.QWidget):  # {{{
         self.btn_settings.clicked.connect(self.__onSettings)
 
     # }}}
-    @QtCore.pyqtSlot()  # __onSettings{{{
+
+    @QtCore.pyqtSlot()  # __onSettings  # {{{
     def __onSettings(self):
         logger.debug(f"{self.__class__.__name__}.__onSettings()")
 
         self.indicator.configure()
 
     # }}}
-    # def mousePressEventtt(self):  # {{{
-    #     logger.debug(f"{self.__class__.__name__}.mousePressEvent()")
-    #
-    #     # TODO: сделать нормальную кликабельную кнопку
-    #     # даже если надо будет не виджеты делать а график итем груп
-    #     # для каждого индикатора
-    #     self.__onSettings()
-    #
-    # # }}}
-
-
-# }}}
-class _ExtremumGraphicsLabel(QtWidgets.QGraphicsItemGroup):  # {{{
-    def __init__(self, indicator, parent=None):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__init__()")
-        QtWidgets.QGraphicsItemGroup.__init__(self, parent)
-
-        hide_icon = Icon.CLOSE
-        pixmap = hide_icon.pixmap(32)
-        self.gitem = QtWidgets.QGraphicsPixmapItem(pixmap)
-
-        self.gitem.setPos(100, 100)
-        self.addToGroup(self.gitem)
-
-    # }}}
-
-    def mousePressEvent(self, e: QtWidgets.QGraphicsSceneMouseEvent):
-        logger.debug(f"{self.__class__.__name__}.mousePressEvent()")
-        super().mousePressEvent(e)
-
-        # Dialog.info("Hello")
-        print("xxxx")
-
-        # return e.accept()
-        return e.ignore()
-
-    def mouseReleaseEvent(self, e: QtWidgets.QGraphicsSceneMouseEvent):
-        logger.debug(f"{self.__class__.__name__}.mouseReleaseEvent()")
-
-        super().mouseReleaseEvent(e)
-        return e.ignore()
 
 
 # }}}
@@ -445,6 +476,39 @@ class _ExtremumSettings(QtWidgets.QDialog):  # {{{
 
 # }}}
 
+
+# class _ExtremumGraphicsLabel(QtWidgets.QGraphicsItemGroup):  # {{{
+#     def __init__(self, indicator, parent=None):  # {{{
+#         logger.debug(f"{self.__class__.__name__}.__init__()")
+#         QtWidgets.QGraphicsItemGroup.__init__(self, parent)
+#
+#         hide_icon = Icon.CLOSE
+#         pixmap = hide_icon.pixmap(32)
+#         self.gitem = QtWidgets.QGraphicsPixmapItem(pixmap)
+#
+#         self.gitem.setPos(100, 100)
+#         self.addToGroup(self.gitem)
+#
+#     # }}}
+#
+#     def mousePressEvent(self, e: QtWidgets.QGraphicsSceneMouseEvent):
+#         logger.debug(f"{self.__class__.__name__}.mousePressEvent()")
+#         super().mousePressEvent(e)
+#
+#         # Dialog.info("Hello")
+#         print("xxxx")
+#
+#         # return e.accept()
+#         return e.ignore()
+#
+#     def mouseReleaseEvent(self, e: QtWidgets.QGraphicsSceneMouseEvent):
+#         logger.debug(f"{self.__class__.__name__}.mouseReleaseEvent()")
+#
+#         super().mouseReleaseEvent(e)
+#         return e.ignore()
+#
+#
+# # }}}
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
