@@ -369,7 +369,7 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
         return gbar
 
     # }}}
-    def barAt(self, x) -> GBar:  # {{{
+    def gbarOnX(self, x) -> GBar:  # {{{
         logger.debug(f"{self.__class__.__name__}.barAt()")
 
         if x < 0:

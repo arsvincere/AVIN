@@ -145,7 +145,25 @@ class ChartLabels(QtWidgets.QWidget):  # {{{
 
         self.vbox.removeWidget(widget)
 
+        self.vbox.replaceWidget
+
     # }}}
+    def clear(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.clear()")
+
+        item = self.vbox.takeAt(0)
+        while item:
+            item.widget().hide()
+            item = self.vbox.takeAt(0)
+
+    # }}}
+
+
+# QLayoutItem *child;
+# while ((child = layout->takeAt(0)) != 0) {
+#   ...
+#   delete child;
+# }
 
 
 # }}}

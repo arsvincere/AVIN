@@ -68,6 +68,7 @@ class ChartWidget(QtWidgets.QWidget):
 
         self.scene.removeGChart()
         self.scene.removeGTrades()
+        self.scene.removeIndicators()
         self.view.resetTransform()
 
         self.__trade_list = None
@@ -211,9 +212,14 @@ class ChartWidget(QtWidgets.QWidget):
             return
 
         self.__ind_list = ind_list
+
+        # добавляем графику индикатора на gchart
         gchart = self.scene.currentGChart()
         for indicator in self.__ind_list:
             gchart.addIndicator(indicator)
+
+        # добавляем график виджет лейблы на сцену в левый верхний угол
+        self.scene.setIndList(ind_list)
 
     # }}}
     @QtCore.pyqtSlot(MarkList)  # __onMarkList  # {{{

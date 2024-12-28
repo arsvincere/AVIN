@@ -22,7 +22,7 @@ class ChartScene(QtWidgets.QGraphicsScene):
 
         self.__config()
         self.__createEmpyRect()
-        self.__createWidgets()
+        self.__createGraphicsWidgets()
         self.__createChartGroup()
         self.__createTListGroup()
         self.__createIgnoreScaleList()
@@ -31,45 +31,35 @@ class ChartScene(QtWidgets.QGraphicsScene):
 
     def mouseMoveEvent(self, e: QtWidgets.QGraphicsSceneMouseEvent):  # {{{
         logger.debug(f"{self.__class__.__name__}.mouseMoveEvent()")
+        # super().mouseMoveEvent(e)
 
-        # print(e.pos())
-        # print(e.scenePos())
-        # print(e.screenPos())
-        # print("l", e.lastPos())
-        # print("l", e.lastScenePos())
-        # print("l", e.lastScreenPos())
-        # print("p", e.buttonDownPos(QtCore.Qt.MouseButton.LeftButton))
-        # print("p", e.buttonDownScenePos(QtCore.Qt.MouseButton.LeftButton))
-        # print("p", e.buttonDownScreenPos(QtCore.Qt.MouseButton.LeftButton))
         if not self.__has_chart:
             return e.ignore()
-        bar = self.gchart.barAt(e.scenePos().x())
+
+        bar = self.gchart.gbarOnX(e.scenePos().x())
         if not bar:
             return e.ignore()
+
         self.bar_info.set(bar)
         self.vol_info.set(bar)
 
         return e.ignore()
 
     # }}}
-    def mousePressEvent(self, e: QtWidgets.QGraphicsSceneMouseEvent):  # {{{
-        logger.debug(f"{self.__class__.__name__}.mousePressEvent()")
-
-        pos = e.scenePos()
-        items = self.items(pos)
-        for i in items:
-            if isinstance(i, QtWidgets.QGraphicsProxyWidget):
-                self.extr_label.mousePressEventtt()
-
-        return e.ignore()
-
-    # }}}
-    def mouseReleaseEvent(self, e: QtWidgets.QGraphicsSceneMouseEvent):  # {{{
-        logger.debug(f"{self.__class__.__name__}.mouseReleaseEvent()")
-
-        return e.ignore()
-
-    # }}}
+    # def mousePressEvent(self, e: QtWidgets.QGraphicsSceneMouseEvent):  # {{{
+    #     logger.debug(f"{self.__class__.__name__}.mousePressEvent()")
+    #     super().mousePressEvent(e)
+    #
+    #     return e.ignore()
+    #
+    # # }}}
+    # def mouseReleaseEvent(self, e: QtWidgets.QGraphicsSceneMouseEvent):  # {{{
+    #     logger.debug(f"{self.__class__.__name__}.mouseReleaseEvent()")
+    #     super().mouseReleaseEvent(e)
+    #
+    #     return e.ignore()
+    #
+    # # }}}
     def mouseDoubleClickEvent(  # {{{
         self, e: QtWidgets.QGraphicsSceneMouseEvent
     ):
@@ -160,12 +150,28 @@ class ChartScene(QtWidgets.QGraphicsScene):
         view.resetCurrentGTrade()
 
     # }}}
-    def removeGTrades(self):  # {{{
+    def removeGTrades(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.removeGTrades()")
 
         if self.__has_gtrades:
             self.removeItem(self.gtrades)
             self.__has_gtrades = False
+
+    # }}}
+
+    def setIndList(self, ind_list) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.setIndList()")
+
+        for i in ind_list:
+            label = i.label()
+            self.labels.widget().add(label)
+
+    # }}}
+    def removeIndicators(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.removeIndicators()")
+
+        # пересоздаем график виджеты в левом верхнем углу
+        self.__createGraphicsWidgets()
 
     # }}}
 
@@ -187,8 +193,8 @@ class ChartScene(QtWidgets.QGraphicsScene):
         self.setSceneRect(rect)
 
     # }}}
-    def __createWidgets(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createWidgets()")
+    def __createGraphicsWidgets(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createGraphicsWidgets()")
 
         # create widgets
         self.bar_info = BarInfo()
@@ -200,6 +206,18 @@ class ChartScene(QtWidgets.QGraphicsScene):
         # add
         self.labels.widget().add(self.bar_info)
         self.labels.widget().add(self.vol_info)
+
+        ####
+        # TODO: del it, debug...
+        from gui.indicator.extremum import (
+            ExtremumIndicator,
+            _ExtremumGraphicsLabel,
+        )
+
+        ind = ExtremumIndicator
+        lbl = _ExtremumGraphicsLabel(ind)
+        self.addItem(lbl)
+        ####
 
     # }}}
     def __createChartGroup(self):  # {{{
@@ -219,6 +237,9 @@ class ChartScene(QtWidgets.QGraphicsScene):
     def __createIgnoreScaleList(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createIgnoreScaleList()")
 
+        # TODO: Ахтунг! Оказывается есть специальный флаг для QGraphicsItem
+        # QGraphicsItem::ItemIgnoresTransformations
+        # почитай еще раз доку и переделай свой велосипед с трансформацией
         self.ignore_scale = list()
 
     # }}}

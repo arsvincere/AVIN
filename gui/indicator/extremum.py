@@ -61,6 +61,13 @@ class ExtremumIndicator:  # {{{
         return self.__gitem
 
     # }}}
+    def configure(self):
+        logger.debug(f"{self.__class__.__name__}.configure()")
+
+        if self.__settings is None:
+            self.__settings = _ExtremumSettings(self)
+
+        self.__settings.configure(self.__gitem)
 
 
 # }}}
@@ -242,7 +249,6 @@ class _ExtremumLabel(QtWidgets.QWidget):  # {{{
         self.btn_hide = ToolButton(Icon.HIDE)
         self.btn_settings = ToolButton(Icon.CONFIG)
         self.btn_delete = ToolButton(Icon.DELETE)
-        self.btn_other = ToolButton(Icon.OTHER)
 
     # }}}
     def __createLayots(self):  # {{{
@@ -252,7 +258,6 @@ class _ExtremumLabel(QtWidgets.QWidget):  # {{{
         hbox.addWidget(self.btn_hide)
         hbox.addWidget(self.btn_settings)
         hbox.addWidget(self.btn_delete)
-        hbox.addWidget(self.btn_other)
         hbox.addStretch()
         hbox.setContentsMargins(0, 0, 0, 0)
 
@@ -265,16 +270,51 @@ class _ExtremumLabel(QtWidgets.QWidget):  # {{{
     @QtCore.pyqtSlot()  # __onSettings{{{
     def __onSettings(self):
         logger.debug(f"{self.__class__.__name__}.__onSettings()")
-        self.indicator.showSettings()
+
+        self.indicator.configure()
 
     # }}}
-    def mousePressEventtt(self):  # {{{
+    # def mousePressEventtt(self):  # {{{
+    #     logger.debug(f"{self.__class__.__name__}.mousePressEvent()")
+    #
+    #     # TODO: сделать нормальную кликабельную кнопку
+    #     # даже если надо будет не виджеты делать а график итем груп
+    #     # для каждого индикатора
+    #     self.__onSettings()
+    #
+    # # }}}
+
+
+# }}}
+class _ExtremumGraphicsLabel(QtWidgets.QGraphicsItemGroup):  # {{{
+    def __init__(self, indicator, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QGraphicsItemGroup.__init__(self, parent)
+
+        hide_icon = Icon.CLOSE
+        pixmap = hide_icon.pixmap(32)
+        self.gitem = QtWidgets.QGraphicsPixmapItem(pixmap)
+
+        self.gitem.setPos(100, 100)
+        self.addToGroup(self.gitem)
+
+    # }}}
+
+    def mousePressEvent(self, e: QtWidgets.QGraphicsSceneMouseEvent):
         logger.debug(f"{self.__class__.__name__}.mousePressEvent()")
-        self.__onSettings()  # TODO: сделать нормальную кликабельную кнопку
-        # даже если надо будет не виджеты делать а график итем груп
-        # для каждого индикатора
+        super().mousePressEvent(e)
 
-    # }}}
+        # Dialog.info("Hello")
+        print("xxxx")
+
+        # return e.accept()
+        return e.ignore()
+
+    def mouseReleaseEvent(self, e: QtWidgets.QGraphicsSceneMouseEvent):
+        logger.debug(f"{self.__class__.__name__}.mouseReleaseEvent()")
+
+        super().mouseReleaseEvent(e)
+        return e.ignore()
 
 
 # }}}
@@ -317,6 +357,9 @@ class _ExtremumSettings(QtWidgets.QDialog):  # {{{
         if result == QtWidgets.QDialog.DialogCode.Rejected:
             return
 
+        if gextr is None:
+            return
+
         gextr.showInside(self.inside_checkbox.isChecked())
         gextr.showOutside(self.outside_checkbox.isChecked())
         gextr.showShortShapes(self.sshape_checkbox.isChecked())
@@ -325,34 +368,6 @@ class _ExtremumSettings(QtWidgets.QDialog):  # {{{
         gextr.showShortLines(self.sline_checkbox.isChecked())
         gextr.showMidLines(self.mline_checkbox.isChecked())
         gextr.showLongLines(self.lline_checkbox.isChecked())
-
-    # }}}
-    def drawOutside(self) -> bool:  # {{{
-        return self.outside_checkbox.isChecked()
-
-    # }}}
-    def drawShortShape(self) -> bool:  # {{{
-        return self.sshape_checkbox.isChecked()
-
-    # }}}
-    def drawMidShape(self) -> bool:  # {{{
-        return self.mshape_checkbox.isChecked()
-
-    # }}}
-    def drawLongShape(self) -> bool:  # {{{
-        return self.lshape_checkbox.isChecked()
-
-    # }}}
-    def drawShortLine(self) -> bool:  # {{{
-        return self.sline_checkbox.isChecked()
-
-    # }}}
-    def drawMidLine(self) -> bool:  # {{{
-        return self.mline_checkbox.isChecked()
-
-    # }}}
-    def drawLongLine(self) -> bool:  # {{{
-        return self.lline_checkbox.isChecked()
 
     # }}}
 

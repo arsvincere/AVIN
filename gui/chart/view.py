@@ -50,8 +50,7 @@ class ChartView(QtWidgets.QGraphicsView):
     # }}}
     def enterEvent(self, e: QtGui.QEnterEvent | None):  # {{{
         logger.debug(f"{self.__class__.__name__}.enterEvent()")
-        assert e is not None
-        super().enterEvent(e)
+        # super().enterEvent(e)
 
         self.__setCrossCursor()
         return e.ignore()
@@ -59,7 +58,6 @@ class ChartView(QtWidgets.QGraphicsView):
     # }}}
     def mousePressEvent(self, e: QtGui.QMouseEvent | None):  # {{{
         logger.debug(f"{self.__class__.__name__}.mousePressEvent()")
-        assert e is not None
         super().mousePressEvent(e)
 
         self.__setCrossCursor()
@@ -68,7 +66,6 @@ class ChartView(QtWidgets.QGraphicsView):
     # }}}
     def mouseReleaseEvent(self, e: QtGui.QMouseEvent | None):  # {{{
         logger.debug(f"{self.__class__.__name__}.mouseReleaseEvent()")
-        assert e is not None
         super().mouseReleaseEvent(e)
 
         self.__setCrossCursor()
@@ -77,7 +74,6 @@ class ChartView(QtWidgets.QGraphicsView):
     # }}}
     def mouseMoveEvent(self, e: QtGui.QMouseEvent | None):  # {{{
         logger.debug(f"{self.__class__.__name__}.mouseMoveEvent()")
-        assert e is not None
         super().mouseMoveEvent(e)
 
         # move labels
