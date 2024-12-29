@@ -78,11 +78,21 @@ class Auto:  # {{{
 # }}}
 class Cfg:  # {{{
     class Chart:  # {{{
-        BAR_WIDTH = 8
-        BAR_HEIGHT = 10  # px на 1% цены
-        BAR_INDENT = 1
-        CUNDLE_INDENT = 2
         SHADOW_WIDTH = 1
+
+        BAR_WIDTH = 8  # px
+        BAR_HEIGHT = 10  # px на 1% цены
+        BAR_INDENT = 1  # px
+        CUNDLE_INDENT = 2  # px
+
+        ZOOM_BAR_WIDTH = 4  # px
+        ZOOM_BAR_HEIGHT = 30  # px на 1% цены
+        ZOOM_BAR_INDENT = 1  # px
+        ZOOM_CUNDLE_INDENT = 2  # px
+
+        VOL_WIDTH = BAR_WIDTH
+        VOL_HEIGHT = 200  # px
+        VOL_INDENT = 3  # px
 
     # }}}
     class ShapeSize:
