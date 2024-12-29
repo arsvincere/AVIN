@@ -217,14 +217,13 @@ class _DataManager:
                 return
 
         # update all availible market data
-        logger.info(":: Auto update market data")
+        logger.info(":: Market data is not up to date, auto update started")
         await cls.updateAll()
         cls.__DATA_IS_UP_TO_DATE = True
 
         # save last update datetime
         dt = now().isoformat()
         Cmd.write(dt, cls.__LAST_UPDATE_FILE)
-        logger.info("Update complete")
 
     # }}}
     @classmethod  # __fillVoid  # {{{
