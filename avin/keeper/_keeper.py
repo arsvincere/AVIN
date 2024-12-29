@@ -819,6 +819,7 @@ class Keeper:
             FROM "Asset"
             WHERE
                 {pg_condition}
+            ORDER BY ticker
             ;
             """
         records = await cls.transaction(request)
@@ -1089,6 +1090,7 @@ class Keeper:
             FROM "Asset"
             WHERE
                 {pg_condition}
+            ORDER BY ticker
             ;
             """
         asset_records = await cls.transaction(request)
@@ -1150,6 +1152,7 @@ class Keeper:
             JOIN "Asset" ON "AssetList-Asset".figi = "Asset".figi
             WHERE
                 "AssetList-Asset".name = '{name}'
+            ORDER BY ticker
             ;
             """
         records = await cls.transaction(request)
