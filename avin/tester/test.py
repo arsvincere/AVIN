@@ -64,7 +64,7 @@ class Test:
 
     # }}}
     def __str__(self):  # {{{
-        return f"Test={self.name}"
+        return f"Test={self.__name}"
 
     # }}}
 
@@ -75,6 +75,7 @@ class Test:
     @name.setter
     def name(self, name: str):
         self.__name = name
+        self.__trade_list.name = f"{self}-trade_list"
 
     # }}}
     @property  # strategy  # {{{
@@ -283,9 +284,13 @@ class Test:
             logger.error(f"{new_name} already exist, cancel rename test")
             return None
 
-        await Test.delete(test)
+        await Test.delete(test)  # XXX: иначе гемор с трейд листом...
         test.name = new_name
         await Test.save(test)
+
+        # XXX: это хардкор конечно удалять тест ради переименования...
+        # но иначе надо тогда делать и TradeList.rename
+        # потом как нибудь.
 
         return test
 
@@ -312,6 +317,8 @@ class Test:
         copy.account = test.account
         copy.time_step = test.time_step
         copy.status = Test.Status.NEW
+
+        await cls.save(copy)
 
         return copy
 
