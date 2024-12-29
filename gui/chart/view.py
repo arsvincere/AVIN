@@ -84,7 +84,7 @@ class ChartView(QtWidgets.QGraphicsView):
 
         # move volumes
         height = self.size().height()
-        x = QtCore.QPointF(0, labels_pos.y() + height)
+        x = QtCore.QPointF(0, labels_pos.y() + height - 20)  # -20 scroll barX
         scene.volumes.setPos(x)
 
         return e.ignore()

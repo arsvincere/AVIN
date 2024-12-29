@@ -286,11 +286,11 @@ class GVol(QtWidgets.QGraphicsItemGroup):  # {{{
         logger.debug(f"{self.__class__.__name__}.__setColor()")
 
         if self.bar.isBull():
-            self.color = Theme.Chart.BULL
+            self.color = Theme.Chart.VOL_BULL
         elif self.bar.isBear():
-            self.color = Theme.Chart.BEAR
+            self.color = Theme.Chart.VOL_BEAR
         else:
-            self.color = Theme.Chart.UNDEFINE
+            self.color = Theme.Chart.VOL_UNDEFINE
 
     # }}}
     def __createBody(self):  # {{{
@@ -529,8 +529,8 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
 
         x0 = 0
         x100 = self.rect.width()
-        y0 = self.rect.height()
-        y100 = self.rect.height() - Cfg.Chart.VOL_HEIGHT
+        y0 = 0
+        y100 = -GVol.HEIGHT
         y50 = (y0 + y100) / 2
         y75 = (y50 + y100) / 2
         y25 = (y0 + y50) / 2
