@@ -67,7 +67,7 @@ class Summary:
     def save(cls, summary: Summary, file_path: str) -> None:
         logger.debug(f"{self.__class__.__name__}.__save()")
 
-        report.__df.to_csv(file_path, sep=";")
+        summary.__df.to_csv(file_path, sep=";")
 
     # }}}
 
