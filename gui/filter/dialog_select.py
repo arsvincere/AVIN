@@ -71,6 +71,9 @@ class FilterSelectDialog(QtWidgets.QDialog):  # {{{
         self.setStyleSheet(Css.DIALOG)
         self.setWindowTitle("AVIN")
 
+        self.setMinimumWidth(300)
+        self.setMinimumHeight(800)
+
     # }}}
     def __createWidgets(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
