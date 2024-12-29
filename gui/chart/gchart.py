@@ -278,8 +278,8 @@ class GVol(QtWidgets.QGraphicsItemGroup):  # {{{
         self.x1 = self.X1 - self.INDENT
         self.width = self.x1 - self.x0
         self.height = vol_percent * self.HEIGHT
-        self.y0 = gchart.rect.height()  # тупо внизу, потом сдвиг в ChartView
-        self.y1 = gchart.rect.height() - self.height
+        self.y0 = 0
+        self.y1 = self.height
 
     # }}}
     def __setColor(self):  # {{{
@@ -297,7 +297,7 @@ class GVol(QtWidgets.QGraphicsItemGroup):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createBody()")
 
         self.body = QtWidgets.QGraphicsRectItem(
-            self.x0, self.y1, self.width, self.height
+            self.x0, self.y0, self.width, -self.height
         )
         self.body.setPen(self.color)
         self.body.setBrush(self.color)
@@ -515,10 +515,11 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
         self.max_vol = Thread.getMaxVol(
             self.chart.instrument, self.chart.timeframe
         )
-        self.gvols = QtWidgets.QGraphicsItemGroup(self)
+        self.gvols = QtWidgets.QGraphicsItemGroup()
         for gbar in self.gbars:
             gvol = GVol(gbar)
             self.gvols.addToGroup(gvol)
+            gvol.setParentItem(self.gvols)
 
         self.addToGroup(self.gvols)
 

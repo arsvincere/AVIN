@@ -117,6 +117,7 @@ class ChartScene(QtWidgets.QGraphicsScene):
         self.setSceneRect(gchart.rect)
         self.addItem(gchart)
         self.gchart = gchart
+        self.volumes = gchart.gvols
         self.__has_chart = True
 
     # }}}
@@ -213,6 +214,7 @@ class ChartScene(QtWidgets.QGraphicsScene):
 
         self.__has_chart = False
         self.gchart = None
+        self.volumes = QtWidgets.QGraphicsItemGroup()
 
     # }}}
     def __createTListGroup(self):  # {{{

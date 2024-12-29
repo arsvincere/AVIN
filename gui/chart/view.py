@@ -77,10 +77,15 @@ class ChartView(QtWidgets.QGraphicsView):
         super().mouseMoveEvent(e)
 
         # move labels
-        p = self.mapToScene(0, 0)
         scene = self.scene()
         assert scene is not None
-        scene.labels.setPos(p)
+        labels_pos = self.mapToScene(0, 0)
+        scene.labels.setPos(labels_pos)
+
+        # move volumes
+        height = self.size().height()
+        x = QtCore.QPointF(0, labels_pos.y() + height)
+        scene.volumes.setPos(x)
 
         return e.ignore()
 
