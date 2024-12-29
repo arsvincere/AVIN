@@ -242,6 +242,72 @@ class GBarBehind(QtWidgets.QGraphicsItemGroup):  # {{{
 
 
 # }}}
+class GVol(QtWidgets.QGraphicsItemGroup):  # {{{
+    WIDTH = Cfg.Chart.VOL_WIDTH
+    HEIGHT = Cfg.Chart.VOL_HEIGHT
+    INDENT = Cfg.Chart.VOL_INDENT
+
+    def __init__(self, gbar: GBar):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QGraphicsItemGroup.__init__(self, gbar)
+
+        self.gbar = gbar
+        self.bar = gbar.bar
+        self.n = gbar.n
+        self.gchart = gbar.gchart
+
+        self.__calcCoordinates()
+        self.__setColor()
+        self.__createBody()
+
+    # }}}
+
+    def __calcCoordinates(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__calcCoordinates()")
+
+        gchart = self.gchart
+        max_vol = gchart.max_vol
+        vol = self.bar.vol
+        vol_percent = vol / max_vol
+
+        # full size without indent
+        self.X0 = gchart.xFromNumber(self.n)
+        self.X1 = self.X0 + self.WIDTH
+
+        self.x0 = self.X0 + self.INDENT
+        self.x1 = self.X1 - self.INDENT
+        self.width = self.x1 - self.x0
+        self.height = vol_percent * self.HEIGHT
+        self.y0 = gchart.rect.height()  # тупо внизу, потом сдвиг в ChartView
+        self.y1 = gchart.rect.height() - self.height
+
+    # }}}
+    def __setColor(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__setColor()")
+
+        if self.bar.isBull():
+            self.color = Theme.Chart.BULL
+        elif self.bar.isBear():
+            self.color = Theme.Chart.BEAR
+        else:
+            self.color = Theme.Chart.UNDEFINE
+
+    # }}}
+    def __createBody(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createBody()")
+
+        self.body = QtWidgets.QGraphicsRectItem(
+            self.x0, self.y1, self.width, self.height
+        )
+        self.body.setPen(self.color)
+        self.body.setBrush(self.color)
+
+        self.addToGroup(self.body)
+
+    # }}}
+
+
+# }}}
 class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
     __VIEW_TYPE = ViewType.BAR
 
@@ -250,7 +316,6 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
         QtWidgets.QGraphicsItemGroup.__init__(self, parent)
 
         self.chart = chart
-        self.gbars = list()
         self.behind_1H = list()
         self.behind_D = list()
         self.behind_W = list()
@@ -258,6 +323,8 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
 
         self.__createSceneRect()
         self.__createGBars()
+        self.__createGVols()
+        self.__createGVolsLevels()
 
         self.__indicators = list()
 
@@ -402,7 +469,7 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
     def yFromPrice(self, price) -> float:  # {{{
         logger.debug(f"{self.__class__.__name__}.yFromPrice()")
 
-        y = self.rect.height() - price * self.SCALE_Y + self.y_indent
+        y = self.rect.height() - price * self.SCALE_Y - self.y_indent / 2
         return y
 
     # }}}
@@ -424,7 +491,7 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
         y1 = int(self.chart.highestHigh() * self.SCALE_Y)
 
         self.x_indent = (x1 - x0) * 0.2  # доп.отступ 20%
-        self.y_indent = (y1 - y0) * 0.1  # доп.отступ 10%
+        self.y_indent = (y1 - y0) * 0.2  # доп.отступ 20%
 
         height = y1 - y0 + self.y_indent
         width = x1 - x0 + self.x_indent
@@ -434,10 +501,52 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
     def __createGBars(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createGBars()")
 
+        self.gbars = list()
         for n, bar in enumerate(self.chart, 0):
             gbar = GBar(bar, n, self)
             self.gbars.append(gbar)
             self.addToGroup(gbar)
+
+    # }}}
+    def __createGVols(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createGVols()")
+
+        # create volume rects
+        self.max_vol = Thread.getMaxVol(
+            self.chart.instrument, self.chart.timeframe
+        )
+        self.gvols = QtWidgets.QGraphicsItemGroup(self)
+        for gbar in self.gbars:
+            gvol = GVol(gbar)
+            self.gvols.addToGroup(gvol)
+
+        self.addToGroup(self.gvols)
+
+    # }}}
+    def __createGVolsLevels(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createGVolsLevels()")
+
+        x0 = 0
+        x100 = self.rect.width()
+        y0 = self.rect.height()
+        y100 = self.rect.height() - Cfg.Chart.VOL_HEIGHT
+        y50 = (y0 + y100) / 2
+        y75 = (y50 + y100) / 2
+        y25 = (y0 + y50) / 2
+
+        line_100 = QtWidgets.QGraphicsLineItem(x0, y100, x100, y100)
+        line_100.setPen(Theme.Chart.VOL_FRAME)
+        line_75 = QtWidgets.QGraphicsLineItem(x0, y75, x100, y75)
+        line_75.setPen(Theme.Chart.VOL_FRAME)
+        line_50 = QtWidgets.QGraphicsLineItem(x0, y50, x100, y50)
+        line_50.setPen(Theme.Chart.VOL_FRAME)
+        line_25 = QtWidgets.QGraphicsLineItem(x0, y25, x100, y25)
+        line_25.setPen(Theme.Chart.VOL_FRAME)
+
+        self.gvols.addToGroup(line_100)
+        self.gvols.addToGroup(line_75)
+        self.gvols.addToGroup(line_50)
+        self.gvols.addToGroup(line_25)
 
     # }}}
     def __drawBack_1H(self):  # {{{

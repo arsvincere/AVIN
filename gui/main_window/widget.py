@@ -202,8 +202,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def __initUI(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__initUI()")
 
-        self.ltool.tester.trigger()
+        self.ltool.asset.trigger()
         self.ltool.console.trigger()
+        self.ltool.summary.trigger()
         self.rtool.chart.trigger()
 
     # }}}

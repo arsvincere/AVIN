@@ -44,6 +44,7 @@ class Theme:
 
     class Chart:  # {{{
         BG = QtGui.QColor(Color.dragonBlack0)  # #0d0c0c
+        VOL_FRAME = QtGui.QColor(Color.dragonBlack1)
 
         BULL = QtGui.QColor("#98BB6C")  # kanagawa 4.2
         BEAR = QtGui.QColor("#FF5D62")  # kanagawa 5.3

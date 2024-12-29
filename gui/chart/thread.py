@@ -13,6 +13,7 @@ from datetime import datetime
 
 from PyQt6 import QtCore
 
+from avin.analytic import Analytic
 from avin.core import Chart, TimeFrame
 from avin.data import Instrument
 from avin.utils import logger
@@ -40,6 +41,28 @@ class Thread:  # {{{
         thread = _TAddMarker(gchart, mark)
         thread.start()
         awaitQThread(thread)
+
+    # }}}
+    @classmethod  # getMaxVol  # {{{
+    def getMaxVol(cls, instrument, timeframe) -> int:
+        logger.debug(f"{cls.__name__}.getMaxVol()")
+
+        thread = _TGetMaxVol(instrument, timeframe)
+        thread.start()
+        awaitQThread(thread)
+
+        return thread.result
+
+    # }}}
+    @classmethod  # getVolSizes  # {{{
+    def getVolSizes(cls, instrument, timeframe) -> int:
+        logger.debug(f"{cls.__name__}.getVolSizes()")
+
+        thread = _TGetVolSizes(instrument, timeframe)
+        thread.start()
+        awaitQThread(thread)
+
+        return thread.result
 
     # }}}
 
@@ -115,6 +138,74 @@ class _TAddMarker(QtCore.QThread):  # {{{
                 dt = chart.now.dt
                 gbar = gchart.barFromDatetime(dt)
                 gbar.addGShape(mark.shape)
+
+    # }}}
+
+
+# }}}
+class _TGetMaxVol(QtCore.QThread):  # {{{
+    def __init__(  # {{{
+        self,
+        instrument: Instrument,
+        timeframe: TimeFrame,
+        parent=None,
+    ):
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtCore.QThread.__init__(self, parent)
+
+        self.__instrument = instrument
+        self.__timeframe = timeframe
+
+        self.result = None
+
+    # }}}
+    def run(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.run()")
+
+        asyncio.run(self.__arun())
+
+    # }}}
+    async def __arun(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__arun()")
+
+        analytic = await Analytic.load("volume")
+        self.result = await analytic.maxVol(
+            self.__instrument, self.__timeframe
+        )
+
+    # }}}
+
+
+# }}}
+class _TGetVolSizes(QtCore.QThread):  # {{{
+    def __init__(  # {{{
+        self,
+        instrument: Instrument,
+        timeframe: TimeFrame,
+        parent=None,
+    ):
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtCore.QThread.__init__(self, parent)
+
+        self.__instrument = instrument
+        self.__timeframe = timeframe
+
+        self.result = None
+
+    # }}}
+    def run(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.run()")
+
+        asyncio.run(self.__arun())
+
+    # }}}
+    async def __arun(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__arun()")
+
+        analytic = await Analytic.load("volume")
+        self.result = await analytic.sizes(
+            self.__instrument, self.__timeframe
+        )
 
     # }}}
 

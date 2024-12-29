@@ -57,6 +57,7 @@ class AssetListWidget(QtWidgets.QWidget):  # {{{
         self.__config()
         self.__connect()
         self.__loadUserAssetLists()
+        self.__initUI()
 
     # }}}
     def currentAsset(self) -> Asset:  # {{{
@@ -115,6 +116,14 @@ class AssetListWidget(QtWidgets.QWidget):  # {{{
             self.__tool_bar.addAssetListName(list_name)
 
         self.__updateWidget()
+
+    # }}}
+    def __initUI(self):  # {{{
+        logger.debug("self.__class__.__name__.__initUI()")
+
+        alist = Thread.load("XX5")
+        if alist is not None:
+            self.__tree.setAssetList(alist)
 
     # }}}
 
@@ -450,6 +459,7 @@ class _AssetListTree(QtWidgets.QTreeWidget):  # {{{
         return iter(items)
 
     # }}}
+
     def currentAsset(self) -> Asset:  # {{{
         logger.debug(f"{self.__class__.__name__}.currentAsset()")
 
@@ -518,6 +528,7 @@ class _AssetListTree(QtWidgets.QTreeWidget):  # {{{
         return e.ignore()
 
     # }}}
+
     def __createMenu(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createContextMenu()")
         self.__action_add = QtGui.QAction("Add", self)
@@ -537,6 +548,10 @@ class _AssetListTree(QtWidgets.QTreeWidget):  # {{{
         self.setStyleSheet(Css.TREE)
         self.header().setStyleSheet(Css.TREE_HEADER)
         self.setContentsMargins(0, 0, 0, 0)
+
+        self.setColumnWidth(0, 70)
+        self.setColumnWidth(1, 250)
+        self.setMinimumWidth(400)
 
     # }}}
     def __connect(self):  # {{{
@@ -562,6 +577,7 @@ class _AssetListTree(QtWidgets.QTreeWidget):  # {{{
             self.__action_info.setEnabled(True)
 
     # }}}
+
     @QtCore.pyqtSlot()  # __onAdd{{{
     def __onAdd(self):
         logger.debug(f"{self.__class__.__name__}.__onAdd()")
