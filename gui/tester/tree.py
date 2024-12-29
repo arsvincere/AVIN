@@ -225,7 +225,9 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
     def __onCopy(self):
         logger.debug(f"{self.__class__.__name__}.__onCopy()")
 
-        new_name = Dialog.name("New name...")
+        test = self.__current_item.test
+
+        new_name = Dialog.name(test.name)
         if not new_name:
             return
 
