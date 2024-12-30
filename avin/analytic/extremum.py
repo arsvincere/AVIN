@@ -152,11 +152,68 @@ class ExtremumList:  # {{{
         return self.__longterm
 
     # }}}
-    @property  # {{{
+    @property  # chart  # {{{
     def chart(self) -> Chart:
         return self.__chart
 
     # }}}
+
+    def sTrend(self, length=0) -> Trend | None:  # {{{
+        assert length >= 0
+
+        if (len(self.__midterm) - 1) < length:
+            return None
+
+        if length == 0:
+            extremums = [self.__shortterm[-1]]
+        else:
+            start = -length - 1
+            extremums = self.__shortterm[start:]
+
+        trend = Trend(extremums)
+        return trend
+
+    # }}}
+    def mTrend(self, length=0) -> Trend | None:  # {{{
+        assert length >= 0
+
+        if (len(self.__midterm) - 1) < length:
+            return None
+
+        if length == 0:
+            extremums = [self.__midterm[-1]]
+        else:
+            start = -length - 1
+            extremums = self.__midterm[start:]
+
+        trend = Trend(extremums)
+        return trend
+
+    # }}}
+    def lTrend(self, length=0) -> Trend | None:  # {{{
+        assert length >= 0
+
+        if (len(self.__midterm) - 1) < length:
+            return None
+
+        if length == 0:
+            extremums = [self.__longterm[-1]]
+        else:
+            start = -length - 1
+            extremums = self.__longterm[start:]
+
+        trend = Trend(extremums)
+        return trend
+
+    # }}}
+
+    def sSupport(self, length=0) -> Level: ...
+    def mSupport(self, length=0) -> Level: ...
+    def lSupport(self, length=0) -> Level: ...
+
+    def sResist(self, length=0) -> Level: ...
+    def mResist(self, length=0) -> Level: ...
+    def lResist(self, length=0) -> Level: ...
 
     def update(self) -> None:  # {{{
         self.__markInsideDays()
@@ -167,76 +224,59 @@ class ExtremumList:  # {{{
         self.__updateLongterm()
 
     # }}}
-    # def midDelta(self) -> float:{{{
-    #     extr = self.__midterm
-    #     if len(extr) >= 3:
-    #         return extr[-1] - extr[-3]
-    #     else:
-    #         return None
-    #
-    # def midSpeed(self) -> bool:
-    #     delta = self.midDelta()
-    #     if delta is not None:
-    #         percent = delta / self.__midterm[-1]
-    #         tf = self.__chart.timeframe
-    #         prev = self.__midterm[-3].dt
-    #         cur = self.__midterm[-1].dt
-    #         # TODO: через выходные перенос тогда будет искажено значение
-    #         # надо наверное все таки пронумеровать бары
-    #         bars_count = (cur - prev) / tf
-    #         speed = percent / bars_count
-    #         return speed
-    #     else:
-    #         return None
-    #
-    # def isMidTrendBull(self) -> bool:
-    #     extr = self.__midterm
-    #     if (len(extr) >= 4
-    #         # Прошлый экстремум больше позапрошлого (бычий тренд)
-    #         and extr[-1] > extr[-3]
-    #         # Разница экстремумов больше __ %
-    #         and abs(extr[-1] - extr[-3]) / chart.last.close * 100 > 3
-    #         # Добавим что минимумы и максимумы идут по восходящей
-    #         and extr[-2] > extr[-4]
-    #         # Разница экстремумов больше __ %
-    #         and abs(extr[-2] - extr[-4]) / chart.last.close * 100 > 3
-    #         ):
-    #         return True
-    #     else:
-    #         return False
-    #
-    # def isMidTrendBear(self) -> bool:
-    #     extr = self.__midterm
-    #     if (len(extr) >= 4
-    #         # Прошлый экстремум меньше позапрошлого (медвежий тренд)
-    #         and extr[-1] < extr[-3]
-    #         # Разница экстремумов больше __ %
-    #         and abs(extr[-1] - extr[-3]) / chart.last.close * 100 > 3
-    #         # Добавим что и минимумы и максимумы идут по нисходящей
-    #         and extr[-2] < extr[-4]
-    #         # Разница экстремумов больше __ %
-    #         and abs(extr[-2] - extr[-4]) / chart.last.close * 100 > 3
-    #         ):
-    #         return True
-    #     else:
-    #         return False
-    #
-    # }}}
 
+    @classmethod  # deltaAbs  # {{{
+    def deltaAbs(cls, e1: Extremum, e2: Extremum) -> float:
+        assert e1.dt < e2.dt
+
+        delta = abs(e2.price - e1.price)
+
+        return delta
+
+    # }}}
+    @classmethod  # deltaPercent  # {{{
+    def deltaPercent(cls, e1: Extremum, e2: Extremum) -> float:
+        assert e1.dt < e2.dt
+
+        delta = e2.price - e1.price
+        percent = delta / e1.price * 100
+
+        return round(percent, 2)
+
+    # }}}
+    @classmethod  # speedAbs  # {{{
+    def speedAbs(cls, e1: Extremum, e2: Extremum) -> float:
+        assert e1.dt < e2.dt
+
+        delta = e2.price - e1.price
+        period = cls.period(e1, e2)
+        speed = delta / period
+
+        return round(speed, 2)
+
+    # }}}
     @classmethod  # speedPercent  # {{{
     def speedPercent(cls, e1: Extremum, e2: Extremum) -> float:
         assert e1.dt < e2.dt
 
         delta = e2.price - e1.price
         percent = delta / e1.price * 100
+        period = cls.period(e1, e2)
+        speed = percent / period
+
+        return round(speed, 2)
+
+    # }}}
+    @classmethod  # period  # {{{
+    def period(cls, e1: Extremum, e2: Extremum) -> int:
+        assert e1.dt < e2.dt
 
         chart = e1.bar.chart
         index1 = chart.getIndex(e1.bar)
         index2 = chart.getIndex(e2.bar)
         period = index2 - index1 + 1
 
-        speed = percent / period
-        return round(speed, 2)
+        return period
 
     # }}}
 
@@ -409,6 +449,92 @@ class ExtremumList:  # {{{
                 self.__longterm.append(e)
             i += 1
         self.__popRepeatedExtr(self.__longterm)
+
+    # }}}
+
+
+# }}}
+class Trend:  # {{{
+    def __init__(self, extremums: list[Extremum]):  # {{{
+        assert len(extremums) > 0
+        self.__extremums = extremums
+
+    # }}}
+    def __len__(self):  # {{{
+        """Количество ребер в тренде
+
+        Если в тренде 4 экстремума, это дает 3 ребра...
+        Если в тренде 3 экстремума, то 2 ребра...
+        Если в тренде 2 экстремума, то 1 ребро...
+        Если в тренде 1 экстремум, то 0 - не сформировано, не подтверждено
+
+        """
+        return len(self.__extremums) - 1
+
+    # }}}
+    def __getitem__(self, n: int) -> Trend:  # {{{
+        assert n <= len(self)
+
+        # n=0 - последнее незавершенное ребро тренда
+        if n == 0:
+            e1 = self.__extremums[-1]
+            return Trend([e1])
+
+        # n > 0
+        start = -n - 1
+        stop = -n
+        return Trend(self.__extremums[start:stop])
+
+    # }}}
+
+    def isBull(self) -> bool:  # {{{
+        assert len(self) == 1
+
+        e1 = self.__extremums[0]
+        e2 = self.__extremums[1]
+
+        return e2.price > e1.price
+
+    # }}}
+    def isBear(self) -> bool:  # {{{
+        assert len(self) == 1
+
+        e1 = self.__extremums[0]
+        e2 = self.__extremums[1]
+
+        return e2.price < e1.price
+
+    # }}}
+    def deltaAbs(self) -> float:  # {{{
+        assert len(self) == 1
+
+        e1 = self.__extremums[0]
+        e2 = self.__extremums[1]
+        return ExtremumList.deltaAbs(e1, e2)
+
+    # }}}
+    def deltaPercent(self) -> float:  # {{{
+        assert len(self) == 1
+
+        e1 = self.__extremums[0]
+        e2 = self.__extremums[1]
+        return ExtremumList.deltaPercent(e1, e2)
+
+    # }}}
+    def speedAbs(self) -> float:  # {{{
+        assert len(self) == 1
+
+        e1 = self.__extremums[0]
+        e2 = self.__extremums[1]
+        return ExtremumList.speedAbs(e1, e2)
+
+    # }}}
+    def speedPercent(self) -> float:  # {{{
+        assert len(self) == 1
+
+        e1 = self.__extremums[0]
+        e2 = self.__extremums[1]
+        return ExtremumList.speedPercent(e1, e2)
 
     # }}}
 
