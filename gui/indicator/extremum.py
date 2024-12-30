@@ -273,13 +273,14 @@ class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
             e1 = points[i].info["extr"]
             e2 = points[i + 1].info["extr"]
             speed = ExtremumList.speedPercent(e1, e2)
+            delta = ExtremumList.deltaPercent(e1, e2)
 
             e2_x = points[i + 1].info["spos"].x()
             e2_y = points[i + 1].info["spos"].y()
             y = e2_y * 0.98 if e2.isMax() else e2_y * 1.01
             label_pos = QtCore.QPointF(e2_x, y)
 
-            label = QtWidgets.QLabel(f"{speed}")
+            label = QtWidgets.QLabel(f"{delta} / {speed}")
             label.setStyleSheet(Css.TRADE_LABEL)
             glabel = QtWidgets.QGraphicsProxyWidget()
             glabel.setWidget(label)
@@ -531,15 +532,15 @@ class _ExtremumSettings(QtWidgets.QDialog):  # {{{
         self.outside_checkbox.setChecked(False)
 
         self.sshape_checkbox.setChecked(False)
-        self.mshape_checkbox.setChecked(True)
-        self.lshape_checkbox.setChecked(True)
+        self.mshape_checkbox.setChecked(False)
+        self.lshape_checkbox.setChecked(False)
 
         self.sline_checkbox.setChecked(True)
         self.mline_checkbox.setChecked(True)
         self.lline_checkbox.setChecked(True)
 
         self.sspeed_checkbox.setChecked(False)
-        self.mspeed_checkbox.setChecked(True)
+        self.mspeed_checkbox.setChecked(False)
         self.lspeed_checkbox.setChecked(False)
 
     # }}}
