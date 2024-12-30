@@ -904,11 +904,14 @@ class Keeper:
                 data."DataInfo".type,
                 data."DataInfo".first_dt,
                 data."DataInfo".last_dt,
-                "Asset".info
+                "Asset".info,
+                "Asset".ticker
             FROM data."DataInfo"
             JOIN "Asset" ON data."DataInfo".figi = "Asset".figi
             WHERE
-                {pg_figi} AND {pg_data_type};
+                {pg_figi} AND {pg_data_type}
+            ORDER BY "Asset".ticker
+            ;
             """
 
         records = await cls.transaction(request)
