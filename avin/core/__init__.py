@@ -31,6 +31,7 @@ from avin.core.order import (
 )
 from avin.core.range import Range
 from avin.core.risk import Risk
+from avin.core.size import Size
 from avin.core.strategy import (
     Strategy,
     StrategyList,
@@ -78,4 +79,5 @@ __all__ = (
     "Summary",
     "Filter",
     "Risk",
+    "Size",
 )

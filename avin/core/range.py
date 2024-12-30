@@ -6,16 +6,14 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-"""Doc"""
-
 from __future__ import annotations
 
 import enum
 
 
-class Range:  # {{{
-    """doc# {{{
-    Закрытый диапазон [min, max]
+class Range:
+    """Закрытый диапазон [min, max]
+
     Представляет части бара - тело, тени или весь диапазон бара.
 
     Example:
@@ -30,56 +28,12 @@ class Range:  # {{{
     print(10.9 in body)  # True
     """
 
-    # }}}
-
     class Type(enum.Enum):  # {{{
         UNDEFINE = 0
         FULL = 1
         BODY = 2
         UPPER = 3
         LOWER = 4
-
-    # }}}
-    class Size(enum.Enum):  # {{{
-        UNDEFINE = None
-        BLACKSWAN_SMALL = -7
-        ANOMAL_SMALL = -6
-        EXTRA_SMALL = -5
-        VERY_SMALL = -4
-        SMALLEST = -3
-        SMALLER = -2
-        SMALL = -1
-        NORMAL = 0
-        BIG = 1
-        BIGGER = 2
-        BIGGEST = 3
-        VERY_BIG = 4
-        EXTRA_BIG = 5
-        ANOMAL_BIG = 6
-        BLACKSWAN_BIG = 7
-
-        @classmethod  # fromStr#{{{
-        def fromStr(cls, string_size: str):
-            sizes = {
-                "BLACKSWAN_SMALL": Range.Size.BLACKSWAN_SMALL,
-                "ANOMAL_SMALL": Range.Size.ANOMAL_SMALL,
-                "EXTRA_SMALL": Range.Size.EXTRA_SMALL,
-                "VERY_SMALL": Range.Size.VERY_SMALL,
-                "SMALLEST": Range.Size.SMALLEST,
-                "SMALLER": Range.Size.SMALLER,
-                "SMALL": Range.Size.SMALL,
-                "NORMAL": Range.Size.NORMAL,
-                "BIG": Range.Size.BIG,
-                "BIGGER": Range.Size.BIGGER,
-                "BIGGEST": Range.Size.BIGGEST,
-                "VERY_BIG": Range.Size.VERY_BIG,
-                "EXTRA_BIG": Range.Size.EXTRA_BIG,
-                "ANOMAL_BIG": Range.Size.ANOMAL_BIG,
-                "BLACKSWAN_BIG": Range.Size.BLACKSWAN_BIG,
-            }
-            return sizes[string_size]
-
-        # }}}
 
     # }}}
 
@@ -258,9 +212,6 @@ class Range:  # {{{
         return Range(self.__min + 3 * quarter, self.__max)
 
     # }}}
-
-
-# }}}
 
 
 if __name__ == "__main__":

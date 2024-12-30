@@ -62,6 +62,19 @@ def test_Range():  # {{{
 
 
 # }}}
+def test_Size():  # {{{
+    b = Size.BIG
+    n = Size.NORMAL
+    s = Size.SMALL
+
+    assert s < b
+    assert n <= b
+    assert b > s
+    assert b >= n
+    assert n == Size.NORMAL
+
+
+# }}}
 def test_Bar():  # {{{
     dt = datetime.fromisoformat("2023-01-01")
     bar = Bar(dt, 10, 12, 9, 11, 1000, chart=None)
