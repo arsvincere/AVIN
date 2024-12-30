@@ -23,14 +23,12 @@ from avin.utils import logger
 # а сравнивать везде таймдельты это же бOльшие накладные расходы...
 
 
-class TimeFrame:
-    """doc# {{{
-    Реализует таймфрейм.
+class TimeFrame:  # {{{
+    """Реализует таймфрейм.
 
     Обертка datetime.timedelta
     """
 
-    # }}}
     ALL = []  # initializated below class
 
     def __init__(self, string):  # {{{
@@ -169,7 +167,7 @@ class TimeFrame:
             )
 
     # }}}
-    def __mul__(self, other):  # operator *{{{
+    def __mul__(self, other):  # operator *  # {{{
         if isinstance(other, int):
             return self.__period * other
         else:
@@ -178,7 +176,7 @@ class TimeFrame:
             )
 
     # }}}
-    def __rmul__(self, other):  # operator *{{{
+    def __rmul__(self, other):  # operator *  # {{{
         if isinstance(other, int):
             return self.__period * other
         else:
@@ -221,7 +219,8 @@ TimeFrame.ALL = [
 ]
 
 
-class TimeFrameList:
+# }}}
+class TimeFrameList:  # {{{
     def __init__(self, timeframes: Optional[list[TimeFrame]] = None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
 
@@ -297,6 +296,6 @@ class TimeFrameList:
 
 # }}}
 
-
+# }}}
 if __name__ == "__main__":
     ...
