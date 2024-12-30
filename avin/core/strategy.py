@@ -203,27 +203,22 @@ class Strategy(ABC):  # {{{
 
     # }}}
     async def createMarketOrder(  # {{{
-        self, direction: Direction, instrument: Instrument, lots: int
+        self, trade: Trade, direction: Direction, lots: int
     ) -> MarketOrder:
         logger.debug("Strategy.createMarketOrder()")
-
-        # TODO:
-        # идея - передавать сюда trade, direction, lots
-        # из них можно достать всю информацию, а во вторых
-        # тут можно будет сразу связывание ордера с трейдом
-        # сделать и в юзер стратегии не надо будет думать
-        # об этих деталях реализации
 
         order = MarketOrder(
             account_name=self.account.name,
             direction=direction,
-            instrument=instrument,
+            instrument=trade.instrument,
             lots=lots,
-            quantity=lots * instrument.lot,
+            quantity=lots * trade.instrument.lot,
             status=Order.Status.NEW,
             order_id=Id.newId(),
         )
-        # logger.info(f"  {self} create order {order}")
+
+        # связываем этот ордер с трейдом
+        await trade.attachOrder(order)
 
         await Order.save(order)
         return order
@@ -231,8 +226,8 @@ class Strategy(ABC):  # {{{
     # }}}
     async def createLimitOrder(  # {{{
         self,
+        trade: Trade,
         direction: Direction,
-        instrument: Instrument,
         lots: int,
         price: float,
     ) -> LimitOrder:
@@ -241,14 +236,16 @@ class Strategy(ABC):  # {{{
         order = LimitOrder(
             account_name=self.account.name,
             direction=direction,
-            instrument=instrument,
+            instrument=trade.instrument,
             lots=lots,
-            quantity=lots * instrument.lot,
+            quantity=lots * trade.instrument.lot,
             price=price,
             status=Order.Status.NEW,
             order_id=Id.newId(),
         )
-        # logger.info(f"  {self} create order {order}")
+
+        # связываем этот ордер с трейдом
+        await trade.attachOrder(order)
 
         await Order.save(order)
         return order
