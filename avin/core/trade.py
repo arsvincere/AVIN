@@ -758,6 +758,8 @@ class TradeList:  # {{{
     @property  # parent_tlist# {{{
     def parent_tlist(self) -> TradeList | None:
         """Return parent_tlist trade list"""
+        # TODO: rename -> parent_list
+        # для общности интерфейсов между всему подобными классами
         return self.__parent
 
     # }}}
