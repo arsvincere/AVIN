@@ -40,7 +40,6 @@ class Dir:  # {{{
 class Res:  # {{{
     """Resource subdirectories"""
 
-    CACHE = os.path.join(Dir.RES, "cache")
     ICON = os.path.join(Dir.RES, "icon")
     LOGO = os.path.join(Dir.RES, "logo")
     DOWNLOAD = os.path.join(Dir.RES, "download")

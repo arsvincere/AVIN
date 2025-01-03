@@ -16,9 +16,9 @@ import moexalgo
 
 from avin.config import Auto, Usr
 from avin.const import ONE_DAY, ONE_WEEK
-from avin.data._abstract_source import _AbstractDataSource
-from avin.data._bar import _Bar, _BarsData
-from avin.data._cache import _InstrumentsInfoCache
+from avin.data.abstract_source import _AbstractDataSource
+from avin.data.bar import _Bar, _BarsData
+from avin.data.cache import _InstrumentsInfoCache
 from avin.data.data_source import DataSource
 from avin.data.data_type import DataType
 from avin.data.exchange import Exchange
@@ -60,7 +60,10 @@ class _MoexData(_AbstractDataSource):
         if not await cls.__authorizate():
             return
 
-        types = ["index", "shares", "currency", "futures"]
+        # types = ["index", "shares", "currency", "futures"]
+        # NOTE: caching only indexes
+        # Нет смысла кэшировать другие потому что там один хер нет figi
+        types = ["index"]
         for t in types:
             logger.info(f"   - caching {t}")
             response = cls.__requestAvailibleInstruments(t)
@@ -319,7 +322,7 @@ class _MoexData(_AbstractDataSource):
                 # Indexes not have 'figi', but I'm use figi in class
                 # Instrument - base identificator for all assets
                 # for use search by figi, I'm add in to indices
-                # not real global figi, its only my local idea,
+                # not real global figi, its only my local value,
                 # figi = "_<exchane_name>_<ticker>"
                 info["figi"] = f"_MOEX_{i['SECID']}"
 

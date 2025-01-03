@@ -12,8 +12,8 @@ import tinkoff.invest as ti
 
 from avin.config import Auto, Usr
 from avin.const import Res
-from avin.data._abstract_source import _AbstractDataSource
-from avin.data._cache import _InstrumentsInfoCache
+from avin.data.abstract_source import _AbstractDataSource
+from avin.data.cache import _InstrumentsInfoCache
 from avin.data.data_source import DataSource
 from avin.data.data_type import DataType
 from avin.data.exchange import Exchange
@@ -111,10 +111,19 @@ class _TinkoffData(_AbstractDataSource):
     ) -> datetime:
         logger.debug(f"{cls.__name__}.firstDateTime()")
 
+        # request instruments info
+        instruments_info = await Keeper.info(
+            cls.source,
+            instrument.type,
+            figi=instrument.figi,
+        )
+        assert len(instruments_info) == 1
+        info = instruments_info[0]
+
         if data_type.value == "1M":
-            return instrument.info["first_1m_bar_date"]
+            return info["first_1m_bar_date"]
         elif data_type.value == "D":
-            return instrument.info["first_d_bar_date"]
+            return info["first_d_bar_date"]
 
     # }}}
     @classmethod  # download  # {{{

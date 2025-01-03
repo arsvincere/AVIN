@@ -12,172 +12,71 @@ COMMENT ON SCHEMA public
 GRANT USAGE ON SCHEMA public TO PUBLIC;
 GRANT ALL ON SCHEMA public TO pg_database_owner;
 -- }}}
-CREATE TABLE IF NOT EXISTS "Exchange" ( -- {{{
-    name text PRIMARY KEY
-    );
-    INSERT INTO "Exchange" (name)
-    VALUES
-        ('MOEX'),
-        ('SPB');
--- }}}
+
 CREATE TABLE IF NOT EXISTS "Asset" ( -- {{{
-    figi text PRIMARY KEY,
-    type "Instrument.Type" NOT NULL,
-    exchange text REFERENCES "Exchange"(name),
-    ticker text NOT NULL,
-    name text NOT NULL,
-    info jsonb NOT NULL
+    figi text PRIMARY KEY
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "AssetList" ( -- {{{
-    name text PRIMARY KEY
+    asset_list_name text PRIMARY KEY
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "AssetList-Asset" ( -- {{{
-    name text REFERENCES "AssetList"(name) ON DELETE CASCADE ON UPDATE CASCADE,
+    asset_list_name text REFERENCES "AssetList"(asset_list_name)
+        ON DELETE CASCADE ON UPDATE CASCADE,
     figi text REFERENCES "Asset"(figi)
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "Strategy" ( -- {{{
-    name text NOT NULL,
+    strategy_name text NOT NULL,
     version text NOT NULL,
-    PRIMARY KEY (name, version)
+    PRIMARY KEY (strategy_name, version)
     );
-    INSERT INTO "Strategy" (name, version)
+    INSERT INTO "Strategy" (strategy_name, version)
     VALUES
         ('Every', 'minute'),
         ('Every', 'five'),
         ('Every', 'day');
 -- }}}
 CREATE TABLE IF NOT EXISTS "StrategySet" ( -- {{{
-    name text PRIMARY KEY
+    strategy_set_name text PRIMARY KEY
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "StrategySet-Strategy" ( -- {{{
-    name        text REFERENCES "StrategySet"(name) ON UPDATE CASCADE,
-    strategy    text,
-    version     text,
-    FOREIGN KEY (strategy, version) REFERENCES "Strategy" (name, version) ON UPDATE CASCADE,
-    figi        text REFERENCES "Asset"(figi),
-    long        bool NOT NULL,
-    short       bool NOT NULL
+    strategy_set_name   text REFERENCES "StrategySet"(strategy_set_name)
+        ON UPDATE CASCADE,
+    strategy            text,
+    version             text,
+    figi                text REFERENCES "Asset"(figi),
+    long                bool NOT NULL,
+    short               bool NOT NULL,
+    FOREIGN KEY (strategy, version)
+        REFERENCES "Strategy" (strategy_name, version) ON UPDATE CASCADE
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "Broker" ( -- {{{
-    name text PRIMARY KEY
+    broker_name text PRIMARY KEY
     );
-    INSERT INTO "Broker" (name)
+    INSERT INTO "Broker" (broker_name)
     VALUES
         ('_VirtualBroker'),
         ('Tinkoff');
 -- }}}
 CREATE TABLE IF NOT EXISTS "Account" ( -- {{{
-    name text PRIMARY KEY,
-    broker text REFERENCES "Broker"(name) ON UPDATE CASCADE
+    account_name text PRIMARY KEY,
+    broker text REFERENCES "Broker"(broker_name) ON UPDATE CASCADE
     );
-    INSERT INTO "Account" (name, broker)
+    INSERT INTO "Account" (account_name, broker)
     VALUES
         ('_backtest', '_VirtualBroker'),
         ('_unittest', '_VirtualBroker'),
         ('Alex', 'Tinkoff'),
         ('Agni', 'Tinkoff');
 -- }}}
-CREATE TABLE IF NOT EXISTS "TradeList" ( -- {{{
-    name text PRIMARY KEY
-    );
-    INSERT INTO "TradeList" (name)
-    VALUES
-        ('_unittest');
-
--- }}}
-CREATE TABLE IF NOT EXISTS "Trade" ( -- {{{
-    trade_id    text PRIMARY KEY,
-    trade_list  text REFERENCES "TradeList"(name) ON UPDATE CASCADE,
-    figi        text REFERENCES "Asset"(figi),
-    strategy    text NOT NULL,
-    version     text NOT NULL,
-    FOREIGN KEY (strategy, version) REFERENCES "Strategy" (name, version) ON UPDATE CASCADE,
-    dt          TIMESTAMP WITH TIME ZONE NOT NULL,
-    status      "Trade.Status" NOT NULL,
-    type        "Trade.Type" NOT NULL,
-    info        jsonb NOT NULL
-    );
--- }}}
-CREATE TABLE IF NOT EXISTS "Order" ( -- {{{
-    order_id        text PRIMARY KEY,
-    trade_id        text REFERENCES "Trade"(trade_id) ON DELETE CASCADE,
-    account         text REFERENCES "Account"(name) ON UPDATE CASCADE,
-    figi            text REFERENCES "Asset"(figi),
-
-    type            "Order.Type",
-    status          "Order.Status",
-    direction       "Direction",
-
-    lots            integer,
-    quantity        integer,
-    price           float,
-    stop_price      float,
-    exec_price      float,
-    exec_lots       integer,
-    exec_quantity   integer,
-
-    meta            text,
-    broker_id       text
-    );
--- }}}
-CREATE TABLE IF NOT EXISTS "Transaction" ( -- {{{
-    order_id        text REFERENCES "Order"(order_id) ON DELETE CASCADE,
-    dt              TIMESTAMP WITH TIME ZONE,
-    price           float,
-    quantity        integer,
-    broker_id       text
-    );
--- }}}
-CREATE TABLE IF NOT EXISTS "Operation" ( -- {{{
-    operation_id    text PRIMARY KEY,
-    order_id        text REFERENCES "Order"(order_id) ON DELETE CASCADE,
-    trade_id        text REFERENCES "Trade"(trade_id) ON DELETE CASCADE,
-    account         text REFERENCES "Account"(name) ON UPDATE CASCADE,
-    figi            text REFERENCES "Asset"(figi),
-    dt              TIMESTAMP WITH TIME ZONE,
-    direction       "Direction",
-    lots            integer,
-    quantity        integer,
-    price           float,
-    amount          float,
-    commission      float,
-    meta            text
-    );
--- }}}
-CREATE TABLE IF NOT EXISTS "Test" ( -- {{{
-    name            text PRIMARY KEY,
-    strategy        text,
-    version         text,
-    FOREIGN KEY (strategy, version) REFERENCES "Strategy" (name, version) ON UPDATE CASCADE,
-    figi            text REFERENCES "Asset"(figi),
-    enable_long     bool NOT NULL,
-    enable_short    bool NOT NULL,
-    trade_list      text REFERENCES "TradeList"(name) ON UPDATE CASCADE,
-    account         text REFERENCES "Account"(name) ON UPDATE CASCADE,
-    status          "Test.Status" NOT NULL,
-    deposit         float NOT NULL,
-    commission      float NOT NULL,
-    begin_date      date NOT NULL,
-    end_date        date NOT NULL,
-    description     text NOT NULL
-    );
--- }}}
-CREATE TABLE IF NOT EXISTS "Trader" ( -- {{{
-    name            text PRIMARY KEY,
-    account         text REFERENCES "Account"(name) ON UPDATE CASCADE,
-    strategy_set    text REFERENCES "StrategySet"(name) ON UPDATE CASCADE,
-    trade_list      text REFERENCES "TradeList"(name) ON UPDATE CASCADE
-    );
--- }}}
 CREATE TABLE IF NOT EXISTS "AnalyticData" ( -- {{{
     analytic_name   text,
     figi            text REFERENCES "Asset"(figi),
-    PRIMARY KEY     (analytic_name, figi),
-    data            jsonb NOT NULL
+    analyse_json    jsonb NOT NULL,
+    PRIMARY KEY     (analytic_name, figi)
     );
 -- }}}

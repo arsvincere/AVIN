@@ -28,7 +28,7 @@ class DataSource(enum.Enum):
     # }}}
     @classmethod  # fromRecord  # {{{
     def fromRecord(cls, record: asyncpg.Record) -> DataSource:
-        string = record["source"]
+        string = record["data_source"]
         source = cls.fromStr(string)
         return source
 

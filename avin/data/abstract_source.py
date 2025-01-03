@@ -11,7 +11,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from datetime import datetime
 
-from avin.data._bar import _Bar
+from avin.data.bar import _Bar
 from avin.data.data_type import DataType
 from avin.data.instrument import Instrument
 

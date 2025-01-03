@@ -17,18 +17,9 @@ from avin.data.instrument import Instrument
 from avin.keeper import Keeper
 from avin.utils import logger
 
-# TODO: перемудрил...
-# DataInfo - это должна быть одна нода, один элемент про один актив один тип
-# DataInfoList - это уже список этих элементов
-# По аналогии с Asset AssetList
-# а тут у тебя порно сильно отличное от остального кода
-# надо переименовать и обновить gui и keeper
-# DataInfoNode -> DataInfo
-# DataInfo -> DataInfoList
 
-
-@dataclass  # DataInfoNode  # {{{
-class DataInfoNode:
+@dataclass  # DataInfo  # {{{
+class DataInfo:
     source: DataSource
     instrument: Instrument
     data_type: DataType
@@ -36,12 +27,14 @@ class DataInfoNode:
     last_dt: datetime
 
     @classmethod  # fromRecord  # {{{
-    def fromRecord(cls, record: asyncpg.Record) -> _BarsDataInfo:
+    async def fromRecord(cls, record: asyncpg.Record) -> _BarsDataInfo:
         logger.debug(f"{cls.__name__}.fromRecord()")
+
+        instrument = await Instrument.fromFigi(record["figi"])
 
         data_info_node = cls(
             source=DataSource.fromRecord(record),
-            instrument=Instrument.fromRecord(record),
+            instrument=instrument,
             data_type=DataType.fromRecord(record),
             first_dt=record["first_dt"],
             last_dt=record["last_dt"],
@@ -52,7 +45,7 @@ class DataInfoNode:
     @classmethod  # load  # {{{
     async def load(
         cls, instrument: Instrument, data_type: DataType
-    ) -> DataInfoNode | None:
+    ) -> DataInfo | None:
         logger.debug(f"{cls.__name__}.load()")
 
         node = await Keeper.get(
@@ -64,15 +57,15 @@ class DataInfoNode:
 
 
 # }}}
-class DataInfo:  # {{{
+class DataInfoList:  # {{{
     def __init__(self, nodes: Optional[list] = None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
-        self.__nodes: list[DataInfoNode] = nodes if nodes else list()
+        self.__nodes: list[DataInfo] = nodes if nodes else list()
 
     # }}}
     def __getitem__(  # {{{
         self, instrument: Instrument
-    ) -> list[DataInfoNode]:
+    ) -> list[DataInfo]:
         selected = list()
         for i in self.__nodes:
             if i.instrument == instrument:
@@ -89,16 +82,16 @@ class DataInfo:  # {{{
         return len(self.__nodes)
 
     # }}}
-    def add(self, node: DataInfoNode) -> None:  # {{{
+    def add(self, node: DataInfo) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.add({node})")
-        assert isinstance(node, DataInfoNode)
+        assert isinstance(node, DataInfo)
 
         self.__nodes.append(node)
 
     # }}}
-    def remove(self, node: DataInfoNode) -> None:  # {{{
+    def remove(self, node: DataInfo) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.remove({node})")
-        assert isinstance(node, DataInfoNode)
+        assert isinstance(node, DataInfo)
 
         try:
             self.__nodes.remove(node)
@@ -113,7 +106,7 @@ class DataInfo:  # {{{
     # }}}
     def info(  # {{{
         self, instrument: Instrument, data_type: DataType
-    ) -> DataInfoNode | None:
+    ) -> DataInfo | None:
         logger.debug(f"{self.__class__.__name__}.info()")
 
         nodes = self[instrument]
@@ -136,15 +129,15 @@ class DataInfo:  # {{{
 
     # }}}
     @classmethod  # fromRecord  # {{{
-    def fromRecord(cls, records: list[asyncpg.Record]) -> DataInfo:
+    async def fromRecord(cls, records: list[asyncpg.Record]) -> DataInfo:
         logger.debug(f"{cls.__name__}.fromRecord()")
 
         nodes = list()
         for record in records:
-            node = DataInfoNode.fromRecord(record)
+            node = await DataInfo.fromRecord(record)
             nodes.append(node)
 
-        return DataInfo(nodes)
+        return DataInfoList(nodes)
 
     # }}}
     @classmethod  # load  # {{{

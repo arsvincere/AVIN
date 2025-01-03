@@ -8,7 +8,7 @@
 
 from avin.data._data import Data
 from avin.data.convert_task import ConvertTask, ConvertTaskList
-from avin.data.data_info import DataInfo, DataInfoNode
+from avin.data.data_info import DataInfo, DataInfoList
 from avin.data.data_source import DataSource
 from avin.data.data_type import DataType
 from avin.data.exchange import Exchange
@@ -19,7 +19,7 @@ __all__ = (
     "ConvertTask",
     "ConvertTaskList",
     "DataInfo",
-    "DataInfoNode",
+    "DataInfoList",
     "DataSource",
     "DataType",
     "Exchange",

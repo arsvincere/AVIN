@@ -11,7 +11,8 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
-from avin.const import ONE_WEEK, Res
+from avin.config import Usr
+from avin.const import ONE_WEEK
 from avin.data.data_source import DataSource
 from avin.data.instrument import Instrument
 from avin.keeper import Keeper
@@ -23,7 +24,7 @@ class _InstrumentsInfoCache:
         self,
         source: DataSource,
         itype: Instrument.Type,
-        original_info: list[str],
+        original_info: list[dict],
         formatted_info: list[dict],
     ):
         self.__source = source
@@ -32,33 +33,35 @@ class _InstrumentsInfoCache:
         self.__formatted = formatted_info
 
     # }}}
-    @property  # source{{{
+
+    @property  # source  # {{{
     def source(self):
         return self.__source
 
     # }}}
-    @property  # type{{{
+    @property  # type  # {{{
     def type(self):
         return self.__type
 
     # }}}
-    @property  # original{{{
+    @property  # original  # {{{
     def original(self):
         return self.__original
 
     # }}}
-    @property  # formatted{{{
+    @property  # formatted  # {{{
     def formatted(self):
         return self.__formatted
 
     # }}}
-    @classmethod  # save# {{{
+
+    @classmethod  # save  # {{{
     async def save(cls, cache: _InstrumentsInfoCache) -> None:
         logger.debug(f"{cls.__name__}.save()")
 
         # save original cache in res files
         file_path = Cmd.path(
-            Res.CACHE,
+            Usr.CACHE,
             cache.source.name.lower(),
             f"{cache.type.name}.json",
         )
@@ -68,14 +71,14 @@ class _InstrumentsInfoCache:
         await Keeper.update(cache)
 
     # }}}
-    @classmethod  # load# {{{
+    @classmethod  # load  # {{{
     def load(
         cls, source: DataSource, itype: Instrument.Type
     ) -> _InstrumentsInfoCache:
         logger.debug(f"{cls.__name__}.load()")
 
         cache_path = Cmd.path(
-            Res.CACHE,
+            Usr.CACHE,
             source.name.lower(),
             f"{itype.name}.json",
         )
@@ -85,12 +88,12 @@ class _InstrumentsInfoCache:
         return cache
 
     # }}}
-    @classmethod  # checkCachingDate# {{{
+    @classmethod  # checkCachingDate  # {{{
     def checkCachingDate(cls, source: DataSource) -> bool:
         logger.debug(f"{cls.__name__}.checkCachingDate()")
 
         # ckeck file with last update datetime
-        file_path = Cmd.path(Res.CACHE, source.name.lower(), "last_update")
+        file_path = Cmd.path(Usr.CACHE, source.name.lower(), "last_update")
         if not Cmd.isExist(file_path):
             return False
 
@@ -101,22 +104,23 @@ class _InstrumentsInfoCache:
         return (now().date() - last_update.date()) < ONE_WEEK
 
     # }}}
-    @classmethod  # updateCachingDate# {{{
+    @classmethod  # updateCachingDate  # {{{
     def updateCachingDate(cls, source: DataSource) -> None:
         logger.debug(f"{cls.__name__}.updateCachingDate()")
 
         dt = now().isoformat()
-        file_path = Cmd.path(Res.CACHE, source.name.lower(), "last_update")
+        file_path = Cmd.path(Usr.CACHE, source.name.lower(), "last_update")
         Cmd.write(dt, file_path)
 
     # }}}
-    @staticmethod  # encoderJson# {{{
+
+    @staticmethod  # encoderJson  # {{{
     def encoderJson(obj) -> Any:
         if isinstance(obj, (datetime, date)):
             return obj.isoformat()
 
     # }}}
-    @staticmethod  # decoderJson# {{{
+    @staticmethod  # decoderJson  # {{{
     def decoderJson(obj) -> Any:
         # NOTE::
         # см формат файлов кэша, там слишком много деталей спецефичных

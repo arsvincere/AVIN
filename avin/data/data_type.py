@@ -24,7 +24,6 @@ class DataType(enum.Enum):
     BAR_M = "M"
     TIC = "tic"
     BOOK = "book"
-    ANALYSE = "analyse"
 
     def __str__(self):  # {{{
         return self.value
@@ -64,16 +63,15 @@ class DataType(enum.Enum):
             "BAR_D": DataType.BAR_D,
             "BAR_W": DataType.BAR_W,
             "BAR_M": DataType.BAR_M,
-            "book": DataType.BOOK,
             "tic": DataType.TIC,
-            "analyse": DataType.ANALYSE,
+            "book": DataType.BOOK,
         }
         return types[string_type]
 
     # }}}
     @classmethod  # fromRecord  #{{{
     def fromRecord(cls, record: asyncpg.Record):
-        type_name = record["type"]
+        type_name = record["data_type"]
         typ = cls.fromStr(type_name)
         return typ
 

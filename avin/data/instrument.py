@@ -20,8 +20,7 @@ from avin.utils import logger
 class Instrument:
     """Base class for all assets.
 
-    Contains information about market instrument, like: ticker, figi,
-    name, type, sector etc...
+    Contains information about market instrument, like: ticker, figi, name..
     """
 
     class Type(enum.Enum):  # {{{
@@ -50,24 +49,25 @@ class Instrument:
             return types[string]
 
         # }}}
-        @classmethod  # fromRecord# {{{
-        def fromRecord(cls, record: asyncpg.Record) -> Instrument.Type:
-            string_name = record["type"]
-            itype = cls.fromStr(string_name)
-            return itype
-
-        # }}}
+        # TODO: dead code?
+        # @classmethod  # fromRecord# {{{
+        # def fromRecord(cls, record: asyncpg.Record) -> Instrument.Type:
+        #     string_name = record["instrument_type"]
+        #     itype = cls.fromStr(string_name)
+        #     return itype
+        #
+        # # }}}
 
     # }}}
 
     def __init__(self, info: dict):  # {{{
-        assert info["exchange"]
-        assert info["type"]
-        assert info["ticker"]
-        assert info["figi"]
-        assert info["name"]
-        assert info["lot"]
-        assert info["min_price_step"]
+        assert info["exchange"] is not None
+        assert info["type"] is not None
+        assert info["ticker"] is not None
+        assert info["figi"] is not None
+        assert info["name"] is not None
+        assert info["lot"] is not None
+        assert info["min_price_step"] is not None
 
         self.__info = info
 
@@ -86,6 +86,7 @@ class Instrument:
         return self.figi == other.figi
 
     # }}}
+
     @property  # info# {{{
     def info(self):
         return self.__info
@@ -128,6 +129,7 @@ class Instrument:
         return float(self.info["min_price_step"])
 
     # }}}
+
     def pretty(self) -> str:  # {{{
         logger.debug(f"{self.__class__.__name__}.pretty()")
 
@@ -135,6 +137,7 @@ class Instrument:
         return s
 
     # }}}
+
     @classmethod  # fromStr # {{{
     async def fromStr(cls, string: str) -> Instrument:
         logger.debug(f"{cls.__name__}.fromStr()")
@@ -151,17 +154,19 @@ class Instrument:
         return instrument
 
     # }}}
-    @classmethod  # fromRecord# {{{
+    @classmethod  # fromRecord  # {{{
     def fromRecord(cls, record: asyncpg.Record) -> Instrument:
         logger.debug(f"{cls.__name__}.fromRecord()")
 
-        json_string = record["info"]
-        info_dict = json.loads(json_string)
-        instrument = cls(info_dict)
+        # NOTE: asyncpg.Record работает идентично словарю,
+        # а название столбцов в БД совпадает с тем что в этом словаре класс
+        # будет искать.
+        instrument = cls(record)
+
         return instrument
 
     # }}}
-    @classmethod  # fromFigi# {{{
+    @classmethod  # fromFigi  # {{{
     async def fromFigi(cls, figi: str) -> Instrument:
         logger.debug(f"{cls.__name__}.fromFigi()")
 
@@ -169,9 +174,9 @@ class Instrument:
             assert False
 
         instr_list = await Keeper.get(cls, figi=figi)
-
         assert len(instr_list) == 1
         instrument = instr_list[0]
+
         return instrument
 
     # }}}
@@ -199,7 +204,6 @@ class Instrument:
     @classmethod  # fromUid# {{{
     async def fromUid(cls, uid: str) -> Instrument:
         logger.debug(f"{cls.__name__}.fromUid()")
-        logger.warning(f"DEPRICATED: {cls.__name__}.byUid(), use 'byFigi()'")
 
         if not cls.__checkArgs(uid=uid):
             return None

@@ -11,9 +11,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Optional
 
-from avin.data._data_manager import _DataManager
 from avin.data.convert_task import ConvertTask
-from avin.data.data_info import DataInfo
+from avin.data.data_info import DataInfo, DataInfoList
+from avin.data.data_manager import _DataManager
 from avin.data.data_source import DataSource
 from avin.data.data_type import DataType
 from avin.data.exchange import Exchange
@@ -68,7 +68,7 @@ class Data:
         cls,
         instrument: Optional[Instrument] = None,
         data_type: Optional[DataType] = None,
-    ) -> DataInfo | None:
+    ) -> DataInfoList | DataInfo | None:
         """Return information about availible (downloaded) data"""
 
         logger.debug(f"{cls.__name__}.info()")
@@ -80,8 +80,8 @@ class Data:
         if not check:
             return None
 
-        info = await _DataManager.info(instrument, data_type)
-        return info
+        result = await _DataManager.info(instrument, data_type)
+        return result
 
     # }}}
     @classmethod  # firstDateTime  # {{{
@@ -112,7 +112,7 @@ class Data:
         source: DataSource,
         instrument: Instrument,
         data_type: DataType,
-        year: int,
+        year: Optional[int] = None,
     ) -> None:
         logger.debug(f"{cls.__name__}.download()")
 

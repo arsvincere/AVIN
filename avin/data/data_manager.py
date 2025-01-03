@@ -12,14 +12,14 @@ from datetime import UTC, date, datetime, timedelta
 
 from avin.config import Auto, Usr
 from avin.const import DAY_BEGIN, DAY_END, WeekDays
-from avin.data._bar import _Bar, _BarsData
-from avin.data._moex import _MoexData
-from avin.data._tinkoff import _TinkoffData
+from avin.data.bar import _Bar, _BarsData
 from avin.data.convert_task import ConvertTaskList
-from avin.data.data_info import DataInfo, DataInfoNode
+from avin.data.data_info import DataInfo, DataInfoList
 from avin.data.data_source import DataSource
 from avin.data.data_type import DataType
 from avin.data.instrument import Instrument
+from avin.data.source_moex import _MoexData
+from avin.data.source_tinkoff import _TinkoffData
 from avin.keeper import Keeper
 from avin.utils import Cmd, logger, now
 
@@ -61,10 +61,10 @@ class _DataManager:
             class_ = _MoexData
         elif source == DataSource.TINKOFF:
             class_ = _TinkoffData
-        # if source is None,
-        # uses _MoexData for indexes, and _TinkoffData otherwise
+        # if source is None, uses _MoexData for indexes
         elif itype == Instrument.Type.INDEX:
             class_ = _MoexData
+        # and _TinkoffData otherwise
         else:
             class_ = _TinkoffData
 
@@ -75,11 +75,17 @@ class _DataManager:
 
     # }}}
     @classmethod  # info  # {{{
-    async def info(cls, instr, data_type) -> DataInfo:
+    async def info(cls, instr, data_type) -> DataInfo | DataInfoList:
         logger.debug(f"{cls.__name__}.download()")
 
-        info = await DataInfo.load(instr, data_type)
-        return info
+        # if instr & data_type -> DataInfo
+        if instr is not None and data_type is not None:
+            info = await DataInfo.load(instr, data_type)
+            return info
+
+        # else -> DataInfoList
+        info_list = await DataInfoList.load(instr, data_type)
+        return info_list
 
     # }}}
     @classmethod  # firstDateTime  # {{{
@@ -96,8 +102,20 @@ class _DataManager:
         logger.debug(f"{cls.__name__}.download()")
         # NOTE:
         # пока грузим все исторические данные только с MOEX
-        # независимо от переменной 'source'
-        await _MoexData.download(instr, data_type, year)
+        assert source == DataSource.MOEX
+
+        # download one year
+        if year is not None:
+            await _MoexData.download(instr, data_type, year)
+            return
+
+        # year is None -> download all availible
+        first_dt = cls.firstDateTime(source, instr, data_type)
+        year = first_dt.year
+        last_year = date.today().year
+        while year <= last_year:
+            await _MoexData.download(instr, data_type, year)
+            year += 1
 
     # }}}
     @classmethod  # convert  # {{{
@@ -105,8 +123,14 @@ class _DataManager:
         logger.debug(f"{cls.__name__}.convert()")
         logger.info(f":: Convert {instr.ticker}-{in_type} -> {out_type}")
 
+        # check availible input data
+        data_info = await DataInfo.load(instr, in_type)
+        if data_info is None:
+            logger.error(f"Convert error: no data {instr}-{in_type}")
+            return
+
         # check availible converted data
-        data_info = await DataInfoNode.load(instr, out_type)
+        data_info = await DataInfo.load(instr, out_type)
         if not data_info:
             begin = None  # select from first availible
             end = datetime.combine(date.today(), DAY_BEGIN, UTC)  # to today
@@ -122,10 +146,8 @@ class _DataManager:
         out_bars = converter(in_data.bars, in_type, out_type)
 
         # save converted data
-        converted_data = _BarsData(
-            DataSource.CONVERT, instr, out_type, out_bars
-        )
-        await _BarsData.save(converted_data)
+        data = _BarsData(DataSource.CONVERT, instr, out_type, out_bars)
+        await _BarsData.save(data)
 
     # }}}
     @classmethod  # delete  # {{{
@@ -146,7 +168,7 @@ class _DataManager:
     async def update(cls, instr, data_type) -> None:
         logger.debug(f"{cls.__name__}.update()")
 
-        node = await DataInfoNode.load(instr, data_type)
+        node = await DataInfo.load(instr, data_type)
         await cls.__update(node)
 
     # }}}
@@ -155,7 +177,7 @@ class _DataManager:
         logger.info(":: Update all market data")
 
         # update
-        data_info = await DataInfo.load()  # load all
+        data_info = await DataInfoList.load()  # load all
         for node in data_info:
             await cls.__update(node)
 

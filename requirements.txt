@@ -5,5 +5,4 @@ tinkoff-investments
 pandas
 pyqt6
 asyncpg
-pgadmin4
 cython

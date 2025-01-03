@@ -6,7 +6,7 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import pytest
 from avin import *
@@ -27,7 +27,7 @@ def test_DataType():  # {{{
     assert data_type.value == "D"
     assert str(data_type) == "D"
 
-    assert data_type.toTimeDelta() == timedelta(days=1)
+    assert data_type.toTimeDelta() == TimeDelta(days=1)
 
     from_str_data_type = DataType.fromStr("1M")
     assert from_str_data_type.name == "BAR_1M"
@@ -102,16 +102,16 @@ async def test_Instrument():
 
 
 # }}}
-@pytest.mark.asyncio  # test_DataInfoNode  # {{{
-async def test_DataInfoNode():
+@pytest.mark.asyncio  # test_DataInfo  # {{{
+async def test_DataInfo():
     source = DataSource.MOEX
     afks = await Instrument.fromTicker(
         Exchange.MOEX, Instrument.Type.SHARE, "AFKS"
     )
     data_type = DataType.BAR_1M
-    begin = datetime(2023, 1, 1)
-    end = datetime(2024, 1, 1)
-    node = DataInfoNode(source, afks, data_type, begin, end)
+    begin = DateTime(2023, 1, 1)
+    end = DateTime(2024, 1, 1)
+    node = DataInfo(source, afks, data_type, begin, end)
     assert node.source == source
     assert node.instrument == afks
     assert node.data_type == data_type
@@ -191,29 +191,38 @@ async def test_Data_find(event_loop):
 # }}}
 @pytest.mark.asyncio  # test_Data_info  # {{{
 async def test_Data_info(event_loop):
-    info = await Data.info()
-    assert len(info) > 0
+    # request info about instrument-data_type
+    sber = await Instrument.fromStr("MOEX-SHARE-SBER")
+    data_type = DataType.BAR_D
+    data_info = await Data.info(sber, data_type)
+    if data_info is not None:
+        assert data_info.instrument == sber
+        assert isinstance(data_info.first_dt, DateTime)
+        assert isinstance(data_info.last_dt, DateTime)
+        assert data_info.data_type == data_type
+
+    # without args Data.info() return DataInfoList with all records
+    data_info_list = await Data.info()
+    assert isinstance(data_info_list, DataInfoList)
 
     # get list[Instrument]
-    instruments = info.getInstruments()
+    instruments = data_info_list.getInstruments()
 
-    # __getitem__ -> info[instrument] -> nodes of instrument
+    # __getitem__ -> data_info[instrument] -> nodes of instrument
     for instrument in instruments:
         assert isinstance(instrument, Instrument)
-        for node in info[instrument]:
-            assert isinstance(node, DataInfoNode)
+        for node in data_info_list[instrument]:
+            assert isinstance(node, DataInfo)
 
     # __iter__ -> all nodes
-    for i in info:
-        assert isinstance(i, DataInfoNode)
+    for i in data_info_list:
+        assert isinstance(i, DataInfo)
 
 
 # }}}
 @pytest.mark.asyncio  # test_Data_firstDateTime  # {{{
 async def test_Data_firstDateTime(event_loop):
-    id_list = await Data.find(Exchange.MOEX, Instrument.Type.SHARE, "SBER")
-    assert len(id_list) == 1
-    sber = id_list[0]
+    sber = await Instrument.fromStr("MOEX-SHARE-SBER")
 
     dt_d_moex = await Data.firstDateTime(
         DataSource.MOEX, sber, DataType.BAR_D
@@ -281,6 +290,48 @@ async def test_Data_delete():
 
     await Data.delete(abrd, DataType.BAR_D)
     await Data.delete(abrd, DataType.BAR_M)
+
+
+# }}}
+
+
+@pytest.mark.asyncio  # test_clear_all_test_vars  # {{{
+async def test_clear_all_test_vars():
+    request = """
+        DELETE FROM "Asset"
+        WHERE
+            figi = 'BBG002W2FT69';
+    """
+    await Keeper.transaction(request)
+
+    request = """
+        DELETE FROM data."DataInfo"
+        WHERE
+            figi = 'BBG002W2FT69';
+    """
+    await Keeper.transaction(request)
+
+    request = """
+        SELECT * FROM INFORMATION_SCHEMA.TABLES
+        WHERE TABLE_NAME = 'MOEX_SHARE_ABRD_D'
+        """
+    result = await Keeper.transaction(request)
+    if result:
+        request = """
+            DROP TABLE data."MOEX_SHARE_ABRD_D";
+            """
+        await Keeper.transaction(request)
+
+    request = """
+        SELECT * FROM INFORMATION_SCHEMA.TABLES
+        WHERE TABLE_NAME = 'MOEX_SHARE_ABRD_M'
+        """
+    result = await Keeper.transaction(request)
+    if result:
+        request = """
+            DROP TABLE data."MOEX_SHARE_ABRD_M";
+            """
+        await Keeper.transaction(request)
 
 
 # }}}

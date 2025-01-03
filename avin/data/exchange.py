@@ -10,18 +10,22 @@ from datetime import UTC, time
 
 
 class Exchange:
-    class _TEST_EXCHANGE:
+    class _TEST_EXCHANGE:  # {{{
         name = "_TEST_EXCHANGE"
 
-    class MOEX:
+    # }}}
+    class MOEX:  # {{{
         name = "MOEX"
         SESSION_BEGIN = time(7, 0, tzinfo=UTC)
         SESSION_END = time(15, 39, tzinfo=UTC)
         EVENING_BEGIN = time(16, 5, tzinfo=UTC)
         EVENING_END = time(20, 49, tzinfo=UTC)
 
-    class SPB:
+    # }}}
+    class SPB:  # {{{
         name = "SPB"
+
+    # }}}
 
     @classmethod  # fromStr {{{
     def fromStr(cls, string):
