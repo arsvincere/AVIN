@@ -57,7 +57,7 @@ class Usr:  # {{{
     # 'usr/connect/moex/account.txt'
     MOEX_ACCOUNT = os.path.join(CONNECT, "moex", "account.txt")
 
-    # Postresql settings
+    # PostresQL settings
     PG_USER = "alex"
     PG_PASSWORD = ""
     PG_DATABASE = "ars_vincere"
@@ -74,6 +74,11 @@ class Auto:  # {{{
 
     # Run all convert tasks after update market data
     CONVERT_MARKET_DATA: bool = True
+
+    #
+    BACKUP_PATH = "/run/media/alex/hdd/alex/postgres/"
+    BACKUP_MARKET_DATA: bool = True
+    BACKUP_USER_DB: bool = True
 
 
 # }}}

@@ -25,9 +25,9 @@ from typing import Any
 
 import asyncpg
 
-from avin.config import Usr
-from avin.const import Dir
-from avin.utils import Cmd, ask_user, logger
+from avin.config import Auto, Usr
+from avin.const import ONE_DAY, ONE_MONTH, Dir
+from avin.utils import Cmd, ask_user, logger, now
 
 __all__ = ("Keeper",)
 
@@ -37,8 +37,13 @@ class Keeper:
     DATABASE = Usr.PG_DATABASE
     HOST = Usr.PG_HOST
 
+    __LAST_BACKUP_DATA_DT = Cmd.path(Usr.DATA, "backup_db_data")
+    __LAST_BACKUP_USER_DT = Cmd.path(Usr.DATA, "backup_db_user")
+    __BACKUP_DATA = Auto.BACKUP_MARKET_DATA
+    __BACKUP_USER = Auto.BACKUP_USER_DB
+
     @classmethod  # createDataBase  # {{{
-    async def createDataBase(cls) -> None:
+    def createDataBase(cls) -> None:
         logger.debug(f"{cls.__name__}.createDataBase()")
 
         enums = Cmd.path(Dir.LIB, "keeper", "enums.sql")
@@ -58,7 +63,7 @@ class Keeper:
 
     # }}}
     @classmethod  # dropDataBase  # {{{
-    async def dropDataBase(cls) -> None:
+    def dropDataBase(cls) -> None:
         logger.debug(f"{cls.__name__}.dropDataBase()")
 
         if not ask_user("Delete database?"):
@@ -71,27 +76,134 @@ class Keeper:
         logger.info("Database has been deleted")
 
     # }}}
-    @classmethod  # restoreAssets  # {{{
-    async def restoreAssets(cls) -> None:
-        """Проверяет схему data, если есть данные создает public."Asset" """
-        logger.debug(f"{cls.__name__}.dropDataBase()")
+    @classmethod  # backupUserData  # {{{
+    def backupUserData(cls):
+        logger.debug(f"{cls.__name__}.backupUserData()")
 
-        # TODO: Keeper.restoreAssets
-        assert False, "TODO_ME"
+        Cmd.makeDirs(Auto.BACKUP_PATH)
 
-        # # Request all data info
-        # request = """
-        #     SELECT
-        #         data."DataInfo".source,
-        #         data."DataInfo".type,
-        #         data."DataInfo".figi,
-        #         data."DataInfo".first_dt,
-        #         data."DataInfo".last_dt,
-        #     FROM data."DataInfo"
-        #     """
-        # records = await cls.transaction(request)
+        public_path = Cmd.path(Auto.BACKUP_PATH, "public_Fc")
+        trader_path = Cmd.path(Auto.BACKUP_PATH, "trader_Fc")
+        tester_path = Cmd.path(Auto.BACKUP_PATH, "tester_Fc")
+
+        os.system(f"pg_dump {cls.DATABASE} -Fc -f {public_path} -n public")
+        os.system(f"pg_dump {cls.DATABASE} -Fc -f {trader_path} -n trader")
+        os.system(f"pg_dump {cls.DATABASE} -Fc -f {tester_path} -n tester")
+
+        logger.info("Backup user data complete!")
 
     # }}}
+    @classmethod  # backupMarketData  # {{{
+    def backupMarketData(cls):
+        logger.debug(f"{cls.__name__}.backupMarketData()")
+
+        Cmd.makeDirs(Auto.BACKUP_PATH)
+        data_path = Cmd.path(Auto.BACKUP_PATH, "data_Fc")
+        os.system(f"pg_dump {cls.DATABASE} -Fc -f {data_path} -n data")
+
+        logger.info("Backup market data complete!")
+
+    # }}}
+    @classmethod  # restoreUserData  # {{{
+    def restoreUserData(cls):
+        logger.debug(f"{cls.__name__}.restoreUserData()")
+
+        public_path = Cmd.path(Auto.BACKUP_PATH, "public_Fc")
+        trader_path = Cmd.path(Auto.BACKUP_PATH, "trader_Fc")
+        tester_path = Cmd.path(Auto.BACKUP_PATH, "tester_Fc")
+
+        if not Cmd.isExist(public_path):
+            logger.error(f"Failed restore, no backup file: {public_path}")
+        if not Cmd.isExist(trader_path):
+            logger.error(f"Failed restore, no backup file: {trader_path}")
+        if not Cmd.isExist(tester_path):
+            logger.error(f"Failed restore, no backup file: {tester_path}")
+
+        os.system(
+            f"psql -a {cls.DATABASE} {cls.USER} "
+            f"-c 'DROP SCHEMA public CASCADE'"
+        )
+        os.system(
+            f"psql -a {cls.DATABASE} {cls.USER} "
+            f"-c 'DROP SCHEMA trader CASCADE'"
+        )
+        os.system(
+            f"psql -a {cls.DATABASE} {cls.USER} "
+            f"-c 'DROP SCHEMA tester CASCADE'"
+        )
+
+        os.system(f"pg_restore -d {cls.DATABASE} {public_path}")
+        os.system(f"pg_restore -d {cls.DATABASE} {trader_path}")
+        os.system(f"pg_restore -d {cls.DATABASE} {tester_path}")
+
+        logger.info("Restore user data complete!")
+
+    # }}}
+    @classmethod  # restoreMarketData  # {{{
+    def restoreMarketData(cls):
+        logger.debug(f"{cls.__name__}.restoreMarketData()")
+
+        data_path = Cmd.path(Auto.BACKUP_PATH, "data_Fc")
+
+        if not Cmd.isExist(data_path):
+            logger.error(f"Failed restore, no backup file: {data_path}")
+
+        os.system(
+            f"psql -a {cls.DATABASE} {cls.USER} "
+            f"-c 'DROP SCHEMA data CASCADE'"
+        )
+        os.system(f"pg_restore -d {cls.DATABASE} {data_path}")
+
+        logger.info("Restore market data complete!")
+
+    # }}}
+    @classmethod  # checkBackupData  # {{{
+    def checkBackupData(cls):
+        logger.debug(f"{cls.__name__}.checkBackupData()")
+
+        # ckeck file with last update datetime
+        if not Cmd.isExist(cls.__LAST_BACKUP_DATA_DT):
+            need_update = True
+        else:
+            # read file, check last update < month ago
+            dt_str = Cmd.read(cls.__LAST_BACKUP_DATA_DT)
+            last_update = datetime.fromisoformat(dt_str)
+            need_update = (now() - last_update) < ONE_MONTH
+
+        if not need_update:
+            return
+
+        # backup & update file with datetime
+        logger.info(":: Need backup market data - starting dump")
+        cls.backupMarketData()
+        dt = now().isoformat()
+        Cmd.write(dt, cls.__LAST_BACKUP_DATA_DT)
+
+    # }}}
+    @classmethod  # checkBackupUser  # {{{
+    def checkBackupUser(cls):
+        logger.debug(f"{cls.__name__}.checkBackupUser()")
+
+        # ckeck file with last update datetime
+        if not Cmd.isExist(cls.__LAST_BACKUP_USER_DT):
+            need_update = True
+        else:
+            # read file, check last update < month ago
+            dt_str = Cmd.read(cls.__LAST_BACKUP_USER_DT)
+            last_update = datetime.fromisoformat(dt_str)
+            need_update = (now() - last_update) < ONE_DAY
+
+        if not need_update:
+            return
+
+        # backup & update file with datetime
+        logger.info(":: Need backup user data - starting dump")
+        cls.backupUserData()
+        dt = now().isoformat()
+        Cmd.write(dt, cls.__LAST_BACKUP_USER_DT)
+
+    # }}}
+
     @classmethod  # transaction  # {{{
     async def transaction(cls, sql_request: str) -> list[asyncpg.Record]:
         logger.debug(f"{cls.__name__}.transaction()\n{sql_request}")
@@ -1979,6 +2091,10 @@ class Keeper:
         return obj
 
     # }}}
+
+
+Keeper.checkBackupData()
+Keeper.checkBackupUser()
 
 
 if __name__ == "__main__":
