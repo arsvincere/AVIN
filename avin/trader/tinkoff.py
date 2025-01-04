@@ -129,9 +129,7 @@ class Tinkoff(Broker):
             )
             return False
 
-        sber = await Asset.byTicker(
-            Instrument.Type.SHARE, Exchange.MOEX, "SBER"
-        )
+        sber = await Asset.byTicker(Asset.Type.SHARE, Exchange.MOEX, "SBER")
 
         response = await cls.__connect.market_data.get_trading_status(
             figi=sber.figi
