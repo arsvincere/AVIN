@@ -311,13 +311,13 @@ class Cmd:
 
     # }}}
     @staticmethod  # fromJson# {{{
-    def fromJson(string, decoder=None) -> object:
+    def fromJson(string, decoder=None):
         logger.debug(f"Cmd.fromJson: {string}")
-        string = json.loads(
+        obj = json.loads(
             string,
             object_hook=decoder,
         )
-        return string
+        return obj
 
     # }}}
     @staticmethod  # saveBin# {{{

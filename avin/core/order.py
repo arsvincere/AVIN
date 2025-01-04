@@ -159,6 +159,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         return string
 
     # }}}
+
     def pretty(self) -> str:  # {{{
         logger.debug(f"{self.__class__.__name__}.pretty()")
 
@@ -181,11 +182,12 @@ class Order(metaclass=abc.ABCMeta):  # {{{
         return text
 
     # }}}
-
-    def isActive(self) -> bool:
+    def isActive(self) -> bool:  # {{{
         logger.debug(f"{self.__class__.__name__}.isActive()")
 
         return self.status.value < Order.Status.EXECUTED.value
+
+    # }}}
 
     async def setStatus(self, status: Order.Status):  # {{{
         logger.debug(f"Order.setStatus({status})")

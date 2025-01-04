@@ -9,7 +9,6 @@
 from __future__ import annotations
 
 from avin.config import Usr
-from avin.const import Res
 from avin.core.chart import Chart
 from avin.core.trade import Trade
 from avin.utils import Cmd, logger
@@ -47,6 +46,28 @@ class Filter:  # {{{
         self.__condition = self.__createCondition()
 
     # }}}
+    @property  # filter_list  # {{{
+    def filter_list(self):
+        return self.__filter_list
+
+    @filter_list.setter
+    def filter_list(self, filter_list: FilterList):
+        assert isinstance(filter_list, FilterList)
+        self.__filter_list = filter_list
+
+    # }}}
+    @property  # full_name  # {{{
+    def full_name(self):
+        full_name = f"{self.__name}"
+
+        parent = self.__filter_list
+        while parent is not None:
+            full_name = parent.name + " " + full_name
+            parent = parent.parent_list
+
+        return full_name
+
+    # }}}
     @property  # path  # {{{
     def path(self) -> str:
         if self.__filter_list is None:
@@ -55,23 +76,6 @@ class Filter:  # {{{
             dir_path = self.__filter_list.path
 
         return Cmd.path(dir_path, f"{self.__name}.py")
-
-    # }}}
-    @property  # filter_list  # {{{
-    def filter_list(self):
-        return self.__filter_list
-
-    # }}}
-    @property  # full_name  # {{{
-    def name(self):
-        full_name = f"{self.__name}"
-
-        parent = self.__filter_list
-        while parent is not None:
-            full_name = parent.name + "-" + full_name
-            parent = parent.parent_list
-
-        return full_name
 
     # }}}
 
@@ -93,55 +97,57 @@ class Filter:  # {{{
 
     # }}}
 
-    @classmethod  # new  # {{{
-    def new(cls, name: str) -> Filter | None:
-        logger.debug(f"{cls.__name__}.new()")
-
-        # copy template to user directory
-        template_path = Cmd.path(Res.TEMPLATE, "filter", "filter.py")
-        user_path = Cmd.path(Usr.FILTER, f"{name}.py")
-        Cmd.copy(template_path, user_path)
-
-        # load
-        f = cls.load(name)
-
-        return f
-
-    # }}}
-    @classmethod  # edit  # {{{
-    def edit(cls, f: Filter) -> Filter:
-        logger.debug(f"{cls.__name__}.edit()")
-
-        command = [
-            Usr.TERMINAL,
-            *Usr.OPT,
-            Usr.EXEC,
-            Usr.EDITOR,
-            f.path,
-        ]
-        Cmd.subprocess(command)
-
-        code = Cmd.read(f.path)
-        f.code = code
-
-        return f
-
-    # }}}
-    @classmethod  # save  # {{{
-    def save(cls, f: Filter, file_path=None) -> None:
-        logger.debug(f"{cls.__name__}.save()")
-
-        if file_path is None:
-            file_path = f.path
-
-        Cmd.write(f.code, file_path)
-
-    # }}}
+    # @classmethod  # new  # {{{
+    # def new(cls, name: str) -> Filter | None:
+    #     logger.debug(f"{cls.__name__}.new()")
+    #
+    #     # copy template to user directory
+    #     template_path = Cmd.path(Res.TEMPLATE, "filter", "filter.py")
+    #     user_path = Cmd.path(Usr.FILTER, f"{name}.py")
+    #     Cmd.copy(template_path, user_path)
+    #
+    #     # load
+    #     f = cls.load(name)
+    #
+    #     return f
+    #
+    # # }}}
+    # @classmethod  # edit  # {{{
+    # def edit(cls, f: Filter) -> Filter:
+    #     logger.debug(f"{cls.__name__}.edit()")
+    #
+    #     command = [
+    #         Usr.TERMINAL,
+    #         *Usr.OPT,
+    #         Usr.EXEC,
+    #         Usr.EDITOR,
+    #         f.path,
+    #     ]
+    #     Cmd.subprocess(command)
+    #
+    #     code = Cmd.read(f.path)
+    #     f.code = code
+    #
+    #     return f
+    #
+    # # }}}
+    # @classmethod  # save  # {{{
+    # def save(cls, f: Filter, file_path=None) -> None:
+    #     logger.debug(f"{cls.__name__}.save()")
+    #
+    #     if file_path is None:
+    #         file_path = f.path
+    #
+    #     Cmd.write(f.code, file_path)
+    #
+    # # }}}
     @classmethod  # load  # {{{
     def load(cls, name: str) -> Filter | None:
         logger.debug(f"{cls.__name__}.load()")
 
-        file_path = Cmd.path(Usr.FILTER, f"{name}.py")
+        parts = name.split("-")
+        parts[-1] += ".py"
+        file_path = Cmd.path(Usr.FILTER, *parts)
         if not Cmd.isExist(file_path):
             return None
 
@@ -151,36 +157,36 @@ class Filter:  # {{{
         return f
 
     # }}}
-    @classmethod  # copy  # {{{
-    def copy(cls, f: Filter, new_name: str) -> Filter | None:
-        logger.debug(f"{cls.__name__}.copy()")
-
-        new_path = Cmd.path(Usr.FILTER, f"{new_name}.py")
-        Cmd.copy(f.path, new_path)
-
-        f_copy = Filter.load(new_name)
-        return f_copy
-
-    # }}}
-    @classmethod  # rename  # {{{
-    def rename(cls, f: Filter, new_name: str) -> Filter | None:
-        logger.debug(f"{cls.__name__}.rename()")
-
-        if Cmd.isExist(f.path):
-            new_path = Cmd.path(Usr.FILTER, f"{new_name}.py")
-            Cmd.rename(f.path, new_path)
-
-        renamed = Filter.load(new_name)
-        return renamed
-
-    # }}}
-    @classmethod  # delete  # {{{
-    def delete(cls, f: Filter) -> None:
-        logger.debug(f"{cls.__name__}.delete()")
-
-        Cmd.delete(f.path)
-
-    # }}}
+    # @classmethod  # copy  # {{{
+    # def copy(cls, f: Filter, new_name: str) -> Filter | None:
+    #     logger.debug(f"{cls.__name__}.copy()")
+    #
+    #     new_path = Cmd.path(Usr.FILTER, f"{new_name}.py")
+    #     Cmd.copy(f.path, new_path)
+    #
+    #     f_copy = Filter.load(new_name)
+    #     return f_copy
+    #
+    # # }}}
+    # @classmethod  # rename  # {{{
+    # def rename(cls, f: Filter, new_name: str) -> Filter | None:
+    #     logger.debug(f"{cls.__name__}.rename()")
+    #
+    #     if Cmd.isExist(f.path):
+    #         new_path = Cmd.path(Usr.FILTER, f"{new_name}.py")
+    #         Cmd.rename(f.path, new_path)
+    #
+    #     renamed = Filter.load(new_name)
+    #     return renamed
+    #
+    # # }}}
+    # @classmethod  # delete  # {{{
+    # def delete(cls, f: Filter) -> None:
+    #     logger.debug(f"{cls.__name__}.delete()")
+    #
+    #     Cmd.delete(f.path)
+    #
+    # # }}}
 
     def __createCondition(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__createCondition()")
@@ -286,28 +292,30 @@ class FilterList:  # {{{
         if self.__parent_list is None:
             dir_path = Usr.FILTER
         else:
-            dir_path = self.__filter_list.path
+            dir_path = self.__parent_list.path
 
         return Cmd.path(dir_path, f"{self.__name}")
 
     # }}}
 
     def add(self, f: Filter) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.add({f.ticker})")
+        logger.debug(f"{self.__class__.__name__}.add()")
         assert isinstance(f, Filter)
 
         if f not in self:
             self.__filters.append(f)
+            f.filter_list = self
             return
 
         logger.warning(f"{f} already in {self}")
 
     # }}}
     def remove(self, f: Filter) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.remove({f.ticker})")
+        logger.debug(f"{self.__class__.__name__}.remove()")
 
         try:
             self.__filters.remove(f)
+            f.filter_list = None
         except ValueError:
             logger.warning(f"'{f}' not in {self}")
 
@@ -328,10 +336,8 @@ class FilterList:  # {{{
     def removeChild(self, child: FilterList) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.removeChild()")
 
-        self.__childs.append(child)
-
         try:
-            self.__filters.remove(f)
+            self.__filters.remove(child)
         except ValueError:
             logger.warning(f"{child} not in {self}")
 
@@ -348,11 +354,13 @@ class FilterList:  # {{{
         logger.debug(f"{cls.__name__}.load()")
 
         dir_path = Cmd.path(Usr.FILTER, name)
-        if not Cmd.isExist(path):
+        if not Cmd.isExist(dir_path):
             return None
 
         filter_list = FilterList(name)
         FilterList.__loadChilds(filter_list)
+
+        return filter_list
 
     # }}}
     @classmethod  # requestAll # {{{
@@ -367,6 +375,29 @@ class FilterList:  # {{{
 
     # }}}
 
+    @classmethod  # __loadChilds  # {{{
+    def __loadChilds(cls, filter_list: FilterList):
+        logger.debug(f"{cls.__name__}.__loadChilds()")
+
+        # load filters
+        files = Cmd.getFiles(filter_list.path, full_path=True)
+        files = Cmd.select(files, extension=".py")
+        for file in files:
+            name = Cmd.name(file)
+            code = Cmd.read(file)
+            f = Filter(name, code)
+            filter_list.add(f)
+
+        # load child filter list
+        dirs = Cmd.getDirs(filter_list.path, full_path=True)
+        for d in dirs:
+            name = Cmd.name(d)
+            child_list = FilterList(name, parent=filter_list)
+            filter_list.addChild(child_list)
+            cls.__loadChilds(child_list)
+
+
+# }}}
 
 # }}}
 

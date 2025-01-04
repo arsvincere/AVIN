@@ -9,8 +9,7 @@
 from __future__ import annotations
 
 import enum
-from datetime import datetime
-from typing import Optional
+from typing import Any, Optional, TypeVar
 
 from avin.config import Usr
 from avin.const import ONE_DAY
@@ -24,7 +23,10 @@ from avin.core.range import Range
 from avin.core.timeframe import TimeFrame
 from avin.data import Instrument
 from avin.keeper import Keeper
-from avin.utils import AsyncSignal, Cmd, logger
+from avin.utils import AsyncSignal, Cmd, Date, DateTime, logger
+
+Test = TypeVar("Test")
+Trader = TypeVar("Trader")
 
 
 class Trade:  # {{{
@@ -91,7 +93,7 @@ class Trade:  # {{{
 
     def __init__(  # {{{
         self,
-        dt: datetime,
+        dt: DateTime,
         strategy: str,
         version: str,
         trade_type: Trate.Type,
@@ -119,7 +121,7 @@ class Trade:  # {{{
         self.trade_list_name = trade_list_name
         self.orders = orders if orders else list()
         self.operations = operations if operations else list()
-        self.info = dict()
+        self.info: dict[str, Any] = dict()
         self.__blocked = False
 
         # signals
@@ -602,13 +604,16 @@ info:       {Cmd.toJson(self.info, indent=4)}
             trade_id=trade_id,
         )
 
+        # request instrument
+        instrument = await Instrument.fromFigi(record["figi"])
+
         # create trade
         trade = Trade(
             dt=record["dt"],
             strategy=record["strategy"],
             version=record["version"],
-            trade_type=Trade.Type.fromStr(record["type"]),
-            instrument=Instrument.fromRecord(record),
+            trade_type=Trade.Type.fromStr(record["trade_type"]),
+            instrument=instrument,
             status=Trade.Status.fromStr(record["status"]),
             trade_id=Id.fromStr(record["trade_id"]),
             trade_list_name=record["trade_list"],
@@ -663,7 +668,7 @@ info:       {Cmd.toJson(self.info, indent=4)}
 
     @staticmethod  # encoderJson# {{{
     def encoderJson(obj) -> Any:
-        if isinstance(obj, (datetime, date)):
+        if isinstance(obj, (DateTime, Date)):
             return obj.isoformat()
 
     # }}}
@@ -671,7 +676,7 @@ info:       {Cmd.toJson(self.info, indent=4)}
     def decoderJson(obj) -> Any:
         for k, v in obj.items():
             if isinstance(v, str) and "+00:00" in v:
-                obj[k] = datetime.fromisoformat(obj[k])
+                obj[k] = DateTime.fromisoformat(obj[k])
         return obj
 
     # }}}
@@ -705,7 +710,7 @@ class TradeList:  # {{{
         self.__childs: list[TradeList] = list()
         self.__asset = parent.asset if parent else None
 
-        self.__owner = None
+        self.__owner: Optional[Any] = None  # Test | Trader
 
     # }}}
     def __str__(self):  # {{{
@@ -825,6 +830,22 @@ class TradeList:  # {{{
 
     # }}}
 
+    def removeChild(self, child: TradeList) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.removeChild()")
+
+        try:
+            self.__childs.remove(child)
+        except ValueError:
+            logger.warning(f"{child} not in {self}")
+
+    # }}}
+    def clearChilds(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.clearChilds()")
+
+        self.__childs.clear()
+
+    # }}}
+
     async def selectFilter(self, f) -> TradeList:  # {{{
         logger.debug(f"{self.__class__.__name__}.filter()")
 
@@ -836,6 +857,17 @@ class TradeList:  # {{{
 
         child = self._createChild(selected, f.name)
         return child
+
+    # }}}
+    async def selectFilterList(self, filter_list) -> list[TradeList]:  # {{{
+        logger.debug(f"{self.__class__.__name__}.filter()")
+
+        all_childs = list()
+        for f in filter_list:
+            child = await self.selectFilter(f)
+            all_childs.append(child)
+
+        return all_childs
 
     # }}}
     def selectStatus(self, status: Trade.Status) -> TradeList:  # {{{
@@ -865,8 +897,11 @@ class TradeList:  # {{{
     def selectStrategys(self) -> list[TradeList]:  # {{{
         logger.debug(f"{self.__class__.__name__}.collectStrategyList()")
 
-        all_strategys = dict()
-        # create keys = strategy_name, values = [versions, ]
+        # all_strategys = {
+        #     "strategy_name_1": ["v1", "v2", ...]
+        #     "strategy_name_2": ["v1", "v2", ...]
+        #     }
+        all_strategys: dict[str, list[str]] = dict()
         for trade in self.__trades:
             name = trade.strategy
             version = trade.version

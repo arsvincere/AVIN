@@ -6,16 +6,14 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-"""Doc"""
-
 from __future__ import annotations
 
 import enum
-from datetime import datetime
 from typing import Optional, TypeVar
 
 from avin.core.range import Range
-from avin.data._bar import _Bar
+from avin.data.bar import _Bar
+from avin.utils import DateTime
 
 Chart = TypeVar("Chart")
 
@@ -34,7 +32,7 @@ class Bar(_Bar):
 
     def __init__(  # {{{
         self,
-        dt: datetime,
+        dt: DateTime,
         open: float,
         high: float,
         low: float,
@@ -129,9 +127,7 @@ class Bar(_Bar):
     # }}}
 
     @classmethod  # fromRecord# {{{
-    def fromRecord(
-        cls, record: asyncpg.Record, chart: Optional[Chart] = None
-    ):
+    def fromRecord(cls, record: asyncpg.Record, chart=None):
         bar = cls(
             record["dt"],
             record["open"],

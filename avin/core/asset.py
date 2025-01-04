@@ -8,7 +8,6 @@
 
 from __future__ import annotations
 
-import json
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Optional, Union
@@ -173,10 +172,11 @@ class Asset(Instrument, ABC):  # {{{
     def fromRecord(cls, record: asyncpg.Record) -> Asset:
         logger.debug(f"{cls.__name__}.fromRecord()")
 
-        json_string = record["info"]
-        info_dict = json.loads(json_string)
+        # NOTE: asyncpg.Record работает идентично словарю,
+        # а название столбцов в БД совпадает с тем что в этом словаре класс
+        # будет искать.
+        asset = cls.__getCertainAssetClass(record)
 
-        asset = cls.__getCertainAssetClass(info_dict)
         return asset
 
     # }}}
@@ -352,6 +352,7 @@ class AssetList:  # {{{
         return len(self.__assets)
 
     # }}}
+
     @property  # name  # {{{
     def name(self) -> str:
         return self.__name
@@ -369,12 +370,13 @@ class AssetList:  # {{{
     @assets.setter
     def assets(self, assets: list[Asset]):
         assert isinstance(assets, list)
-        for i in self.__assets:
+        for i in assets:
             assert isinstance(i, Asset)
 
         self.__assets = assets
 
     # }}}
+
     def add(self, asset: Asset) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.add({asset.ticker})")
         assert isinstance(asset, Asset)
@@ -415,24 +417,7 @@ class AssetList:  # {{{
         assert False, "Bad arguments"
 
     # }}}
-    def __findById(self, instrument: Instrument) -> Asset | None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.__findById()")
-        for i in self.__assets:
-            if i == instrument:
-                return i
 
-        return None
-
-    # }}}
-    def __findByFigi(self, figi: str) -> Asset | None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.__findByFigi()")
-        for i in self.__assets:
-            if i.figi == figi:
-                return i
-
-        return None
-
-    # }}}
     @classmethod  # fromRecord  # {{{
     async def fromRecord(cls, name: str, record: asyncpg.Record) -> AssetList:
         logger.debug(f"{cls.__name__}.fromRecord()")
@@ -496,6 +481,25 @@ class AssetList:  # {{{
 
         names = await Keeper.get(cls, get_only_names=True)
         return names
+
+    # }}}
+
+    def __findById(self, instrument: Instrument) -> Asset | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__findById()")
+        for i in self.__assets:
+            if i == instrument:
+                return i
+
+        return None
+
+    # }}}
+    def __findByFigi(self, figi: str) -> Asset | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__findByFigi()")
+        for i in self.__assets:
+            if i.figi == figi:
+                return i
+
+        return None
 
     # }}}
 

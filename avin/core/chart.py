@@ -6,8 +6,6 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-"""doc"""
-
 from __future__ import annotations
 
 import bisect

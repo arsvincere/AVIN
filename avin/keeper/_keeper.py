@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import inspect
 import os
-from datetime import date, datetime
+from datetime import datetime
 from typing import Any
 
 import asyncpg
@@ -81,14 +81,8 @@ class Keeper:
         logger.debug(f"{cls.__name__}.backupUserData()")
 
         Cmd.makeDirs(Auto.BACKUP_PATH)
-
         public_path = Cmd.path(Auto.BACKUP_PATH, "public_Fc")
-        trader_path = Cmd.path(Auto.BACKUP_PATH, "trader_Fc")
-        tester_path = Cmd.path(Auto.BACKUP_PATH, "tester_Fc")
-
         os.system(f"pg_dump {cls.DATABASE} -Fc -f {public_path} -n public")
-        os.system(f"pg_dump {cls.DATABASE} -Fc -f {trader_path} -n trader")
-        os.system(f"pg_dump {cls.DATABASE} -Fc -f {tester_path} -n tester")
 
         logger.info("Backup user data complete!")
 
@@ -109,32 +103,14 @@ class Keeper:
         logger.debug(f"{cls.__name__}.restoreUserData()")
 
         public_path = Cmd.path(Auto.BACKUP_PATH, "public_Fc")
-        trader_path = Cmd.path(Auto.BACKUP_PATH, "trader_Fc")
-        tester_path = Cmd.path(Auto.BACKUP_PATH, "tester_Fc")
-
         if not Cmd.isExist(public_path):
             logger.error(f"Failed restore, no backup file: {public_path}")
-        if not Cmd.isExist(trader_path):
-            logger.error(f"Failed restore, no backup file: {trader_path}")
-        if not Cmd.isExist(tester_path):
-            logger.error(f"Failed restore, no backup file: {tester_path}")
 
         os.system(
             f"psql -a {cls.DATABASE} {cls.USER} "
             f"-c 'DROP SCHEMA public CASCADE'"
         )
-        os.system(
-            f"psql -a {cls.DATABASE} {cls.USER} "
-            f"-c 'DROP SCHEMA trader CASCADE'"
-        )
-        os.system(
-            f"psql -a {cls.DATABASE} {cls.USER} "
-            f"-c 'DROP SCHEMA tester CASCADE'"
-        )
-
         os.system(f"pg_restore -d {cls.DATABASE} {public_path}")
-        os.system(f"pg_restore -d {cls.DATABASE} {trader_path}")
-        os.system(f"pg_restore -d {cls.DATABASE} {tester_path}")
 
         logger.info("Restore user data complete!")
 
@@ -144,7 +120,6 @@ class Keeper:
         logger.debug(f"{cls.__name__}.restoreMarketData()")
 
         data_path = Cmd.path(Auto.BACKUP_PATH, "data_Fc")
-
         if not Cmd.isExist(data_path):
             logger.error(f"Failed restore, no backup file: {data_path}")
 
@@ -165,10 +140,10 @@ class Keeper:
         if not Cmd.isExist(cls.__LAST_BACKUP_DATA_DT):
             need_update = True
         else:
-            # read file, check last update < month ago
+            # read file, check last update > month ago
             dt_str = Cmd.read(cls.__LAST_BACKUP_DATA_DT)
             last_update = datetime.fromisoformat(dt_str)
-            need_update = (now() - last_update) < ONE_MONTH
+            need_update = (now() - last_update) > ONE_MONTH
 
         if not need_update:
             return
@@ -188,10 +163,10 @@ class Keeper:
         if not Cmd.isExist(cls.__LAST_BACKUP_USER_DT):
             need_update = True
         else:
-            # read file, check last update < month ago
+            # read file, check last update > day ago
             dt_str = Cmd.read(cls.__LAST_BACKUP_USER_DT)
             last_update = datetime.fromisoformat(dt_str)
-            need_update = (now() - last_update) < ONE_DAY
+            need_update = (now() - last_update) > ONE_DAY
 
         if not need_update:
             return
@@ -296,6 +271,7 @@ class Keeper:
             "StopLoss": cls.__addOrder,
             "TakeProfit": cls.__addOrder,
             "Test": cls.__addTest,
+            "TestList": cls.__addTestList,
             "AnalyticData": cls.__addAnalyticData,
         }
         add_method = methods[class_name]
@@ -322,7 +298,7 @@ class Keeper:
             "Bar": cls.__getBars,
             "Asset": cls.__getAsset,
             "AssetList": cls.__getAssetList,
-            "Account": cls.__getAccount,
+            # "Account": cls.__getAccount,
             "StrategySet": cls.__getStrategySet,
             "Trade": cls.__getTrade,
             "TradeList": cls.__getTradeList,
@@ -346,9 +322,9 @@ class Keeper:
         class_name = cls.__getClassName(obj)
         methods = {
             "_BarsData": cls.__deleteBarsData,
-            "_TEST_EXCHANGE": cls.__deleteExchange,
-            "MOEX": cls.__deleteExchange,
-            "SPB": cls.__deleteExchange,
+            # "_TEST_EXCHANGE": cls.__deleteExchange,
+            # "MOEX": cls.__deleteExchange,
+            # "SPB": cls.__deleteExchange,
             "Instrument": cls.__deleteAsset,
             "Asset": cls.__deleteAsset,
             "Share": cls.__deleteAsset,
@@ -444,7 +420,8 @@ class Keeper:
         try:
             await cls.transaction(request)
         except asyncpg.UniqueViolationError:
-            logger.warning(f"Asset '{instrument}' already exist in database")
+            # logger.warning(f"Asset '{instrument}' already exist")
+            return
 
     # }}}
     @classmethod  # __addBarsData  # {{{
@@ -513,7 +490,8 @@ class Keeper:
         try:
             await cls.transaction(request)
         except asyncpg.UniqueViolationError:
-            logger.warning(f"Asset '{asset}' already exist in database")
+            # logger.warning(f"Asset '{asset}' already exist in database")
+            return
 
     # }}}
     @classmethod  # __addAssetList  # {{{
@@ -531,9 +509,8 @@ class Keeper:
         if len(alist) == 0:
             return
 
-        pg_values = cls.__formatAssetList(alist)
-
         # Add assets
+        pg_values = cls.__formatAssetList(alist)
         request = f"""
             INSERT INTO "AssetList-Asset" (asset_list_name, figi)
             VALUES
@@ -614,7 +591,7 @@ class Keeper:
         # add StrategySet items
         request = f"""
             INSERT INTO "StrategySet-Strategy"
-                (name, strategy, version, figi, long, short)
+                (strategy_set_name, strategy, version, figi, long, short)
             VALUES {pg_values};
         """
         await cls.transaction(request)
@@ -624,7 +601,6 @@ class Keeper:
     async def __addTradeList(cls, trade_list) -> None:
         logger.debug(f"{cls.__name__}.__addTradeList()")
 
-        # Add trade list
         request = f"""
             INSERT INTO "TradeList" (trade_list_name)
             VALUES ('{trade_list.name}');
@@ -636,7 +612,7 @@ class Keeper:
     async def __addTrade(cls, trade) -> None:
         logger.debug(f"{cls.__name__}.__addTrade()")
 
-        # Add trade
+        # add trade
         request = f"""
             INSERT INTO "Trade" (
                 trade_id,
@@ -646,8 +622,8 @@ class Keeper:
                 version,
                 dt,
                 status,
-                type,
-                info
+                trade_type,
+                trade_info
                 )
             VALUES (
                 '{trade.trade_id}',
@@ -684,45 +660,45 @@ class Keeper:
             assert False, f"WTF??? Order type='{order.type}'"
 
         # format trade_id
-        trade_id = f"'{order.trade_id}'" if order.trade_id else "NULL"
+        # trade_id = f"" if order.trade_id else "NULL"
 
         # add
         request = f"""
             INSERT INTO "Order" (
                 order_id,
+                trade_id,
                 account,
-                type,
+                figi,
+                order_type,
                 status,
                 direction,
-                figi,
                 lots,
                 quantity,
                 price,
                 stop_price,
                 exec_price,
-                trade_id,
                 exec_lots,
                 exec_quantity,
-                meta,
-                broker_id
+                broker_id,
+                meta
                 )
             VALUES (
                 '{order.order_id}',
+                '{order.trade_id}',
                 '{order.account_name}',
+                '{order.instrument.figi}',
                 '{order.type.name}',
                 '{order.status.name}',
                 '{order.direction.name}',
-                '{order.instrument.figi}',
                 {order.lots},
                 {order.quantity},
                 {price},
                 {s_price},
                 {e_price},
-                {trade_id},
                 {order.exec_lots},
                 {order.exec_quantity},
-                '$${order.meta}$$',
-                '{order.broker_id}'
+                '{order.broker_id}',
+                $${order.meta}$$
                 );
             """
         await cls.transaction(request)
@@ -738,9 +714,9 @@ class Keeper:
                 order_id,
                 trade_id,
                 account,
+                figi,
                 dt,
                 direction,
-                figi,
                 lots,
                 quantity,
                 price,
@@ -753,9 +729,9 @@ class Keeper:
                 '{operation.order_id}',
                 '{operation.trade_id}',
                 '{operation.account_name}',
+                '{operation.instrument.figi}',
                 '{operation.dt}',
                 '{operation.direction.name}',
-                '{operation.instrument.figi}',
                 {operation.lots},
                 {operation.quantity},
                 {operation.price},
@@ -771,43 +747,35 @@ class Keeper:
     async def __addTest(cls, test) -> None:
         logger.debug(f"{cls.__name__}.__addTest()")
 
+        # add test
         request = f"""
-            INSERT INTO "Test" (
-                test_name,
-                strategy,
-                version,
-                figi,
-                enable_long,
-                enable_short,
-                trade_list,
-                account,
-                status,
-                deposit,
-                commission,
-                begin_date,
-                end_date,
-                description
+            INSERT INTO "Test/Trader" (
+                name,
+                type,
+                config
                 )
             VALUES (
                 '{test.name}',
-                '{test.strategy.name}',
-                '{test.strategy.version}',
-                '{test.asset.figi}',
-                {test.enable_long},
-                {test.enable_short},
-                '{test.trade_list.name}',
-                '{test.account}',
-                '{test.status.name}',
-                {test.deposit},
-                {test.commission},
-                '{test.begin}',
-                '{test.end}',
-                '{test.description}'
+                'TEST',
+                '{test.toJson(test)}'
                 );
             """
         await cls.transaction(request)
 
     # }}}
+    @classmethod  # __addTestList  # {{{
+    async def __addTestList(cls, test_list) -> None:
+        logger.debug(f"{cls.__name__}.__addTestList()")
+
+        # Add test list
+        request = f"""
+            INSERT INTO "TestList"(test_list_name)
+            VALUES ('{test_list.name}');
+        """
+        await cls.transaction(request)
+
+    # }}}
+
     @classmethod  # __addAnalyticData  # {{{
     async def __addAnalyticData(cls, analytic_data) -> None:
         logger.debug(f"{cls.__name__}.__addAnalyticData()")
@@ -980,7 +948,8 @@ class Keeper:
         data_type = kwargs["data_type"]
 
         request = f"""
-            SELECT (data_source) FROM data."DataInfo"
+            SELECT (data_source)
+            FROM data."DataInfo"
             WHERE
                 figi = '{instrument.figi}' AND data_type = '{data_type.name}'
                 ;
@@ -1139,8 +1108,14 @@ class Keeper:
 
         request = f"""
             SELECT
-                info
-            FROM "Asset"
+                data."Instrument".figi,
+                data."Instrument".exchange,
+                data."Instrument".type,
+                data."Instrument".ticker,
+                data."Instrument".name,
+                data."Instrument".lot,
+                data."Instrument".min_price_step
+            FROM data."Instrument"
             WHERE
                 {pg_condition}
             ORDER BY ticker
@@ -1170,16 +1145,16 @@ class Keeper:
         # return list[str_names] if flag 'get_only_names'
         if get_only_names:
             request = """
-                SELECT name FROM "AssetList";
+                SELECT asset_list_name FROM "AssetList";
                 """
             records = await cls.transaction(request)
             all_names = list()
             for i in records:
-                name = i["name"]
+                name = i["asset_list_name"]
                 all_names.append(name)
             return all_names
 
-        # return AssetList if name
+        # return None if not name in kwargs
         name = kwargs.get("name")
         if not name:
             return None
@@ -1187,9 +1162,9 @@ class Keeper:
         # check existing asset list with this name
         # return None if not exist
         request = f"""
-            SELECT name  FROM "AssetList"
+            SELECT asset_list_name  FROM "AssetList"
             WHERE
-                name = '{name}'
+                asset_list_name = '{name}'
             ;
             """
         records = await cls.transaction(request)
@@ -1199,12 +1174,19 @@ class Keeper:
         # request assets of asset list
         request = f"""
             SELECT
-                "AssetList-Asset".name AS alist_name,
-                "Asset".info AS info
+                "AssetList-Asset".asset_list_name,
+                data."Instrument".figi,
+                data."Instrument".exchange,
+                data."Instrument".type,
+                data."Instrument".ticker,
+                data."Instrument".name,
+                data."Instrument".lot,
+                data."Instrument".min_price_step
             FROM "AssetList-Asset"
-            JOIN "Asset" ON "AssetList-Asset".figi = "Asset".figi
+            JOIN data."Instrument"
+                ON "AssetList-Asset".figi = data."Instrument".figi
             WHERE
-                "AssetList-Asset".name = '{name}'
+                "AssetList-Asset".asset_list_name = '{name}'
             ORDER BY ticker
             ;
             """
@@ -1217,7 +1199,6 @@ class Keeper:
     @classmethod  # __getAccount  # {{{
     async def __getAccount(cls, Account, kwargs: dict):
         logger.debug(f"{cls.__name__}.__getAccount()")
-        logger.warning(f"DEPRICATE: {cls.__name__}.__getAccount()")
 
         name = kwargs.get("name")
 
@@ -1226,7 +1207,7 @@ class Keeper:
 
         # Request accounts
         request = f"""
-            SELECT name, broker FROM "Account"
+            SELECT account_name, broker FROM "Account"
             WHERE
                 {pg_name}
             ;
@@ -1238,20 +1219,21 @@ class Keeper:
         for i in records:
             acc = Account.fromRecord(i)
             accounts.append(acc)
+
         return accounts
 
     # }}}
-    @classmethod  # __getStrategySet{{{
+    @classmethod  # __getStrategySet  # {{{
     async def __getStrategySet(cls, StrategySet, kwargs: dict):
-        logger.debug(f"{cls.__name__}.__getAccount()")
+        logger.debug(f"{cls.__name__}.__getStrategySet()")
 
         name = kwargs["name"]
 
         # ensure exist
         request = f"""
-            SELECT name
+            SELECT strategy_set_name
             FROM "StrategySet"
-            WHERE name = '{name}';
+            WHERE strategy_set_name = '{name}';
             """
         records = await cls.transaction(request)
         if not records:
@@ -1259,9 +1241,9 @@ class Keeper:
 
         # load items
         request = f"""
-            SELECT name, strategy, version, figi, long, short
+            SELECT strategy_set_name, strategy, version, figi, long, short
             FROM "StrategySet-Strategy"
-            WHERE name = '{name}';
+            WHERE strategy_set_name = '{name}';
             """
         records = await cls.transaction(request)
 
@@ -1278,9 +1260,9 @@ class Keeper:
 
         # return None, if not found
         request = f"""
-            SELECT name
+            SELECT trade_list_name
             FROM "TradeList"
-            WHERE name = '{name}';
+            WHERE trade_list_name = '{name}';
             """
         records = await cls.transaction(request)
         if not records:
@@ -1295,11 +1277,18 @@ class Keeper:
                 "Trade".version,
                 "Trade".dt,
                 "Trade".status,
-                "Trade".type,
-                "Trade".info AS trade_info,
-                "Asset".info AS info
+                "Trade".trade_type,
+                "Trade".trade_info,
+                data."Instrument".figi,
+                data."Instrument".exchange,
+                data."Instrument".type,
+                data."Instrument".ticker,
+                data."Instrument".name,
+                data."Instrument".lot,
+                data."Instrument".min_price_step
             FROM "Trade"
-            JOIN "Asset" ON "Trade".figi = "Asset".figi
+            JOIN data."Instrument"
+                ON "Trade".figi = data."Instrument".figi
             WHERE trade_list = '{name}';
             """
         records = await cls.transaction(request)
@@ -1403,17 +1392,17 @@ class Keeper:
         request = f"""
             SELECT
                 operation_id,
+                order_id,
+                trade_id,
                 account,
+                figi,
                 dt,
                 direction,
-                figi,
                 lots,
                 quantity,
                 price,
                 amount,
                 commission,
-                trade_id,
-                order_id,
                 meta
             FROM "Operation"
             WHERE {pg_condition}
@@ -1449,21 +1438,21 @@ class Keeper:
         request = f"""
             SELECT
                 order_id,
+                trade_id,
                 account,
-                type,
+                figi,
+                order_type,
                 status,
                 direction,
-                figi,
                 lots,
                 quantity,
                 price,
                 stop_price,
                 exec_price,
-                trade_id,
                 exec_lots,
                 exec_quantity,
-                meta,
-                broker_id
+                broker_id,
+                meta
             FROM "Order"
             WHERE {pg_condition}
             ORDER BY order_id
@@ -1504,22 +1493,8 @@ class Keeper:
         request = f"""
             SELECT
                 "Test".name,
-                "Test".strategy,
-                "Test".version,
-                "Test".figi,
-                "Test".enable_long,
-                "Test".enable_short,
-                "Test".trade_list,
-                "Test".account,
-                "Test".status,
-                "Test".deposit,
-                "Test".commission,
-                "Test".begin_date,
-                "Test".end_date,
-                "Test".description,
-                "Asset".info
+                "Test".config
             FROM "Test"
-            JOIN "Asset" ON "Test".figi = "Asset".figi
             WHERE "Test".name = '{name}'
             ;
             """
@@ -1545,10 +1520,8 @@ class Keeper:
             SELECT
                 "AnalyticData".analytic_name,
                 "AnalyticData".figi,
-                "AnalyticData".data,
-                "Asset".info
+                "AnalyticData".analyse_json,
             FROM "AnalyticData"
-            JOIN "Asset" ON "AnalyticData".figi = "Asset".figi
             WHERE
                 "AnalyticData".analytic_name = '{name}' AND
                 "AnalyticData".figi = '{figi}'
@@ -1563,22 +1536,23 @@ class Keeper:
 
     # }}}
 
-    @classmethod  # __deleteExchange  # {{{
-    async def __deleteExchange(cls, exchange, kwargs: dict) -> None:
-        logger.debug(f"{cls.__name__}.__deleteExchange()")
-
-        request = f"""
-        DELETE FROM "Exchange" WHERE name = '{exchange.name}';
-        """
-        await cls.transaction(request)
-
-    # }}}
+    # @classmethod  # __deleteExchange  # {{{
+    # async def __deleteExchange(cls, exchange, kwargs: dict) -> None:
+    #     logger.debug(f"{cls.__name__}.__deleteExchange()")
+    #
+    #     request = f"""
+    #     DELETE FROM "Exchange" WHERE name = '{exchange.name}';
+    #     """
+    #     await cls.transaction(request)
+    #
+    # # }}}
     @classmethod  # __deleteAsset  # {{{
     async def __deleteAsset(cls, asset, kwargs: dict) -> None:
         logger.debug(f"{cls.__name__}.__deleteAsset()")
 
         request = f"""
-        DELETE FROM "Asset" WHERE figi = '{asset.figi}';
+        DELETE FROM "Asset"
+        WHERE figi = '{asset.figi}';
         """
         await cls.transaction(request)
 
@@ -1589,13 +1563,13 @@ class Keeper:
 
         request = f"""
             DELETE FROM "AssetList-Asset"
-            WHERE name = '{alist.name}';
+            WHERE asset_list_name = '{alist.name}';
             """
         await cls.transaction(request)
 
         request = f"""
             DELETE FROM "AssetList"
-            WHERE name = '{alist.name}';
+            WHERE asset_list_name = '{alist.name}';
             """
         await cls.transaction(request)
 
@@ -1624,7 +1598,7 @@ class Keeper:
             """
         await cls.transaction(request)
 
-        # Delete table & data info
+        # if table is empty - delete table & data info
         request = f"""
             SELECT * FROM {bars_table_name}
             """
@@ -1644,8 +1618,8 @@ class Keeper:
                 """
             await cls.transaction(request)
         else:
-            # Update table "Data" - information about availible market data
-            # if after deletion, the bars remained
+            # if talbe not empty after delete bars update table
+            # data."DataInfo" - information about availible market data
             request = f"""
                 UPDATE data."DataInfo"
                 SET
@@ -1664,7 +1638,8 @@ class Keeper:
         logger.debug(f"{cls.__name__}.__deleteAccount()")
 
         request = f"""
-        DELETE FROM "Account" WHERE name = '{account.name}';
+        DELETE FROM "Account"
+        WHERE name = '{account.name}';
         """
         await cls.transaction(request)
 
@@ -1675,13 +1650,14 @@ class Keeper:
 
         name = kwargs.get("name")
         version = kwargs.get("version")
+        assert (name is not None) | (version is not None)
 
         # delete version
         if name and version:
             request = f"""
                 DELETE FROM "Strategy"
                 WHERE
-                    name = '{name}'
+                    strategy_name = '{name}'
                     AND
                     version = '{version}';
             """
@@ -1706,14 +1682,14 @@ class Keeper:
         # delete strategy set items
         request = f"""
             DELETE FROM "StrategySet-Strategy"
-            WHERE name = '{s_set.name}';
+            WHERE strategy_set_name = '{s_set.name}';
         """
         await cls.transaction(request)
 
         # delete strategy set
         request = f"""
             DELETE FROM "StrategySet"
-            WHERE name = '{s_set.name}';
+            WHERE strategy_set_name = '{s_set.name}';
         """
         await cls.transaction(request)
 
@@ -1737,7 +1713,7 @@ class Keeper:
         # delete trade list
         request = f"""
             DELETE FROM "TradeList"
-            WHERE name = '{trade_list.name}';
+            WHERE trade_list_name = '{trade_list.name}';
             """
         await cls.transaction(request)
 
@@ -1850,8 +1826,8 @@ class Keeper:
             try:
                 await cls.transaction(request)
             except asyncpg.UniqueViolationError:
-                pass
                 # logger.warning(f"Asset '{info["ticker"]}' already exist")
+                return
 
     # }}}
     @classmethod  # __updateStrategy  # {{{
@@ -1899,7 +1875,7 @@ class Keeper:
             UPDATE "Trade"
             SET
                 status = '{trade.status.name}',
-                info = {cls.__formatInfo(trade)}
+                trade_info = {cls.__formatInfo(trade)}
             WHERE
                 trade_id = '{trade.trade_id}';
             """
@@ -1910,21 +1886,15 @@ class Keeper:
     async def __updateOrder(cls, order, kwargs: dict) -> None:
         logger.debug(f"{cls.__name__}.__updateOrder()")
 
-        # format trade_id
-        trade_id = f"'{order.trade_id}'" if order.trade_id else "NULL"
-
-        # format broker_id
-        broker_id = f"'{order.broker_id}'" if order.broker_id else "NULL"
-
         request = f"""
             UPDATE "Order"
             SET
-                trade_id = {trade_id},
+                trade_id = {order.trade_id},
                 status = '{order.status.name}',
                 exec_lots = {order.exec_lots},
                 exec_quantity = {order.exec_quantity},
                 meta = $${order.meta}$$,
-                broker_id = {broker_id}
+                broker_id = '{order.broker_id}'
             WHERE
                 order_id = '{order.order_id}';
             """
@@ -1952,18 +1922,8 @@ class Keeper:
         request = f"""
             UPDATE "Test"
             SET
-                test_name = '{test.name}',
-                strategy = '{test.strategy.name}',
-                version = '{test.strategy.version}',
-                figi = '{test.asset.figi}',
-                enable_long = {test.enable_long},
-                enable_short = {test.enable_short},
-                status = '{test.status.name}',
-                deposit = {test.deposit},
-                commission = {test.commission},
-                begin_date = '{test.begin}',
-                end_date = '{test.end}',
-                description = '{test.description}'
+                name = '{test.name}',
+                config = '{test.toJson(test)}'
             WHERE
                 name = '{test.name}';
             """
@@ -2048,6 +2008,8 @@ class Keeper:
     # }}}
     @classmethod  # __formatCache  # {{{
     def __formatCache(cls, cache) -> str:
+        logger.debug(f"{cls.__name__}.__formatCache()")
+
         # Format cache into postgres values
         values = ""
         for info in cache.formatted:
@@ -2066,6 +2028,8 @@ class Keeper:
     # }}}
     @classmethod  # __formatAssetList  # {{{
     def __formatAssetList(cls, alist) -> str:
+        logger.debug(f"{cls.__name__}.__formatAssetList()")
+
         # create pg values
         pg_values = ""
         for asset in alist:
@@ -2076,19 +2040,14 @@ class Keeper:
         return pg_values
 
     # }}}
+    @classmethod  # __formatTestConfig  # {{{
+    def __formatTestConfig(cls, test):
+        logger.debug(f"{cls.__name__}.__formatTestConfig()")
 
-    @staticmethod  # encoderJson# {{{
-    def encoderJson(obj) -> Any:
-        if isinstance(obj, (datetime, date)):
-            return obj.isoformat()
+        json_string = Cmd.toJson(test.cfg, test.encoderJson)
+        pg_test_cfg = f"'{json_string}'"
 
-    # }}}
-    @staticmethod  # decoderJson# {{{
-    def decoderJson(obj) -> Any:
-        for k, v in obj.items():
-            if isinstance(v, str) and "+00:00" in v:
-                obj[k] = datetime.fromisoformat(obj[k])
-        return obj
+        return pg_test_cfg
 
     # }}}
 

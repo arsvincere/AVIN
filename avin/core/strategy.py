@@ -41,12 +41,9 @@ UStrategy = TypeVar("UStrategy")
 
 
 class Strategy(ABC):  # {{{
-    """Signal"""  # {{{
-
+    # signals
     tradeOpened = AsyncSignal(Trade)
     tradeClosed = AsyncSignal(Trade)
-
-    # }}}
 
     # Abstract
     @abstractmethod  # __init__  # {{{
@@ -55,7 +52,7 @@ class Strategy(ABC):  # {{{
         self.__version = version
         self.__cfg = None
         self.__account: Optional[Account] = None
-        self.__active_trades = TradeList(name="")
+        self.__active_trades: Optional[TradeList] = None
 
     # }}}
     @abstractmethod  # timeframes  # {{{
@@ -164,17 +161,8 @@ class Strategy(ABC):  # {{{
     # }}}
     def setTradeList(self, tlist: TradeList) -> None:  # {{{
         logger.info(f":: {self} set {tlist}")
+
         self.__active_trades = tlist
-        # TODO: active trades - а самое ли это удачное название
-        # что вообще делает эта переменная?
-        # Трейды - должны иметь трейд лист куда они сохраняются
-        # для этого стратегии нужно знать название трейд листа
-        # с которым она работает, но допустим пусть она вообще
-        # сам трейд лист принимает как аргрумент, аналогично как
-        # и аккаунт.. хотя использует только имя трейд листа
-        # ок.
-        # Стратегия должна иметь доступ к своим активным трейдам...
-        #
 
     # }}}
 
@@ -182,6 +170,7 @@ class Strategy(ABC):  # {{{
         self, dt: datetime, trade_type: Trade.Type, instrument: Instrument
     ):
         logger.debug("Strategy.createTrade()")
+        assert self.__active_trades is not None
 
         trade = Trade(
             dt=dt,
@@ -409,6 +398,7 @@ class Strategy(ABC):  # {{{
         if trade.status == Trade.Status.CLOSED:
             # FIX: не понимаю как и почему сюда прилетают иногда
             # закрытые уже трейды
+            logger.warning(f"Strategy.closeTrade: already closed {trade}")
             return
 
         await trade.setStatus(Trade.Status.CLOSING)
@@ -420,7 +410,7 @@ class Strategy(ABC):  # {{{
         lots = trade.lots()
         d = Direction.SELL if lots > 0 else Direction.BUY
         order = await self.createMarketOrder(
-            direction=d, instrument=trade.instrument, lots=abs(lots)
+            trade=trade, direction=d, lots=abs(lots)
         )
 
         # attach & post this order
@@ -860,6 +850,7 @@ class StrategyList:  # {{{
         return len(self.__strategys)
 
     # }}}
+
     @property  # name  # {{{
     def name(self) -> str:
         return self.__name
@@ -882,6 +873,7 @@ class StrategyList:  # {{{
         self.__strategys = strategys
 
     # }}}
+
     def add(self, strategy: Strategy) -> None:  # {{{
         logger.debug(
             f"{self.__class__.__name__}.add"
@@ -988,6 +980,7 @@ class StrategySet:  # {{{
         return len(self.__nodes)
 
     # }}}
+
     @property  # name  # {{{
     def name(self):
         return self.__name
@@ -998,6 +991,7 @@ class StrategySet:  # {{{
         self.__name = name
 
     # }}}
+
     def add(self, node: StrategySetNode) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.add({node})")
         assert isinstance(node, StrategySetNode)
@@ -1020,6 +1014,7 @@ class StrategySet:  # {{{
         self.__nodes.clear()
 
     # }}}
+
     async def createAssetList(self) -> AssetList:  # {{{
         logger.debug(f"{self.__class__.__name__}.getAssetList()")
 
@@ -1057,6 +1052,7 @@ class StrategySet:  # {{{
         return self.__strategy_list
 
     # }}}
+
     @classmethod  # fromRecord{{{
     def fromRecord(cls, name: str, records: asyncpg.Record) -> StrategySet:
         logger.debug(f"{cls.__name__}.fromRecord()")

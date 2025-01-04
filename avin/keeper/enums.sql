@@ -19,6 +19,11 @@ CREATE TYPE "InstrumentType" AS ENUM (--{{{
     'OPTION', 'CURRENCY', 'ETF'
     );
 --}}}
+
+CREATE TYPE "TradeListOwner" AS ENUM (--{{{
+    'TEST', 'TRADER'
+    );
+--}}}
 CREATE TYPE "Exchange" AS ENUM (--{{{
     'MOEX', 'SPB'
     );

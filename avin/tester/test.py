@@ -9,15 +9,21 @@
 from __future__ import annotations
 
 import enum
-from datetime import date, timedelta
+from datetime import date
+from typing import Iterator, Optional
 
-from avin.const import ONE_MINUTE
-from avin.core import Asset, Strategy, Summary, TradeList
+from avin.core import (
+    Asset,
+    Strategy,
+    Summary,
+    TimeFrame,
+    TradeList,
+)
 from avin.keeper import Keeper
-from avin.utils import Signal, logger
+from avin.utils import Cmd, Signal, logger
 
 
-class Test:
+class Test:  # {{{
     class Status(enum.Enum):  # {{{
         UNDEFINE = 0
         NEW = 1
@@ -42,19 +48,19 @@ class Test:
 
         # default values:
         self.__name = name
-        self.__strategy = None
-        self.__asset = None
+        self.__strategy: Optional[Strategy] = None
+        self.__asset: Optional[Asset] = None
         self.__enable_long = True
         self.__enable_short = True
-        self.__trade_list = TradeList(f"{self}-trade_list")
         self.__deposit = 100000.0
         self.__commission = 0.0005
         self.__begin = date(2018, 1, 1)
         self.__end = date(2023, 1, 1)
         self.__description = ""
         self.__account = "_backtest"
-        self.__time_step = ONE_MINUTE
+        self.__trade_list = TradeList(f"{self}-trade_list")
         self.__status = Test.Status.NEW
+        self.__time_step = TimeFrame("1M")
 
         # set owner
         self.__trade_list.setOwner(self)
@@ -94,16 +100,6 @@ class Test:
     @asset.setter
     def asset(self, asset: Asset):
         self.__asset = asset
-
-    # }}}
-    @property  # trade_list  # {{{
-    def trade_list(self):
-        return self.__trade_list
-
-    @trade_list.setter
-    def trade_list(self, trade_list: TradeList):
-        trade_list.name = f"{self}-trade_list"
-        self.__trade_list = trade_list
 
     # }}}
     @property  # enable_long  # {{{
@@ -180,13 +176,15 @@ class Test:
         self.__account = account_name
 
     # }}}
-    @property  # time_step  # {{{
-    def time_step(self):
-        return self.__time_step
+    @property  # trade_list  # {{{
+    def trade_list(self):
+        return self.__trade_list
 
-    @time_step.setter
-    def time_step(self, time_step: timedelta):
-        self.__time_step = time_step
+    @trade_list.setter
+    def trade_list(self, trade_list: TradeList):
+        trade_list.name = f"{self}-trade_list"
+        trade_list.setOwner(self)
+        self.__trade_list = trade_list
 
     # }}}
     @property  # status  # {{{
@@ -196,6 +194,15 @@ class Test:
     @status.setter
     def status(self, new_status):
         self.__status = new_status
+
+    # }}}
+    @property  # time_step  # {{{
+    def time_step(self):
+        return self.__time_step
+
+    @time_step.setter
+    def time_step(self, time_step: TimeFrame):
+        self.__time_step = time_step
 
     # }}}
 
@@ -211,30 +218,7 @@ class Test:
     async def fromRecord(cls, record: asyncpg.Record) -> Test:
         logger.debug(f"{cls.__name__}.fromRecord()")
 
-        asset = Asset.fromRecord(record)
-        strategy = await Strategy.load(
-            record["strategy"],
-            record["version"],
-        )
-
-        test = Test(record["name"])
-        test.__strategy = strategy
-        test.__asset = asset
-        test.__enable_long = record["enable_long"]
-        test.__enable_short = record["enable_short"]
-        test.__deposit = record["deposit"]
-        test.__commission = record["commission"]
-        test.__begin = record["begin_date"]
-        test.__end = record["end_date"]
-        test.__description = record["description"]
-        test.__status = Test.Status.fromStr(record["status"])
-
-        # request trade list
-        loaded = await TradeList.load(record["trade_list"])
-        assert loaded is not None
-        test.__trade_list = loaded
-        test.__trade_list.setOwner(test)
-
+        test = await cls.fromJson(record["config"])
         return test
 
     # }}}
@@ -343,15 +327,15 @@ class Test:
 
     # }}}
 
-    @classmethod  # toJson  # {{{
-    def toJson(cls, test: Test) -> dict:
-        logger.debug(f"{cls.__name__}.toJson()")
+    @staticmethod  # toJson  # {{{
+    def toJson(test: Test) -> str:
+        logger.debug("Test.toJson()")
 
         obj = {
             "name": test.name,
             "strategy": test.strategy.name,
             "version": test.strategy.version,
-            "asset": str(test.asset),
+            "figi": test.asset.figi,
             "enable_long": test.enable_long,
             "enable_short": test.enable_short,
             "deposit": test.deposit,
@@ -359,18 +343,25 @@ class Test:
             "begin_date": test.begin.isoformat(),
             "end_date": test.end.isoformat(),
             "description": test.description,
+            "account": test.account,
+            "trade_list": test.trade_list.name,
             "status": test.status.name,
+            "time_step": str(test.time_step),
         }
-        return obj
+        string = Cmd.toJson(obj)
+
+        return string
 
     # }}}
-    @classmethod  # fromJson  # {{{
-    async def fromJson(cls, obj) -> Test:
-        logger.debug(f"{cls.__name__}.fromJson()")
+    @staticmethod  # fromJson  # {{{
+    async def fromJson(string: str) -> Test:
+        logger.debug("Test.fromJson()")
+
+        obj = Cmd.fromJson(string)
 
         test = Test(obj["name"])
         test.strategy = await Strategy.load(obj["strategy"], obj["version"])
-        test.asset = await Asset.fromStr(obj["asset"])
+        test.asset = await Asset.fromFigi(obj["figi"])
         test.enable_long = obj["enable_long"]
         test.enable_short = obj["enable_short"]
         test.deposit = obj["deposit"]
@@ -378,11 +369,168 @@ class Test:
         test.begin = date.fromisoformat(obj["begin_date"])
         test.end = date.fromisoformat(obj["end_date"])
         test.description = obj["description"]
+        test.account = obj["account"]
+        test.trade_list = await TradeList.load(obj["trade_list"])
         test.status = Test.Status.fromStr(obj["status"])
+        test.time_step = TimeFrame(obj["time_step"])
 
         return test
 
     # }}}
+
+
+# }}}
+class TestList:  # {{{
+    def __init__(self, name: str, tests: Optional[list] = None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+
+        self.__name = name
+        self.__tests: list[Test] = list()
+
+    # }}}
+    def __str__(self):  # {{{
+        return f"TestList={self.__name}"
+
+    # }}}
+    def __getitem__(self, index: int) -> Test:  # {{{
+        assert index < len(self.__tests)
+        return self.__tests[index]
+
+    # }}}
+    def __iter__(self) -> Iterator:  # {{{
+        return iter(self.__tests)
+
+    # }}}
+    def __contains__(self, test: Test) -> bool:  # {{{
+        return any(i == test for i in self.__tests)
+
+    # }}}
+    def __len__(self):  # {{{
+        return len(self.__tests)
+
+    # }}}
+
+    @property  # name  # {{{
+    def name(self) -> str:
+        return self.__name
+
+    @name.setter
+    def name(self, name: str):
+        assert isinstance(name, str)
+        self.__name = name
+
+    # }}}
+    @property  # tests  # {{{
+    def tests(self) -> list[Test]:
+        return self.__tests
+
+    @tests.setter
+    def tests(self, tests: list[Test]):
+        assert isinstance(tests, list)
+        for i in tests:
+            assert isinstance(i, Test)
+
+        self.__tests = tests
+
+    # }}}
+
+    def add(self, test: Test) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.add()")
+        assert isinstance(test, Test)
+
+        if test not in self:
+            self.__tests.append(test)
+            return
+
+        logger.warning(f"{test} already in list '{self.name}'")
+
+    # }}}
+    def remove(self, test: Test) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.remove()")
+
+        try:
+            self.__tests.remove(test)
+        except ValueError:
+            logger.warning(
+                f"Test.remove(test) failed: " f"'{test}' not in list",
+            )
+
+    # }}}
+    def clear(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.clear()")
+
+        self.__tests.clear()
+
+    # }}}
+
+    @classmethod  # fromRecord  # {{{
+    async def fromRecord(cls, name: str, record: asyncpg.Record) -> TestList:
+        logger.debug(f"{cls.__name__}.fromRecord()")
+
+        test_list = cls(name)
+        for i in record:
+            test = await Test.fromRecord(i)
+            test_list.add(test)
+
+        return test_list
+
+    # }}}
+    @classmethod  # save  # {{{
+    async def save(cls, test_list: TestList) -> None:
+        logger.debug(f"{cls.__name__}.save()")
+        assert isinstance(test_list, TestList)
+
+        await Keeper.add(test_list)
+
+    # }}}
+    @classmethod  # load  # {{{
+    async def load(cls, name: str) -> TestList | None:
+        logger.debug(f"{cls.__name__}.load()")
+
+        test_list = await Keeper.get(cls, name=name)
+        return test_list
+
+    # }}}
+    @classmethod  # delete  # {{{
+    async def delete(cls, test_list: TestList) -> None:
+        logger.debug(f"{cls.__name__}.delete()")
+        assert isinstance(test_list, TestList)
+
+        await Keeper.delete(test_list)
+
+    # }}}
+    @classmethod  # rename  # {{{
+    async def rename(cls, test_list: TestList, new_name: str) -> None:
+        logger.debug(f"{cls.__name__}.rename()")
+        assert isinstance(new_name, str)
+        assert len(new_name) > 0
+
+        await cls.delete(test_list)
+        test_list.name = new_name
+        await cls.save(test_list)
+
+    # }}}
+    @classmethod  # copy  # {{{
+    async def copy(cls, test_list: TestList, new_name: str) -> None:
+        logger.debug(f"{cls.__name__}.copy()")
+
+        new_list = TestList(new_name)
+        new_list.tests = test_list.tests
+
+        await cls.save(new_list)
+
+    # }}}
+    @classmethod  # requestAll# {{{
+    async def requestAll(cls) -> list[str]:
+        logger.debug(f"{cls.__name__}.requestAll()")
+
+        names = await Keeper.get(cls, get_only_names=True)
+        return names
+
+    # }}}
+
+
+# }}}
 
 
 if __name__ == "__main__":
