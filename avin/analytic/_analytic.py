@@ -33,9 +33,9 @@ class Analytic(ABC):  # {{{
     async def updateAll(cls):
         logger.debug(f"{cls.__name__}.updateAll()")
 
-        all_uanalytic = await cls.requestAll()
-        for i in all_uanalytic:
-            i.update()
+        all_uanalytic_names = await cls.requestAll()
+        for name in all_uanalytic_names:
+            await cls.update(name)
 
     # }}}
     @classmethod  # load  # {{{
@@ -97,7 +97,7 @@ class AnalyticData:  # {{{
 
         name = record["analytic_name"]
         asset = Asset.fromRecord(record)
-        json_str = record["data"]
+        json_str = record["analyse_json"]
 
         analytic_data = AnalyticData(name, asset, json_str)
         return analytic_data
