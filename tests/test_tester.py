@@ -48,8 +48,8 @@ async def test_Test():
     assert test.trade_list.name == "Test=_unittest_test-trade_list"
     assert test.deposit == 100_000.0
     assert test.commission == 0.0005
-    assert test.begin == date(2018, 1, 1)
-    assert test.end == date(2023, 1, 1)
+    assert test.begin == Date(2018, 1, 1)
+    assert test.end == Date(2023, 1, 1)
     assert test.description == ""
     assert test.account == "_backtest"
     assert test.time_step == ONE_MINUTE

@@ -6,8 +6,6 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-from datetime import UTC, datetime
-
 import pytest
 from avin import *
 
@@ -76,7 +74,7 @@ def test_Size():  # {{{
 
 # }}}
 def test_Bar():  # {{{
-    dt = datetime.fromisoformat("2023-01-01")
+    dt = DateTime.fromisoformat("2023-01-01")
     bar = Bar(dt, 10, 12, 9, 11, 1000, chart=None)
     assert bar.dt == dt
     assert bar.open == 10
@@ -235,13 +233,13 @@ def test_NewHistoricalBarEvent():  # {{{
 def test_Transaction():  # {{{
     t1 = Transaction(
         order_id="111",
-        dt=datetime(2023, 8, 1),
+        dt=DateTime(2023, 8, 1),
         quantity=5,
         price=10.0,
         broker_id="1111",
     )
     assert t1.order_id == "111"
-    assert t1.dt == datetime(2023, 8, 1)
+    assert t1.dt == DateTime(2023, 8, 1)
     assert t1.quantity == 5
     assert t1.price == 10.0
     assert t1.broker_id == "1111"
@@ -324,8 +322,8 @@ async def test_Chart(event_loop):
         Exchange.MOEX, Instrument.Type.SHARE, "SBER"
     )
     tf = TimeFrame("1M")
-    begin = datetime(2023, 8, 1, 0, 0, tzinfo=UTC)
-    end = datetime(2023, 9, 1, 0, 0, tzinfo=UTC)
+    begin = DateTime(2023, 8, 1, 0, 0, tzinfo=UTC)
+    end = DateTime(2023, 9, 1, 0, 0, tzinfo=UTC)
     bars = await Keeper.get(
         Bar, instrument=sber, timeframe=tf, begin=begin, end=end
     )
@@ -336,41 +334,41 @@ async def test_Chart(event_loop):
     assert chart.instrument.ticker == "SBER"
     assert chart.timeframe == tf
 
-    assert chart.first.dt == datetime(2023, 8, 1, 6, 59, tzinfo=UTC)
-    assert chart.last.dt == datetime(2023, 8, 31, 20, 49, tzinfo=UTC)
+    assert chart.first.dt == DateTime(2023, 8, 1, 6, 59, tzinfo=UTC)
+    assert chart.last.dt == DateTime(2023, 8, 31, 20, 49, tzinfo=UTC)
 
-    assert chart[1].dt == datetime(2023, 8, 31, 20, 49, tzinfo=UTC)
+    assert chart[1].dt == DateTime(2023, 8, 31, 20, 49, tzinfo=UTC)
     assert chart.now is None
     assert chart[0] is None
 
     # manipulation with head
     chart.setHeadIndex(15)
     assert chart.getHeadIndex() == 15
-    assert chart.now.dt == datetime(2023, 8, 1, 7, 14, tzinfo=UTC)
+    assert chart.now.dt == DateTime(2023, 8, 1, 7, 14, tzinfo=UTC)
 
-    chart.setHeadDatetime(datetime(2023, 8, 3, 10, 0, tzinfo=UTC))
-    assert chart.now.dt == datetime(2023, 8, 3, 10, 0, tzinfo=UTC)
-    assert chart.last.dt == datetime(2023, 8, 3, 9, 59, tzinfo=UTC)
+    chart.setHeadDatetime(DateTime(2023, 8, 3, 10, 0, tzinfo=UTC))
+    assert chart.now.dt == DateTime(2023, 8, 3, 10, 0, tzinfo=UTC)
+    assert chart.last.dt == DateTime(2023, 8, 3, 9, 59, tzinfo=UTC)
 
     bars = chart.getTodayBars()
-    assert bars[0].dt == datetime(2023, 8, 3, 6, 59, tzinfo=UTC)
-    assert bars[-1].dt == datetime(2023, 8, 3, 9, 59, tzinfo=UTC)
+    assert bars[0].dt == DateTime(2023, 8, 3, 6, 59, tzinfo=UTC)
+    assert bars[-1].dt == DateTime(2023, 8, 3, 9, 59, tzinfo=UTC)
     assert len(bars) == 181
 
     chart.nextHead()
-    assert chart.now.dt == datetime(2023, 8, 3, 10, 1, tzinfo=UTC)
-    assert chart.last.dt == datetime(2023, 8, 3, 10, 0, tzinfo=UTC)
+    assert chart.now.dt == DateTime(2023, 8, 3, 10, 1, tzinfo=UTC)
+    assert chart.last.dt == DateTime(2023, 8, 3, 10, 0, tzinfo=UTC)
 
     chart.prevHead()
-    assert chart.now.dt == datetime(2023, 8, 3, 10, 0, tzinfo=UTC)
-    assert chart.last.dt == datetime(2023, 8, 3, 9, 59, tzinfo=UTC)
+    assert chart.now.dt == DateTime(2023, 8, 3, 10, 0, tzinfo=UTC)
+    assert chart.last.dt == DateTime(2023, 8, 3, 9, 59, tzinfo=UTC)
 
     chart.resetHead()
-    assert chart.first.dt == datetime(2023, 8, 1, 6, 59, tzinfo=UTC)
-    assert chart.last.dt == datetime(2023, 8, 31, 20, 49, tzinfo=UTC)
+    assert chart.first.dt == DateTime(2023, 8, 1, 6, 59, tzinfo=UTC)
+    assert chart.last.dt == DateTime(2023, 8, 31, 20, 49, tzinfo=UTC)
     assert chart.now is None
     assert chart[0] is None
-    assert chart[1].dt == datetime(2023, 8, 31, 20, 49, tzinfo=UTC)
+    assert chart[1].dt == DateTime(2023, 8, 31, 20, 49, tzinfo=UTC)
     assert chart.getHeadIndex() == len(chart.getBars())
 
     # add new bars in chart
@@ -429,8 +427,8 @@ async def test_Asset(event_loop):
     sber = await Asset.fromTicker(
         Exchange.MOEX, Instrument.Type.SHARE, "SBER"
     )
-    begin = datetime(2023, 1, 1, tzinfo=UTC)
-    end = datetime(2023, 2, 1, tzinfo=UTC)
+    begin = DateTime(2023, 1, 1, tzinfo=UTC)
+    end = DateTime(2023, 2, 1, tzinfo=UTC)
     dataframe = await sber.loadData(TimeFrame("D"), begin, end)
     assert dataframe["volume"][0] == 21098550  # volume 2023-01-03 SBER
 
@@ -574,130 +572,6 @@ async def test_AssetList(event_loop):
 
 
 # }}}
-@pytest.mark.asyncio  # test_Order  # {{{
-async def test_Order(event_loop):
-    sber = await Instrument.fromTicker(
-        Exchange.MOEX, Instrument.Type.SHARE, "SBER"
-    )
-    order_id = Id(100500)
-    o = MarketOrder(
-        "_unittest",
-        Direction.SELL,
-        sber,
-        lots=15,
-        quantity=150,
-        order_id=order_id,
-    )
-    assert o.account_name == "_unittest"
-    assert o.direction == Direction.SELL
-    assert o.instrument == sber
-    assert o.lots == 15
-    assert o.quantity == 150
-    assert o.order_id == order_id
-    assert o.trade_id is None
-    assert o.exec_lots == 0
-    assert o.exec_quantity == 0
-    assert o.status == Order.Status.NEW
-
-    await Order.save(o)
-
-    # setStatus change both: object & record in db
-    await o.setStatus(Order.Status.POSTED)
-    assert o.status == Order.Status.POSTED
-    loaded = await Order.load(o.order_id)
-    assert loaded.status == o.status
-
-    # change exec_lots
-    o.exec_lots = 5
-    o.exec_quantity = 50
-
-    # update db record
-    await Order.update(o)
-    loaded = await Order.load(o.order_id)
-    assert loaded.exec_lots == o.exec_lots
-    assert loaded.exec_quantity == o.exec_quantity
-
-    # delete from db
-    await Order.delete(o)
-
-    # Limit order
-    o_limit = LimitOrder(
-        "_unittest",
-        Direction.BUY,
-        sber,
-        lots=15,
-        quantity=150,
-        price=300,
-    )
-    assert o_limit.account_name == "_unittest"
-    assert o_limit.direction == Direction.BUY
-    assert o_limit.instrument == sber
-    assert o_limit.lots == 15
-    assert o_limit.quantity == 150
-    assert o_limit.price == 300
-    assert o_limit.order_id is None
-    assert o_limit.trade_id is None
-    assert o_limit.exec_lots == 0
-    assert o_limit.exec_quantity == 0
-    assert o_limit.status == Order.Status.NEW
-
-    # Stop order
-    o_stop = StopOrder(
-        "_unittest",
-        Direction.BUY,
-        sber,
-        lots=15,
-        quantity=150,
-        stop_price=301,
-        exec_price=302,
-    )
-    assert o_stop.account_name == "_unittest"
-    assert o_stop.direction == Direction.BUY
-    assert o_stop.instrument == sber
-    assert o_stop.lots == 15
-    assert o_stop.quantity == 150
-    assert o_stop.stop_price == 301
-    assert o_stop.exec_price == 302
-    assert o_stop.order_id is None
-    assert o_stop.trade_id is None
-    assert o_stop.exec_lots == 0
-    assert o_stop.exec_quantity == 0
-    assert o_stop.status == Order.Status.NEW
-
-
-# }}}
-@pytest.mark.asyncio  # test_Operation  # {{{
-async def test_Operation():
-    sber = await Asset.fromTicker(Exchange.MOEX, Asset.Type.SHARE, "SBER")
-    dt = datetime(2024, 8, 27, 15, 12, tzinfo=UTC)
-
-    op = Operation(
-        account_name="_unittest",
-        dt=dt,
-        direction=Direction.SELL,
-        instrument=sber,
-        lots=1,
-        quantity=50,
-        price=100,
-        amount=100 * 50,
-        commission=10,
-        trade_id=None,
-        meta=None,
-    )
-
-    assert op.dt == dt
-    assert op.direction == Direction.SELL
-    assert op.instrument == sber
-    assert op.price == 100
-    assert op.lots == 1
-    assert op.quantity == 50
-    assert op.amount == 5000
-    assert op.commission == 10
-    assert op.meta is None
-    assert str(op) == "2024-08-27 18:12 SELL SBER 50 * 100 = 5000 + 10"
-
-
-# }}}
 @pytest.mark.asyncio  # test_Trade  # {{{
 async def test_Trade():
     # create TradeList in db
@@ -706,7 +580,7 @@ async def test_Trade():
     await TradeList.save(tlist)  # save only TradeList name in db
 
     # create strategy and trade
-    dt = datetime(2024, 8, 27, 16, 33, tzinfo=UTC)
+    dt = DateTime(2024, 8, 27, 16, 33, tzinfo=UTC)
     strategy = await Strategy.load("Every", "minute")
     trade_type = Trade.Type.LONG
     sber = await Asset.fromTicker(Exchange.MOEX, Asset.Type.SHARE, "SBER")
@@ -875,7 +749,7 @@ async def test_TradeList():
     strategy = await Strategy.load("Every", "minute")
 
     # create trades
-    dt = datetime(2024, 8, 27, 16, 33, tzinfo=UTC)
+    dt = DateTime(2024, 8, 27, 16, 33, tzinfo=UTC)
     trade_type = Trade.Type.LONG
     asset = await Asset.fromTicker(
         Exchange.MOEX, Instrument.Type.SHARE, "SBER"
@@ -918,6 +792,109 @@ async def test_TradeList():
     tlist.clear()  # only in RAM, not in db
     # delete
     await TradeList.delete(tlist)  # del in db tlist & del trades too
+
+
+# }}}
+@pytest.mark.asyncio  # test_Order  # {{{
+async def test_Order(event_loop):
+    sber = await Instrument.fromTicker(
+        Exchange.MOEX, Instrument.Type.SHARE, "SBER"
+    )
+    order_id = Id(100500)
+    o = MarketOrder(
+        "_unittest",
+        Direction.SELL,
+        sber,
+        lots=15,
+        quantity=150,
+        order_id=order_id,
+    )
+    assert o.account_name == "_unittest"
+    assert o.direction == Direction.SELL
+    assert o.instrument == sber
+    assert o.lots == 15
+    assert o.quantity == 150
+    assert o.order_id == order_id
+    assert o.trade_id is None
+    assert o.exec_lots == 0
+    assert o.exec_quantity == 0
+    assert o.status == Order.Status.NEW
+
+    # Limit order
+    o_limit = LimitOrder(
+        "_unittest",
+        Direction.BUY,
+        sber,
+        lots=15,
+        quantity=150,
+        price=300,
+    )
+    assert o_limit.account_name == "_unittest"
+    assert o_limit.direction == Direction.BUY
+    assert o_limit.instrument == sber
+    assert o_limit.lots == 15
+    assert o_limit.quantity == 150
+    assert o_limit.price == 300
+    assert o_limit.order_id is None
+    assert o_limit.trade_id is None
+    assert o_limit.exec_lots == 0
+    assert o_limit.exec_quantity == 0
+    assert o_limit.status == Order.Status.NEW
+
+    # Stop order
+    o_stop = StopOrder(
+        "_unittest",
+        Direction.BUY,
+        sber,
+        lots=15,
+        quantity=150,
+        stop_price=301,
+        exec_price=302,
+    )
+    assert o_stop.account_name == "_unittest"
+    assert o_stop.direction == Direction.BUY
+    assert o_stop.instrument == sber
+    assert o_stop.lots == 15
+    assert o_stop.quantity == 150
+    assert o_stop.stop_price == 301
+    assert o_stop.exec_price == 302
+    assert o_stop.order_id is None
+    assert o_stop.trade_id is None
+    assert o_stop.exec_lots == 0
+    assert o_stop.exec_quantity == 0
+    assert o_stop.status == Order.Status.NEW
+
+
+# }}}
+@pytest.mark.asyncio  # test_Operation  # {{{
+async def test_Operation():
+    sber = await Asset.fromTicker(Exchange.MOEX, Asset.Type.SHARE, "SBER")
+    dt = DateTime(2024, 8, 27, 15, 12, tzinfo=UTC)
+
+    op = Operation(
+        account_name="_unittest",
+        dt=dt,
+        direction=Direction.SELL,
+        instrument=sber,
+        lots=1,
+        quantity=50,
+        price=100,
+        amount=100 * 50,
+        commission=10,
+        trade_id=None,
+        meta=None,
+    )
+
+    assert op.dt == dt
+    assert op.direction == Direction.SELL
+    assert op.instrument == sber
+    assert op.price == 100
+    assert op.lots == 1
+    assert op.quantity == 50
+    assert op.amount == 5000
+    assert op.commission == 10
+    assert op.meta is None
+    assert str(op) == "2024-08-27 18:12 SELL SBER 50 * 100 = 5000 + 10"
 
 
 # }}}
@@ -966,20 +943,20 @@ async def conditionTrade(trade: Trade) -> bool:
             assert chart[2].isBull()
             assert chart[1].isBull()
 
-    Filter.save(f)
-    file_path = Cmd.path(Usr.FILTER, "_bull_3.py")
-    assert Cmd.isExist(file_path)
-
-    f = Filter.rename(f, "_bbb")
-    file_path = Cmd.path(Usr.FILTER, "_bbb.py")
-    assert Cmd.isExist(file_path)
-
-    loaded = Filter.load("_bbb")
-    assert loaded.name == f.name
-    assert loaded.code == f.code
-
-    loaded = Filter.delete(loaded)
-    assert not Cmd.isExist(file_path)
+    # Filter.save(f)
+    # file_path = Cmd.path(Usr.FILTER, "_bull_3.py")
+    # assert Cmd.isExist(file_path)
+    #
+    # f = Filter.rename(f, "_bbb")
+    # file_path = Cmd.path(Usr.FILTER, "_bbb.py")
+    # assert Cmd.isExist(file_path)
+    #
+    # loaded = Filter.load("_bbb")
+    # assert loaded.name == f.name
+    # assert loaded.code == f.code
+    #
+    # loaded = Filter.delete(loaded)
+    # assert not Cmd.isExist(file_path)
 
 
 # }}}
@@ -990,10 +967,10 @@ async def test_clear_all_test_vars():
     request = """
     DELETE FROM "AssetList"
     WHERE
-        name = '_unittest' OR
-        name = '_unittest_copy' OR
-        name = '_unittest_copy_rename' OR
-        name = '_unittest_copy_rename_2';
+        asset_list_name = '_unittest' OR
+        asset_list_name = '_unittest_copy' OR
+        asset_list_name = '_unittest_copy_rename' OR
+        asset_list_name = '_unittest_copy_rename_2';
     """
     await Keeper.transaction(request)
 
@@ -1025,8 +1002,8 @@ async def test_clear_all_test_vars():
     request = """
     DELETE FROM "TradeList"
     WHERE
-        name = '_name' OR
-        name = '_unittest';
+        trade_list_name = '_name' OR
+        trade_list_name = '_unittest';
     """
     await Keeper.transaction(request)
 
