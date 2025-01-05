@@ -64,21 +64,33 @@ class SummaryWidget(QtWidgets.QTableWidget):  # {{{
 
     # }}}
 
-    def showSummary(self, tlist) -> None:  # {{{
+    def showSummary(self, trade_list) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.showSummary()")
 
         self.__clear()
-        df = Summary.calculate(tlist)
+        df = Summary.calculate(trade_list)
+
+        ####
+
+        self.setRowCount(len(trade_list))
+
+        from avin.utils import dbg
+
+        dbg(trade_list.name)
+        print(df)
+        ####
+
         for i in df.index:
             for n, val in enumerate(df.loc[i], 0):
                 item = QtWidgets.QTableWidgetItem()
+                item.setText(str(val))
+                self.setItem(self.current_row, n, item)
                 if n != 0:
                     item.setTextAlignment(
                         Qt.AlignmentFlag.AlignRight
                         | Qt.AlignmentFlag.AlignVCenter
                     )
-                item.setText(str(val))
-                self.setItem(self.current_row, n, item)
+
             self.__addNewRow()
 
     # }}}
@@ -111,14 +123,14 @@ class SummaryWidget(QtWidgets.QTableWidget):  # {{{
         self.setColumnWidth(5, 50)
         self.setColumnWidth(6, 50)
         self.setColumnWidth(7, 50)
-        self.setColumnWidth(8, 70)
-        self.setColumnWidth(9, 70)
-        self.setColumnWidth(10, 70)
+        self.setColumnWidth(8, 100)
+        self.setColumnWidth(9, 100)
+        self.setColumnWidth(10, 50)
         self.setColumnWidth(11, 70)
         self.setColumnWidth(12, 70)
-        self.setColumnWidth(13, 100)
-        self.setColumnWidth(14, 100)
-        self.setColumnWidth(15, 50)
+        self.setColumnWidth(13, 70)
+        self.setColumnWidth(14, 70)
+        self.setColumnWidth(15, 70)
 
     # }}}
     def __addNewRow(self):  # {{{
@@ -126,12 +138,13 @@ class SummaryWidget(QtWidgets.QTableWidget):  # {{{
 
         self.rows += 1
         self.current_row += 1
-        self.setRowCount(self.rows)
 
     # }}}
     def __clear(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__clear()")
 
+        self.clear()
+        self.__createHeader()
         self.rows = 1
         self.setRowCount(1)
         self.current_row = 0
