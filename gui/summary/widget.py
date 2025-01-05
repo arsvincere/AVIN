@@ -89,6 +89,7 @@ class SummaryWidget(QtWidgets.QTableWidget):  # {{{
         self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
         self.setStyleSheet(Css.STYLE)
         self.setWindowTitle("AVIN")
+        self.setSortingEnabled(True)
 
     # }}}
     def __createHeader(self) -> None:  # {{{
@@ -102,7 +103,7 @@ class SummaryWidget(QtWidgets.QTableWidget):  # {{{
     def __setColumnWidth(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__setColumnWidth()")
 
-        self.setColumnWidth(0, 150)
+        self.setColumnWidth(0, 300)
         self.setColumnWidth(1, 100)
         self.setColumnWidth(2, 50)
         self.setColumnWidth(3, 50)

@@ -11,10 +11,10 @@ import sys
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt
 
-from avin.core import Filter
+from avin.core import Filter, FilterList
 from avin.utils import logger
-from gui.custom import Css, Dialog, Menu
-from gui.filter.item import FilterItem
+from gui.custom import Css, Menu
+from gui.filter.item import FilterItem, FilterListItem
 
 
 class FilterTree(QtWidgets.QTreeWidget):  # {{{
@@ -58,13 +58,11 @@ class FilterTree(QtWidgets.QTreeWidget):  # {{{
         self.addTopLevelItem(item)
 
     # }}}
-    def removeFilter(self, f: Filter) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.removeFilter()")
+    def addFilterList(self, filter_list: FilterList) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.addFilterList()")
 
-        for item in self:
-            if item.filter.name == f.name:
-                index = self.indexFromItem(item).row()
-                self.takeTopLevelItem(index)
+        item = FilterListItem(filter_list)
+        self.addTopLevelItem(item)
 
     # }}}
 
@@ -102,82 +100,82 @@ class FilterTree(QtWidgets.QTreeWidget):  # {{{
     def __connect(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__connect()")
 
-        self.menu.new.triggered.connect(self.__onNew)
-        self.menu.edit.triggered.connect(self.__onEdit)
-        self.menu.copy.triggered.connect(self.__onCopy)
-        self.menu.rename.triggered.connect(self.__onRename)
-        self.menu.delete.triggered.connect(self.__onDelete)
+        # self.menu.new.triggered.connect(self.__onNew)
+        # self.menu.edit.triggered.connect(self.__onEdit)
+        # self.menu.copy.triggered.connect(self.__onCopy)
+        # self.menu.rename.triggered.connect(self.__onRename)
+        # self.menu.delete.triggered.connect(self.__onDelete)
 
     # }}}
 
-    @QtCore.pyqtSlot()  # __onNew  # {{{
-    def __onNew(self):
-        logger.debug(f"{self.__class__.__name__}.__onNew()")
-
-        name = Dialog.name("Enter filter name")
-        if not name:
-            return
-
-        f = Filter.new(name)
-        if f is not None:
-            self.addFilter(f)
-
-    # }}}
-    @QtCore.pyqtSlot()  # __onEdit  # {{{
-    def __onEdit(self):
-        logger.debug(f"{self.__class__.__name__}.__onEdit()")
-
-        f = self.__current_item.filter
-        Filter.edit(f)
-
-    # }}}
-    @QtCore.pyqtSlot()  # __onCopy  # {{{
-    def __onCopy(self):
-        logger.debug(f"{self.__class__.__name__}.__onCopy()")
-
-        new_name = Dialog.name("New name...")
-        if not new_name:
-            return
-
-        f = self.__current_item.filter
-        copy = Filter.copy(f, new_name)
-        if copy is not None:
-            self.addFilter(copy)
-
-    # }}}
-    @QtCore.pyqtSlot()  # __onRename  # {{{
-    def __onRename(self):
-        logger.debug(f"{self.__class__.__name__}.__onRename()")
-
-        # enter new name
-        new_name = Dialog.name("New name...")
-        if not new_name:
-            return
-
-        f = self.__current_item.filter
-        renamed = Filter.rename(f, new_name)
-
-        if renamed is not None:
-            self.removeFilter(f)
-            self.addFilter(renamed)
-
-    # }}}
-    @QtCore.pyqtSlot()  # __onDelete  # {{{
-    def __onDelete(self):
-        logger.debug(f"{self.__class__.__name__}.delete()")
-
-        if not Dialog.confirm():
-            return
-
-        f = self.__current_item.filter
-
-        # delete filter
-        Filter.delete(f)
-
-        # delete item from tree
-        self.removeFilter(f)
-
-    # }}}
+    # @QtCore.pyqtSlot()  # __onNew  # {{{
+    # def __onNew(self):
+    #     logger.debug(f"{self.__class__.__name__}.__onNew()")
+    #
+    #     name = Dialog.name("Enter filter name")
+    #     if not name:
+    #         return
+    #
+    #     f = Filter.new(name)
+    #     if f is not None:
+    #         self.addFilter(f)
+    #
+    # # }}}
+    # @QtCore.pyqtSlot()  # __onEdit  # {{{
+    # def __onEdit(self):
+    #     logger.debug(f"{self.__class__.__name__}.__onEdit()")
+    #
+    #     f = self.__current_item.filter
+    #     Filter.edit(f)
+    #
+    # # }}}
+    # @QtCore.pyqtSlot()  # __onCopy  # {{{
+    # def __onCopy(self):
+    #     logger.debug(f"{self.__class__.__name__}.__onCopy()")
+    #
+    #     new_name = Dialog.name("New name...")
+    #     if not new_name:
+    #         return
+    #
+    #     f = self.__current_item.filter
+    #     copy = Filter.copy(f, new_name)
+    #     if copy is not None:
+    #         self.addFilter(copy)
+    #
+    # # }}}
+    # @QtCore.pyqtSlot()  # __onRename  # {{{
+    # def __onRename(self):
+    #     logger.debug(f"{self.__class__.__name__}.__onRename()")
+    #
+    #     # enter new name
+    #     new_name = Dialog.name("New name...")
+    #     if not new_name:
+    #         return
+    #
+    #     f = self.__current_item.filter
+    #     renamed = Filter.rename(f, new_name)
+    #
+    #     if renamed is not None:
+    #         self.removeFilter(f)
+    #         self.addFilter(renamed)
+    #
+    # # }}}
+    # @QtCore.pyqtSlot()  # __onDelete  # {{{
+    # def __onDelete(self):
+    #     logger.debug(f"{self.__class__.__name__}.delete()")
+    #
+    #     if not Dialog.confirm():
+    #         return
+    #
+    #     f = self.__current_item.filter
+    #
+    #     # delete filter
+    #     Filter.delete(f)
+    #
+    #     # delete item from tree
+    #     self.removeFilter(f)
+    #
+    # # }}}
 
 
 # }}}

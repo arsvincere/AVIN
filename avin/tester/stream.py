@@ -184,9 +184,9 @@ class BarStream:
         assert isinstance(begin, date)
         assert isinstance(end, date)
 
+        self.__bars.clear()
         self.__begin = datetime.combine(begin, DAY_BEGIN, UTC)
         self.__end = datetime.combine(end, DAY_BEGIN, UTC)
-        self.__bars.clear()
         for asset, tflist in self.__subscriptions.items():
             for timeframe in tflist:
                 bars = await Keeper.get(

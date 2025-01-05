@@ -23,6 +23,7 @@ class Risk:  # {{{
         logger.debug(f"{cls.__name__}.maxLotsByRisk()")
 
         r_share = abs(open_price - stop_price)
+
         max_shares = int(r_trade / r_share)
         max_lots = int(max_shares / lotX)
 

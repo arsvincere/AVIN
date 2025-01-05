@@ -10,7 +10,7 @@ import asyncio
 
 from PyQt6 import QtCore
 
-from avin import Filter, Test, Tester, TradeList, logger
+from avin import Filter, FilterList, Test, Tester, TradeList, logger
 from gui.custom import awaitQThread
 
 
@@ -96,6 +96,19 @@ class Thread:  # {{{
         logger.debug(f"{cls.__name__}.selectFilter()")
 
         thread = _TSelectFilter(trade_list, filter)
+        thread.start()
+        awaitQThread(thread)
+
+        return thread.result
+
+    # }}}
+    @classmethod  # selectFilterList  # {{{
+    def selectFilterList(
+        cls, trade_list: TradeList, filter_list: FilterList
+    ) -> Test:
+        logger.debug(f"{cls.__name__}.selectFilterList()")
+
+        thread = _TSelectFilterList(trade_list, filter_list)
         thread.start()
         awaitQThread(thread)
 
@@ -292,6 +305,33 @@ class _TSelectFilter(QtCore.QThread):  # {{{
         logger.debug(f"{self.__class__.__name__}.__arun()")
 
         self.result = await self.__trade_list.selectFilter(self.__filter)
+
+    # }}}
+
+
+# }}}
+class _TSelectFilterList(QtCore.QThread):  # {{{
+    def __init__(self, trade_list, filter_list, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtCore.QThread.__init__(self, parent)
+
+        self.__trade_list = trade_list
+        self.__filter_list = filter_list
+        self.result = None
+
+    # }}}
+    def run(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.run()")
+
+        asyncio.run(self.__arun())
+
+    # }}}
+    async def __arun(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__arun()")
+
+        self.result = await self.__trade_list.selectFilterList(
+            self.__filter_list
+        )
 
     # }}}
 

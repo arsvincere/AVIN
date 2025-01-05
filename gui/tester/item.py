@@ -11,7 +11,16 @@ import enum
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
 
-from avin import Asset, Filter, Test, Trade, TradeList, Usr, logger
+from avin import (
+    Asset,
+    Filter,
+    FilterList,
+    Test,
+    Trade,
+    TradeList,
+    Usr,
+    logger,
+)
 from gui.tester.progress_bar import TestProgressBar
 from gui.tester.thread import Thread
 
@@ -111,7 +120,7 @@ class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
         )
 
         # text
-        has_parent = trade_list.parent_tlist is not None
+        has_parent = trade_list.parent_list is not None
         name = trade_list.subname if has_parent else "trades"
         self.setText(self.Column.Name, name)
         self.setText(self.Column.Trades, str(len(trade_list)))
@@ -124,6 +133,8 @@ class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
         self.setTextAlignment(self.Column.Win, right)
         self.setTextAlignment(self.Column.Loss, right)
 
+        self.__createChilds()
+
     # }}}
 
     def selectFilter(self, f: Filter) -> None:  # {{{
@@ -132,6 +143,15 @@ class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
         child = Thread.selectFilter(self.trade_list, f)
         child_item = TradeListItem(child)
         self.addChild(child_item)
+
+    # }}}
+    def selectFilterList(self, filter_list: FilterList) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectFilter()")
+
+        child = Thread.selectFilterList(self.trade_list, filter_list)
+        child_item = TradeListItem(child)
+        self.addChild(child_item)
+        self.setExpanded(True)
 
     # }}}
     def selectStrategy(self, name: str, version: str) -> None:  # {{{
@@ -206,6 +226,15 @@ class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
         child = self.trade_list.selectYear(year)
         child_item = TradeListItem(child)
         self.addChild(child_item)
+
+    # }}}
+
+    def __createChilds(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createChilds()")
+
+        for child_list in self.trade_list.childs:
+            item = TradeListItem(child_list)
+            self.addChild(item)
 
     # }}}
 

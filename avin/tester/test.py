@@ -360,6 +360,7 @@ class Test:  # {{{
         obj = Cmd.fromJson(string)
 
         test = Test(obj["name"])
+        logger.info(f":: Loading {test}")
         test.strategy = await Strategy.load(obj["strategy"], obj["version"])
         test.asset = await Asset.fromFigi(obj["figi"])
         test.enable_long = obj["enable_long"]
@@ -385,7 +386,7 @@ class TestList:  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
 
         self.__name = name
-        self.__tests: list[Test] = list()
+        self.__tests = tests if tests else list()
 
     # }}}
     def __str__(self):  # {{{

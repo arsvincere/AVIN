@@ -11,9 +11,7 @@ import sys
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt
 
-from avin.core import TradeList
-from avin.tester import Test
-from avin.utils import logger
+from avin import Filter, FilterList, Test, TradeList, logger
 from gui.custom import Css, Dialog, Menu
 from gui.filter.dialog_select import FilterSelectDialog
 from gui.tester.dialog_test_edit import TestEditDialog
@@ -33,6 +31,7 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         self.__connect()
 
         self.thread = None
+        self.filter_select_dialog = None
 
     # }}}
     def __iter__(self):  # {{{
@@ -298,13 +297,18 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
     def __onSelectFilter(self):
         logger.debug(f"{self.__class__.__name__}.__onSelectFilter()")
 
-        dial = FilterSelectDialog()
-        f = dial.selectFilter()
+        if self.filter_select_dialog is None:
+            self.filter_select_dialog = FilterSelectDialog()
+
+        f = self.filter_select_dialog.selectFilter()
         if f is None:
             return
 
         trade_list_item = self.__current_item
-        trade_list_item.selectFilter(f)
+        if isinstance(f, Filter):
+            trade_list_item.selectFilter(f)
+        elif isinstance(f, FilterList):
+            trade_list_item.selectFilterList(f)
 
     # }}}
     @QtCore.pyqtSlot()  # __onSelectStrategy# {{{

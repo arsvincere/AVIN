@@ -12,8 +12,10 @@ import sys
 
 import PyQt6
 
-from avin.utils import logger
+from avin.utils import configureLogger, logger
 from gui import MainWindow, Splash
+
+configureLogger(debug=True, info=True)
 
 
 def main():

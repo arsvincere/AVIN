@@ -46,8 +46,10 @@ class Usr:  # {{{
     # it is use for run subprocesses
     EXEC = "-e"
 
-    # Number of stored log files
-    LOG_HISTORY = 5
+    # Log
+    LOG_HISTORY = 5  # days
+    LOG_DEBUG = True
+    LOG_INFO = True
 
     # Tinkoff token file, by default in dir
     # 'usr/connect/tinkoff/token.txt'

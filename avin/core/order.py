@@ -256,7 +256,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
             "STOP_LOSS": Order.__stopLossFromRecord,
             "TAKE_PROFIT": Order.__takeProfitFromRecord,
         }
-        method = methods[record["type"]]
+        method = methods[record["order_type"]]
         order = await method(record)
         return order
 

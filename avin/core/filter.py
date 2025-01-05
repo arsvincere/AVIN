@@ -247,6 +247,18 @@ class FilterList:  # {{{
         self.__name = name
 
     # }}}
+    @property  # full_name  # {{{
+    def full_name(self):
+        full_name = f"{self.__name}"
+
+        parent = self.__parent_list
+        while parent is not None:
+            full_name = parent.name + " " + full_name
+            parent = parent.parent_list
+
+        return full_name
+
+    # }}}
     @property  # filters  # {{{
     def filters(self) -> list[Filter]:
         return self.__filters

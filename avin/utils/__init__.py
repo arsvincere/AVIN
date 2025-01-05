@@ -7,7 +7,7 @@
 # ============================================================================
 
 from avin.utils.cmd import Cmd
-from avin.utils.logger import logger
+from avin.utils.logger import configureLogger, logger
 from avin.utils.misc import (
     Date,
     DateTime,
@@ -33,6 +33,7 @@ from avin.utils.signal import AsyncSignal, Signal
 __all__ = (
     "Cmd",
     "logger",
+    "configureLogger",
     "Date",
     "DateTime",
     "Time",

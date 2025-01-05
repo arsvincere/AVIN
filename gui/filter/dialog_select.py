@@ -11,10 +11,10 @@ import sys
 from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import Qt
 
-from avin.core import Filter
+from avin.core import Filter, FilterList
 from avin.utils import logger
 from gui.custom import Css, Icon, Label, Spacer, ToolButton
-from gui.filter.item import FilterItem
+from gui.filter.item import FilterItem, FilterListItem
 
 
 class FilterSelectDialog(QtWidgets.QDialog):  # {{{
@@ -29,7 +29,7 @@ class FilterSelectDialog(QtWidgets.QDialog):  # {{{
         self.__loadUserFilters()
 
     # }}}
-    def selectFilter(self) -> Filter | None:  # {{{
+    def selectFilter(self) -> FilterList | Filter | None:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectFilter()")
 
         result = self.exec()
@@ -40,8 +40,14 @@ class FilterSelectDialog(QtWidgets.QDialog):  # {{{
         if item is None:
             return None
 
-        f = item.filter
-        return f
+        if isinstance(item, FilterItem):
+            f = item.filter
+            return f
+        elif isinstance(item, FilterListItem):
+            f = item.filter_list
+            return f
+        else:
+            assert False, "жизнь меня к этому не готовила..."
 
     # }}}
     def selectFilters(self) -> list[Filter]:  # {{{
@@ -71,7 +77,7 @@ class FilterSelectDialog(QtWidgets.QDialog):  # {{{
         self.setStyleSheet(Css.DIALOG)
         self.setWindowTitle("AVIN")
 
-        self.setMinimumWidth(300)
+        self.setMinimumWidth(500)
         self.setMinimumHeight(800)
 
     # }}}
@@ -103,10 +109,10 @@ class FilterSelectDialog(QtWidgets.QDialog):  # {{{
     def __loadUserFilters(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__loadUserTests()")
 
-        all_names = Filter.requestAll()
+        all_names = FilterList.requestAll()
         for name in all_names:
-            f = Filter.load(name)
-            item = FilterItem(f)
+            filter_list = FilterList.load(name)
+            item = FilterListItem(filter_list)
             self.__tree.addTopLevelItem(item)
 
     # }}}
@@ -147,7 +153,8 @@ class _Tree(QtWidgets.QTreeWidget):  # {{{
         self.sortByColumn(FilterItem.Column.Name, Qt.SortOrder.AscendingOrder)
 
         # config width
-        self.setColumnWidth(FilterItem.Column.Name, 150)
+        self.setColumnWidth(FilterItem.Column.Name, 250)
+        self.setMinimumWidth(300)
 
         # config style
         self.setStyleSheet(Css.TREE)

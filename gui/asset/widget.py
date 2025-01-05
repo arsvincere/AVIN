@@ -121,9 +121,9 @@ class AssetListWidget(QtWidgets.QWidget):  # {{{
     def __initUI(self):  # {{{
         logger.debug("self.__class__.__name__.__initUI()")
 
-        alist = Thread.load("XX5")
-        if alist is not None:
-            self.__tree.setAssetList(alist)
+        # alist = Thread.load("XX5")
+        # if alist is not None:
+        #     self.__tree.setAssetList(alist)
 
     # }}}
 

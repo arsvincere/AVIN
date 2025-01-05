@@ -11,7 +11,7 @@ import sys
 from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import Qt
 
-from avin.core import Filter
+from avin.core import FilterList
 from avin.utils import logger
 from gui.custom import Css
 from gui.filter.tree import FilterTree
@@ -83,10 +83,10 @@ class FilterWidget(QtWidgets.QWidget):  # {{{
     def __loadUserFilters(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__loadUserMarker()")
 
-        all_names = Filter.requestAll()
+        all_names = FilterList.requestAll()
         for name in all_names:
-            f = Filter.load(name)
-            self.filter_tree.addFilter(f)
+            filter_list = FilterList.load(name)
+            self.filter_tree.addFilterList(filter_list)
 
     # }}}
 

@@ -15,26 +15,27 @@ from avin.const import Dir
 
 __all__ = ("logger",)
 
-_CONFIGURED = False
 _NAME = "avin-logger"
 _LOG_DIR = Dir.LOG
 _HISTORY = Usr.LOG_HISTORY
+_DEBUG = Usr.LOG_DEBUG
+_INFO = Usr.LOG_INFO
 
 logger = logging.getLogger(_NAME)
 
 
-def configure(logger):  # {{{
-    if not _CONFIGURED:
-        _configStreamLog(logger)
+def configureLogger(debug: bool, info: bool):  # {{{
+    _configStreamLog(logger)
 
-        debug_log_path = os.path.join(_LOG_DIR, "debug.log")
-        _configDebugLog(logger, debug_log_path)
-
+    if info:
         info_log_path = os.path.join(_LOG_DIR, f"{date.today()}.log")
         _configInfoLog(logger, info_log_path)
 
-        _deleteOldLogfiles(_LOG_DIR, _HISTORY)
-        __CONFIGURED = True
+    if debug:
+        debug_log_path = os.path.join(_LOG_DIR, "debug.log")
+        _configDebugLog(logger, debug_log_path)
+
+    _deleteOldLogfiles(_LOG_DIR, _HISTORY)
 
 
 # }}}
@@ -49,7 +50,6 @@ def _configStreamLog(logger):  # {{{
     stream_handler.setLevel(logging.INFO)
 
     logger.addHandler(stream_handler)
-    logger.setLevel(logging.DEBUG)
 
 
 # }}}
@@ -64,6 +64,7 @@ def _configDebugLog(logger, file_path):  # {{{
     file_handler.setFormatter(file_formatter)
 
     logger.addHandler(file_handler)
+    logger.setLevel(logging.DEBUG)
 
 
 # }}}
@@ -78,6 +79,7 @@ def _configInfoLog(logger, file_path):  # {{{
     file_handler.setFormatter(file_formatter)
 
     logger.addHandler(file_handler)
+    logger.setLevel(logging.INFO)
 
 
 # }}}
@@ -95,5 +97,5 @@ def _deleteOldLogfiles(log_dir: str, max_files: int) -> None:  # {{{
 
 # }}}
 
-if __name__ == "avin.utils.logger":
-    configure(logger)
+# if __name__ == "avin.utils.logger":
+#     configureLogger(_DEBUG, _INFO)

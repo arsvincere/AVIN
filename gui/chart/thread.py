@@ -13,7 +13,7 @@ from datetime import datetime
 
 from PyQt6 import QtCore
 
-from avin.analytic import Analytic
+from avin import VolumeAnalytic
 from avin.core import Chart, TimeFrame
 from avin.data import Instrument
 from avin.utils import logger
@@ -168,8 +168,7 @@ class _TGetMaxVol(QtCore.QThread):  # {{{
     async def __arun(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__arun()")
 
-        analytic = await Analytic.load("volume")
-        self.result = await analytic.maxVol(
+        self.result = await VolumeAnalytic.maxVol(
             self.__instrument, self.__timeframe
         )
 
@@ -202,8 +201,7 @@ class _TGetVolSizes(QtCore.QThread):  # {{{
     async def __arun(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__arun()")
 
-        analytic = await Analytic.load("volume")
-        self.result = await analytic.sizes(
+        self.result = await VolumeAnalytic.sizes(
             self.__instrument, self.__timeframe
         )
 
