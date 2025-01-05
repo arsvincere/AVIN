@@ -73,6 +73,51 @@ async def test_Test():
 
 
 # }}}
+@pytest.mark.asyncio  # test_TestList  # {{{
+async def test_TestList():
+    test = Test("_unittest_test")
+    asset = await Asset.fromStr("MOEX-SHARE-SBER")
+    strategy = await Strategy.load("Every", "day")
+    test.strategy = strategy
+    test.asset = asset
+    await Test.save(test)
+
+    test_list = TestList("_unittest_test_list")
+    assert test_list.name == "_unittest_test_list"
+    assert str(test_list) == "TestList=_unittest_test_list"
+    assert len(test_list) == 0
+
+    # add test
+    test_list.add(test)
+    test_list.add(test)
+    test_list.add(test)
+    assert len(test_list) == 1
+
+    # save
+    await TestList.save(test_list)
+
+    # rename
+    await TestList.rename(test_list, "_unittest_test_list_new_name")
+    assert test_list.name == "_unittest_test_list_new_name"
+
+    # load
+    loaded = await TestList.load("_unittest_test_list")
+    assert loaded is None
+    loaded = await TestList.load("_unittest_test_list_new_name")
+    assert loaded.name == test_list.name
+
+    # requestAll
+    names = await TestList.requestAll()
+    assert test_list.name in names
+
+    # delete test list (only list not test!!!)
+    await TestList.delete(test_list)
+
+    # delete test
+    await Test.delete(test)
+
+
+# }}}
 @pytest.mark.asyncio  # test_Tester  # {{{
 async def test_Tester():
     asset = await Asset.fromStr("MOEX-SHARE-SBER")

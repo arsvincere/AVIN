@@ -778,6 +778,29 @@ async def test_TradeList():
     tlist.add(trade_2)  # only add in TradeList, not in db
     assert len(tlist) == 2
 
+    # create child - select trade status
+    child1 = tlist.selectStatus(Trade.Status.INITIAL)
+    assert child1.name == tlist.name
+    assert child1.subname == "INITIAL"
+    assert len(tlist.childs) == 1
+
+    # create child - select strategy
+    child2 = tlist.selectStrategy(strategy.name, strategy.version)
+    assert len(child2) == 2
+    assert len(tlist.childs) == 2
+
+    # remove child
+    tlist.removeChild(child1)
+    assert len(tlist.childs) == 1
+
+    # clear child
+    tlist.clearChilds()
+    assert len(tlist.childs) == 0
+
+    # select filter list
+    filter_list = FilterList.load("size")
+    await tlist.selectFilterList(filter_list)
+
     # save
     await TradeList.save(tlist)  # save only TradeList name in db
     await Trade.save(trade_1)  # save trade in db
@@ -790,6 +813,7 @@ async def test_TradeList():
 
     # clear
     tlist.clear()  # only in RAM, not in db
+
     # delete
     await TradeList.delete(tlist)  # del in db tlist & del trades too
 
@@ -960,8 +984,71 @@ async def conditionTrade(trade: Trade) -> bool:
 
 
 # }}}
+@pytest.mark.asyncio  # test_FilterList  # {{{
+async def test_Filter():
+    filter_list = FilterList("_unittest")
+    assert str(filter_list) == "FilterList=_unittest"
+    assert len(filter_list) == 0
+    assert filter_list.name == "_unittest"
+
+    f1 = Filter.load("/home/alex/AVIN/usr/filter/size/b1/body/=/1_big.py")
+    f2 = Filter.load("/home/alex/AVIN/usr/filter/size/b1/body/=/2_bigger.py")
+    f3 = Filter.load("/home/alex/AVIN/usr/filter/size/b1/body/=/3_biggest.py")
+    assert f1.path == "/home/alex/AVIN/usr/filter/1_big.py"
+    assert f2.path == "/home/alex/AVIN/usr/filter/2_bigger.py"
+    assert f3.path == "/home/alex/AVIN/usr/filter/3_biggest.py"
+
+    # add filter
+    filter_list.add(f1)
+    filter_list.add(f2)
+    assert f1.path == "/home/alex/AVIN/usr/filter/_unittest/1_big.py"
+    assert f2.path == "/home/alex/AVIN/usr/filter/_unittest/2_bigger.py"
+    assert len(filter_list) == 2
+
+    # create new filter list
+    child_list = FilterList("child")
+    assert f3.path == "/home/alex/AVIN/usr/filter/3_biggest.py"
+    child_list.add(f3)
+    assert f3.path == "/home/alex/AVIN/usr/filter/child/3_biggest.py"
+
+    # add child filter list
+    filter_list.addChild(child_list)
+    filter_list.addChild(child_list)
+    assert len(filter_list.childs) == 2
+    assert child_list.parent_list == filter_list
+    assert (
+        f3.path == "/home/alex/AVIN/usr/filter/_unittest/child/3_biggest.py"
+    )
+
+    # iteration
+    for child in filter_list.childs:
+        assert isinstance(child, FilterList)
+    for f in filter_list:
+        assert isinstance(f, Filter)
+
+    # remove filter
+    filter_list.remove(f1)
+    assert len(filter_list) == 1
+
+    # clear filter
+    filter_list.clear()
+    assert len(filter_list) == 0
+
+    # remove child filter lists
+    filter_list.removeChild(child_list)
+    assert len(filter_list.childs) == 1
+
+    # clear child filter lists
+    filter_list.clearChilds()
+    assert len(filter_list.childs) == 0
+
+    # request all filter list names
+    names = FilterList.requestAll()
+    for name in names:
+        assert isinstance(name, str)
 
 
+# }}}
 @pytest.mark.asyncio  # test_clear_all_test_vars  # {{{
 async def test_clear_all_test_vars():
     request = """
