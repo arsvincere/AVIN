@@ -242,11 +242,18 @@ class Summary:
     def __ratio(results: list) -> float:
         """Отношение среднего выигрыша к среднему проигрышу"""
 
-        avg_loss = Summary.__averageLoss(results)
-        if avg_loss == 0:
+        # avg_loss = Summary.__averageLoss(results)
+        # if avg_loss == 0:
+        #     return 0.0
+        # else:
+        #     return abs(Summary.__averageWin(results) / avg_loss)
+
+        """Отношение общей прибыли к общему убытку"""
+        gross_loss = Summary.__grossLoss(results)
+        if gross_loss == 0:
             return 0.0
         else:
-            return abs(Summary.__averageWin(results) / avg_loss)
+            return abs(Summary.__grossProfit(results) / gross_loss)
 
     # }}}
     @staticmethod  # __getResults# {{{
@@ -275,14 +282,14 @@ class Summary:
         "loss": __losingTrades,
         "w-seq": __maxWinSeries,
         "l-seq": __maxLossSeries,
+        "gross profit": __grossProfit,
+        "gross loss": __grossLoss,
+        "ratio": __ratio,
         "avg": __averageTrade,
         "avg win": __averageWin,
         "avg loss": __averageLoss,
         "max win": __largestWin,
         "max loss": __largestLoss,
-        "gross profit": __grossProfit,
-        "gross loss": __grossLoss,
-        "ratio": __ratio,
     }
     # }}}
 
