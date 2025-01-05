@@ -52,7 +52,6 @@ class Filter:  # {{{
 
     @filter_list.setter
     def filter_list(self, filter_list: FilterList):
-        assert isinstance(filter_list, FilterList)
         self.__filter_list = filter_list
 
     # }}}
@@ -142,18 +141,16 @@ class Filter:  # {{{
     #
     # # }}}
     @classmethod  # load  # {{{
-    def load(cls, name: str) -> Filter | None:
+    def load(cls, file_path: str) -> Filter | None:
         logger.debug(f"{cls.__name__}.load()")
 
-        parts = name.split("-")
-        parts[-1] += ".py"
-        file_path = Cmd.path(Usr.FILTER, *parts)
         if not Cmd.isExist(file_path):
             return None
 
+        name = Cmd.name(file_path)
         code = Cmd.read(file_path)
-
         f = Filter(name, code)
+
         return f
 
     # }}}
@@ -282,8 +279,6 @@ class FilterList:  # {{{
 
     @parent_list.setter
     def parent_list(self, parent: FilterList):
-        assert isinstance(parent, FilterList)
-
         self.__parent_list = parent
 
     # }}}
@@ -330,6 +325,7 @@ class FilterList:  # {{{
     def addChild(self, child: FilterList) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.addChild()")
 
+        child.parent_list = self
         self.__childs.append(child)
 
     # }}}
@@ -337,13 +333,17 @@ class FilterList:  # {{{
         logger.debug(f"{self.__class__.__name__}.removeChild()")
 
         try:
-            self.__filters.remove(child)
+            self.__childs.remove(child)
+            child.parent_list = None
         except ValueError:
             logger.warning(f"{child} not in {self}")
 
     # }}}
     def clearChilds(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.clearChilds()")
+
+        for child in self.__childs:
+            child.parent_list = None
 
         self.__childs.clear()
 
@@ -383,9 +383,7 @@ class FilterList:  # {{{
         files = Cmd.getFiles(filter_list.path, full_path=True)
         files = Cmd.select(files, extension=".py")
         for file in files:
-            name = Cmd.name(file)
-            code = Cmd.read(file)
-            f = Filter(name, code)
+            f = Filter.load(file)
             filter_list.add(f)
 
         # load child filter list
@@ -396,8 +394,8 @@ class FilterList:  # {{{
             filter_list.addChild(child_list)
             cls.__loadChilds(child_list)
 
+    # }}}
 
-# }}}
 
 # }}}
 

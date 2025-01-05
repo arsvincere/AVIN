@@ -187,11 +187,11 @@ CREATE TABLE IF NOT EXISTS "TestList" ( -- {{{
     INSERT INTO "TestList" (test_list_name)
     VALUES ('unsorted');
 -- }}}
-CREATE TABLE IF NOT EXISTS "TestList-Tests" ( -- {{{
-    test_list   text
+CREATE TABLE IF NOT EXISTS "TestList-Test" ( -- {{{
+    test_list_name text
         REFERENCES "TestList"(test_list_name)
         ON UPDATE CASCADE ON DELETE CASCADE,
-    test        text
+    test text
         REFERENCES "Test/Trader"(name)
         ON UPDATE CASCADE ON DELETE CASCADE
     );

@@ -43,6 +43,7 @@ class Asset(Instrument, ABC):  # {{{
         self.updated = AsyncSignal(Asset, Chart)
 
     # }}}
+
     def chart(self, timeframe: Union[TimeFrame, str]) -> Chart:  # {{{
         logger.debug(f"{self.__class__.__name__}.chart()")
 
@@ -69,6 +70,7 @@ class Asset(Instrument, ABC):  # {{{
         self.__charts.clear()
 
     # }}}
+
     async def cacheChart(  # {{{
         self,
         timeframe: Union[TimeFrame, str],
@@ -152,6 +154,7 @@ class Asset(Instrument, ABC):  # {{{
             await signal.aemit(self, chart)
 
     # }}}
+
     @classmethod  # fromStr# {{{
     async def fromStr(cls, string: str) -> Asset:
         logger.debug(f"{cls.__name__}.fromStr()")
@@ -228,14 +231,6 @@ class Asset(Instrument, ABC):  # {{{
         return asset
 
     # }}}
-    @classmethod  # requestAll# {{{
-    async def requestAll(cls) -> list[Asset]:
-        logger.debug(f"{cls.__name__}.requestAll()")
-
-        assets = await Keeper.get(cls)
-        return assets
-
-    # }}}
     @classmethod  # toInstrument# {{{
     def toInstrument(cls, asset: Asset) -> Instrument:
         logger.debug(f"{cls.__name__}.toInstrument()")
@@ -244,6 +239,15 @@ class Asset(Instrument, ABC):  # {{{
         return instrument
 
     # }}}
+    @classmethod  # requestAll# {{{
+    async def requestAll(cls) -> list[Asset]:
+        logger.debug(f"{cls.__name__}.requestAll()")
+
+        assets = await Keeper.get(cls)
+        return assets
+
+    # }}}
+
     @classmethod  # __formatArgs# {{{
     def __formatArgs(
         cls, timeframe, begin, end

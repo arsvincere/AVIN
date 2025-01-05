@@ -705,7 +705,7 @@ class TradeList:  # {{{
 
         self.__name = name
         self.__trades = trades if trades else list()
-        self.__parent = parent
+        self.__parent_list = parent
         self.__subname = subname
         self.__childs: list[TradeList] = list()
         self.__asset = parent.asset if parent else None
@@ -731,7 +731,7 @@ class TradeList:  # {{{
 
     # }}}
 
-    @property  # name# {{{
+    @property  # name  # {{{
     def name(self):
         return self.__name
 
@@ -740,35 +740,33 @@ class TradeList:  # {{{
         self.__name = new_name
 
     # }}}
-    @property  # subname# {{{
+    @property  # subname  # {{{
     def subname(self):
         return self.__subname
 
     # }}}
-    @property  # trades# {{{
+    @property  # trades  # {{{
     def trades(self):
         return self.__trades
 
     # }}}
-    @property  # childs# {{{
+    @property  # childs  # {{{
     def childs(self) -> list[TradeList]:
         return self.__childs
 
     # }}}
-    @property  # asset# {{{
+    @property  # asset  # {{{
     def asset(self):
         return self.__asset
 
     # }}}
-    @property  # parent_tlist# {{{
-    def parent_tlist(self) -> TradeList | None:
-        """Return parent_tlist trade list"""
-        # TODO: rename -> parent_list
-        # для общности интерфейсов между всему подобными классами
-        return self.__parent
+    @property  # parent_list  # {{{
+    def parent_list(self) -> TradeList | None:
+        """Return parent trade list"""
+        return self.__parent_list
 
     # }}}
-    @property  # owner# {{{
+    @property  # owner  # {{{
     def owner(self) -> Test | Trader | None:
         return self.__owner
 
@@ -1017,7 +1015,7 @@ class TradeList:  # {{{
 
     # }}}
 
-    @classmethod  # fromRecord # {{{
+    @classmethod  # fromRecord  # {{{
     async def fromRecord(cls, name, records: asyncpg.Record):
         logger.debug(f"{cls.__name__}.fromRecord()")
 
@@ -1029,7 +1027,7 @@ class TradeList:  # {{{
         return tlist
 
     # }}}
-    @classmethod  # save# {{{
+    @classmethod  # save  # {{{
     async def save(cls, tlist) -> None:
         logger.debug(f"{cls.__name__}.save()")
 
@@ -1060,7 +1058,7 @@ class TradeList:  # {{{
         # надо отдельно
 
     # }}}
-    @classmethod  # load# {{{
+    @classmethod  # load  # {{{
     async def load(cls, name) -> TradeList | None:
         logger.debug(f"{cls.__name__}.load()")
 
@@ -1068,14 +1066,14 @@ class TradeList:  # {{{
         return tlist
 
     # }}}
-    @classmethod  # delete# {{{
+    @classmethod  # delete  # {{{
     async def delete(cls, tlist):
         logger.debug(f"{cls.__name__}.delete()")
 
         await Keeper.delete(tlist)
 
     # }}}
-    @classmethod  # deleteTrades # {{{
+    @classmethod  # deleteTrades  # {{{
     async def deleteTrades(cls, trade_list: TradeList):
         logger.debug(f"{cls.__name__}.deleteTrades()")
 

@@ -305,6 +305,7 @@ class Keeper:
             "Operation": cls.__getOperations,
             "Order": cls.__getOrders,
             "Test": cls.__getTest,
+            "TestList": cls.__getTestList,
             "AnalyticData": cls.__getAnalyticData,
         }
         get_method = methods[class_name]
@@ -341,6 +342,7 @@ class Keeper:
             "LimitOrder": cls.__deleteOrder,
             "StopOrder": cls.__deleteOrder,
             "Test": cls.__deleteTest,
+            "TestList": cls.__deleteTestList,
             "AnalyticData": cls.__deleteAnalyticData,
         }
         delete_method = methods[class_name]
@@ -774,6 +776,20 @@ class Keeper:
         """
         await cls.transaction(request)
 
+        # if test list is empty - return
+        if len(test_list) == 0:
+            return
+
+        # Add tests
+        pg_values = cls.__formatTestList(test_list)
+        request = f"""
+            INSERT INTO "TestList-Test" (test_list_name, test)
+            VALUES
+                {pg_values}
+            ;
+            """
+        await cls.transaction(request)
+
     # }}}
 
     @classmethod  # __addAnalyticData  # {{{
@@ -786,7 +802,7 @@ class Keeper:
 
         # Add analytic data
         request = f"""
-            INSERT INTO "AnalyticData" (analytic_name, figi, data)
+            INSERT INTO "AnalyticData" (analytic_name, figi, analyse_json)
             VALUES ({pg_name}, {pg_figi}, {pg_data})
             ;
             """
@@ -1096,7 +1112,7 @@ class Keeper:
 
         # create condition
         if figi:
-            pg_condition = f"figi = '{figi}'"
+            pg_condition = f"\"Asset\".figi = '{figi}'"
         elif asset_type and exchange and ticker:
             pg_condition = (
                 f"type = '{asset_type.name}' AND "
@@ -1106,16 +1122,33 @@ class Keeper:
         else:
             pg_condition = "TRUE"
 
+        # request = f"""
+        #     SELECT
+        #         data."Instrument".figi,
+        #         data."Instrument".exchange,
+        #         data."Instrument".type,
+        #         data."Instrument".ticker,
+        #         data."Instrument".name,
+        #         data."Instrument".lot,
+        #         data."Instrument".min_price_step
+        #     FROM data."Instrument"
+        #     WHERE
+        #         {pg_condition}
+        #     ORDER BY ticker
+        #     ;
+        #     """
         request = f"""
             SELECT
-                data."Instrument".figi,
+                "Asset".figi,
                 data."Instrument".exchange,
                 data."Instrument".type,
                 data."Instrument".ticker,
                 data."Instrument".name,
                 data."Instrument".lot,
                 data."Instrument".min_price_step
-            FROM data."Instrument"
+            FROM "Asset"
+            JOIN data."Instrument"
+                ON data."Instrument".figi = "Asset".figi
             WHERE
                 {pg_condition}
             ORDER BY ticker
@@ -1509,18 +1542,90 @@ class Keeper:
         return test
 
     # }}}
+    @classmethod  # __getTestList  # {{{
+    async def __getTestList(cls, TestList, kwargs: dict):
+        logger.debug(f"{cls.__name__}.__getTestList()")
+
+        get_only_names = kwargs.get("get_only_names")
+
+        # return list[str_names] if flag 'get_only_names'
+        if get_only_names:
+            request = """
+                SELECT test_list_name FROM "TestList";
+                """
+            records = await cls.transaction(request)
+            all_names = list()
+            for i in records:
+                name = i["test_list_name"]
+                all_names.append(name)
+            return all_names
+
+        # return None if not name in kwargs
+        name = kwargs.get("name")
+        if not name:
+            return None
+
+        # check existing asset list with this name
+        # return None if not exist
+        request = f"""
+            SELECT test_list_name  FROM "TestList"
+            WHERE
+                test_list_name = '{name}'
+            ;
+            """
+        records = await cls.transaction(request)
+        if not records:
+            return None
+
+        # request tests of test list
+        request = f"""
+            SELECT
+                "TestList-Test".test_list_name,
+                "Test/Trader".name,
+                "Test/Trader".config
+            FROM "TestList-Test"
+            JOIN "Test/Trader"
+                ON "TestList-Test".test = "Test/Trader".name
+            WHERE
+                "TestList-Test".test_list_name = '{name}'
+            ORDER BY name
+            ;
+            """
+        records = await cls.transaction(request)
+
+        alist = await TestList.fromRecord(name, records)
+        return alist
+
+    # }}}
     @classmethod  # __getAnalyticData  # {{{
     async def __getAnalyticData(cls, AnalyticData, kwargs: dict) -> None:
         logger.debug(f"{cls.__name__}.__getAnalyticData()")
 
+        # if flag get only names
+        only_names = kwargs.get("get_only_names")
+        if only_names is not None:
+            request = """
+                SELECT
+                    "AnalyticData".analytic_name
+                FROM "AnalyticData"
+                ;
+                """
+            records = await cls.transaction(request)
+            all_names = list()
+            for i in records:
+                name = i["analytic_name"]
+                if name not in all_names:
+                    all_names.append(name)
+            return all_names
+
+        # else request analytic data
         name = kwargs.get("name")
         figi = kwargs.get("figi")
-
         request = f"""
             SELECT
                 "AnalyticData".analytic_name,
                 "AnalyticData".figi,
-                "AnalyticData".analyse_json,
+                "AnalyticData".analyse_json
             FROM "AnalyticData"
             WHERE
                 "AnalyticData".analytic_name = '{name}' AND
@@ -1754,12 +1859,29 @@ class Keeper:
     # }}}
     @classmethod  # __deleteTest  # {{{
     async def __deleteTest(cls, test, kwargs: dict) -> None:
-        logger.debug(f"{cls.__name__}.__deleteOperation()")
+        logger.debug(f"{cls.__name__}.__deleteTest()")
 
         request = f"""
             DELETE FROM "Test"
             WHERE name = '{test.name}';
         """
+        await cls.transaction(request)
+
+    # }}}
+    @classmethod  # __deleteTestList  # {{{
+    async def __deleteTestList(cls, test_list, kwargs: dict) -> None:
+        logger.debug(f"{cls.__name__}.__deleteTestList()")
+
+        request = f"""
+            DELETE FROM "TestList-Test"
+            WHERE test_list_name = '{test_list.name}';
+            """
+        await cls.transaction(request)
+
+        request = f"""
+            DELETE FROM "TestList"
+            WHERE test_list_name = '{test_list.name}';
+            """
         await cls.transaction(request)
 
     # }}}
@@ -1776,7 +1898,6 @@ class Keeper:
             WHERE
                 "AnalyticData".analytic_name = {pg_name} AND
                 "AnalyticData".figi = {pg_figi}
-
             ;
             """
         await cls.transaction(request)
@@ -2048,6 +2169,20 @@ class Keeper:
         pg_test_cfg = f"'{json_string}'"
 
         return pg_test_cfg
+
+    # }}}
+    @classmethod  # __formatTestList  # {{{
+    def __formatTestList(cls, test_list) -> str:
+        logger.debug(f"{cls.__name__}.__formatTestList()")
+
+        # create pg values
+        pg_values = ""
+        for test in test_list:
+            val = f"('{test_list.name}', '{test.name}'),\n"
+            pg_values += val
+
+        pg_values = pg_values[0:-2]  # remove ",\n" after last value
+        return pg_values
 
     # }}}
 

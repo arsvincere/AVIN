@@ -480,6 +480,7 @@ class TestList:  # {{{
         logger.debug(f"{cls.__name__}.save()")
         assert isinstance(test_list, TestList)
 
+        await Keeper.delete(test_list)
         await Keeper.add(test_list)
 
     # }}}
@@ -508,16 +509,6 @@ class TestList:  # {{{
         await cls.delete(test_list)
         test_list.name = new_name
         await cls.save(test_list)
-
-    # }}}
-    @classmethod  # copy  # {{{
-    async def copy(cls, test_list: TestList, new_name: str) -> None:
-        logger.debug(f"{cls.__name__}.copy()")
-
-        new_list = TestList(new_name)
-        new_list.tests = test_list.tests
-
-        await cls.save(new_list)
 
     # }}}
     @classmethod  # requestAll# {{{

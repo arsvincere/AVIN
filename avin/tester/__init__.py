@@ -6,7 +6,11 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-from avin.tester.test import Test
+from avin.tester.test import Test, TestList
 from avin.tester.tester import Tester
 
-__all__ = ("Test", "Tester")
+__all__ = (
+    "Test",
+    "TestList",
+    "Tester",
+)
