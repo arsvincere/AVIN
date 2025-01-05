@@ -394,12 +394,14 @@ class FilterList:  # {{{
         # load filters
         files = Cmd.getFiles(filter_list.path, full_path=True)
         files = Cmd.select(files, extension=".py")
+        files = sorted(files)
         for file in files:
             f = Filter.load(file)
             filter_list.add(f)
 
         # load child filter list
         dirs = Cmd.getDirs(filter_list.path, full_path=True)
+        dirs = sorted(dirs)
         for d in dirs:
             name = Cmd.name(d)
             child_list = FilterList(name, parent=filter_list)
