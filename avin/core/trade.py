@@ -828,14 +828,6 @@ class TradeList:  # {{{
 
     # }}}
 
-    def addChild(self, child: TradeList) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.addChild()")
-
-        child.__asset = self.__asset
-        child.__owner = self.__owner
-        self.__childs.append(child)
-
-    # }}}
     def removeChild(self, child: TradeList) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.removeChild()")
 
@@ -869,7 +861,6 @@ class TradeList:  # {{{
         logger.debug(f"{self.__class__.__name__}.filter()")
 
         child = self._createChild(self.__trades, filter_list.full_name)
-        self.addChild(child)
 
         for f in filter_list:
             await child.selectFilter(f)
