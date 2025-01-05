@@ -58,8 +58,19 @@ class Analytic(ABC):  # {{{
     async def requestAll(cls) -> list[str]:
         logger.debug(f"{cls.__name__}.requestAll()")
 
-        names = await Keeper.get(cls, get_only_names=True)
-        return names
+        # names = await Keeper.get(AnalyticData, get_only_names=True)
+        all_names = list()
+        if not Cmd.isExist(Usr.ANALYTIC):
+            Cmd.makeDirs(Usr.ANALYTIC)
+            return all_names
+
+        file_names = Cmd.getFiles(Usr.ANALYTIC)
+        for file in file_names:
+            name = Cmd.name(file)
+            if name != "__init__":
+                all_names.append(name)
+
+        return all_names
 
     # }}}
 
@@ -96,7 +107,7 @@ class AnalyticData:  # {{{
         logger.debug(f"{cls.__name__}.fromRecord()")
 
         name = record["analytic_name"]
-        asset = Asset.fromRecord(record)
+        asset = await Asset.fromFigi(record["figi"])
         json_str = record["analyse_json"]
 
         analytic_data = AnalyticData(name, asset, json_str)
