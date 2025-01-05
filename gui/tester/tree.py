@@ -32,6 +32,7 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
 
         self.thread = None
         self.filter_select_dialog = None
+        self.test_select_dialog = None
 
     # }}}
     def __iter__(self):  # {{{
@@ -96,11 +97,9 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         self.sortByColumn(TestItem.Column.Name, Qt.SortOrder.AscendingOrder)
 
         # config width
-        self.setColumnWidth(TestItem.Column.Name, 250)
+        self.setColumnWidth(TestItem.Column.Name, 350)
         self.setColumnWidth(TestItem.Column.Status, 80)
         self.setColumnWidth(TestItem.Column.Trades, 50)
-        self.setColumnWidth(TestItem.Column.Win, 50)
-        self.setColumnWidth(TestItem.Column.Loss, 50)
         self.setMinimumWidth(500)
 
         # config style
@@ -130,12 +129,11 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
 
         self.tlist_menu.filter.triggered.connect(self.__onSelectFilter)
         self.tlist_menu.strategy.triggered.connect(self.__onSelectStrategy)
-        self.tlist_menu.long.triggered.connect(self.__onSelectLong)
-        self.tlist_menu.short.triggered.connect(self.__onSelectShort)
-        self.tlist_menu.win.triggered.connect(self.__onSelectWin)
-        self.tlist_menu.loss.triggered.connect(self.__onSelectLoss)
+        self.tlist_menu.long_short.triggered.connect(self.__onSelectLongShort)
+        self.tlist_menu.win_loss.triggered.connect(self.__onSelectWinLoss)
         self.tlist_menu.assets.triggered.connect(self.__onSelectAssets)
         self.tlist_menu.years.triggered.connect(self.__onSelectYears)
+        self.tlist_menu.clear.triggered.connect(self.__onClearChilds)
 
     # }}}
 
@@ -210,8 +208,10 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
     def __onLoad(self):
         logger.debug(f"{self.__class__.__name__}.__onLoad()")
 
-        dial = TestSelectDialog()
-        name = dial.selectTestName()
+        if self.test_select_dialog is None:
+            self.test_select_dialog = TestSelectDialog()
+
+        name = self.test_select_dialog.selectTestName()
         if name is None:
             return
 
@@ -319,35 +319,21 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         trade_list_item.selectStrategys()
 
     # }}}
-    @QtCore.pyqtSlot()  # __onSelectLong# {{{
-    def __onSelectLong(self):
-        logger.debug(f"{self.__class__.__name__}.__onSelectLong()")
+    @QtCore.pyqtSlot()  # __onSelectLongShort# {{{
+    def __onSelectLongShort(self):
+        logger.debug(f"{self.__class__.__name__}.__onSelectLongShort()")
 
         trade_list_item = self.__current_item
         trade_list_item.selectLong()
-
-    # }}}
-    @QtCore.pyqtSlot()  # __onSelectShort# {{{
-    def __onSelectShort(self):
-        logger.debug(f"{self.__class__.__name__}.__onSelectShort()")
-
-        trade_list_item = self.__current_item
         trade_list_item.selectShort()
 
     # }}}
-    @QtCore.pyqtSlot()  # __onSelectWin# {{{
-    def __onSelectWin(self):
-        logger.debug(f"{self.__class__.__name__}.__onSelectWin()")
+    @QtCore.pyqtSlot()  # __onSelectWinLoss# {{{
+    def __onSelectWinLoss(self):
+        logger.debug(f"{self.__class__.__name__}.__onSelectWinLoss()")
 
         trade_list_item = self.__current_item
         trade_list_item.selectWin()
-
-    # }}}
-    @QtCore.pyqtSlot()  # __onSelectLoss# {{{
-    def __onSelectLoss(self):
-        logger.debug(f"{self.__class__.__name__}.__onSelectLoss()")
-
-        trade_list_item = self.__current_item
         trade_list_item.selectLoss()
 
     # }}}
@@ -368,6 +354,14 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         test = trade_list.owner
         for year in range(test.begin.year, test.end.year):
             item.selectYear(year)
+
+    # }}}
+    @QtCore.pyqtSlot()  # __onClearChilds# {{{
+    def __onClearChilds(self):
+        logger.debug(f"{self.__class__.__name__}.__onClearChilds()")
+
+        trade_list_item = self.__current_item
+        trade_list_item.clearChilds()
 
     # }}}
 
@@ -435,22 +429,20 @@ class _TradeListMenu(Menu):  # {{{
 
         self.filter = QtGui.QAction("Filter ...", self)
         self.strategy = QtGui.QAction("Strategy", self)
-        self.long = QtGui.QAction("Long", self)
-        self.short = QtGui.QAction("Short", self)
-        self.win = QtGui.QAction("Win", self)
-        self.loss = QtGui.QAction("Loss", self)
+        self.long_short = QtGui.QAction("Long/Short", self)
+        self.win_loss = QtGui.QAction("Win/Loss", self)
         self.assets = QtGui.QAction("Assets", self)
         self.years = QtGui.QAction("Years", self)
+        self.clear = QtGui.QAction("Clear childs", self)
 
         self.addAction(self.filter)
         self.addTextSeparator("Select")
         self.addAction(self.strategy)
-        self.addAction(self.long)
-        self.addAction(self.short)
-        self.addAction(self.win)
-        self.addAction(self.loss)
+        self.addAction(self.long_short)
+        self.addAction(self.win_loss)
         self.addAction(self.assets)
         self.addAction(self.years)
+        self.addAction(self.clear)
 
     # }}}
 

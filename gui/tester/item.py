@@ -30,8 +30,6 @@ class TestItem(QtWidgets.QTreeWidgetItem):  # {{{
         Name = 0
         Status = 1
         Trades = 2
-        Win = 3
-        Loss = 4
 
     # }}}
 
@@ -226,6 +224,14 @@ class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
         child = self.trade_list.selectYear(year)
         child_item = TradeListItem(child)
         self.addChild(child_item)
+
+    # }}}
+    def clearChilds(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.clearChilds()")
+
+        self.trade_list.clearChilds()
+        while self.takeChild(0):
+            pass
 
     # }}}
 
