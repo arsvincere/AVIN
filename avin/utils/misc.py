@@ -150,8 +150,8 @@ def dbg_kv(**kvargs):  # {{{
 
 
 # }}}
-def stop(text: str):  # {{{
-    input(f"stop: {text}")
+def break_point(text: str):  # {{{
+    input(f"break_point: {text}")
 
 
 # }}}
