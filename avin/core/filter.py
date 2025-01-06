@@ -130,16 +130,6 @@ class Filter:  # {{{
     #     return f
     #
     # # }}}
-    # @classmethod  # save  # {{{
-    # def save(cls, f: Filter, file_path=None) -> None:
-    #     logger.debug(f"{cls.__name__}.save()")
-    #
-    #     if file_path is None:
-    #         file_path = f.path
-    #
-    #     Cmd.write(f.code, file_path)
-    #
-    # # }}}
     @classmethod  # load  # {{{
     def load(cls, file_path: str) -> Filter | None:
         logger.debug(f"{cls.__name__}.load()")
@@ -152,6 +142,11 @@ class Filter:  # {{{
         f = Filter(name, code)
 
         return f
+
+    # }}}
+    @classmethod  # save  # {{{
+    def save(cls, f: Filter):
+        Cmd.write(f.code, f.path)
 
     # }}}
     # @classmethod  # copy  # {{{
@@ -296,12 +291,15 @@ class FilterList:  # {{{
     # }}}
     @property  # path  # {{{
     def path(self) -> str:
-        if self.__parent_list is None:
-            dir_path = Usr.FILTER
-        else:
-            dir_path = self.__parent_list.path
+        parts = self.__name.split(" ")
 
-        return Cmd.path(dir_path, f"{self.__name}")
+        if self.__parent_list is None:
+            dir_path = Cmd.path(Usr.FILTER, *parts)
+        else:
+            parent_path = self.__parent_list.path
+            dir_path = Cmd.path(parent_path, *parts)
+
+        return dir_path
 
     # }}}
 
@@ -361,11 +359,21 @@ class FilterList:  # {{{
 
     # }}}
 
+    @classmethod  # save  # {{{
+    def save(cls, filter_list: FilterList) -> None:
+        logger.debug(f"{cls.__name__}.save()")
+        assert isinstance(filter_list, FilterList)
+
+        for f in filter_list:
+            Filter.save(f)
+
+    # }}}
     @classmethod  # load  # {{{
     def load(cls, name: str) -> FilterList | None:
         logger.debug(f"{cls.__name__}.load()")
 
-        dir_path = Cmd.path(Usr.FILTER, name)
+        parts = name.split(" ")
+        dir_path = Cmd.path(Usr.FILTER, *parts)
         if not Cmd.isExist(dir_path):
             return None
 
@@ -392,6 +400,7 @@ class FilterList:  # {{{
         logger.debug(f"{cls.__name__}.__loadChilds()")
 
         # load filters
+
         files = Cmd.getFiles(filter_list.path, full_path=True)
         files = Cmd.select(files, extension=".py")
         files = sorted(files)
