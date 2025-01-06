@@ -63,6 +63,16 @@ class Summary:
         return df
 
     # }}}
+    @classmethod  # percentProfitable  # {{{
+    def percentProfitable(cls, trade_list: TradeList) -> float:
+        has_parent = trade_list.parent_list is not None
+
+        results = Summary.__getResults(trade_list)
+        percent = Summary.__percentProfitable(results)
+
+        return round(percent, 2)
+
+    # }}}
     @classmethod  # save  # {{{
     def save(cls, summary: Summary, file_path: str) -> None:
         logger.debug(f"{self.__class__.__name__}.__save()")
@@ -251,7 +261,7 @@ class Summary:
         """Отношение общей прибыли к общему убытку"""
         gross_loss = Summary.__grossLoss(results)
         if gross_loss == 0:
-            return 0.0
+            return 100.0
         else:
             return abs(Summary.__grossProfit(results) / gross_loss)
 
