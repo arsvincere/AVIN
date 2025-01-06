@@ -868,6 +868,22 @@ class TradeList:  # {{{
         return child
 
     # }}}
+    async def anyOfFilterList(self, filter_list) -> TradeList:  # {{{
+        logger.debug(f"{self.__class__.__name__}.filter()")
+
+        selected = list()
+        for trade in self:
+            for f in filter_list:
+                result = await f.acheck(trade)
+                if result:
+                    selected.append(trade)
+                    continue
+
+        child = self._createChild(selected, f"any of {filter_list.full_name}")
+        return child
+
+    # }}}
+
     def selectStatus(self, status: Trade.Status) -> TradeList:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectStatus()")
 
