@@ -115,6 +115,19 @@ class Thread:  # {{{
         return thread.result
 
     # }}}
+    @classmethod  # anyOfFilterList  # {{{
+    def anyOfFilterList(
+        cls, trade_list: TradeList, filter_list: FilterList
+    ) -> Test:
+        logger.debug(f"{cls.__name__}.anyOfFilterList()")
+
+        thread = _TAnyOfFilterList(trade_list, filter_list)
+        thread.start()
+        awaitQThread(thread)
+
+        return thread.result
+
+    # }}}
 
 
 # }}}
@@ -330,6 +343,33 @@ class _TSelectFilterList(QtCore.QThread):  # {{{
         logger.debug(f"{self.__class__.__name__}.__arun()")
 
         self.result = await self.__trade_list.selectFilterList(
+            self.__filter_list
+        )
+
+    # }}}
+
+
+# }}}
+class _TAnyOfFilterList(QtCore.QThread):  # {{{
+    def __init__(self, trade_list, filter_list, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtCore.QThread.__init__(self, parent)
+
+        self.__trade_list = trade_list
+        self.__filter_list = filter_list
+        self.result = None
+
+    # }}}
+    def run(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.run()")
+
+        asyncio.run(self.__arun())
+
+    # }}}
+    async def __arun(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__arun()")
+
+        self.result = await self.__trade_list.anyOfFilterList(
             self.__filter_list
         )
 

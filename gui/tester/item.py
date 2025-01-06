@@ -152,6 +152,16 @@ class TradeListItem(QtWidgets.QTreeWidgetItem):  # {{{
         self.setExpanded(True)
 
     # }}}
+    def anyOfFilterList(self, filter_list: FilterList) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectFilter()")
+
+        child = Thread.anyOfFilterList(self.trade_list, filter_list)
+        child_item = TradeListItem(child)
+        self.addChild(child_item)
+        self.setExpanded(True)
+
+    # }}}
+
     def selectStrategy(self, name: str, version: str) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectStrategy()")
 

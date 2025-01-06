@@ -93,8 +93,8 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         self.header().setStyleSheet(Css.TREE_HEADER)
 
         # config sorting
-        self.setSortingEnabled(True)
-        self.sortByColumn(TestItem.Column.Name, Qt.SortOrder.AscendingOrder)
+        # self.setSortingEnabled(True)
+        # self.sortByColumn(TestItem.Column.Name, Qt.SortOrder.AscendingOrder)
 
         # config width
         self.setColumnWidth(TestItem.Column.Name, 350)
@@ -128,6 +128,7 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
         self.test_menu.delete.triggered.connect(self.__onDelete)
 
         self.tlist_menu.filter.triggered.connect(self.__onSelectFilter)
+        self.tlist_menu.any_of.triggered.connect(self.__onAnyOf)
         self.tlist_menu.strategy.triggered.connect(self.__onSelectStrategy)
         self.tlist_menu.long_short.triggered.connect(self.__onSelectLongShort)
         self.tlist_menu.win_loss.triggered.connect(self.__onSelectWinLoss)
@@ -311,6 +312,24 @@ class TestTree(QtWidgets.QTreeWidget):  # {{{
             trade_list_item.selectFilterList(f)
 
     # }}}
+    @QtCore.pyqtSlot()  # __onAnyOf# {{{
+    def __onAnyOf(self):
+        logger.debug(f"{self.__class__.__name__}.__onAnyOf()")
+
+        if self.filter_select_dialog is None:
+            self.filter_select_dialog = FilterSelectDialog()
+
+        f = self.filter_select_dialog.selectFilter()
+        if f is None:
+            return
+
+        trade_list_item = self.__current_item
+        if isinstance(f, Filter):
+            logger.error("Select FilterList, not simple Filter")
+        elif isinstance(f, FilterList):
+            trade_list_item.anyOfFilterList(f)
+
+    # }}}
     @QtCore.pyqtSlot()  # __onSelectStrategy# {{{
     def __onSelectStrategy(self):
         logger.debug(f"{self.__class__.__name__}.__onSelectStrategy()")
@@ -428,6 +447,7 @@ class _TradeListMenu(Menu):  # {{{
         Menu.__init__(self, parent=parent)
 
         self.filter = QtGui.QAction("Filter ...", self)
+        self.any_of = QtGui.QAction("Any of ...", self)
         self.strategy = QtGui.QAction("Strategy", self)
         self.long_short = QtGui.QAction("Long/Short", self)
         self.win_loss = QtGui.QAction("Win/Loss", self)
@@ -436,6 +456,7 @@ class _TradeListMenu(Menu):  # {{{
         self.clear = QtGui.QAction("Clear childs", self)
 
         self.addAction(self.filter)
+        self.addAction(self.any_of)
         self.addTextSeparator("Select")
         self.addAction(self.strategy)
         self.addAction(self.long_short)
