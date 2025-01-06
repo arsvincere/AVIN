@@ -13,6 +13,7 @@ from typing import Optional, Union
 from avin.core import (
     Account,
     Asset,
+    Bar,
     BarChangedEvent,
     Broker,
     Direction,
@@ -117,9 +118,9 @@ class VirtualBroker(Broker):
         order.broker_id = order.order_id
         order.status = Order.Status.FILLED
         order.meta = "virtual executed"
+        await order.setStatus(Order.Status.POSTED)
 
         cls.__market_orders.append(order)
-        await order.setStatus(Order.Status.POSTED)
 
         return True
 
@@ -133,17 +134,9 @@ class VirtualBroker(Broker):
         order.broker_id = order.order_id
         order.status = Order.Status.POSTED
         order.meta = "virtual posted"
-
-        cls.__limit_orders.append(order)
         await order.setStatus(Order.Status.POSTED)
 
-        # check now bar
-        assert cls.__current_asset is not None
-        chart = cls.__current_asset.chart(TimeFrame("1M"))
-        bar = chart.now
-
-        if order.price in bar:
-            await cls.__executeOrder(order, bar.dt, order.price)
+        cls.__limit_orders.append(order)
 
         return True
 
@@ -155,15 +148,9 @@ class VirtualBroker(Broker):
         order.broker_id = order.order_id
         order.status = Order.Status.POSTED
         order.meta = "virtual posted"
+        await order.setStatus(Order.Status.POSTED)
 
         cls.__stop_orders.append(order)
-
-        # check now bar
-        assert cls.__current_asset is not None
-        chart = cls.__current_asset.chart(TimeFrame("1M"))
-        bar = chart.now
-        if order.stop_price in bar:
-            await cls.__executeOrder(order, bar.dt, order.stop_price)
 
         return True
 
@@ -175,15 +162,9 @@ class VirtualBroker(Broker):
         order.broker_id = order.order_id
         order.status = Order.Status.POSTED
         order.meta = "virtual posted"
+        await order.setStatus(Order.Status.POSTED)
 
         cls.__stop_orders.append(order)
-
-        # check now bar
-        assert cls.__current_asset is not None
-        chart = cls.__current_asset.chart(TimeFrame("1M"))
-        bar = chart.now
-        if order.stop_price in bar:
-            await cls.__executeOrder(order, bar.dt, order.stop_price)
 
         return True
 
@@ -197,6 +178,7 @@ class VirtualBroker(Broker):
         order.broker_id = order.order_id
         order.status = Order.Status.POSTED
         order.meta = "virtual posted"
+        await order.setStatus(Order.Status.POSTED)
 
         cls.__stop_orders.append(order)
 
@@ -299,21 +281,37 @@ class VirtualBroker(Broker):
             if event.type == Event.Type.NEW_HISTORICAL_BAR:
                 await cls.new_bar.aemit(event)
             if event.type == Event.Type.BAR_CHANGED:
+                # NOTE:
+                # перед приходом нового реал тайм бара, до отправки
+                # этого события, проверям сначала сработку ордеров
+                # в текущем реал тайм баре.
+                # Суть.
+                # Аккаунт выставляет ордер. Он попадаем в виртуал
+                # брокера сюда в соответствующий список маркет, лимит, стоп
+                # ордеров. Ставится статус - POSTED.
+                # Все это происходит в ответ на предыдущий эвент -
+                # Event.NEW_HISTORICAL_BAR, которые все стратегии и
+                # используют сейчас. Я дожидаюсь полного завершения
+                # обработки этого эвента всеми, все свои ордера поставят.
+                # И только потом вот здесь - чекаю ордера.
+                # В текущем реал тайм баре. То есть в том, который и был
+                # на момент выставления ордеров стратегиями.
+                # Смотрим сработку ордеров только на 1М таймфрейме
+                # в эвенте если приходит другой таймфрейм - пропускам
+                # просто отправляем его сигналом
+                # А если 1М то беру бар из текущего графика, а не новый
+                # из эвента.
+                if event.timeframe == "1M":
+                    bar = cls.__current_asset.chart("1M").now
+                    await cls.__checkOrders(bar)
+                # Теперь отправляем новый реал тайм бар всем.
                 await cls.bar_changed.aemit(event)
-                await cls.__checkOrders(event)
 
     # }}}
 
     @classmethod  # __checkOrders  # {{{
-    async def __checkOrders(cls, event: BarChangedEvent) -> None:
+    async def __checkOrders(cls, bar: Bar) -> None:
         logger.debug(f"{cls.__name__}.__checkOrders()")
-
-        # Смотрим сработку ордеров только на 1М таймфрейме
-        # в эвенте приходит now bar
-        if event.timeframe != "1M":
-            return
-
-        bar = event.bar
 
         # check market orders
         i = 0
