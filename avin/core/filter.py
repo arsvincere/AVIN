@@ -90,6 +90,8 @@ class Filter:  # {{{
             case "Share":
                 result = await self.__conditionAsset(item)
             case "Trade":
+                if item.status == Trade.Status.CANCELED:
+                    return False
                 result = await self.__conditionTrade(item)
 
         return result
@@ -135,7 +137,7 @@ class Filter:  # {{{
         logger.debug(f"{cls.__name__}.load()")
 
         if not Cmd.isExist(file_path):
-            return None
+            assert False, "Filter not found!"
 
         name = Cmd.name(file_path)
         code = Cmd.read(file_path)
@@ -366,6 +368,9 @@ class FilterList:  # {{{
 
         for f in filter_list:
             Filter.save(f)
+
+        for child in filter_list.childs:
+            FilterList.save(child)
 
     # }}}
     @classmethod  # load  # {{{
