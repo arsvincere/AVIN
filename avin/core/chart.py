@@ -12,6 +12,7 @@ import bisect
 from datetime import UTC, datetime
 from typing import Optional
 
+from avin.const import ONE_DAY
 from avin.core.bar import Bar
 from avin.core.timeframe import TimeFrame
 from avin.data import Instrument
@@ -277,30 +278,95 @@ class Chart:
         return bar.low
 
     # }}}
-    def highestHighToday(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.highestHighToday()")
+
+    def todayOpen(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.todayOpen()")
 
         bars = self.getTodayBars()
+        if not bars:
+            return None
+
+        return bars[0].open
+
+    # }}}
+    def todayHigh(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.todayHigh()")
+
+        bars = self.getTodayBars()
+        if not bars:
+            return None
+
         bar = max(bars, key=lambda x: x.high)
         return bar.high
 
     # }}}
-    def lowestLowToday(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.lowestLowToday()")
+    def todayLow(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.todayLow()")
 
         bars = self.getTodayBars()
+        if not bars:
+            return None
+
         bar = min(bars, key=lambda x: x.low)
         return bar.low
+
+    # }}}
+    def yesterdayOpen(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.yesterdayOpen()")
+
+        yesterday = self.__now.dt - ONE_DAY
+        bars = self.getBarsOfDay(yesterday)
+        if not bars:
+            return None
+
+        return bars[0].open
+
+    # }}}
+    def yesterdayHigh(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.yesterdayHigh()")
+
+        yesterday = self.__now.dt - ONE_DAY
+        bars = self.getBarsOfDay(yesterday)
+        if not bars:
+            return None
+
+        bar = max(bars, key=lambda x: x.high)
+        return bar.high
+
+    # }}}
+    def yesterdayLow(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.yesterdayLow()")
+
+        yesterday = self.__now.dt - ONE_DAY
+        bars = self.getBarsOfDay(yesterday)
+        if not bars:
+            return None
+
+        bar = min(bars, key=lambda x: x.low)
+        return bar.low
+
+    # }}}
+    def yesterdayClose(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.yesterdayClose()")
+
+        yesterday = self.__now.dt - ONE_DAY
+        bars = self.getBarsOfDay(yesterday)
+        if not bars:
+            return None
+
+        return bars[-1].close
 
     # }}}
 
     def setHeadIndex(self, index) -> bool:  # {{{
         logger.debug(f"{self.__class__.__name__}.setHeadIndex()")
         assert isinstance(index, int)
+
         if index < 0:
             return False
         if index > len(self.__bars):
             return False
+
         self.__head = index
         self.__now = self.__bars[self.__head]
         return True
