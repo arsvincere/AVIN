@@ -65,7 +65,7 @@ class Summary:
     # }}}
     @classmethod  # percentProfitable  # {{{
     def percentProfitable(cls, trade_list: TradeList) -> float:
-        has_parent = trade_list.parent_list is not None
+        logger.debug(f"{self.__class__.__name__}.percentProfitable()")
 
         results = Summary.__getResults(trade_list)
         percent = Summary.__percentProfitable(results)
