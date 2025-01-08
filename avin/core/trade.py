@@ -431,10 +431,6 @@ info:       {Cmd.toJson(self.info, indent=4)}
     def openDateTime(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.openDateTime()")
 
-        # FIX:
-        # возможно из БД они в произвольном порядке загрузятся...
-        # надо проверить, добавить сортировку по дате при загрузке
-
         assert self.status.value >= Trade.Status.OPENED.value
         return self.operations[0].dt
 
@@ -774,12 +770,14 @@ class TradeList:  # {{{
 
     def add(self, trade: Trade) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.add()")
+
         trade.trade_list_name = self.name
         self.__trades.append(trade)
 
     # }}}
     def remove(self, trade: Trade) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.remove()")
+
         trade.trade_list_name = ""
         self.__trades.remove(trade)
 
@@ -845,7 +843,7 @@ class TradeList:  # {{{
     # }}}
 
     async def selectFilter(self, f) -> TradeList:  # {{{
-        logger.debug(f"{self.__class__.__name__}.filter()")
+        logger.debug(f"{self.__class__.__name__}.selectFilter()")
 
         selected = list()
         for trade in self.__trades:
@@ -858,7 +856,7 @@ class TradeList:  # {{{
 
     # }}}
     async def selectFilterList(self, filter_list) -> TradeList:  # {{{
-        logger.debug(f"{self.__class__.__name__}.filter()")
+        logger.debug(f"{self.__class__.__name__}.selectFilterList()")
 
         child = self._createChild(self.__trades, filter_list.full_name)
 
@@ -869,7 +867,7 @@ class TradeList:  # {{{
 
     # }}}
     async def anyOfFilterList(self, filter_list) -> TradeList:  # {{{
-        logger.debug(f"{self.__class__.__name__}.filter()")
+        logger.debug(f"{self.__class__.__name__}.anyOfFilterList()")
 
         selected = list()
         for trade in self:
@@ -879,10 +877,31 @@ class TradeList:  # {{{
                     selected.append(trade)
                     continue
 
-        child = self._createChild(selected, f"any of {filter_list.full_name}")
+        child = self._createChild(selected, f"{filter_list.full_name}")
         return child
 
     # }}}
+    async def cascadeFilterList(self, filter_list) -> TradeList:  # {{{
+        # здесь берутся фильтры верхнего уровня в фильтр листе
+        # и применяются, но применяются каскадно!
+        assert False, "TODO: me"
+
+    # }}}
+    async def deepFilterList(self, filter_list) -> TradeList:
+        logger.debug(f"{self.__class__.__name__}.deepFilterList()")
+
+        # здесь бурутся все дочерние фильтр листы, и применяются
+        # методом anyOfFilterList, но применяются каскадно!
+        current = self
+        for child_filter_list in filter_list:
+            await self.deepFilterList(child_filter_list)
+
+            if len(child_filter_list) > 0:
+                child = await current.anyOfFilterList(child_filter_list)
+
+    async def __deepFilterList(trade_list, filter_list):
+        for child_filter_list in filter_list:
+            await self.__deepFilterList(child_filter_list)
 
     def selectStatus(self, status: Trade.Status) -> TradeList:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectStatus()")
