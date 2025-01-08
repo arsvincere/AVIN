@@ -16,6 +16,7 @@ from avin import (
     Filter,
     FilterList,
     Test,
+    TestList,
     Trade,
     TradeList,
     Usr,
@@ -91,6 +92,31 @@ class TestItem(QtWidgets.QTreeWidgetItem):  # {{{
 
         tlist_item = TradeListItem(self.test.trade_list)
         self.addChild(tlist_item)
+
+    # }}}
+
+
+# }}}
+class TestListItem(QtWidgets.QTreeWidgetItem):  # {{{
+    class Column(enum.IntEnum):  # {{{
+        Name = 0
+
+    # }}}
+
+    def __init__(self, test_list: TestList, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QTreeWidgetItem.__init__(self, parent)
+
+        self.test_list = test_list
+        self.setFlags(
+            Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
+        )
+
+        self.setText(self.Column.Name, self.test_list.name)
+
+        for test in self.test_list:
+            item = TestItem(test)
+            self.addChild(item)
 
     # }}}
 
