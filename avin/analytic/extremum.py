@@ -158,6 +158,17 @@ class ExtremumList:  # {{{
 
     # }}}
 
+    def sMax(self):
+        max_of_sterm = -1
+        for extr in self.__shortterm:
+            if extr.isMax():
+                max_of_sterm = max(extr.price, max_of_sterm)
+
+        if max_of_sterm == -1:
+            return None
+
+        return max_of_sterm
+
     def sTrend(self, length=0) -> Trend | None:  # {{{
         assert length >= 0
 
