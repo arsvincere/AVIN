@@ -501,17 +501,6 @@ class TestList:  # {{{
         await Keeper.delete(test_list)
 
     # }}}
-    @classmethod  # rename  # {{{
-    async def rename(cls, test_list: TestList, new_name: str) -> None:
-        logger.debug(f"{cls.__name__}.rename()")
-        assert isinstance(new_name, str)
-        assert len(new_name) > 0
-
-        await cls.delete(test_list)
-        test_list.name = new_name
-        await cls.save(test_list)
-
-    # }}}
     @classmethod  # requestAll# {{{
     async def requestAll(cls) -> list[str]:
         logger.debug(f"{cls.__name__}.requestAll()")
