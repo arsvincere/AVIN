@@ -65,7 +65,7 @@ class Summary:
     # }}}
     @classmethod  # percentProfitable  # {{{
     def percentProfitable(cls, trade_list: TradeList) -> float:
-        logger.debug(f"{self.__class__.__name__}.percentProfitable()")
+        logger.debug(f"{cls.__name__}.percentProfitable()")
 
         results = Summary.__getResults(trade_list)
         percent = Summary.__percentProfitable(results)

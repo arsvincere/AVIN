@@ -405,9 +405,7 @@ class FilterList:  # {{{
         logger.debug(f"{cls.__name__}.__loadChilds()")
 
         # load filters
-
         files = Cmd.getFiles(filter_list.path, full_path=True)
-        files = Cmd.select(files, extension=".py")
         files = sorted(files)
         for file in files:
             f = Filter.load(file)
