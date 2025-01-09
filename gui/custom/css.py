@@ -282,6 +282,22 @@ class Css:
         }}
     """
     # }}}
+    # SPEED_LABEL  # {{{
+    SPEED_LABEL = f"""
+        QLabel {{
+            font-family: Monospace;
+            font-size: 10px;
+            background-color: transparent;
+            color: {Theme.fg_normal};
+            padding: 2px;
+            border-width: 1px;
+            border-radius: 4px;
+            border-style: solid;
+            border-color: {Theme.bg_high};
+        }}
+    """
+    # line-height: 12px;
+    # }}}
     # TITLE   # {{{
     TITLE = f"""
         font-family: Sans;

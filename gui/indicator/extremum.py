@@ -281,7 +281,7 @@ class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
             label_pos = QtCore.QPointF(e2_x, y)
 
             label = QtWidgets.QLabel(f"{delta} / {speed}")
-            label.setStyleSheet(Css.TRADE_LABEL)
+            label.setStyleSheet(Css.SPEED_LABEL)
             glabel = QtWidgets.QGraphicsProxyWidget()
             glabel.setWidget(label)
             glabel.setPos(label_pos)
