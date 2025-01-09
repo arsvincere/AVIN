@@ -40,10 +40,13 @@ class Range:
     def __init__(  # {{{
         self, min_: float, max_: float, type_=Type.UNDEFINE, bar=None
     ):
-        assert min_ <= max_
+        if min_ < max_:
+            self.__min = min_
+            self.__max = max_
+        else:
+            self.__min = max_
+            self.__max = min_
 
-        self.__min = min_
-        self.__max = max_
         self.__type = type_
         self.__bar = bar
 

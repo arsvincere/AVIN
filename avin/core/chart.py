@@ -149,18 +149,32 @@ class Chart:
 
     # }}}
 
-    def getIndex(self, bar: Bar):  # {{{
+    def getIndex(self, bar: Bar) -> int:  # {{{
         logger.debug(f"{self.__class__.__name__}.getIndex()")
 
         bars = self.getBars()  # not ignored self.__head
         index = binary_search(bars, bar.dt, lambda x: x.dt)
+
+        assert index is not None
         return index
 
     # }}}
-    def getBars(self) -> list[Bar]:  # {{{
+    def getBars(  # {{{
+        self, begin: Optional[Bar] = None, end: Optional[Bar] = None
+    ) -> list[Bar]:
         logger.debug(f"{self.__class__.__name__}.getBars()")
 
-        return self.__bars[0 : self.__head]
+        if begin is None:
+            begin_index = 0
+        else:
+            begin_index = self.getIndex(begin)
+
+        if end is None:
+            end_index = -1
+        else:
+            end_index = self.getIndex(end) + 1
+
+        return self.__bars[begin_index:end_index]
 
     # }}}
     def getTodayBars(self) -> list[Bar]:  # {{{

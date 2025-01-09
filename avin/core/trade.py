@@ -875,7 +875,7 @@ class TradeList:  # {{{
                 result = await f.acheck(trade)
                 if result:
                     selected.append(trade)
-                    continue
+                    break
 
         child = self._createChild(selected, f"{filter_list.full_name}")
         return child
@@ -887,7 +887,7 @@ class TradeList:  # {{{
         assert False, "TODO: me"
 
     # }}}
-    async def deepFilterList(self, filter_list) -> TradeList:
+    async def deepFilterList(self, filter_list) -> TradeList:  # {{{
         logger.debug(f"{self.__class__.__name__}.deepFilterList()")
 
         # здесь бурутся все дочерние фильтр листы, и применяются
@@ -899,10 +899,7 @@ class TradeList:  # {{{
             if len(child_filter_list) > 0:
                 child = await current.anyOfFilterList(child_filter_list)
 
-    async def __deepFilterList(trade_list, filter_list):
-        for child_filter_list in filter_list:
-            await self.__deepFilterList(child_filter_list)
-
+    # }}}
     def selectStatus(self, status: Trade.Status) -> TradeList:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectStatus()")
 
@@ -1116,6 +1113,11 @@ class TradeList:  # {{{
 
     # }}}
 
+    async def __deepFilterList(trade_list, filter_list):  # {{{
+        for child_filter_list in filter_list:
+            await self.__deepFilterList(child_filter_list)
+
+    # }}}
     def _createChild(self, trades, subname):  # {{{
         logger.debug(f"{self.__class__.__name__}._createChild()")
 
