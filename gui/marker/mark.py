@@ -23,7 +23,7 @@ class Mark:  # {{{
 
     @property  # name  # {{{
     def name(self):
-        return self.__filter.name
+        return self.__filter.full_name
 
     # }}}
     @property  # filter  # {{{
