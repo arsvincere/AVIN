@@ -96,6 +96,16 @@ class Extremum:  # {{{
         return self.__bar
 
     # }}}
+    @property  # type  # {{{
+    def type(self):
+        if self.isShortterm():
+            return Extremum.Type.SHORTTERM
+        if self.isMidterm():
+            return Extremum.Type.MIDTERM
+        if self.isLongterm():
+            return Extremum.Type.LONGTERM
+
+    # }}}
 
     def addFlag(self, flag: Extremum.Type) -> None:  # {{{
         assert isinstance(flag, Extremum.Type)
@@ -204,13 +214,53 @@ class ExtremumList:  # {{{
     def mTrend(self, n=0) -> Trend | None:  # {{{
         assert n >= 0
 
-        assert False, "TODO me"
+        if n > (len(self.__midterm) - 1):
+            return None
+
+        t = Extremum.Type
+        if n == 0:
+            e1 = self.__midterm[-1]
+
+            last_bar = self.__chart.last
+            if e1.isMax():
+                e2 = Extremum(t.MIN | t.SHORTTERM, last_bar)
+            else:
+                e2 = Extremum(t.MAX | t.SHORTTERM, last_bar)
+
+            trend = Trend(e1, e2)
+            return trend
+
+        # n >= 1
+        e1 = self.__midterm[-n - 1]
+        e2 = self.__midterm[-n]
+        trend = Trend(e1, e2)
+        return trend
 
     # }}}
     def lTrend(self, n=0) -> Trend | None:  # {{{
         assert n >= 0
 
-        assert False, "TODO me"
+        if n > (len(self.__longterm) - 1):
+            return None
+
+        t = Extremum.Type
+        if n == 0:
+            e1 = self.__longterm[-1]
+
+            last_bar = self.__chart.last
+            if e1.isMax():
+                e2 = Extremum(t.MIN | t.SHORTTERM, last_bar)
+            else:
+                e2 = Extremum(t.MAX | t.SHORTTERM, last_bar)
+
+            trend = Trend(e1, e2)
+            return trend
+
+        # n >= 1
+        e1 = self.__longterm[-n - 1]
+        e2 = self.__longterm[-n]
+        trend = Trend(e1, e2)
+        return trend
 
     # }}}
 
@@ -495,14 +545,34 @@ class Trend:  # {{{
 
     # }}}
 
-    @property  # {{{
+    @property  # begin  # {{{
     def begin(self):
         return self.__e1
 
     # }}}
-    @property  # {{{
+    @property  # end  # {{{
     def end(self):
         return self.__e2
+
+    # }}}
+    @property  # asset  # {{{
+    def asset(self):
+        return self.__e1.bar.chart.instrument
+
+    # }}}
+    @property  # chart  # {{{
+    def chart(self):
+        return self.__e1.bar.chart
+
+    # }}}
+    @property  # timeframe  # {{{
+    def timeframe(self):
+        return self.__e1.bar.chart.timeframe
+
+    # }}}
+    @property  # type  # {{{
+    def type(self):
+        return self.__e1.type
 
     # }}}
 

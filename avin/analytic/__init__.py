@@ -7,11 +7,12 @@
 # ============================================================================
 
 from avin.analytic._analytic import Analytic, AnalyticData
-from avin.analytic.extremum import Extremum, ExtremumList
+from avin.analytic.extremum import Extremum, ExtremumList, Trend
 
 __all__ = (
     "Analytic",
     "AnalyticData",
     "Extremum",
     "ExtremumList",
+    "Trend",
 )
