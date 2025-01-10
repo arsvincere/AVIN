@@ -246,15 +246,20 @@ info:       {Cmd.toJson(self.info, indent=4)}
             await self.setStatus(Trade.Status.CLOSED)
 
     # }}}
-    async def loadChart(self, timeframe: TimeFrame | str) -> Chart:  # {{{
+    async def loadChart(
+        self, timeframe: TimeFrame | str, n=None
+    ) -> Chart:  # {{{
         logger.debug(f"{self.__class__.__name__}.chart()")
         assert self.instrument.type == Instrument.Type.SHARE
 
         if isinstance(timeframe, str):
             timeframe = TimeFrame(timeframe)
 
+        if n is None:
+            n = Chart.DEFAULT_BARS_COUNT
+
         end = self.dt
-        begin = self.dt - Chart.DEFAULT_BARS_COUNT * timeframe
+        begin = self.dt - n * timeframe
 
         chart = await Chart.load(self.instrument, timeframe, begin, end)
         chart.setHeadDatetime(self.dt)
