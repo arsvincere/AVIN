@@ -170,7 +170,7 @@ class Chart:
             begin_index = self.getIndex(begin)
 
         if end is None:
-            end_index = -1
+            end_index = self.__head
         else:
             end_index = self.getIndex(end) + 1
 
