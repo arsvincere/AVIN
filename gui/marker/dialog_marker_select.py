@@ -129,6 +129,8 @@ class _MarkTree(QtWidgets.QTreeWidget):  # {{{
 
         self.__mark_list = None
 
+        self.__marker_edit_dialog = None
+
     # }}}
     def __iter__(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__iter__()")
@@ -224,8 +226,10 @@ class _MarkTree(QtWidgets.QTreeWidget):  # {{{
     def __onNew(self):
         logger.debug(f"{self.__class__.__name__}.__onNew()")
 
-        dial = MarkerEditDialog()
-        mark = dial.newMark()
+        if self.__marker_edit_dialog is None:
+            self.__marker_edit_dialog = MarkerEditDialog()
+
+        mark = self.__marker_edit_dialog.newMark()
         if mark is not None:
             # add mark in MarkList
             self.__mark_list.add(mark)
@@ -240,8 +244,11 @@ class _MarkTree(QtWidgets.QTreeWidget):  # {{{
         logger.debug(f"{self.__class__.__name__}.__onEdit()")
 
         mark = self.__current_item.mark
-        dial = MarkerEditDialog()
-        edited = dial.editMark(mark)
+
+        if self.__marker_edit_dialog is None:
+            self.__marker_edit_dialog = MarkerEditDialog()
+
+        edited = self.__marker_edit_dialog.editMark(mark)
 
         if edited is not None:
             # add mark in MarkList

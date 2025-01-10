@@ -40,6 +40,8 @@ class MarkerEditDialog(QtWidgets.QDialog):  # {{{
         self.__current_filter = None
         self.__current_gshape = None
 
+        self.__filter_select_dialog = None
+
     # }}}
 
     def newMark(self) -> Mark | None:  # {{{
@@ -142,8 +144,10 @@ class MarkerEditDialog(QtWidgets.QDialog):  # {{{
     def __onFilterBtn(self):
         logger.debug(f"{self.__class__.__name__}.__onFilterBtn()")
 
-        dial = FilterSelectDialog()
-        f = dial.selectFilter()
+        if self.__filter_select_dialog is None:
+            self.__filter_select_dialog = FilterSelectDialog()
+
+        f = self.__filter_select_dialog.selectFilter()
         if f is None:
             self.__filter_btn.setText("Click to select")
             return
