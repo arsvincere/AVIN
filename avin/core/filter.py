@@ -133,11 +133,30 @@ class Filter:  # {{{
     #
     # # }}}
     @classmethod  # load  # {{{
-    def load(cls, file_path: str) -> Filter | None:
+    def load(cls, name: str) -> Filter | None:
         logger.debug(f"{cls.__name__}.load()")
 
+        parts = name.split(" ")
+        parts[-1] += ".py"
+        file_path = Cmd.path(Usr.FILTER, *parts)
+
         if not Cmd.isExist(file_path):
-            assert False, "Filter not found!"
+            logger.error(f"Filter not found: {file_path}")
+            assert False
+
+        code = Cmd.read(file_path)
+        f = Filter(name, code)
+
+        return f
+
+    # }}}
+    @classmethod  # loadFromFile  # {{{
+    def loadFromFile(cls, file_path: str) -> Filter | None:
+        logger.debug(f"{cls.__name__}.loadFromFile()")
+
+        if not Cmd.isExist(file_path):
+            logger.error(f"Filter not found: {file_path}")
+            assert False
 
         name = Cmd.name(file_path)
         code = Cmd.read(file_path)
@@ -408,7 +427,7 @@ class FilterList:  # {{{
         files = Cmd.getFiles(filter_list.path, full_path=True)
         files = sorted(files)
         for file in files:
-            f = Filter.load(file)
+            f = Filter.loadFromFile(file)
             filter_list.add(f)
 
         # load child filter list
