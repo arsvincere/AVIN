@@ -71,14 +71,6 @@ class SummaryWidget(QtWidgets.QTableWidget):  # {{{
         df = Summary.calculate(trade_list)
         self.setRowCount(len(trade_list))
 
-        # ####
-        #
-        # from avin.utils import dbg
-        #
-        # dbg(trade_list.name)
-        # print(df)
-        # ####
-
         for i in df.index:
             for n, val in enumerate(df.loc[i], 0):
                 item = QtWidgets.QTableWidgetItem()
