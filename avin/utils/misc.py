@@ -8,6 +8,7 @@
 
 import bisect
 import os
+from collections import defaultdict
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 
@@ -177,6 +178,11 @@ def next_month(dt: datetime) -> datetime:  # {{{
         )
 
     return next
+
+
+# }}}
+def Tree():  # {{{
+    return defaultdict(Tree)
 
 
 # }}}
