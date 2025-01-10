@@ -201,6 +201,7 @@ class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
         for e in extr_list:
             shape = self.__createPointShape(e)
             points.addToGroup(shape)
+
         return points
 
     # }}}
@@ -242,11 +243,12 @@ class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
         self, points_group: QtWidgets.QGraphicsItemGroup, pen
     ):
         logger.debug(f"{self.__class__.__name__}.__createLines()")
-        points = points_group.childItems()
-        if len(points) < 2:
-            return None
 
         lines = QtWidgets.QGraphicsItemGroup()
+        points = points_group.childItems()
+        if len(points) < 2:
+            return lines
+
         i = 0
         while i < len(points) - 1:
             e1 = points[i].info["epos"]
@@ -262,12 +264,12 @@ class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
     def __createSpeedLabels(self, points_group):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createSpeedLabels()")
 
+        glabels = QtWidgets.QGraphicsItemGroup()
         points = points_group.childItems()
         if len(points) < 2:
-            return None
+            return glabels
 
         flags = QtWidgets.QGraphicsItem.GraphicsItemFlag
-        glabels = QtWidgets.QGraphicsItemGroup()
         i = 0
         while i < len(points) - 1:
             e1 = points[i].info["extr"]
@@ -536,8 +538,8 @@ class _ExtremumSettings(QtWidgets.QDialog):  # {{{
         self.lshape_checkbox.setChecked(False)
 
         self.sline_checkbox.setChecked(True)
-        self.mline_checkbox.setChecked(True)
-        self.lline_checkbox.setChecked(True)
+        self.mline_checkbox.setChecked(False)
+        self.lline_checkbox.setChecked(False)
 
         self.sspeed_checkbox.setChecked(False)
         self.mspeed_checkbox.setChecked(False)
