@@ -57,6 +57,9 @@ class _DataManager:
     ) -> list[Instrument]:
         logger.debug(f"{cls.__name__}.find()")
 
+        if cls.__AUTO_UPDATE and not cls.__DATA_IS_UP_TO_DATE:
+            await cls.__checkUpdate()
+
         if source == DataSource.MOEX:
             class_ = _MoexData
         elif source == DataSource.TINKOFF:
@@ -78,6 +81,9 @@ class _DataManager:
     async def info(cls, instr, data_type) -> DataInfo | DataInfoList:
         logger.debug(f"{cls.__name__}.download()")
 
+        if cls.__AUTO_UPDATE and not cls.__DATA_IS_UP_TO_DATE:
+            await cls.__checkUpdate()
+
         # if instr & data_type -> DataInfo
         if instr is not None and data_type is not None:
             info = await DataInfo.load(instr, data_type)
@@ -91,6 +97,9 @@ class _DataManager:
     @classmethod  # firstDateTime  # {{{
     async def firstDateTime(cls, source, instr, data_type) -> datetime:
         logger.debug(f"{cls.__name__}.firstDateTime()")
+
+        if cls.__AUTO_UPDATE and not cls.__DATA_IS_UP_TO_DATE:
+            await cls.__checkUpdate()
 
         class_ = cls.__getDataSourceClass(source)
         dt = await class_.firstDateTime(instr, data_type)
@@ -189,6 +198,10 @@ class _DataManager:
         for task in clist:
             await cls.convert(task.instrument, task.in_type, task.out_type)
 
+        # save last update datetime
+        dt = now().isoformat()
+        Cmd.write(dt, cls.__LAST_UPDATE_FILE)
+
         logger.info("Update all market data complete!")
 
     # }}}
@@ -242,10 +255,6 @@ class _DataManager:
         logger.info(":: Market data is not up to date, auto update started")
         await cls.updateAll()
         cls.__DATA_IS_UP_TO_DATE = True
-
-        # save last update datetime
-        dt = now().isoformat()
-        Cmd.write(dt, cls.__LAST_UPDATE_FILE)
 
     # }}}
     @classmethod  # __fillVoid  # {{{
