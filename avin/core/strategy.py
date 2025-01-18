@@ -103,6 +103,7 @@ class Strategy(ABC):  # {{{
         logger.info(f"   {trade} result: {trade.result()}")
 
         await self.__cancelActiveOrders(trade)
+        self.__active_trades.remove(trade)
 
     # }}}
 
