@@ -98,12 +98,14 @@ class Extremum:  # {{{
     # }}}
     @property  # type  # {{{
     def type(self):
-        if self.isShortterm():
-            return Extremum.Type.SHORTTERM
-        if self.isMidterm():
-            return Extremum.Type.MIDTERM
         if self.isLongterm():
             return Extremum.Type.LONGTERM
+        elif self.isMidterm():
+            return Extremum.Type.MIDTERM
+        elif self.isShortterm():
+            return Extremum.Type.SHORTTERM
+        else:
+            assert False, "WTF???"
 
     # }}}
 
@@ -186,6 +188,11 @@ class ExtremumList:  # {{{
     # }}}
 
     def sTrend(self, n=0) -> Trend | None:  # {{{
+        """
+        Тренд 0 - это текущий незавершенный тренд
+        Тренд 1 - это прошлый тренд
+        Тренд 2 - это позапрошлый тренд и тд
+        """
         assert n >= 0
 
         if n > (len(self.__shortterm) - 1):
@@ -195,19 +202,24 @@ class ExtremumList:  # {{{
         if n == 0:
             e1 = self.__shortterm[-1]
 
+            # TODO: тут нужно не просто last_bar брать как сейчас
+            # а смотреть на самое экстримальное значение среди баров
+            # от прошлого экстремума до последнего исторического бара
+            # self.__chart.getBars(e1.bar, self.__chart.last)
             last_bar = self.__chart.last
+
             if e1.isMax():
                 e2 = Extremum(t.MIN | t.SHORTTERM, last_bar)
             else:
                 e2 = Extremum(t.MAX | t.SHORTTERM, last_bar)
 
-            trend = Trend(e1, e2)
+            trend = Trend(e1, e2, Term.SHORTTERM)
             return trend
 
         # n >= 1
         e1 = self.__shortterm[-n - 1]
         e2 = self.__shortterm[-n]
-        trend = Trend(e1, e2)
+        trend = Trend(e1, e2, Term.SHORTTERM)
         return trend
 
     # }}}
@@ -227,13 +239,13 @@ class ExtremumList:  # {{{
             else:
                 e2 = Extremum(t.MAX | t.SHORTTERM, last_bar)
 
-            trend = Trend(e1, e2)
+            trend = Trend(e1, e2, Term.MIDTERM)
             return trend
 
         # n >= 1
         e1 = self.__midterm[-n - 1]
         e2 = self.__midterm[-n]
-        trend = Trend(e1, e2)
+        trend = Trend(e1, e2, Term.MIDTERM)
         return trend
 
     # }}}
@@ -253,14 +265,144 @@ class ExtremumList:  # {{{
             else:
                 e2 = Extremum(t.MAX | t.SHORTTERM, last_bar)
 
-            trend = Trend(e1, e2)
+            trend = Trend(e1, e2, Term.LONGTERM)
             return trend
 
         # n >= 1
         e1 = self.__longterm[-n - 1]
         e2 = self.__longterm[-n]
-        trend = Trend(e1, e2)
+        trend = Trend(e1, e2, Term.LONGTERM)
         return trend
+
+    # }}}
+    def getAllSTrends(self) -> list[Trend]:  # {{{
+        all_trends = list()
+
+        n = 0
+        trend = self.sTrend(n)
+        while trend is not None:
+            all_trends.append(trend)
+            n += 1
+            trend = self.sTrend(n)
+
+        return all_trends
+
+    # }}}
+    def getAllMTrends(self) -> list[Trend]:  # {{{
+        all_trends = list()
+
+        n = 0
+        trend = self.mTrend(n)
+        while trend is not None:
+            all_trends.append(trend)
+            n += 1
+            trend = self.mTrend(n)
+
+        return all_trends
+
+    # }}}
+    def getAllLTrends(self) -> list[Trend]:  # {{{
+        all_trends = list()
+
+        n = 0
+        trend = self.lTrend(n)
+        while trend is not None:
+            all_trends.append(trend)
+            n += 1
+            trend = self.lTrend(n)
+
+        return all_trends
+
+    # }}}
+
+    def sVawe(self, n=0) -> Vawe | None:  # {{{
+        assert n >= 0
+
+        """
+        Волна 0 состоит из тренда 1 и тренда 0
+        Волна 1 состоит из тренда 2 и тренда 1
+        Волна 2 состоит из тренда 3 и тренда 2
+        """
+
+        t1 = self.sTrend(n + 1)
+        t2 = self.sTrend(n)
+        if t1 is None:
+            return None
+
+        return Vawe(t1, t2)
+
+    # }}}
+    def mVawe(self, n=0) -> Vawe | None:  # {{{
+        assert n >= 0
+
+        """
+        Волна 0 состоит из тренда 1 и тренда 0
+        Волна 1 состоит из тренда 2 и тренда 1
+        Волна 2 состоит из тренда 3 и тренда 2
+        """
+
+        t1 = self.mTrend(n + 1)
+        t2 = self.mTrend(n)
+        if t1 is None:
+            return None
+
+        return Vawe(t1, t2)
+
+    # }}}
+    def lVawe(self, n=0) -> Vawe | None:  # {{{
+        assert n >= 0
+
+        """
+        Волна 0 состоит из тренда 1 и тренда 0
+        Волна 1 состоит из тренда 2 и тренда 1
+        Волна 2 состоит из тренда 3 и тренда 2
+        """
+
+        t1 = self.lTrend(n + 1)
+        t2 = self.lTrend(n)
+        if t1 is None:
+            return None
+
+        return Vawe(t1, t2)
+
+    # }}}
+    def getAllSVawes(self) -> list[Vawe]:  # {{{
+        all_vawes = list()
+
+        n = 0
+        vawe = self.sVawe(n)
+        while vawe is not None:
+            all_vawes.append(vawe)
+            n += 1
+            vawe = self.sVawe(n)
+
+        return all_vawes
+
+    # }}}
+    def getAllMVawes(self) -> list[Vawe]:  # {{{
+        all_vawes = list()
+
+        n = 0
+        vawe = self.mVawe(n)
+        while vawe is not None:
+            all_vawes.append(vawe)
+            n += 1
+            vawe = self.mVawe(n)
+
+        return all_vawes
+
+    # }}}
+    def getAllLVawes(self) -> list[Vawe]:  # {{{
+        all_vawes = list()
+
+        n = 0
+        vawe = self.lVawe(n)
+        while vawe is not None:
+            all_vawes.append(vawe)
+            n += 1
+            vawe = self.lVawe(n)
+
+        return all_vawes
 
     # }}}
 
@@ -284,7 +426,7 @@ class ExtremumList:  # {{{
 
     @classmethod  # period  # {{{
     def period(cls, e1: Extremum, e2: Extremum) -> int:
-        assert e1.dt < e2.dt
+        # assert e1.dt < e2.dt
 
         chart = e1.bar.chart
         index1 = chart.getIndex(e1.bar)
@@ -299,7 +441,7 @@ class ExtremumList:  # {{{
     # }}}
     @classmethod  # deltaPrice  # {{{
     def deltaPrice(cls, e1: Extremum, e2: Extremum) -> float:
-        assert e1.dt < e2.dt
+        # assert e1.dt < e2.dt
 
         delta = e2.price - e1.price
 
@@ -308,7 +450,7 @@ class ExtremumList:  # {{{
     # }}}
     @classmethod  # deltaPercent  # {{{
     def deltaPercent(cls, e1: Extremum, e2: Extremum) -> float:
-        assert e1.dt < e2.dt
+        # assert e1.dt < e2.dt
 
         delta = e2.price - e1.price
         percent = delta / e1.price * 100
@@ -318,7 +460,7 @@ class ExtremumList:  # {{{
     # }}}
     @classmethod  # speedPrice  # {{{
     def speedPrice(cls, e1: Extremum, e2: Extremum) -> float:
-        assert e1.dt < e2.dt
+        # assert e1.dt < e2.dt
 
         delta = e2.price - e1.price
         period = cls.period(e1, e2)
@@ -329,7 +471,7 @@ class ExtremumList:  # {{{
     # }}}
     @classmethod  # speedPercent  # {{{
     def speedPercent(cls, e1: Extremum, e2: Extremum) -> float:
-        assert e1.dt < e2.dt
+        # assert e1.dt < e2.dt
 
         delta = e2.price - e1.price
         percent = delta / e1.price * 100
@@ -341,7 +483,7 @@ class ExtremumList:  # {{{
     # }}}
     @classmethod  # volume  # {{{
     def volume(cls, e1: Extremum, e2: Extremum) -> int:
-        assert e1.dt < e2.dt
+        # assert e1.dt < e2.dt
 
         chart = e1.bar.chart
         bars = chart.getBars(begin=e1.bar, end=e2.bar)
@@ -421,8 +563,18 @@ class ExtremumList:  # {{{
 
     # }}}
     def __skipInsideOutside(self):  # {{{
+        # NOTE:
+        # если их скипать получается гораздо больше неадеквата
+        # чем если их оставить.
+        # Самая жесть после СВО, там инсайд потом пол года идет.
+        # Лучше пусть шорт-терм чаще колеблется, и больше смотреть
+        # на m-term, l-term. Чисто визуально мне кажется это лучше
+        # сейчас будет работать.
         without_inside_outside = list()
         bars = self.__chart.getBars()
+        # NOTE:
+        # Отключаю эту функцию временно, но не удаляю пока.
+        return bars
 
         for bar in bars:
             if bar.isInside() or bar.isOutside():
@@ -444,23 +596,24 @@ class ExtremumList:  # {{{
             current = elist[i]
             if current.isMax() and previous.isMax():
                 if current > previous:
-                    elist.remove(previous)
+                    elist.pop(i - 1)
                     previous = current
                     continue
                 else:
-                    elist.remove(current)
+                    elist.pop(i)
                     continue
             elif current.isMin() and previous.isMin():
                 if current < previous:
-                    elist.remove(previous)
+                    elist.pop(i - 1)
                     previous = current
                     continue
                 else:
-                    elist.remove(current)
+                    elist.pop(i)
                     continue
             elif current.dt == previous.dt:
-                elist.remove(current)
+                elist.pop(i)
                 continue
+
             previous = current
             i += 1
 
@@ -470,6 +623,7 @@ class ExtremumList:  # {{{
         bars = self.__skipInsideOutside()
         if len(bars) < 3:
             return
+
         i = 1
         count = len(bars) - 1
         while i < count:
@@ -483,6 +637,7 @@ class ExtremumList:  # {{{
                 e = Extremum(Extremum.Type.MIN | Extremum.Type.SHORTTERM, bar)
                 self.__shortterm.append(e)
             i += 1
+
         self.__popRepeatedExtr(self.__shortterm)
 
     # }}}
@@ -535,13 +690,23 @@ class ExtremumList:  # {{{
 
 
 # }}}
+
+
+class Term(enum.Enum):  # {{{
+    SHORTTERM = 1
+    MIDTERM = 2
+    LONGTERM = 3
+
+
+# }}}
 class Trend:  # {{{
-    def __init__(self, e1: Extremum, e2: Extremum):  # {{{
+    def __init__(self, e1: Extremum, e2: Extremum, term: Term):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__({e1}, {e2})")
-        assert e1.dt < e2.dt
+        # assert e1.dt < e2.dt
 
         self.__e1 = e1
         self.__e2 = e2
+        self.__term = term
 
     # }}}
 
@@ -570,9 +735,9 @@ class Trend:  # {{{
         return self.__e1.bar.chart.timeframe
 
     # }}}
-    @property  # type  # {{{
-    def type(self):
-        return self.__e1.type
+    @property  # term  # {{{
+    def term(self):
+        return self.__term
 
     # }}}
 
@@ -606,6 +771,132 @@ class Trend:  # {{{
     # }}}
     def volume(self) -> int:  # {{{
         return ExtremumList.volume(self.__e1, self.__e2)
+
+    # }}}
+
+
+# }}}
+class Vawe:  # {{{
+    def __init__(self, t1: Trend, t2: Trend):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__({t1}, {t2})")
+
+        self.__t1 = t1
+        self.__t2 = t2
+
+    # }}}
+
+    @property  # one  # {{{
+    def one(self):
+        return self.__t1
+
+    # }}}
+    @property  # two  # {{{
+    def two(self):
+        return self.__t2
+
+    # }}}
+    @property  # begin  # {{{
+    def begin(self):
+        return self.__t1.begin
+
+    # }}}
+    @property  # center  # {{{
+    def center(self):
+        return self.__t1.end
+
+    # }}}
+    @property  # end  # {{{
+    def end(self):
+        return self.__t2.end
+
+    # }}}
+    @property  # asset  # {{{
+    def asset(self):
+        return self.__t1.asset
+
+    # }}}
+    @property  # chart  # {{{
+    def chart(self):
+        return self.__t1.chart
+
+    # }}}
+    @property  # timeframe  # {{{
+    def timeframe(self):
+        return self.__t1.timeframe
+
+    # }}}
+    @property  # term  # {{{
+    def term(self):
+        return self.__t1.term
+
+    # }}}
+
+    def isBull(self) -> bool:  # {{{
+        """Например:
+        то есть есть 3 экстремума: 100 90 110
+        дельты:
+        d1 = 90 - 100 = -10
+        d2 = 110 - 90 = 20
+        D = -10 + 20 = 10
+
+        Или по другому через первую и последнюю точку:
+        D = 110 - 100 = 10
+
+        Очевидно что в любом случае получится одно и тоже.
+        Поэтому проще будет посмотреть дельту по началу и концу
+        меньше вычислений.
+        """
+
+        return self.__t2.end.price > self.__t1.begin.price
+
+    # }}}
+    def isBear(self) -> bool:  # {{{
+        return self.__t2.end.price < self.__t1.begin.price
+
+    # }}}
+    def period(self) -> int:  # {{{
+        return ExtremumList.period(self.__t1.begin, self.__t2.end)
+
+    # }}}
+    def deltaPrice(self) -> float:  # {{{
+        return ExtremumList.deltaPrice(self.__t1.begin, self.__t2.end)
+
+    # }}}
+    def deltaPercent(self) -> float:  # {{{
+        return ExtremumList.deltaPercent(self.__t1.begin, self.__t2.end)
+
+    # }}}
+    def speedPrice(self) -> float:  # {{{
+        return ExtremumList.speedPrice(self.__t1.begin, self.__t2.end)
+
+    # }}}
+    def speedPercent(self) -> float:  # {{{
+        return ExtremumList.speedPercent(self.__t1.begin, self.__t2.end)
+
+    # }}}
+    def volume(self) -> int:  # {{{
+        return ExtremumList.volume(self.__t1.begin, self.__t2.end)
+
+    # }}}
+
+    def bullTrend(self) -> Trend:  # {{{
+        if self.__t1.isBull():
+            return self.__t1
+
+        if self.__t2.isBull():
+            return self.__t2
+
+        assert False, "WTF???"
+
+    # }}}
+    def bearTrend(self) -> Trend:  # {{{
+        if self.__t1.isBear():
+            return self.__t1
+
+        if self.__t2.isBear():
+            return self.__t2
+
+        assert False, "WTF???"
 
     # }}}
 
