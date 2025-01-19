@@ -154,7 +154,7 @@ class Account:
     # }}}
     async def cancel(self, order) -> bool:  # {{{
         logger.debug("Account.cancel()")
-        logger.info(f":: Cancel: {order}")
+        # logger.info(f":: Cancel: {order}")
 
         # TODO: а что если такого ордера нет?
         # что sync тогда вернте?
