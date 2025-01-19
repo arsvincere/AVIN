@@ -33,7 +33,8 @@ class ViewType(enum.Enum):  # {{{
 # }}}
 class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
     WIDTH = Cfg.Chart.BAR_WIDTH
-    HEIGHT = Cfg.Chart.BAR_HEIGHT
+    # HEIGHT = Cfg.Chart.BAR_HEIGHT
+    HEIGHT = 50
     CUNDLE_INDENT = Cfg.Chart.CUNDLE_INDENT
     BAR_INDENT = Cfg.Chart.BAR_INDENT
     SHADOW_WIDTH = Cfg.Chart.SHADOW_WIDTH
