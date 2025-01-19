@@ -715,7 +715,7 @@ class TradeList:  # {{{
 
     # }}}
     def __str__(self):  # {{{
-        return f"TradeList name={self.__name}"
+        return f"TradeList={self.__name}"
 
     # }}}
     def __getitem__(self, index: int) -> Trade:  # {{{
