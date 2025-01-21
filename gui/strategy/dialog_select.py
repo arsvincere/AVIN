@@ -146,7 +146,8 @@ class _Tree(QtWidgets.QTreeWidget):  # {{{
         )
 
         # config width
-        self.setColumnWidth(StrategyItem.Column.Name, 150)
+        self.setColumnWidth(StrategyItem.Column.Name, 300)
+        self.setMinimumWidth(320)
 
         # config style
         self.setStyleSheet(Css.TREE)

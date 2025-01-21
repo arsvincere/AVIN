@@ -21,7 +21,6 @@ from gui.strategy.thread import Thread
 class StrategyItem(QtWidgets.QTreeWidgetItem):  # {{{
     class Column(enum.IntEnum):
         Name = 0
-        Version = 1
 
     def __init__(self, name: str, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
@@ -140,7 +139,6 @@ class StrategyItem(QtWidgets.QTreeWidgetItem):  # {{{
 class VersionItem(QtWidgets.QTreeWidgetItem):  # {{{
     class Column(enum.IntEnum):  # {{{
         Name = 0
-        Version = 1
 
     # }}}
 
