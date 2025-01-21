@@ -291,7 +291,8 @@ class Strategy(ABC):  # {{{
         logger.debug(f"Strategy.postOrder({order})")
 
         trade = self.active_trades.find(order.trade_id)
-        await trade.setStatus(Trade.Status.POST_ORDER)
+        if trade.status.value < Trade.Status.POST_ORDER.value:
+            await trade.setStatus(Trade.Status.POST_ORDER)
 
         result = await self.account.post(order)
 
@@ -355,8 +356,8 @@ class Strategy(ABC):  # {{{
         logger.debug(f"Strategy.postOrder({order})")
 
         trade = self.active_trades.find(order.trade_id)
-        await trade.setStatus(Trade.Status.POST_TAKE)
 
+        await trade.setStatus(Trade.Status.POST_TAKE)
         result = await self.account.post(order)
 
         # TODO: что делать если ордер не прошел???
