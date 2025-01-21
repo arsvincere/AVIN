@@ -187,7 +187,7 @@ class Account:
             logger.warning(f"{self} received {event}, but order not found")
             return
 
-        logger.info(f"-> {self} receive {event}")
+        logger.info(f"-> {self} {event}")
 
         await self.broker.syncOrder(self, order)
         if order.status == Order.Status.FILLED:
