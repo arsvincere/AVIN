@@ -523,6 +523,9 @@ class ExtremumList:  # {{{
     # }}}
     def __markInsideDays(self):  # {{{
         bars = self.__chart.getBars()
+        if len(bars) < 2:
+            return
+
         i = 0
         previous = bars[i]
         previous.delFlag(Bar.Type.INSIDE)
@@ -540,6 +543,9 @@ class ExtremumList:  # {{{
     # }}}
     def __markOutsideDays(self):  # {{{
         bars = self.__chart.getBars()
+        if len(bars) < 2:
+            return
+
         i = 0
         previous = bars[i]
         previous.delFlag(Bar.Type.OUTSIDE)
