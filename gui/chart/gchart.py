@@ -487,6 +487,10 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
         # и бар с телом 5000-5050 тоже будет занимать 10px на экране
         last_price = self.chart.last.close
         match str(self.chart.timeframe):
+            case "M":
+                self.SCALE_Y = GBar.HEIGHT_D / last_price * 100
+            case "W":
+                self.SCALE_Y = GBar.HEIGHT_D / last_price * 100
             case "D":
                 self.SCALE_Y = GBar.HEIGHT_D / last_price * 100
             case "1H":

@@ -6,12 +6,12 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-from PyQt6 import QtGui, QtWidgets
+from PyQt6 import QtWidgets
 
 from avin.config import Usr
 from avin.const import WeekDays
 from avin.utils import logger
-from gui.custom import Css, Font, Theme
+from gui.custom import Css, Font
 
 
 class BarInfo(QtWidgets.QWidget):  # {{{
@@ -21,24 +21,31 @@ class BarInfo(QtWidgets.QWidget):  # {{{
 
         self.__createWidgets()
         self.__createLayots()
-        self.__configPalette()
 
     # }}}
 
-    def set(self, gbar):  # {{{
+    def setGChart(self, gchart):  # {{{
+        self.gchart = gchart
+
+    # }}}
+    def update(self, x):  # {{{
         logger.debug(f"{self.__class__.__name__}.set(bar)")
 
-        b = gbar.bar
-        local_time = Usr.localTime(b.dt)
-        day = WeekDays(b.dt.weekday()).name
-        percent = b.body.percent()
+        gbar = self.gchart.gbarOnX(x)
+        if gbar is None:
+            return
+
+        bar = gbar.bar
+        local_time = Usr.localTime(bar.dt)
+        day = WeekDays(bar.dt.weekday()).name
+        percent = bar.body.percent()
 
         self.label_barinfo.setText(
             f"{local_time} {day} - "
-            f"Open: {b.open:<6} "
-            f"High: {b.high:<6} "
-            f"Low: {b.low:<6} "
-            f"Close: {b.close:<6} "
+            f"Open: {bar.open:<6} "
+            f"High: {bar.high:<6} "
+            f"Low: {bar.low:<6} "
+            f"Close: {bar.close:<6} "
             f"(Body: {percent:.2f}%)"
         )
 
@@ -66,14 +73,6 @@ class BarInfo(QtWidgets.QWidget):  # {{{
         vbox.addWidget(self.label_barinfo)
 
     # }}}
-    def __configPalette(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__configPalette()")
-
-        p = self.palette()
-        p.setColor(QtGui.QPalette.ColorRole.Window, Theme.Chart.RED)
-        self.setPalette(p)
-
-    # }}}
 
 
 # }}}
@@ -84,14 +83,31 @@ class VolumeInfo(QtWidgets.QWidget):  # {{{
 
         self.__createWidgets()
         self.__createLayots()
-        self.__configPalette()
 
     # }}}
 
-    def set(self, gbar):  # {{{
+    def setGChart(self, gchart):  # {{{
+        self.gchart = gchart
+
+    # }}}
+    def update(self, x):  # {{{
         logger.debug(f"{self.__class__.__name__}.set(bar)")
 
-        self.label_volinfo.setText(f"Volume: {gbar.bar.vol}")
+        gbar = self.gchart.gbarOnX(x)
+        if gbar is None:
+            return
+
+        vol = gbar.bar.vol
+        if vol > 1_000_000:
+            m_vol = vol / 1_000_000
+            value = f"{m_vol:.2f}m"
+        elif vol > 1_000:
+            k_vol = vol / 1_000
+            value = f"{k_vol:.2f}k"
+        else:
+            value = f"{vol}"
+
+        self.label_volinfo.setText(f"Volume: {value}")
 
     # }}}
 
@@ -110,51 +126,55 @@ class VolumeInfo(QtWidgets.QWidget):  # {{{
         vbox.setContentsMargins(0, 0, 0, 0)
 
     # }}}
-    def __configPalette(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__configPalette()")
-
-        p = self.palette()
-        p.setColor(QtGui.QPalette.ColorRole.Window, Theme.Chart.RED)
-        self.setPalette(p)
-
-    # }}}
 
 
 # }}}
 
 
-class ChartLabels(QtWidgets.QWidget):  # {{{
+class ChartLabels(QtWidgets.QGraphicsProxyWidget):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QGraphicsProxyWidget.__init__(self, parent)
 
-        self.vbox = QtWidgets.QVBoxLayout()
-        self.setLayout(self.vbox)
-        self.setStyleSheet(Css.CHART_LABEL)
+        self.__labels = list()
+        self.__vbox = QtWidgets.QVBoxLayout()
+        self.__widget = QtWidgets.QWidget()
+        self.__widget.setStyleSheet(Css.CHART_LABEL)
+        self.__widget.setLayout(self.__vbox)
+
+        self.setWidget(self.__widget)
+
+    # }}}
+    def __iter__(self):  # {{{
+        return iter(self.__labels)
 
     # }}}
 
     def add(self, widget: QtWidgets.QWidget) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.add()")
 
-        self.vbox.addWidget(widget)
+        self.__labels.append(widget)
+        self.__vbox.addWidget(widget)
+        widget.show()
 
     # }}}
     def remove(self, widget: QtWidgets.QWidget) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.remove()")
 
-        self.vbox.removeWidget(widget)
-
-        self.vbox.replaceWidget
+        self.__labels.remove(widget)
+        self.__vbox.removeWidget(widget)
+        widget.hide()
 
     # }}}
     def clear(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.clear()")
 
-        item = self.vbox.takeAt(0)
+        item = self.__vbox.takeAt(0)
         while item:
             item.widget().hide()
-            item = self.vbox.takeAt(0)
+            item = self.__vbox.takeAt(0)
+
+        self.__labels.clear()
 
     # }}}
 

@@ -25,8 +25,8 @@ class ExtremumIndicator:  # {{{
     def __init__(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
 
+        self.gitem = None
         self.__item = None
-        self.__gitem = None
         self.__label = None
         self.__settings = None
 
@@ -53,13 +53,13 @@ class ExtremumIndicator:  # {{{
     def graphics(self, gchart: GChart):  # {{{
         logger.debug(f"{self.__class__.__name__}.graphics()")
 
-        self.__gitem = _ExtremumGraphics(gchart)
+        self.gitem = _ExtremumGraphics(gchart)
 
         if self.__settings is None:
             self.__settings = _ExtremumSettings(self)
 
-        self.__settings.configureSilent(self.__gitem)
-        return self.__gitem
+        self.__settings.configureSilent(self.gitem)
+        return self.gitem
 
     # }}}
     def configure(self):  # {{{
@@ -68,7 +68,7 @@ class ExtremumIndicator:  # {{{
         if self.__settings is None:
             self.__settings = _ExtremumSettings(self)
 
-        self.__settings.configure(self.__gitem)
+        self.__settings.configure(self.gitem)
 
     # }}}
 
@@ -152,6 +152,25 @@ class _GTrend(QtWidgets.QGraphicsItemGroup):  # {{{
 
     # }}}
 
+    def getTextInfo(self) -> str:  # {{{
+        logger.debug(f"{self.__class__.__name__}.getTextInfo()")
+
+        t = self.trend
+        volume = t.volume()
+        vol_str = f"{(t.volume() / 1_000_000):.2f}m"
+
+        string = (
+            f"{str(t.timeframe):<2} "
+            f"{t.term.name[0]:<2} "
+            f"p={t.period():<3} "
+            f"d={t.deltaPercent():<6} "
+            f"s={t.speedPercent():<6} "
+            f"v={vol_str}"
+        )
+        return string
+
+    # }}}
+
     def __calcCoordinates(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__calcCoordinates()")
 
@@ -216,6 +235,28 @@ class _GExtremumList(QtWidgets.QGraphicsItemGroup):  # {{{
         self.__createOutside()
 
     # }}}
+
+    def getInfo(self, x):
+        string = ""
+
+        # TODO: binary search
+
+        for line in self.s_lines.childItems():
+            if self.__xInLine(x, line):
+                string += line.getTextInfo()
+
+        for line in self.m_lines.childItems():
+            if self.__xInLine(x, line):
+                string += "\n"
+                string += line.getTextInfo()
+
+        for line in self.l_lines.childItems():
+            if self.__xInLine(x, line):
+                string += "\n"
+                string += line.getTextInfo()
+
+        return string
+
     def __createPoints(self):  # {{{
         self.s_points = QtWidgets.QGraphicsItemGroup()
         for extr in self.elist.sterm:
@@ -319,6 +360,15 @@ class _GExtremumList(QtWidgets.QGraphicsItemGroup):  # {{{
         rect.setBrush(color)
 
         return rect
+
+    # }}}
+    def __xInLine(self, x, line: _GTrend):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__xInTrend()")
+
+        if line.begin_pos.x() < x < line.end_pos.x():
+            return True
+
+        return False
 
     # }}}
 
@@ -539,23 +589,68 @@ class _ExtremumLabel(QtWidgets.QWidget):  # {{{
 
     # }}}
 
+    def setGChart(self, gchart):  # {{{
+        self.gchart = gchart
+
+    # }}}
+    def update(self, x):  # {{{
+        # 5M S p=5/BIG  d=15.5/NORMAL  s=3.1/SMALL  v=1000/VERY_BIG
+        # 5M M p=5/BIG  d=15.5/NORMAL  s=3.1/SMALL  v=1000/VERY_BIG
+        # 5M L p=5/BIG  d=15.5/NORMAL  s=3.1/SMALL  v=1000/VERY_BIG
+        # 1H S p=5/BIG  d=15.5/NORMAL  s=3.1/SMALL  v=1000/VERY_BIG
+        # 1H ...
+
+        self.gitem = self.__indicator.gitem
+
+        if self.gitem.gelist_5m is not None:
+            string = self.gitem.gelist_5m.getInfo(x)
+            self.info_5m.setText(string)
+
+        if self.gitem.gelist_1h is not None:
+            string = self.gitem.gelist_1h.getInfo(x)
+            self.info_1h.setText(string)
+
+        if self.gitem.gelist_d is not None:
+            string = self.gitem.gelist_d.getInfo(x)
+            self.info_d.setText(string)
+
+    # }}}
+
     def __createWidgets(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
+
         self.label_name = QtWidgets.QLabel("Extremum")
         self.btn_hide = ToolButton(Icon.HIDE)
         self.btn_settings = ToolButton(Icon.CONFIG)
         self.btn_delete = ToolButton(Icon.DELETE)
 
+        self.info_5m = Label("5M")
+        self.info_1h = Label("1H")
+        self.info_d = Label("D")
+
+        self.info_5m.setStyleSheet(Css.CHART_LABEL)
+        self.info_1h.setStyleSheet(Css.CHART_LABEL)
+        self.info_d.setStyleSheet(Css.CHART_LABEL)
+
     # }}}
     def __createLayots(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createLayots()")
-        hbox = QtWidgets.QHBoxLayout(self)
+
+        hbox = QtWidgets.QHBoxLayout()
         hbox.addWidget(self.label_name)
         hbox.addWidget(self.btn_hide)
         hbox.addWidget(self.btn_settings)
         hbox.addWidget(self.btn_delete)
         hbox.addStretch()
         hbox.setContentsMargins(0, 0, 0, 0)
+
+        vbox = QtWidgets.QVBoxLayout()
+        vbox.addLayout(hbox)
+        vbox.addWidget(self.info_5m)
+        vbox.addWidget(self.info_1h)
+        vbox.addWidget(self.info_d)
+
+        self.setLayout(vbox)
 
     # }}}
     def __connect(self):  # {{{

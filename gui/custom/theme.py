@@ -69,7 +69,7 @@ class Theme:
         OUTSIDE_BG = QtGui.QColor("#44FFFFFF")
         TREND_5M = QtGui.QColor("#22FFFFFF")
         TREND_1H = QtGui.QColor("#44A3D4D5")
-        TREND_D = QtGui.QColor("#AA658594")
+        TREND_D = QtGui.QColor("#88658594")
         TREND_W = QtGui.QColor("#FF957FB8")
 
         # TODO: delete it

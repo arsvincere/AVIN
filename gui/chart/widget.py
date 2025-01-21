@@ -71,13 +71,9 @@ class ChartWidget(QtWidgets.QWidget):
         self.scene.removeIndicators()
         self.view.resetTransform()
 
-        self.__trade_list = None
-        self.__asset = None
         self.__mark_list = None
         self.__ind_list = None
 
-        self.toolbar.setAsset(None)
-        self.toolbar.setFirstTimeFrame(TimeFrame("D"))
         self.toolbar.resetSecondTimeFrames()
 
     # }}}
@@ -158,6 +154,8 @@ class ChartWidget(QtWidgets.QWidget):
     @QtCore.pyqtSlot(TimeFrame)  # __onTimeframe1  # {{{
     def __onTimeframe1(self, timeframe: TimeFrame):
         logger.debug(f"{self.__class__.__name__}.__onTimeframe1()")
+
+        self.clearAll()
 
         if self.__trade_list is not None:
             self.__drawTradeList()

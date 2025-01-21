@@ -36,12 +36,10 @@ class ChartScene(QtWidgets.QGraphicsScene):
         if not self.__has_chart:
             return e.ignore()
 
-        bar = self.gchart.gbarOnX(e.scenePos().x())
-        if not bar:
-            return e.ignore()
+        x = e.scenePos().x()
 
-        self.bar_info.set(bar)
-        self.vol_info.set(bar)
+        self.bar_info.update(x)
+        self.vol_info.update(x)
 
         return e.ignore()
 
@@ -49,6 +47,14 @@ class ChartScene(QtWidgets.QGraphicsScene):
     def mousePressEvent(self, e: QtWidgets.QGraphicsSceneMouseEvent):  # {{{
         logger.debug(f"{self.__class__.__name__}.mousePressEvent()")
         super().mousePressEvent(e)
+
+        if not self.__has_chart:
+            return e.ignore()
+
+        x = e.scenePos().x()
+
+        for label in self.labels:
+            label.update(x)
 
         return e.ignore()
 
@@ -120,6 +126,9 @@ class ChartScene(QtWidgets.QGraphicsScene):
         self.volumes = gchart.gvols
         self.__has_chart = True
 
+        for lable in self.labels:
+            lable.setGChart(gchart)
+
     # }}}
     def removeGChart(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.removeGChart()")
@@ -165,13 +174,14 @@ class ChartScene(QtWidgets.QGraphicsScene):
 
         for i in ind_list:
             label = i.label()
-            self.labels.widget().add(label)
+            self.labels.add(label)
 
     # }}}
     def removeIndicators(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.removeIndicators()")
 
         # пересоздаем график виджеты в левом верхнем углу
+        self.labels.clear()
         self.__createGraphicsWidgets()
 
     # }}}
@@ -202,11 +212,11 @@ class ChartScene(QtWidgets.QGraphicsScene):
         self.vol_info = VolumeInfo()
 
         # create QtWidgets.QGraphicsProxyWidget
-        self.labels = self.addWidget(ChartLabels())
+        self.labels = ChartLabels()
+        self.labels.add(self.bar_info)
+        self.labels.add(self.vol_info)
 
-        # add
-        self.labels.widget().add(self.bar_info)
-        self.labels.widget().add(self.vol_info)
+        self.addItem(self.labels)
 
     # }}}
     def __createChartGroup(self):  # {{{
