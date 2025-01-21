@@ -116,8 +116,7 @@ class VirtualBroker(Broker):
         # тупо присваиваю свой внутренний Id, как broker_id
         # там не важно, главное чтобы он был уникальным
         order.broker_id = order.order_id
-        order.status = Order.Status.FILLED
-        order.meta = "virtual executed"
+        order.meta = "virtual posted"
         await order.setStatus(Order.Status.POSTED)
 
         cls.__market_orders.append(order)
