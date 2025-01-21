@@ -33,8 +33,10 @@ class ViewType(enum.Enum):  # {{{
 # }}}
 class GBar(QtWidgets.QGraphicsItemGroup):  # {{{
     WIDTH = Cfg.Chart.BAR_WIDTH
-    # HEIGHT = Cfg.Chart.BAR_HEIGHT
-    HEIGHT = 50
+    HEIGHT_D = Cfg.Chart.BAR_HEIGHT_D
+    HEIGHT_1H = Cfg.Chart.BAR_HEIGHT_1H
+    HEIGHT_5M = Cfg.Chart.BAR_HEIGHT_5M
+    HEIGHT_1M = Cfg.Chart.BAR_HEIGHT_1M
     CUNDLE_INDENT = Cfg.Chart.CUNDLE_INDENT
     BAR_INDENT = Cfg.Chart.BAR_INDENT
     SHADOW_WIDTH = Cfg.Chart.SHADOW_WIDTH
@@ -483,8 +485,16 @@ class GChart(QtWidgets.QGraphicsItemGroup):  # {{{
         # Не зависимо от того сколько стоит актив 20р штука или 5000р штука
         # бар у которого тело 20.0-20.2 будет занимать 10px на экране
         # и бар с телом 5000-5050 тоже будет занимать 10px на экране
-        last_price = self.chart.last.close  # 1000
-        self.SCALE_Y = GBar.HEIGHT / last_price * 100
+        last_price = self.chart.last.close
+        match str(self.chart.timeframe):
+            case "D":
+                self.SCALE_Y = GBar.HEIGHT_D / last_price * 100
+            case "1H":
+                self.SCALE_Y = GBar.HEIGHT_1H / last_price * 100
+            case "5M":
+                self.SCALE_Y = GBar.HEIGHT_5M / last_price * 100
+            case "1M":
+                self.SCALE_Y = GBar.HEIGHT_1M / last_price * 100
 
         x0 = 0
         y0 = 0

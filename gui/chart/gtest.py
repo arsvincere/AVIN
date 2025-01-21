@@ -23,19 +23,9 @@ from gui.marker import GShape
 
 
 class GTrade(QtWidgets.QGraphicsItemGroup):  # {{{
-    OPEN_WIDTH = 1
-    STOP_WIDTH = 1
-    TAKE_WIDTH = 1
-
-    __open_pen = QtGui.QPen()
-    __open_pen.setWidth(OPEN_WIDTH)
-    __open_pen.setColor(Theme.Chart.OPEN)
-    __stop_pen = QtGui.QPen()
-    __stop_pen.setWidth(STOP_WIDTH)
-    __stop_pen.setColor(Theme.Chart.STOP)
-    __take_pen = QtGui.QPen()
-    __take_pen.setWidth(TAKE_WIDTH)
-    __take_pen.setColor(Theme.Chart.TAKE)
+    __open_pen = QtGui.QPen(Theme.Chart.OPEN)
+    __stop_pen = QtGui.QPen(Theme.Chart.STOP)
+    __take_pen = QtGui.QPen(Theme.Chart.TAKE)
 
     def __init__(self, trade: Trade, gchart: GChart, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")

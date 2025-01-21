@@ -30,7 +30,6 @@ class Usr:  # {{{
     # for example for Moscow +3 hours, set 0 if you want see default UTC time
     TIME_DIF = timedelta(hours=3)
 
-    # TODO: move to utils
     @classmethod  # localTime
     def localTime(cls, dt: datetime) -> str:
         return (dt + Usr.TIME_DIF).strftime("%Y-%m-%d %H:%M")
@@ -77,7 +76,7 @@ class Auto:  # {{{
     # Run all convert tasks after update market data
     CONVERT_MARKET_DATA: bool = True
 
-    #
+    # Postgres backup
     BACKUP_PATH = "/run/media/alex/hdd/alex/postgres/"
     BACKUP_MARKET_DATA: bool = True
     BACKUP_USER_DB: bool = True
@@ -89,7 +88,10 @@ class Cfg:  # {{{
         SHADOW_WIDTH = 1
 
         BAR_WIDTH = 8  # px
-        BAR_HEIGHT = 10  # px на 1% цены
+        BAR_HEIGHT_D = 10  # px на 1% цены
+        BAR_HEIGHT_1H = 30  # px на 1% цены
+        BAR_HEIGHT_5M = 60  # px на 1% цены
+        BAR_HEIGHT_1M = 90  # px на 1% цены
         BAR_INDENT = 1  # px
         CUNDLE_INDENT = 2  # px
 
@@ -103,12 +105,14 @@ class Cfg:  # {{{
         VOL_INDENT = 3  # px
 
     # }}}
-    class ShapeSize:
+    class ShapeSize:  # {{{
         VERY_SMALL = 4  # px
         SMALL = 6
         NORMAL = 8
         BIG = 12
         VERY_BIG = 16
+
+    # }}}
 
 
 # }}}

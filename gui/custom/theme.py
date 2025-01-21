@@ -58,13 +58,6 @@ class Theme:
         BEAR_BEHIND = QtGui.QColor("#22FF5D62")  # kanagawa 5.3
         UNDEFINE_BEHIND = QtGui.QColor("#22FFFFFF")
 
-        # Black & white bar
-        # BG =                QtGui.QColor("#242424")
-        # BULL =              QtGui.QColor("#BBBBBB")
-        # BEAR =              QtGui.QColor("#646464")
-        # UNDEFINE =          QtGui.QColor("#000000")
-        ZOOM_BULL = QtGui.QColor("#00FF00")
-        ZOOM_BEAR = QtGui.QColor("#FF0000")
         # Trade
         STOP = QtGui.QColor("#FF0000")
         TAKE = QtGui.QColor("#00FF00")
@@ -72,8 +65,7 @@ class Theme:
         TRADE_WIN = QtGui.QColor("#00AA00")
         TRADE_LOSS = QtGui.QColor("#AA0000")
         TRADE_UNDEFINE = QtGui.QColor("#888888")
-        # Mark
-        MARK = QtGui.QColor("#0000AA")
+
         # Extremum
         SHORTTERM = QtGui.QColor("#FFFFFF")
         MIDTERM = QtGui.QColor("#AAAA00")
@@ -103,6 +95,11 @@ class Theme:
         # Button
         BUY = QtGui.QColor("#98BB6C")  # kanagawa 4.2
         SELL = QtGui.QColor("#FF5D62")  # kanagawa 5.3
+
+        ZOOM_BULL = QtGui.QColor("#00FF00")
+        ZOOM_BEAR = QtGui.QColor("#FF0000")
+        # Mark
+        MARK = QtGui.QColor("#0000AA")
 
     # }}}
 
