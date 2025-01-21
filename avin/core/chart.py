@@ -21,7 +21,7 @@ from avin.utils import Signal, binary_search, find_left, logger
 
 
 class Chart:
-    DEFAULT_BARS_COUNT = 5000
+    DEFAULT_BARS_COUNT = 10000
 
     def __init__(  # {{{
         self,
