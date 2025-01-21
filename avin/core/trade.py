@@ -18,7 +18,7 @@ from avin.core.chart import Chart
 from avin.core.direction import Direction
 from avin.core.id import Id
 from avin.core.operation import Operation
-from avin.core.order import Order
+from avin.core.order import Order, StopLoss, TakeProfit
 from avin.core.range import Range
 from avin.core.timeframe import TimeFrame
 from avin.data import Instrument
@@ -194,6 +194,7 @@ info:       {Cmd.toJson(self.info, indent=4)}
     # @async_slot  #onOrderPosted # {{{
     async def onOrderPosted(self, order):
         assert order.trade_id == self.trade_id
+
         if self.status.value < Trade.Status.AWAIT_EXEC.value:
             await self.setStatus(Trade.Status.AWAIT_EXEC)
 
@@ -246,9 +247,9 @@ info:       {Cmd.toJson(self.info, indent=4)}
             await self.setStatus(Trade.Status.CLOSED)
 
     # }}}
-    async def loadChart(
+    async def loadChart(  # {{{
         self, timeframe: TimeFrame | str, n=None
-    ) -> Chart:  # {{{
+    ) -> Chart:
         logger.debug(f"{self.__class__.__name__}.chart()")
         assert self.instrument.type == Instrument.Type.SHARE
 
@@ -256,7 +257,7 @@ info:       {Cmd.toJson(self.info, indent=4)}
             timeframe = TimeFrame(timeframe)
 
         if n is None:
-            n = Chart.DEFAULT_BARS_COUNT
+            n = 5000  # default bars count
 
         end = self.dt
         begin = self.dt - n * timeframe
@@ -471,6 +472,22 @@ info:       {Cmd.toJson(self.info, indent=4)}
             return self.sellAverage()
 
         return self.buyAverage()
+
+    # }}}
+    def stopLoss(self) -> StopLoss | None:  # {{{
+        for order in self.orders:
+            if order.type == Order.Type.STOP_LOSS:
+                return order
+
+        return None
+
+    # }}}
+    def takeProfit(self) -> TakeProfit | None:  # {{{
+        for order in self.orders:
+            if order.type == Order.Type.TAKE_PROFIT:
+                return order
+
+        return None
 
     # }}}
     def stopPrice(self) -> float | None:  # {{{
