@@ -10,8 +10,6 @@ from PyQt6 import QtGui
 
 from gui.custom.color import Color
 
-# TODO: move to config.py
-
 
 class Theme:
     # background
