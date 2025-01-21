@@ -11,8 +11,9 @@ import sys
 from PyQt6 import QtCore, QtGui, QtWidgets
 
 from avin.analytic import Extremum, ExtremumList, Term, Trend
+from avin.core import TimeFrame
 from avin.utils import logger
-from gui.chart.gchart import GBar, GChart
+from gui.chart.gchart import GBar, GChart, Thread
 from gui.custom import Css, Icon, Label, Theme, ToolButton
 from gui.indicator.item import IndicatorItem
 from gui.marker import GShape
@@ -168,7 +169,7 @@ class _GTrend(QtWidgets.QGraphicsItemGroup):  # {{{
 
     # }}}
     def __createLine(self):  # {{{
-        match str(self.gchart.chart.timeframe):
+        match str(self.trend.timeframe):
             case "D":
                 color = self.COLOR_D
             case "1H":
@@ -332,44 +333,191 @@ class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
 
         self.gchart = gchart
         self.chart = gchart.chart
-        self.elist = ExtremumList(self.chart)
-        self.gelist = _GExtremumList(self.gchart, self.elist)
-        self.addToGroup(self.gelist)
+
+        self.gelist_5m = None
+        self.gelist_1h = None
+        self.gelist_d = None
+
+        self.__createGraphics()
 
     # }}}
 
-    def showInside(self, value: bool):  # {{{
-        self.gelist.inside_marks.setVisible(value)
+    # def showInside(self, value: bool):  # {{{
+    #     self.gelist.inside_marks.setVisible(value)
+    #
+    # # }}}
+    # def showOutside(self, value: bool):  # {{{
+    #     self.gelist.outside_marks.setVisible(value)
+    #
+    # # }}}
+
+    def showShortShapes5M(self, value: bool):  # {{{
+        if self.gelist_5m is None:
+            return
+
+        self.gelist_5m.s_points.setVisible(value)
 
     # }}}
-    def showOutside(self, value: bool):  # {{{
-        self.gelist.outside_marks.setVisible(value)
+    def showMidShapes5M(self, value: bool):  # {{{
+        if self.gelist_5m is None:
+            return
+
+        self.gelist_5m.m_points.setVisible(value)
 
     # }}}
-    def showShortShapes(self, value: bool):  # {{{
-        self.gelist.s_points.setVisible(value)
+    def showLongShapes5M(self, value: bool):  # {{{
+        if self.gelist_5m is None:
+            return
+
+        self.gelist_5m.l_points.setVisible(value)
 
     # }}}
-    def showMidShapes(self, value: bool):  # {{{
-        self.gelist.m_points.setVisible(value)
+    def showShortShapes1H(self, value: bool):  # {{{
+        if self.gelist_1h is None:
+            return
+
+        self.gelist_1h.s_points.setVisible(value)
 
     # }}}
-    def showLongShapes(self, value: bool):  # {{{
-        self.gelist.l_points.setVisible(value)
+    def showMidShapes1H(self, value: bool):  # {{{
+        if self.gelist_1h is None:
+            return
+
+        self.gelist_1h.m_points.setVisible(value)
 
     # }}}
-    def showShortLines(self, value: bool):  # {{{
-        self.gelist.s_lines.setVisible(value)
+    def showLongShapes1H(self, value: bool):  # {{{
+        if self.gelist_5m is None:
+            return
+
+        self.gelist_1h.l_points.setVisible(value)
 
     # }}}
-    def showMidLines(self, value: bool):  # {{{
-        self.gelist.m_lines.setVisible(value)
+    def showShortShapesD(self, value: bool):  # {{{
+        if self.gelist_d is None:
+            return
+
+        self.gelist_d.s_points.setVisible(value)
 
     # }}}
-    def showLongLines(self, value: bool):  # {{{
-        self.gelist.l_lines.setVisible(value)
+    def showMidShapesD(self, value: bool):  # {{{
+        if self.gelist_d is None:
+            return
+
+        self.gelist_d.m_points.setVisible(value)
 
     # }}}
+    def showLongShapesD(self, value: bool):  # {{{
+        if self.gelist_d is None:
+            return
+
+        self.gelist_d.l_points.setVisible(value)
+
+    # }}}
+
+    def showShortLines5M(self, value: bool):  # {{{
+        if self.gelist_5m is None:
+            return
+
+        self.gelist_5m.s_lines.setVisible(value)
+
+    # }}}
+    def showMidLines5M(self, value: bool):  # {{{
+        if self.gelist_5m is None:
+            return
+
+        self.gelist_5m.m_lines.setVisible(value)
+
+    # }}}
+    def showLongLines5M(self, value: bool):  # {{{
+        if self.gelist_5m is None:
+            return
+
+        self.gelist_5m.l_lines.setVisible(value)
+
+    # }}}
+    def showShortLines1H(self, value: bool):  # {{{
+        if self.gelist_1h is None:
+            return
+
+        self.gelist_1h.s_lines.setVisible(value)
+
+    # }}}
+    def showMidLines1H(self, value: bool):  # {{{
+        if self.gelist_1h is None:
+            return
+
+        self.gelist_1h.m_lines.setVisible(value)
+
+    # }}}
+    def showLongLines1H(self, value: bool):  # {{{
+        if self.gelist_1h is None:
+            return
+
+        self.gelist_1h.l_lines.setVisible(value)
+
+    # }}}
+    def showShortLinesD(self, value: bool):  # {{{
+        if self.gelist_d is None:
+            return
+
+        self.gelist_d.s_lines.setVisible(value)
+
+    # }}}
+    def showMidLinesD(self, value: bool):  # {{{
+        if self.gelist_d is None:
+            return
+
+        self.gelist_d.m_lines.setVisible(value)
+
+    # }}}
+    def showLongLinesD(self, value: bool):  # {{{
+        if self.gelist_d is None:
+            return
+
+        self.gelist_d.l_lines.setVisible(value)
+
+    # }}}
+
+    def __createGraphics(self):  # {{{
+        if self.chart.timeframe <= TimeFrame("5M"):
+            self.chart_5m = Thread.loadChart(
+                self.chart.instrument,
+                TimeFrame("5M"),
+                self.chart.first.dt,
+                self.chart.last.dt,
+            )
+            self.gchart_5m = GChart(self.chart_5m)
+            self.elist_5m = ExtremumList(self.chart_5m)
+            self.gelist_5m = _GExtremumList(self.gchart, self.elist_5m)
+            self.addToGroup(self.gelist_5m)
+
+        if self.chart.timeframe <= TimeFrame("1H"):
+            self.chart_1h = Thread.loadChart(
+                self.chart.instrument,
+                TimeFrame("1H"),
+                self.chart.first.dt,
+                self.chart.last.dt,
+            )
+            self.gchart_1h = GChart(self.chart_1h)
+            self.elist_1h = ExtremumList(self.chart_1h)
+            self.gelist_1h = _GExtremumList(self.gchart, self.elist_1h)
+            self.addToGroup(self.gelist_1h)
+
+        if self.chart.timeframe <= TimeFrame("D"):
+            self.chart_d = Thread.loadChart(
+                self.chart.instrument,
+                TimeFrame("D"),
+                self.chart.first.dt,
+                self.chart.last.dt,
+            )
+            self.gchart_d = GChart(self.chart_d)
+            self.elist_d = ExtremumList(self.chart_d)
+            self.gelist_d = _GExtremumList(self.gchart, self.elist_d)
+            self.addToGroup(self.gelist_d)
+
+
+# }}}
 
 
 # }}}
@@ -448,14 +596,32 @@ class _ExtremumSettings(QtWidgets.QDialog):  # {{{
     def configureSilent(self, gextr: _ExtremumGraphics):  # {{{
         logger.debug(f"{self.__class__.__name__}.configure")
 
-        gextr.showInside(self.inside_checkbox.isChecked())
-        gextr.showOutside(self.outside_checkbox.isChecked())
-        gextr.showShortShapes(self.sshape_checkbox.isChecked())
-        gextr.showMidShapes(self.mshape_checkbox.isChecked())
-        gextr.showLongShapes(self.lshape_checkbox.isChecked())
-        gextr.showShortLines(self.sline_checkbox.isChecked())
-        gextr.showMidLines(self.mline_checkbox.isChecked())
-        gextr.showLongLines(self.lline_checkbox.isChecked())
+        # gextr.showInside(self.inside_checkbox.isChecked())
+        # gextr.showOutside(self.outside_checkbox.isChecked())
+
+        gextr.showShortShapes5M(self.spoint_5m_checkbox.isChecked())
+        gextr.showMidShapes5M(self.mpoint_5m_checkbox.isChecked())
+        gextr.showLongShapes5M(self.lpoint_5m_checkbox.isChecked())
+
+        gextr.showShortShapes1H(self.spoint_1h_checkbox.isChecked())
+        gextr.showMidShapes1H(self.mpoint_1h_checkbox.isChecked())
+        gextr.showLongShapes1H(self.lpoint_1h_checkbox.isChecked())
+
+        gextr.showShortShapesD(self.spoint_d_checkbox.isChecked())
+        gextr.showMidShapesD(self.mpoint_d_checkbox.isChecked())
+        gextr.showLongShapesD(self.lpoint_d_checkbox.isChecked())
+
+        gextr.showShortLines5M(self.sline_5m_checkbox.isChecked())
+        gextr.showMidLines5M(self.mline_5m_checkbox.isChecked())
+        gextr.showLongLines5M(self.lline_5m_checkbox.isChecked())
+
+        gextr.showShortLines1H(self.sline_1h_checkbox.isChecked())
+        gextr.showMidLines1H(self.mline_1h_checkbox.isChecked())
+        gextr.showLongLines1H(self.lline_1h_checkbox.isChecked())
+
+        gextr.showShortLinesD(self.sline_d_checkbox.isChecked())
+        gextr.showMidLinesD(self.mline_d_checkbox.isChecked())
+        gextr.showLongLinesD(self.lline_d_checkbox.isChecked())
 
     # }}}
     def configure(self, gextr):  # {{{
@@ -486,14 +652,28 @@ class _ExtremumSettings(QtWidgets.QDialog):  # {{{
         self.title_label = Label("| Extremum settings:", parent=self)
         self.title_label.setStyleSheet(Css.TITLE)
 
-        self.inside_checkbox = QtWidgets.QCheckBox("Inside days")
-        self.outside_checkbox = QtWidgets.QCheckBox("Outside days")
-        self.sshape_checkbox = QtWidgets.QCheckBox("Short-term extremum")
-        self.mshape_checkbox = QtWidgets.QCheckBox("Mid-term extremum")
-        self.lshape_checkbox = QtWidgets.QCheckBox("Long-term extremum")
-        self.sline_checkbox = QtWidgets.QCheckBox("Short-term line")
-        self.mline_checkbox = QtWidgets.QCheckBox("Mid-term line")
-        self.lline_checkbox = QtWidgets.QCheckBox("Long-term line")
+        self.inside_checkbox = QtWidgets.QCheckBox("Inside")
+        self.outside_checkbox = QtWidgets.QCheckBox("Outside")
+
+        self.spoint_5m_checkbox = QtWidgets.QCheckBox("S")
+        self.mpoint_5m_checkbox = QtWidgets.QCheckBox("M")
+        self.lpoint_5m_checkbox = QtWidgets.QCheckBox("L")
+        self.spoint_1h_checkbox = QtWidgets.QCheckBox("S")
+        self.mpoint_1h_checkbox = QtWidgets.QCheckBox("M")
+        self.lpoint_1h_checkbox = QtWidgets.QCheckBox("L")
+        self.spoint_d_checkbox = QtWidgets.QCheckBox("S")
+        self.mpoint_d_checkbox = QtWidgets.QCheckBox("M")
+        self.lpoint_d_checkbox = QtWidgets.QCheckBox("L")
+
+        self.sline_5m_checkbox = QtWidgets.QCheckBox("S")
+        self.mline_5m_checkbox = QtWidgets.QCheckBox("M")
+        self.lline_5m_checkbox = QtWidgets.QCheckBox("L")
+        self.sline_1h_checkbox = QtWidgets.QCheckBox("S")
+        self.mline_1h_checkbox = QtWidgets.QCheckBox("M")
+        self.lline_1h_checkbox = QtWidgets.QCheckBox("L")
+        self.sline_d_checkbox = QtWidgets.QCheckBox("S")
+        self.mline_d_checkbox = QtWidgets.QCheckBox("M")
+        self.lline_d_checkbox = QtWidgets.QCheckBox("L")
 
         self.ok_btn = ToolButton(Icon.OK)
         self.cancel_btn = ToolButton(Icon.CANCEL)
@@ -502,26 +682,60 @@ class _ExtremumSettings(QtWidgets.QDialog):  # {{{
     def __createLayots(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createLayots()")
 
-        hbox = QtWidgets.QHBoxLayout()
-        hbox.addWidget(self.title_label)
-        hbox.addStretch()
-        hbox.addWidget(self.ok_btn)
-        hbox.addWidget(self.cancel_btn)
+        hbox_btn = QtWidgets.QHBoxLayout()
+        hbox_btn.addWidget(self.title_label)
+        hbox_btn.addStretch()
+        hbox_btn.addWidget(self.ok_btn)
+        hbox_btn.addWidget(self.cancel_btn)
+
+        hbox_days = QtWidgets.QHBoxLayout()
+        hbox_days.addWidget(Label("Days: "))
+        hbox_days.addWidget(self.inside_checkbox)
+        hbox_days.addWidget(self.outside_checkbox)
+
+        hbox_points_5m = QtWidgets.QHBoxLayout()
+        hbox_points_5m.addWidget(Label("Points 5M: "))
+        hbox_points_5m.addWidget(self.spoint_5m_checkbox)
+        hbox_points_5m.addWidget(self.mpoint_5m_checkbox)
+        hbox_points_5m.addWidget(self.lpoint_5m_checkbox)
+        hbox_points_1h = QtWidgets.QHBoxLayout()
+        hbox_points_1h.addWidget(Label("Points 1H: "))
+        hbox_points_1h.addWidget(self.spoint_1h_checkbox)
+        hbox_points_1h.addWidget(self.mpoint_1h_checkbox)
+        hbox_points_1h.addWidget(self.lpoint_1h_checkbox)
+        hbox_points_d = QtWidgets.QHBoxLayout()
+        hbox_points_d.addWidget(Label("Points D: "))
+        hbox_points_d.addWidget(self.spoint_d_checkbox)
+        hbox_points_d.addWidget(self.mpoint_d_checkbox)
+        hbox_points_d.addWidget(self.lpoint_d_checkbox)
+
+        hbox_lines_5m = QtWidgets.QHBoxLayout()
+        hbox_lines_5m.addWidget(Label("Lines 5M: "))
+        hbox_lines_5m.addWidget(self.sline_5m_checkbox)
+        hbox_lines_5m.addWidget(self.mline_5m_checkbox)
+        hbox_lines_5m.addWidget(self.lline_5m_checkbox)
+        hbox_lines_1h = QtWidgets.QHBoxLayout()
+        hbox_lines_1h.addWidget(Label("Lines 1H: "))
+        hbox_lines_1h.addWidget(self.sline_1h_checkbox)
+        hbox_lines_1h.addWidget(self.mline_1h_checkbox)
+        hbox_lines_1h.addWidget(self.lline_1h_checkbox)
+        hbox_lines_d = QtWidgets.QHBoxLayout()
+        hbox_lines_d.addWidget(Label("Lines D: "))
+        hbox_lines_d.addWidget(self.sline_d_checkbox)
+        hbox_lines_d.addWidget(self.mline_d_checkbox)
+        hbox_lines_d.addWidget(self.lline_d_checkbox)
 
         vbox = QtWidgets.QVBoxLayout(self)
-        vbox.addLayout(hbox)
-        vbox.addWidget(self.inside_checkbox)
-        vbox.addWidget(self.outside_checkbox)
+        vbox.addLayout(hbox_btn)
+        vbox.addLayout(hbox_days)
         vbox.addSpacing(20)
-
-        vbox.addWidget(self.sshape_checkbox)
-        vbox.addWidget(self.mshape_checkbox)
-        vbox.addWidget(self.lshape_checkbox)
+        vbox.addLayout(hbox_points_5m)
+        vbox.addLayout(hbox_points_1h)
+        vbox.addLayout(hbox_points_d)
         vbox.addSpacing(20)
-
-        vbox.addWidget(self.sline_checkbox)
-        vbox.addWidget(self.mline_checkbox)
-        vbox.addWidget(self.lline_checkbox)
+        vbox.addLayout(hbox_lines_5m)
+        vbox.addLayout(hbox_lines_1h)
+        vbox.addLayout(hbox_lines_d)
 
     # }}}
     def __connect(self):  # {{{
@@ -534,16 +748,12 @@ class _ExtremumSettings(QtWidgets.QDialog):  # {{{
     def __initUI(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__initUI()")
 
-        self.inside_checkbox.setChecked(False)
-        self.outside_checkbox.setChecked(False)
+        # self.inside_checkbox.setChecked(False)
+        # self.outside_checkbox.setChecked(False)
 
-        self.sshape_checkbox.setChecked(False)
-        self.mshape_checkbox.setChecked(False)
-        self.lshape_checkbox.setChecked(False)
-
-        self.sline_checkbox.setChecked(True)
-        self.mline_checkbox.setChecked(False)
-        self.lline_checkbox.setChecked(False)
+        # self.sshape_checkbox.setChecked(False)
+        # self.mshape_checkbox.setChecked(False)
+        # self.lshape_checkbox.setChecked(False)
 
     # }}}
 
