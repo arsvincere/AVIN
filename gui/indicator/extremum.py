@@ -10,7 +10,7 @@ import sys
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 
-from avin.analytic import ExtremumList
+from avin.analytic import Extremum, ExtremumList, Term, Trend
 from avin.utils import logger
 from gui.chart.gchart import GBar, GChart
 from gui.custom import Css, Icon, Label, Theme, ToolButton
@@ -75,238 +75,203 @@ class ExtremumIndicator:  # {{{
 # }}}
 
 
-class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
-    LONGTERM_LINE_WIDTH = 4
-    MIDTERM_LINE_WIDTH = 2
-    SHORTTERM_LINE_WIDTH = 1
-
-    __LPEN = QtGui.QPen()
-    __LPEN.setWidth(LONGTERM_LINE_WIDTH)
-    __LPEN.setColor(Theme.Chart.LONGTERM)
-    __MPEN = QtGui.QPen()
-    __MPEN.setWidth(MIDTERM_LINE_WIDTH)
-    __MPEN.setColor(Theme.Chart.MIDTERM)
-    __SPEN = QtGui.QPen()
-    __SPEN.setWidth(SHORTTERM_LINE_WIDTH)
-    __SPEN.setColor(Theme.Chart.SHORTTERM)
-
-    def __init__(self, gchart: GChart, parent=None):  # {{{
+class _GExtremum(QtWidgets.QGraphicsItemGroup):  # {{{
+    def __init__(  # {{{
+        self, gchart: GChart, extr: Extremum, parent=None
+    ):
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QGraphicsItemGroup.__init__(self, parent)
 
         self.gchart = gchart
-        self.chart = gchart.chart
-        self.elist = ExtremumList(self.chart)
+        self.extr = extr
 
-        self.s_points = self.__createPoints(self.elist.sterm)
-        self.m_points = self.__createPoints(self.elist.mterm)
-        self.l_points = self.__createPoints(self.elist.lterm)
+        self.__calcCoordinates()
+        self.__createPointShape()
 
-        self.s_lines = self.__createLines(self.s_points, self.__SPEN)
-        self.m_lines = self.__createLines(self.m_points, self.__MPEN)
-        self.l_lines = self.__createLines(self.l_points, self.__LPEN)
+    # }}}
 
-        self.s_speeds = self.__createSpeedLabels(self.s_points)
-        self.m_speeds = self.__createSpeedLabels(self.m_points)
-        self.l_speeds = self.__createSpeedLabels(self.l_points)
+    def __calcCoordinates(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__calcCoordinates()")
 
-        self.inside_marks = self.__createInside()
-        self.outside_marks = self.__createOutside()
+        # (x, y)   - epos - точка экстремума на графике
+        # (x0, y0) - spos - точка графической метки экстремума
+        x0 = self.gchart.xFromDatetime(self.extr.dt)
+        x = x0 + GBar.WIDTH / 2
+        y = self.gchart.yFromPrice(self.extr.price)
+        y0 = y * 0.98 if self.extr.isMax() else y * 1.02
+
+        self.epos = QtCore.QPointF(x, y)
+        self.spos = QtCore.QPointF(x0, y0)
+
+    # }}}
+    def __createPointShape(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createPointShape()")
+
+        # select size and color
+        if self.extr.isLongterm():
+            size = GShape.Size.BIG
+            color = GShape.Color.VIOLET
+        elif self.extr.isMidterm():
+            size = GShape.Size.NORMAL
+            color = GShape.Color.BLUE
+        elif self.extr.isShortterm():
+            size = GShape.Size.SMALL
+            color = GShape.Color.CYAN
+
+        # create shape
+        shape = GShape(GShape.Type.SQARE, size, color)
+        shape.setPos(self.spos)
+
+        self.addToGroup(shape)
+
+    # }}}
+
+
+# }}}
+class _GTrend(QtWidgets.QGraphicsItemGroup):  # {{{
+    SHORTTERM_WIDTH = 1
+    MIDTERM_WIDTH = 2
+    LONGTERM_WIDTH = 3
+
+    COLOR_5M = Theme.Chart.TREND_5M
+    COLOR_1H = Theme.Chart.TREND_1H
+    COLOR_D = Theme.Chart.TREND_D
+
+    def __init__(  # {{{
+        self, gchart: GChart, trend: Trend, parent=None
+    ):
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QGraphicsItemGroup.__init__(self, parent)
+
+        self.gchart = gchart
+        self.trend = trend
+
+        self.__calcCoordinates()
+        self.__createLine()
+
+    # }}}
+
+    def __calcCoordinates(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__calcCoordinates()")
+
+        # begin pos
+        x0 = self.gchart.xFromDatetime(self.trend.begin.dt)
+        x = x0 + GBar.WIDTH / 2
+        y = self.gchart.yFromPrice(self.trend.begin.price)
+        self.begin_pos = QtCore.QPointF(x, y)
+
+        # end pos
+        x0 = self.gchart.xFromDatetime(self.trend.end.dt)
+        x = x0 + GBar.WIDTH / 2
+        y = self.gchart.yFromPrice(self.trend.end.price)
+        self.end_pos = QtCore.QPointF(x, y)
+
+    # }}}
+    def __createLine(self):  # {{{
+        match str(self.gchart.chart.timeframe):
+            case "D":
+                color = self.COLOR_D
+            case "1H":
+                color = self.COLOR_1H
+            case "5M":
+                color = self.COLOR_5M
+
+        match self.trend.term:
+            case Term.SHORTTERM:
+                width = self.SHORTTERM_WIDTH
+            case Term.MIDTERM:
+                width = self.MIDTERM_WIDTH
+            case Term.LONGTERM:
+                width = self.LONGTERM_WIDTH
+
+        line = QtWidgets.QGraphicsLineItem(
+            self.begin_pos.x(),
+            self.begin_pos.y(),
+            self.end_pos.x(),
+            self.end_pos.y(),
+        )
+        pen = QtGui.QPen(color, width)
+        line.setPen(pen)
+
+        self.addToGroup(line)
+
+    # }}}
+
+
+# }}}
+class _GExtremumList(QtWidgets.QGraphicsItemGroup):  # {{{
+    def __init__(  # {{{
+        self, gchart: GChart, elist: ExtremumList, parent=None
+    ):
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QGraphicsItemGroup.__init__(self, parent)
+
+        self.gchart = gchart
+        self.elist = elist
+
+        self.__createPoints()
+        self.__createLines()
+        self.__createInside()
+        self.__createOutside()
+
+    # }}}
+    def __createPoints(self):  # {{{
+        self.s_points = QtWidgets.QGraphicsItemGroup()
+        for extr in self.elist.sterm:
+            gextr = _GExtremum(self.gchart, extr)
+            self.s_points.addToGroup(gextr)
+
+        self.m_points = QtWidgets.QGraphicsItemGroup()
+        for extr in self.elist.mterm:
+            gextr = _GExtremum(self.gchart, extr)
+            self.m_points.addToGroup(gextr)
+
+        self.l_points = QtWidgets.QGraphicsItemGroup()
+        for extr in self.elist.lterm:
+            gextr = _GExtremum(self.gchart, extr)
+            self.l_points.addToGroup(gextr)
 
         self.addToGroup(self.s_points)
         self.addToGroup(self.m_points)
         self.addToGroup(self.l_points)
+
+    # }}}
+    def __createLines(self):  # {{{
+        self.s_lines = QtWidgets.QGraphicsItemGroup()
+        self.s_trends = self.elist.getAllSTrends()
+        for trend in self.s_trends:
+            gtrend = _GTrend(self.gchart, trend)
+            self.s_lines.addToGroup(gtrend)
+
+        self.m_lines = QtWidgets.QGraphicsItemGroup()
+        self.m_trends = self.elist.getAllMTrends()
+        for trend in self.m_trends:
+            gtrend = _GTrend(self.gchart, trend)
+            self.m_lines.addToGroup(gtrend)
+
+        self.l_lines = QtWidgets.QGraphicsItemGroup()
+        self.l_trends = self.elist.getAllLTrends()
+        for trend in self.l_trends:
+            gtrend = _GTrend(self.gchart, trend)
+            self.l_lines.addToGroup(gtrend)
+
         self.addToGroup(self.s_lines)
         self.addToGroup(self.m_lines)
         self.addToGroup(self.l_lines)
-        self.addToGroup(self.s_speeds)
-        self.addToGroup(self.m_speeds)
-        self.addToGroup(self.l_speeds)
-        self.addToGroup(self.inside_marks)
-        self.addToGroup(self.outside_marks)
-
-    # }}}
-
-    def showInside(self, value: bool):  # {{{
-        items = self.inside_marks.childItems()
-        for item in items:
-            item.setVisible(value)
-
-    # }}}
-    def showOutside(self, value: bool):  # {{{
-        items = self.outside_marks.childItems()
-        for item in items:
-            item.setVisible(value)
-
-    # }}}
-    def showShortShapes(self, value: bool):  # {{{
-        items = self.s_points.childItems()
-        for item in items:
-            item.setVisible(value)
-
-    # }}}
-    def showMidShapes(self, value: bool):  # {{{
-        items = self.m_points.childItems()
-        for item in items:
-            item.setVisible(value)
-
-    # }}}
-    def showLongShapes(self, value: bool):  # {{{
-        items = self.l_points.childItems()
-        for item in items:
-            item.setVisible(value)
-
-    # }}}
-    def showShortLines(self, value: bool):  # {{{
-        items = self.s_lines.childItems()
-        for item in items:
-            item.setVisible(value)
-
-    # }}}
-    def showMidLines(self, value: bool):  # {{{
-        items = self.m_lines.childItems()
-        for item in items:
-            item.setVisible(value)
-
-    # }}}
-    def showLongLines(self, value: bool):  # {{{
-        items = self.l_lines.childItems()
-        for item in items:
-            item.setVisible(value)
-
-    # }}}
-    def showShortSpeeds(self, value: bool):  # {{{
-        items = self.s_speeds.childItems()
-        for item in items:
-            item.setVisible(value)
-
-    # }}}
-    def showMidSpeeds(self, value: bool):  # {{{
-        items = self.m_speeds.childItems()
-        for item in items:
-            item.setVisible(value)
-
-    # }}}
-    def showLongSpeeds(self, value: bool):  # {{{
-        items = self.l_speeds.childItems()
-        for item in items:
-            item.setVisible(value)
-
-    # }}}
-
-    def __createPoints(self, extr_list):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createPoints()")
-
-        points = QtWidgets.QGraphicsItemGroup()
-        for e in extr_list:
-            shape = self.__createPointShape(e)
-            points.addToGroup(shape)
-
-        return points
-
-    # }}}
-    def __createPointShape(self, extr):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createPointShape()")
-
-        # select size and color
-        if extr.isLongterm():
-            size = GShape.Size.BIG
-            color = GShape.Color.VIOLET
-        elif extr.isMidterm():
-            size = GShape.Size.NORMAL
-            color = GShape.Color.BLUE
-        elif extr.isShortterm():
-            size = GShape.Size.SMALL
-            color = GShape.Color.CYAN
-
-        # calc coordinate
-        # (x, y)   - epos - точка экстремума на графике
-        # (x0, y0) - spos - точка графической метки экстремума
-        x0 = self.gchart.xFromDatetime(extr.dt)
-        x = x0 + GBar.WIDTH / 2
-        y = self.gchart.yFromPrice(extr.price)
-        y0 = y * 0.98 if extr.isMax() else y * 1.02
-        epos = QtCore.QPointF(x, y)
-        spos = QtCore.QPointF(x0, y0)
-
-        # create shape
-        shape = GShape(GShape.Type.SQARE, size, color)
-        shape.setPos(spos)
-        shape.info["epos"] = epos
-        shape.info["spos"] = spos
-        shape.info["extr"] = extr
-
-        return shape
-
-    # }}}
-    def __createLines(  # {{{
-        self, points_group: QtWidgets.QGraphicsItemGroup, pen
-    ):
-        logger.debug(f"{self.__class__.__name__}.__createLines()")
-
-        lines = QtWidgets.QGraphicsItemGroup()
-        points = points_group.childItems()
-        if len(points) < 2:
-            return lines
-
-        i = 0
-        while i < len(points) - 1:
-            e1 = points[i].info["epos"]
-            e2 = points[i + 1].info["epos"]
-            l = QtWidgets.QGraphicsLineItem(e1.x(), e1.y(), e2.x(), e2.y())
-            l.setPen(pen)
-            lines.addToGroup(l)
-            i += 1
-
-        return lines
-
-    # }}}
-    def __createSpeedLabels(self, points_group):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createSpeedLabels()")
-
-        glabels = QtWidgets.QGraphicsItemGroup()
-        points = points_group.childItems()
-        if len(points) < 2:
-            return glabels
-
-        flags = QtWidgets.QGraphicsItem.GraphicsItemFlag
-        i = 0
-        while i < len(points) - 1:
-            e1 = points[i].info["extr"]
-            e2 = points[i + 1].info["extr"]
-            speed = ExtremumList.speedPercent(e1, e2)
-            delta = ExtremumList.deltaPercent(e1, e2)
-
-            e2_x = points[i + 1].info["spos"].x()
-            e2_y = points[i + 1].info["spos"].y()
-            y = e2_y * 0.98 if e2.isMax() else e2_y * 1.01
-            label_pos = QtCore.QPointF(e2_x, y)
-
-            label = QtWidgets.QLabel(f"{delta} / {speed}")
-            label.setStyleSheet(Css.SPEED_LABEL)
-            glabel = QtWidgets.QGraphicsProxyWidget()
-            glabel.setWidget(label)
-            glabel.setPos(label_pos)
-            glabel.setFlag(flags.ItemIgnoresTransformations, True)
-            glabels.addToGroup(glabel)
-
-            i += 1
-
-        return glabels
 
     # }}}
     def __createInside(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createInside()")
 
-        inside_marks = QtWidgets.QGraphicsItemGroup()
+        self.inside_marks = QtWidgets.QGraphicsItemGroup()
         gbars = self.gchart.gbars
         for gbar in gbars:
             bar = gbar.bar
             if bar.isInside():
                 shape = self.__createInsideShape(gbar)
-                inside_marks.addToGroup(shape)
+                self.inside_marks.addToGroup(shape)
 
-        return inside_marks
+        self.addToGroup(self.inside_marks)
 
     # }}}
     def __createInsideShape(self, gbar):  # {{{
@@ -328,15 +293,15 @@ class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
     def __createOutside(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createOutside()")
 
-        outside_marks = QtWidgets.QGraphicsItemGroup()
+        self.outside_marks = QtWidgets.QGraphicsItemGroup()
         gbars = self.gchart.gbars
         for gbar in gbars:
             bar = gbar.bar
             if bar.isOutside():
                 shape = self.__createOutsideShape(gbar)
-                outside_marks.addToGroup(shape)
+                self.outside_marks.addToGroup(shape)
 
-        return outside_marks
+        self.addToGroup(self.outside_marks)
 
     # }}}
     def __createOutsideShape(self, gbar):  # {{{
@@ -353,6 +318,56 @@ class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
         rect.setBrush(color)
 
         return rect
+
+    # }}}
+
+
+# }}}
+
+
+class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
+    def __init__(self, gchart: GChart, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QGraphicsItemGroup.__init__(self, parent)
+
+        self.gchart = gchart
+        self.chart = gchart.chart
+        self.elist = ExtremumList(self.chart)
+        self.gelist = _GExtremumList(self.gchart, self.elist)
+        self.addToGroup(self.gelist)
+
+    # }}}
+
+    def showInside(self, value: bool):  # {{{
+        self.gelist.inside_marks.setVisible(value)
+
+    # }}}
+    def showOutside(self, value: bool):  # {{{
+        self.gelist.outside_marks.setVisible(value)
+
+    # }}}
+    def showShortShapes(self, value: bool):  # {{{
+        self.gelist.s_points.setVisible(value)
+
+    # }}}
+    def showMidShapes(self, value: bool):  # {{{
+        self.gelist.m_points.setVisible(value)
+
+    # }}}
+    def showLongShapes(self, value: bool):  # {{{
+        self.gelist.l_points.setVisible(value)
+
+    # }}}
+    def showShortLines(self, value: bool):  # {{{
+        self.gelist.s_lines.setVisible(value)
+
+    # }}}
+    def showMidLines(self, value: bool):  # {{{
+        self.gelist.m_lines.setVisible(value)
+
+    # }}}
+    def showLongLines(self, value: bool):  # {{{
+        self.gelist.l_lines.setVisible(value)
 
     # }}}
 
@@ -441,9 +456,6 @@ class _ExtremumSettings(QtWidgets.QDialog):  # {{{
         gextr.showShortLines(self.sline_checkbox.isChecked())
         gextr.showMidLines(self.mline_checkbox.isChecked())
         gextr.showLongLines(self.lline_checkbox.isChecked())
-        gextr.showShortSpeeds(self.sspeed_checkbox.isChecked())
-        gextr.showMidSpeeds(self.mspeed_checkbox.isChecked())
-        gextr.showLongSpeeds(self.lspeed_checkbox.isChecked())
 
     # }}}
     def configure(self, gextr):  # {{{
@@ -482,9 +494,6 @@ class _ExtremumSettings(QtWidgets.QDialog):  # {{{
         self.sline_checkbox = QtWidgets.QCheckBox("Short-term line")
         self.mline_checkbox = QtWidgets.QCheckBox("Mid-term line")
         self.lline_checkbox = QtWidgets.QCheckBox("Long-term line")
-        self.sspeed_checkbox = QtWidgets.QCheckBox("Short-term speed")
-        self.mspeed_checkbox = QtWidgets.QCheckBox("Mid-term speed")
-        self.lspeed_checkbox = QtWidgets.QCheckBox("Long-term speed")
 
         self.ok_btn = ToolButton(Icon.OK)
         self.cancel_btn = ToolButton(Icon.CANCEL)
@@ -513,11 +522,6 @@ class _ExtremumSettings(QtWidgets.QDialog):  # {{{
         vbox.addWidget(self.sline_checkbox)
         vbox.addWidget(self.mline_checkbox)
         vbox.addWidget(self.lline_checkbox)
-        vbox.addSpacing(20)
-
-        vbox.addWidget(self.sspeed_checkbox)
-        vbox.addWidget(self.mspeed_checkbox)
-        vbox.addWidget(self.lspeed_checkbox)
 
     # }}}
     def __connect(self):  # {{{
@@ -540,10 +544,6 @@ class _ExtremumSettings(QtWidgets.QDialog):  # {{{
         self.sline_checkbox.setChecked(True)
         self.mline_checkbox.setChecked(False)
         self.lline_checkbox.setChecked(False)
-
-        self.sspeed_checkbox.setChecked(False)
-        self.mspeed_checkbox.setChecked(False)
-        self.lspeed_checkbox.setChecked(False)
 
     # }}}
 

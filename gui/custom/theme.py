@@ -59,19 +59,20 @@ class Theme:
         UNDEFINE_BEHIND = QtGui.QColor("#22FFFFFF")
 
         # Trade
-        STOP = QtGui.QColor("#FF0000")
-        TAKE = QtGui.QColor("#00FF00")
-        OPEN = QtGui.QColor("#AAAAAA")
+        STOP = QtGui.QColor("#c84053")
+        TAKE = QtGui.QColor("#6f894e")
+        OPEN = QtGui.QColor("#8a8980")
         TRADE_WIN = QtGui.QColor("#00AA00")
         TRADE_LOSS = QtGui.QColor("#AA0000")
         TRADE_UNDEFINE = QtGui.QColor("#888888")
 
         # Extremum
-        SHORTTERM = QtGui.QColor("#FFFFFF")
-        MIDTERM = QtGui.QColor("#AAAA00")
-        LONGTERM = QtGui.QColor("#AA0000")
         INSIDE_BG = QtGui.QColor("#AA000000")
         OUTSIDE_BG = QtGui.QColor("#44FFFFFF")
+        TREND_5M = QtGui.QColor("#a6a69c")
+        TREND_1H = QtGui.QColor("#A3D4D5")
+        TREND_D = QtGui.QColor("#658594")
+        TREND_W = QtGui.QColor("#957FB8")
 
         # TODO: delete it
         # common color
