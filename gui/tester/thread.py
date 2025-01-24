@@ -10,7 +10,7 @@ import asyncio
 
 from PyQt6 import QtCore
 
-from avin import Filter, FilterList, Test, Tester, TradeList, logger
+from avin import Filter, FilterList, Test, Tester, TestList, TradeList, logger
 from gui.custom import awaitQThread
 
 
@@ -31,6 +31,17 @@ class Thread:  # {{{
         logger.debug(f"{cls.__name__}.loadTest()")
 
         thread = _TLoadTest(name)
+        thread.start()
+        awaitQThread(thread)
+
+        return thread.result
+
+    # }}}
+    @classmethod  # loadTestList  # {{{
+    def loadTestList(cls, name: str) -> Test | None:
+        logger.debug(f"{cls.__name__}.loadTestList()")
+
+        thread = _TLoadTestList(name)
         thread.start()
         awaitQThread(thread)
 
@@ -73,6 +84,17 @@ class Thread:  # {{{
         logger.debug(f"{cls.__name__}.requestAllTest()")
 
         thread = _TRequestAllTest()
+        thread.start()
+        awaitQThread(thread)
+
+        return thread.result
+
+    # }}}
+    @classmethod  # requestAllTestList  # {{{
+    def requestAllTest(cls) -> None:
+        logger.debug(f"{cls.__name__}.requestAllTestList()")
+
+        thread = _TRequestAllTestList()
         thread.start()
         awaitQThread(thread)
 
@@ -178,6 +200,30 @@ class _TLoadTest(QtCore.QThread):  # {{{
 
 
 # }}}
+class _TLoadTestList(QtCore.QThread):  # {{{
+    def __init__(self, name: str, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtCore.QThread.__init__(self, parent)
+
+        self.__name = name
+        self.result = None
+
+    # }}}
+    def run(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.run()")
+
+        asyncio.run(self.__arun())
+
+    # }}}
+    async def __arun(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__arun()")
+
+        self.result = await TestList.load(self.__name)
+
+    # }}}
+
+
+# }}}
 class _TDeleteTest(QtCore.QThread):  # {{{
     def __init__(self, test: Test, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
@@ -269,6 +315,29 @@ class _TRequestAllTest(QtCore.QThread):  # {{{
         logger.debug(f"{self.__class__.__name__}.__arun()")
 
         self.result = await Test.requestAll()
+
+    # }}}
+
+
+# }}}
+class _TRequestAllTestList(QtCore.QThread):  # {{{
+    def __init__(self, parent=None):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtCore.QThread.__init__(self, parent)
+
+        self.result = None
+
+    # }}}
+    def run(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.run()")
+
+        asyncio.run(self.__arun())
+
+    # }}}
+    async def __arun(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__arun()")
+
+        self.result = await TestList.requestAll()
 
     # }}}
 

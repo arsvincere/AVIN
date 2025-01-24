@@ -11,9 +11,11 @@ import sys
 from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import Qt
 
-from avin import Summary, TradeList
+from avin import Test
 from avin.utils import logger
 from gui.custom import Css
+from gui.summary.thread import TLoadTrades
+from gui.summary.tree import TradeListTree
 
 
 class SummaryDockWidget(QtWidgets.QDockWidget):  # {{{
@@ -40,49 +42,38 @@ class SummaryDockWidget(QtWidgets.QDockWidget):  # {{{
 
         # }}}
 
-    def showSummary(self, tlist: TradeList) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.showSummary()")
+    def setTest(self, test: Test) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.setTest()")
 
-        self.widget.showSummary(tlist)
+        self.widget.setTest(test)
 
     # }}}
 
 
 # }}}
-class SummaryWidget(QtWidgets.QTableWidget):  # {{{
+class SummaryWidget(QtWidgets.QWidget):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
-        QtWidgets.QTableWidget.__init__(self, parent)
-
-        self.rows = 1
-        self.setRowCount(1)
-        self.current_row = 0
+        QtWidgets.QWidget.__init__(self, parent)
 
         self.__config()
-        self.__createHeader()
-        self.__setColumnWidth()
+        self.__createWidgets()
+        self.__createLayots()
+        self.__connect()
+
+        self.__test = None
+        self.__thread = None
 
     # }}}
 
-    def showSummary(self, trade_list) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.showSummary()")
+    def setTest(self, test) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.setTest()")
 
-        self.__clear()
-        df = Summary.calculate(trade_list)
-        self.setRowCount(len(trade_list))
-
-        for i in df.index:
-            for n, val in enumerate(df.loc[i], 0):
-                item = QtWidgets.QTableWidgetItem()
-                item.setText(str(val))
-                self.setItem(self.current_row, n, item)
-                if n != 0:
-                    item.setTextAlignment(
-                        Qt.AlignmentFlag.AlignRight
-                        | Qt.AlignmentFlag.AlignVCenter
-                    )
-
-            self.__addNewRow()
+        self.__test = test
+        if test.trade_list is not None:
+            self.__showSummary()
+        else:
+            self.__showButtonLoadTrades()
 
     # }}}
 
@@ -92,53 +83,69 @@ class SummaryWidget(QtWidgets.QTableWidget):  # {{{
         self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint)
         self.setStyleSheet(Css.STYLE)
         self.setWindowTitle("AVIN")
-        self.setSortingEnabled(True)
 
     # }}}
-    def __createHeader(self) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.__createHeader()")
+    def __createWidgets(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createWidgets()")
 
-        header = Summary.header()
-        self.setColumnCount(len(header))
-        self.setHorizontalHeaderLabels(header)
-
-    # }}}
-    def __setColumnWidth(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__setColumnWidth()")
-
-        self.setColumnWidth(0, 300)
-        self.setColumnWidth(1, 100)
-        self.setColumnWidth(2, 50)
-        self.setColumnWidth(3, 50)
-        self.setColumnWidth(4, 50)
-        self.setColumnWidth(5, 50)
-        self.setColumnWidth(6, 50)
-        self.setColumnWidth(7, 50)
-        self.setColumnWidth(8, 100)
-        self.setColumnWidth(9, 100)
-        self.setColumnWidth(10, 50)
-        self.setColumnWidth(11, 70)
-        self.setColumnWidth(12, 70)
-        self.setColumnWidth(13, 70)
-        self.setColumnWidth(14, 70)
-        self.setColumnWidth(15, 70)
+        self.__tree = TradeListTree(self)
+        self.__load_btn = QtWidgets.QPushButton("Load trades")
 
     # }}}
-    def __addNewRow(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__addNewRow()")
+    def __createLayots(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__createLayots()")
 
-        self.rows += 1
-        self.current_row += 1
+        vbox = QtWidgets.QVBoxLayout()
+        vbox.setContentsMargins(0, 0, 0, 0)
+        vbox.addWidget(self.__tree)
+        vbox.addWidget(self.__load_btn)
+        self.setLayout(vbox)
 
     # }}}
-    def __clear(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__clear()")
+    def __connect(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__connect()")
 
-        self.clear()
-        self.__createHeader()
-        self.rows = 1
-        self.setRowCount(1)
-        self.current_row = 0
+        self.__load_btn.clicked.connect(self.__loadTradeList)
+
+    # }}}
+    def __showSummary(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__showSummary()")
+
+        self.__load_btn.hide()
+        self.__tree.show()
+
+        self.__tree.setTradeList(self.__test.trade_list)
+
+    # }}}
+    def __showButtonLoadTrades(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__showButtonLoadTrades()")
+
+        self.__load_btn.show()
+        self.__tree.hide()
+
+    # }}}
+    def __loadTradeList(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__loadTradeList()")
+
+        if self.__test is None:
+            return
+
+        if self.__test.trade_list is not None:
+            return
+
+        logger.info(f":: Loading trades {self.__test}")
+        self.__thread = TLoadTrades(self.__test)
+        self.__thread.finished.connect(self.__onLoaded)
+        self.__thread.start()
+
+    # }}}
+
+    @QtCore.pyqtSlot()  # __onLoaded# {{{
+    def __onLoaded(self):
+        logger.debug(f"{self.__class__.__name__}.__onLoaded()")
+
+        self.__thread = None
+        self.__showSummary()
 
     # }}}
 

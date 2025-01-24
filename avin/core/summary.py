@@ -19,48 +19,115 @@ class Summary:
         logger.debug(f"{self.__class__.__name__}.__init__()")
 
         self.__trade_list = trade_list
-        self.__df = self.calculate(trade_list)
+        self.__summary = self.__calculate(trade_list)
 
     # }}}
     def __str__(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__str__()")
-
-        return str(self.__df)
+        return str(self.data_frame)
 
     # }}}
 
-    def data(self) -> pd.DataFrame:  # {{{
-        return self.__df
+    @property  # data_frame   # {{{
+    def data_frame(self) -> pd.DataFrame:
+        df = pd.DataFrame([self.__summary])
+        for tl in self.__trade_list.childs:
+            df_child = Summary.calculate(tl)
+            df = pd.concat([df, df_child], ignore_index=True)
+
+        return df
+
+    # }}}
+    @property  # name   # {{{
+    def name(self) -> float:
+        return self.__summary["name"]
+
+    # }}}
+    @property  # profit   # {{{
+    def profit(self) -> float:
+        return self.__summary["profit"]
+
+    # }}}
+    @property  # accuracy   # {{{
+    def accuracy(self) -> float:
+        return self.__summary["%"]
+
+    # }}}
+    @property  # trades   # {{{
+    def trades(self) -> float:
+        return self.__summary["trades"]
+
+    # }}}
+    @property  # win   # {{{
+    def win(self) -> float:
+        return self.__summary["win"]
+
+    # }}}
+    @property  # loss   # {{{
+    def loss(self) -> float:
+        return self.__summary["loss"]
+
+    # }}}
+    @property  # ratio   # {{{
+    def ratio(self) -> float:
+        return self.__summary["ratio"]
+
+    # }}}
+    @property  # avg   # {{{
+    def avg(self) -> float:
+        return self.__summary["avg"]
+
+    # }}}
+    @property  # gross_profit   # {{{
+    def gross_profit(self) -> float:
+        return self.__summary["gross profit"]
+
+    # }}}
+    @property  # gross_loss   # {{{
+    def gross_loss(self) -> float:
+        return self.__summary["gross loss"]
+
+    # }}}
+    @property  # wseq   # {{{
+    def wseq(self) -> float:
+        return self.__summary["w-seq"]
+
+    # }}}
+    @property  # lseq   # {{{
+    def lseq(self) -> float:
+        return self.__summary["l-seq"]
+
+    # }}}
+    @property  # avg_win   # {{{
+    def avg_win(self) -> float:
+        return self.__summary["avg win"]
+
+    # }}}
+    @property  # avg_loss   # {{{
+    def avg_loss(self) -> float:
+        return self.__summary["avg loss"]
+
+    # }}}
+    @property  # max_win   # {{{
+    def max_win(self) -> float:
+        return self.__summary["max win"]
+
+    # }}}
+    @property  # max_loss   # {{{
+    def max_loss(self) -> float:
+        return self.__summary["max loss"]
 
     # }}}
 
     @classmethod  # header  # {{{
     def header(cls) -> list[str]:
+        logger.debug(f"{cls.__name__}.header()")
+
         header = list()
         header.append("name")
         for column_name in cls.__FUNCTIONS:
             header.append(column_name)
+
         return header
-
-    # }}}
-    @classmethod  # calculate  # {{{
-    def calculate(cls, trade_list: TradeList) -> pd.DataFrame:
-        has_parent = trade_list.parent_list is not None
-
-        dct = dict()
-        dct["name"] = trade_list.subname if has_parent else trade_list.name
-        results = Summary.__getResults(trade_list)
-
-        for column, function in Summary.__FUNCTIONS.items():
-            value = round(function(results), 2)
-            dct[column] = value
-
-        df = pd.DataFrame([dct])
-        for tl in trade_list.childs:
-            df_child = Summary.calculate(tl)
-            df = pd.concat([df, df_child], ignore_index=True)
-
-        return df
 
     # }}}
     @classmethod  # percentProfitable  # {{{
@@ -73,11 +140,30 @@ class Summary:
         return round(percent, 2)
 
     # }}}
+
     @classmethod  # save  # {{{
     def save(cls, summary: Summary, file_path: str) -> None:
         logger.debug(f"{self.__class__.__name__}.__save()")
 
-        summary.__df.to_csv(file_path, sep=";")
+        df = summary.data_frame
+        df.to_csv(file_path, sep=";")
+
+    # }}}
+
+    def __calculate(self, trade_list: TradeList) -> dict:  # {{{
+        has_parent = trade_list.parent_list is not None
+
+        summary = dict()
+        summary["name"] = (
+            trade_list.subname if has_parent else trade_list.name
+        )
+        results = Summary.__getResults(trade_list)
+
+        for column, function in Summary.__FUNCTIONS.items():
+            value = round(function(results), 2)
+            summary[column] = value
+
+        return summary
 
     # }}}
 
@@ -290,12 +376,12 @@ class Summary:
         "trades": __totalTrades,
         "win": __winningTrades,
         "loss": __losingTrades,
-        "w-seq": __maxWinSeries,
-        "l-seq": __maxLossSeries,
-        "gross profit": __grossProfit,
-        "gross loss": __grossLoss,
         "ratio": __ratio,
         "avg": __averageTrade,
+        "gross profit": __grossProfit,
+        "gross loss": __grossLoss,
+        "w-seq": __maxWinSeries,
+        "l-seq": __maxLossSeries,
         "avg win": __averageWin,
         "avg loss": __averageLoss,
         "max win": __largestWin,

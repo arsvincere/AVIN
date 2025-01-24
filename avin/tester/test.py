@@ -182,9 +182,11 @@ class Test:  # {{{
 
     @trade_list.setter
     def trade_list(self, trade_list: TradeList):
-        trade_list.name = f"{self}-trade_list"
-        trade_list.setOwner(self)
         self.__trade_list = trade_list
+
+        if trade_list is not None:
+            trade_list.name = f"{self}-trade_list"
+            trade_list.setOwner(self)
 
     # }}}
     @property  # status  # {{{
@@ -315,12 +317,30 @@ class Test:  # {{{
         return names
 
     # }}}
+
+    @classmethod  # loadTrades  # {{{
+    async def loadTrades(cls, test: Test) -> None:
+        logger.debug(f"{cls.__name__}.loadTrades()")
+
+        trade_list_name = f"{test}-trade_list"
+
+        test.__trade_list = await TradeList.load(trade_list_name)
+
+    # }}}
     @classmethod  # deleteTrades  # {{{
     async def deleteTrades(cls, test: Test) -> None:
         logger.debug(f"{cls.__name__}.deleteTrades()")
 
-        test.__trade_list.clear()  # clear runtime
-        await TradeList.deleteTrades(test.__trade_list)  # clear db
+        # если тест был загружен из БД без трейд листа, то
+        # создаем трейд лист со стандартным именем новый, пустой,
+        # иначе чистим в рантайме тот что уже загружен
+        if test.__trade_list is None:
+            test.__trade_list = TradeList(f"{self}-trade_list")
+        else:
+            test.__trade_list.clear()
+
+        # а потом чистим в БД
+        await TradeList.deleteTrades(test.__trade_list)
 
         test.__status = Test.Status.NEW
         await Test.update(test)
@@ -371,9 +391,13 @@ class Test:  # {{{
         test.end = date.fromisoformat(obj["end_date"])
         test.description = obj["description"]
         test.account = obj["account"]
-        test.trade_list = await TradeList.load(obj["trade_list"])
+        # test.trade_list = await TradeList.load(obj["trade_list"])
         test.status = Test.Status.fromStr(obj["status"])
         test.time_step = TimeFrame(obj["time_step"])
+
+        # NOTE: при загрузке из БД не загружаем сразу трейд лист.
+        # только по прямому вызову: await Test.loadTrades(test)
+        test.trade_list = None
 
         return test
 
@@ -453,7 +477,7 @@ class TestList:  # {{{
             self.__tests.remove(test)
         except ValueError:
             logger.warning(
-                f"Test.remove(test) failed: " f"'{test}' not in list",
+                f"Test.remove(test) failed: '{test}' not in list",
             )
 
     # }}}

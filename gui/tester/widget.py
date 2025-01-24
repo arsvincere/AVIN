@@ -11,11 +11,10 @@ import sys
 from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import Qt
 
-from avin.core import Trade, TradeList
 from avin.tester import Test
 from avin.utils import logger
 from gui.custom import Css
-from gui.tester.tree import TestTree, TradeTree
+from gui.tester.tree import TestTree
 
 
 class TesterDockWidget(QtWidgets.QDockWidget):  # {{{
@@ -44,8 +43,6 @@ class TesterDockWidget(QtWidgets.QDockWidget):  # {{{
 # }}}
 class TesterWidget(QtWidgets.QWidget):  # {{{
     testChanged = QtCore.pyqtSignal(Test)
-    tlistChanged = QtCore.pyqtSignal(TradeList)
-    tradeChanged = QtCore.pyqtSignal(Trade)
 
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
@@ -69,12 +66,10 @@ class TesterWidget(QtWidgets.QWidget):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
 
         self.test_tree = TestTree(self)
-        self.trade_tree = TradeTree(self)
 
         vertical = QtCore.Qt.Orientation.Vertical
         self.vsplit = QtWidgets.QSplitter(vertical, self)
         self.vsplit.addWidget(self.test_tree)
-        self.vsplit.addWidget(self.trade_tree)
 
     # }}}
     def __createLayots(self) -> None:  # {{{
@@ -89,7 +84,6 @@ class TesterWidget(QtWidgets.QWidget):  # {{{
     def __connect(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__connect()")
         self.test_tree.clicked.connect(self.__onTestTreeClicked)
-        self.trade_tree.clicked.connect(self.__onTradeTreeClicked)
 
     # }}}
 
@@ -102,23 +96,13 @@ class TesterWidget(QtWidgets.QWidget):  # {{{
         match class_name:
             case "TestItem":
                 test = item.test
-                self.trade_tree.setTradeList(test.trade_list)
                 self.testChanged.emit(test)
-            case "TradeListItem":
-                trade_list = item.trade_list
-                self.trade_tree.setTradeList(trade_list)
-                self.tlistChanged.emit(trade_list)
+            case "TestListItem":
+                pass
 
     # }}}
-    @QtCore.pyqtSlot()  # __onTradeTreeClicked# {{{
-    def __onTradeTreeClicked(self) -> None:
-        logger.debug(f"{self.__class__.__name__}.__onTradeTreeClicked()")
-
-        item = self.trade_tree.currentItem()
-        self.tradeChanged.emit(item.trade)
 
 
-# }}}
 # }}}
 
 if __name__ == "__main__":

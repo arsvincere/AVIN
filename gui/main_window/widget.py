@@ -303,12 +303,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.tester_widget.widget.testChanged.connect(
                 self.__onTestChanged
             )
-            self.tester_widget.widget.tlistChanged.connect(
-                self.__onTradeListChanged
-            )
-            self.tester_widget.widget.tradeChanged.connect(
-                self.__onTradeChanged
-            )
             return
 
         state = self.tester_widget.isVisible()
@@ -428,7 +422,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.chart_widget.clearAll()
 
         if self.summary_widget is not None:
-            self.summary_widget.showSummary(test.trade_list)
+            self.summary_widget.setTest(test)
 
     # }}}
     @pyqtSlot(TradeList)  # __onTradeListChanged # {{{

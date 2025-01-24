@@ -30,8 +30,8 @@ class TestSelectDialog(QtWidgets.QDialog):  # {{{
         self.__loadUserTests()
 
     # }}}
-    def selectTestName(self) -> str | None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.selectFilter()")
+    def selectTestListName(self) -> str | None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.selectTestListName()")
 
         result = self.exec()
         if result == QtWidgets.QDialog.DialogCode.Rejected:
@@ -41,7 +41,7 @@ class TestSelectDialog(QtWidgets.QDialog):  # {{{
         if item is None:
             return None
 
-        name = item.test_name
+        name = item.test_list_name
         return name
 
     # }}}
@@ -86,7 +86,7 @@ class TestSelectDialog(QtWidgets.QDialog):  # {{{
 
         all_names = Thread.requestAllTest()
         for name in all_names:
-            item = _TestItem(name)
+            item = _TestListItem(name)
             self.__tree.addTopLevelItem(item)
 
     # }}}
@@ -95,7 +95,7 @@ class TestSelectDialog(QtWidgets.QDialog):  # {{{
 # }}}
 
 
-class _TestItem(QtWidgets.QTreeWidgetItem):  # {{{
+class _TestListItem(QtWidgets.QTreeWidgetItem):  # {{{
     class Column(enum.IntEnum):  # {{{
         Name = 0
 
@@ -105,7 +105,7 @@ class _TestItem(QtWidgets.QTreeWidgetItem):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
         QtWidgets.QTreeWidgetItem.__init__(self, parent)
 
-        self.test_name = name
+        self.test_list_name = name
         self.setFlags(
             Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
         )
@@ -139,7 +139,7 @@ class _Tree(QtWidgets.QTreeWidget):  # {{{
 
         # config header
         labels = list()
-        for l in _TestItem.Column:
+        for l in _TestListItem.Column:
             labels.append(l.name)
         self.setHeaderLabels(labels)
         self.header().setStyleSheet(Css.TREE_HEADER)
@@ -149,7 +149,8 @@ class _Tree(QtWidgets.QTreeWidget):  # {{{
         self.sortByColumn(FilterItem.Column.Name, Qt.SortOrder.AscendingOrder)
 
         # config width
-        self.setColumnWidth(FilterItem.Column.Name, 150)
+        self.setColumnWidth(FilterItem.Column.Name, 400)
+        self.setMinimumWidth(420)
 
         # config style
         self.setStyleSheet(Css.TREE)
