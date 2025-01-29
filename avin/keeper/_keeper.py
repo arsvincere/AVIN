@@ -27,7 +27,7 @@ import asyncpg
 
 from avin.config import Auto, Usr
 from avin.const import ONE_DAY, ONE_MONTH, Dir
-from avin.utils import Cmd, ask_user, logger, now
+from avin.utils import Cmd, Date, ask_user, logger, now
 
 __all__ = ("Keeper",)
 
@@ -81,8 +81,11 @@ class Keeper:
         logger.debug(f"{cls.__name__}.backupUserData()")
 
         Cmd.makeDirs(Auto.BACKUP_PATH)
-        public_path = Cmd.path(Auto.BACKUP_PATH, "public_Fc")
+        file_name = f"public_{Date.today()}"
+        public_path = Cmd.path(Auto.BACKUP_PATH, file_name)
         os.system(f"pg_dump {cls.DATABASE} -Fc -f {public_path} -n public")
+
+        cls.__deleteOldBackup()
 
         logger.info("Backup user data complete!")
 
@@ -92,8 +95,11 @@ class Keeper:
         logger.debug(f"{cls.__name__}.backupMarketData()")
 
         Cmd.makeDirs(Auto.BACKUP_PATH)
-        data_path = Cmd.path(Auto.BACKUP_PATH, "data_Fc")
+        file_name = f"data_{Date.today()}"
+        data_path = Cmd.path(Auto.BACKUP_PATH, file_name)
         os.system(f"pg_dump {cls.DATABASE} -Fc -f {data_path} -n data")
+
+        cls.__deleteOldBackup()
 
         logger.info("Backup market data complete!")
 
@@ -101,6 +107,12 @@ class Keeper:
     @classmethod  # restoreUserData  # {{{
     def restoreUserData(cls):
         logger.debug(f"{cls.__name__}.restoreUserData()")
+
+        # TODO: надо подумать а как когда где зачем вообще теперь
+        # восстанавливать БД, и нужно ли это делать вообще через
+        # интерфейс прогаммы, может это чисто ручная операция на
+        # данном этапе?
+        assert False, "TODO: теперь надо выбирать какой именно файл"
 
         public_path = Cmd.path(Auto.BACKUP_PATH, "public_Fc")
         if not Cmd.isExist(public_path):
@@ -119,13 +131,18 @@ class Keeper:
     def restoreMarketData(cls):
         logger.debug(f"{cls.__name__}.restoreMarketData()")
 
+        # TODO: надо подумать а как когда где зачем вообще теперь
+        # восстанавливать БД, и нужно ли это делать вообще через
+        # интерфейс прогаммы, может это чисто ручная операция на
+        # данном этапе?
+        assert False, "TODO: теперь надо выбирать какой именно файл"
+
         data_path = Cmd.path(Auto.BACKUP_PATH, "data_Fc")
         if not Cmd.isExist(data_path):
             logger.error(f"Failed restore, no backup file: {data_path}")
 
         os.system(
-            f"psql -a {cls.DATABASE} {cls.USER} "
-            f"-c 'DROP SCHEMA data CASCADE'"
+            f"psql -a {cls.DATABASE} {cls.USER} -c 'DROP SCHEMA data CASCADE'"
         )
         os.system(f"pg_restore -d {cls.DATABASE} {data_path}")
 
@@ -928,7 +945,7 @@ class Keeper:
 
         # Create type condition
         pg_data_type = (
-            f"data.\"DataInfo\".type = '{data_type.name}'"
+            f"data.\"DataInfo\".data_type = '{data_type.name}'"
             if data_type
             else "TRUE"
         )
@@ -1367,8 +1384,7 @@ class Keeper:
             pg_end = f"dt < '{end}'" if end else "TRUE"
 
             pg_condition = (
-                f"{pg_strategy} AND {pg_statuses} AND "
-                f"{pg_begin} AND {pg_end}"
+                f"{pg_strategy} AND {pg_statuses} AND {pg_begin} AND {pg_end}"
             )
             return pg_condition
 
@@ -2136,7 +2152,7 @@ class Keeper:
         for info in cache.formatted:
             pg_source = f"'{cache.source.name}'"
             pg_itype = f"'{cache.type.name}'"
-            pg_figi = f"'{info["figi"]}'"
+            pg_figi = f"'{info['figi']}'"
             json_str = Cmd.toJson(info, encoder=cache.encoderJson)
             pg_asset_info = f"'{json_str}'"
 
@@ -2183,6 +2199,26 @@ class Keeper:
 
         pg_values = pg_values[0:-2]  # remove ",\n" after last value
         return pg_values
+
+    # }}}
+
+    @classmethod  # __deleteOldBackup   # {{{
+    def __deleteOldBackup(cls) -> None:
+        logger.debug(f"{cls.__name__}.__deleteOldBackup()")
+
+        files = Cmd.content(Auto.BACKUP_PATH, full_path=True)
+        data_files = sorted([i for i in files if "data_" in i])
+        public_files = sorted([i for i in files if "public_" in i])
+
+        # delete data backups
+        while len(data_files) > Auto.BACKUP_DATA_HISTORY:
+            Cmd.delete(data_files[0])
+            data_files.pop(0)
+
+        # delete public backups
+        while len(public_files) > Auto.BACKUP_PUBLIC_HISTORY:
+            Cmd.delete(public_files[0])
+            public_files.pop(0)
 
     # }}}
 

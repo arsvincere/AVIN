@@ -83,21 +83,33 @@ CREATE TABLE IF NOT EXISTS "Account" ( -- {{{
         ('Alex', 'Tinkoff'),
         ('Agni', 'Tinkoff');
 -- }}}
+CREATE TABLE IF NOT EXISTS "TT-List" ( -- {{{
+    list_name  text PRIMARY KEY
+    );
+    INSERT INTO "TT-List" (list_name)
+    VALUES
+        ('trader'),
+        ('unsorted');
+-- }}}
 CREATE TABLE IF NOT EXISTS "Test/Trader" ( -- {{{
-    name    text PRIMARY KEY,
-    type    "TradeListOwner" NOT NULL,
-    config  jsonb NOT NULL
+    name        text PRIMARY KEY,
+    mode        "Mode" NOT NULL,
+    config      jsonb NOT NULL,
+    list_name   text
+        REFERENCES "TT-List"(list_name)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
 );
 -- }}}
 CREATE VIEW "Test" AS -- {{{
-    SELECT name, config
+    SELECT name, config, list_name
     FROM "Test/Trader"
-    WHERE type = 'TEST';
+    WHERE mode = 'TEST';
 -- }}}
 CREATE VIEW "Trader" AS  -- {{{
-    SELECT name, config
+    SELECT name, config, list_name
     FROM "Test/Trader"
-    WHERE type = 'TRADER'
+    WHERE mode = 'TRADER';
 -- }}}
 CREATE TABLE IF NOT EXISTS "TradeList" ( -- {{{
     trade_list_name text PRIMARY KEY,
@@ -119,7 +131,8 @@ CREATE TABLE IF NOT EXISTS "Trade" ( -- {{{
     trade_type  "Trade.Type" NOT NULL,
     trade_info  jsonb NOT NULL,
     FOREIGN KEY (strategy, version)
-        REFERENCES "Strategy" (strategy_name, version) ON UPDATE CASCADE
+        REFERENCES "Strategy" (strategy_name, version)
+        ON UPDATE CASCADE
     );
 -- }}}
 CREATE TABLE IF NOT EXISTS "Order" ( -- {{{
@@ -181,58 +194,19 @@ CREATE TABLE IF NOT EXISTS "Operation" ( -- {{{
     );
 -- }}}
 
-CREATE TABLE IF NOT EXISTS "TestList" ( -- {{{
-    test_list_name  text PRIMARY KEY
-    );
-    INSERT INTO "TestList" (test_list_name)
-    VALUES ('unsorted');
--- }}}
-CREATE TABLE IF NOT EXISTS "TestList-Test" ( -- {{{
-    test_list_name text
-        REFERENCES "TestList"(test_list_name)
-        ON UPDATE CASCADE ON DELETE CASCADE,
-    test text
-        REFERENCES "Test/Trader"(name)
-        ON UPDATE CASCADE ON DELETE CASCADE
+CREATE TABLE IF NOT EXISTS "Analytic" ( -- {{{
+    analytic_name   text PRIMARY KEY
     );
 -- }}}
-
 CREATE TABLE IF NOT EXISTS "AnalyticData" ( -- {{{
-    analytic_name   text,
+    analytic_name   text
+        REFERENCES "Analytic"(analytic_name)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
     figi            text
         REFERENCES "Asset"(figi),
     analyse_json    jsonb NOT NULL,
     PRIMARY KEY     (analytic_name, figi)
     );
 -- }}}
-
--- CREATE TABLE IF NOT EXISTS "Test" ( -- {{{
---     test_name       text PRIMARY KEY,
---     test_list       text REFERENCES "TestList"(test_list_name)
---                     ON UPDATE CASCADE ON DELETE CASCADE,
---     strategy        text NOT NULL,
---     version         text NOT NULL,
---     figi            text NOT NULL,
---     enable_long     bool NOT NULL,
---     enable_short    bool NOT NULL,
---     account         text REFERENCES "Account"(account_name)
---                     ON UPDATE CASCADE,
---     status          "Test.Status" NOT NULL,
---     deposit         float NOT NULL,
---     commission      float NOT NULL,
---     begin_date      date NOT NULL,
---     end_date        date NOT NULL,
---     description     text NOT NULL,
---     FOREIGN KEY (strategy, version)
---         REFERENCES "Strategy" (strategy_name, version) ON UPDATE CASCADE
---     );
--- -- }}}
--- CREATE TABLE IF NOT EXISTS "Trader" ( -- {{{
---     trader_name     text PRIMARY KEY,
---     account         text REFERENCES "Account"(account_name)
---                     ON UPDATE CASCADE,
---     strategy_set    text REFERENCES "StrategySet"(strategy_set_name)
---                     ON UPDATE CASCADE
---     );
--- -- }}}
 

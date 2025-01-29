@@ -20,7 +20,7 @@ CREATE TYPE "InstrumentType" AS ENUM (--{{{
     );
 --}}}
 
-CREATE TYPE "TradeListOwner" AS ENUM (--{{{
+CREATE TYPE "Mode" AS ENUM (--{{{
     'TEST', 'TRADER'
     );
 --}}}
