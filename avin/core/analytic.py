@@ -13,13 +13,18 @@ from abc import ABC, abstractmethod
 
 import asyncpg
 
-from avin.config import Usr
+from avin.config import Auto, Usr
 from avin.core.asset import Asset
 from avin.keeper import Keeper
 from avin.utils import Cmd, logger
 
 
 class Analytic(ABC):  # {{{
+    __AUTO_UPDATE = Auto.UPDATE_ANALYTIC
+    __UPDATE_PERIOD = Auto.UPDATE_ANALYTIC_PERIOD
+    __LAST_UPDATE_FILE = Cmd.path(Usr.ANALYTIC, "last_update")
+    __ANALYTIC_IS_UP_TO_DATE = False
+
     @classmethod  # abstractmethod update  # {{{
     @abstractmethod
     async def update(cls, analytic_name) -> None:
@@ -49,6 +54,8 @@ class Analytic(ABC):  # {{{
     @classmethod  # load  # {{{
     async def load(cls, analytic_name: str) -> Analytic:
         logger.debug(f"{cls.__name__}.load()")
+
+        await cls.__checkUpdate()
 
         file_path = Cmd.path(Usr.ANALYTIC, f"{analytic_name}.py")
         if not Cmd.isExist(file_path):
@@ -87,6 +94,43 @@ class Analytic(ABC):  # {{{
         all_uanalytic_names = await cls.requestAll()
         for name in all_uanalytic_names:
             await cls.update(name)
+
+    # }}}
+
+    @classmethod  # __checkUpdate  # {{{
+    def __checkUpdate(cls):
+        logger.debug(f"{cls.__name__}.checkUpdate()")
+
+        # check update flag
+        if cls.__ANALYTIC_IS_UP_TO_DATE:
+            return
+
+        # check update settings
+        if not cls.__AUTO_UPDATE:
+            return
+
+        # ckeck file with last update datetime
+        if not Cmd.isExist(cls.__LAST_UPDATE_FILE):
+            need_update = True
+        else:
+            # read file, check last update > month ago
+            dt_str = Cmd.read(cls.__LAST_UPDATE_FILE)
+            last_update = datetime.fromisoformat(dt_str)
+            need_update = (now() - last_update) > cls.__UPDATE_PERIOD
+
+        if not need_update:
+            return
+
+        # update all user analytics
+        logger.info(":: Need update user analytic - starting update")
+        await cls.updateAll()
+
+        # save update datetime
+        dt = now().isoformat()
+        Cmd.write(dt, cls.__LAST_UPDATE_FILE)
+
+        # set class flag
+        cls.__ANALYTIC_IS_UP_TO_DATE = True
 
     # }}}
 

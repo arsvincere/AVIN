@@ -67,17 +67,21 @@ class Usr:  # {{{
 
 # }}}
 class Auto:  # {{{
-    # Update assets info every day
+    # Update assets info
     UPDATE_ASSET_CACHE: bool = True
 
-    # Update all availible market data every day
+    # Update market data
     UPDATE_MARKET_DATA: bool = True
 
-    # Run all convert tasks after update market data
+    # Run convert tasks after update market data
     CONVERT_MARKET_DATA: bool = True
 
+    # Update user analytics
+    UPDATE_ANALYTIC: bool = True
+    UPDATE_ANALYTIC_PERIOD: timedelta = timedelta(days=30)
+
     # Postgres backup
-    BACKUP_PATH: str = "/home/alex/postgres/"
+    BACKUP_PATH: str = Usr.DATA
     BACKUP_MARKET_DATA: bool = True
     BACKUP_USER_DB: bool = True
     BACKUP_DATA_HISTORY: int = 2  # files
