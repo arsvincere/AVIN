@@ -225,6 +225,7 @@ class _DataManager:
         return records
 
     # }}}
+
     @classmethod  # __getDataSourceClass  # {{{
     def __getDataSourceClass(cls, source: DataSource) -> object:
         logger.debug(f"{cls.__name__}.__getDataSourceClass()")
