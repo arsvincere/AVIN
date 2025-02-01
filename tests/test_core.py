@@ -985,15 +985,24 @@ async def conditionTrade(trade: Trade) -> bool:
 
 # }}}
 @pytest.mark.asyncio  # test_FilterList  # {{{
-async def test_Filter():
+async def test_FilterList():
     filter_list = FilterList("_unittest")
     assert str(filter_list) == "FilterList=_unittest"
     assert len(filter_list) == 0
     assert filter_list.name == "_unittest"
 
-    f1 = Filter.load("/home/alex/AVIN/usr/filter/size/b1/body/=/1_big.py")
-    f2 = Filter.load("/home/alex/AVIN/usr/filter/size/b1/body/=/2_bigger.py")
-    f3 = Filter.load("/home/alex/AVIN/usr/filter/size/b1/body/=/3_biggest.py")
+    # load filters from files
+    f1 = Filter.loadFromFile(
+        "/home/alex/AVIN/usr/filter/size/b1/body/1_big.py"
+    )
+    f2 = Filter.loadFromFile(
+        "/home/alex/AVIN/usr/filter/size/b1/body/2_bigger.py"
+    )
+    f3 = Filter.loadFromFile(
+        "/home/alex/AVIN/usr/filter/size/b1/body/3_biggest.py"
+    )
+
+    # without filter list path = "Usr.FILTER/filter_name.py"
     assert f1.path == "/home/alex/AVIN/usr/filter/1_big.py"
     assert f2.path == "/home/alex/AVIN/usr/filter/2_bigger.py"
     assert f3.path == "/home/alex/AVIN/usr/filter/3_biggest.py"
@@ -1049,6 +1058,8 @@ async def test_Filter():
 
 
 # }}}
+
+
 @pytest.mark.asyncio  # test_clear_all_test_vars  # {{{
 async def test_clear_all_test_vars():
     request = """

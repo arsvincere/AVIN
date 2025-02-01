@@ -6,8 +6,6 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-from datetime import datetime
-
 import pytest
 from avin import *
 
@@ -269,15 +267,15 @@ async def test_Data_request():
     abrd = id_list[0]
 
     # request period is half open [begin, end)  (august 2023)
-    begin = datetime(2023, 8, 1, tzinfo=UTC)
-    end = datetime(2023, 9, 1, tzinfo=UTC)
+    begin = DateTime(2023, 8, 1, tzinfo=UTC)
+    end = DateTime(2023, 9, 1, tzinfo=UTC)
     records = await Data.request(abrd, DataType.BAR_D, begin, end)
     assert records[0]["dt"] == begin
     assert records[-1]["dt"] == end - ONE_DAY
 
     # request timeframe M from all 2023 year
-    begin = datetime(2023, 1, 1, tzinfo=UTC)
-    end = datetime(2024, 1, 1, tzinfo=UTC)
+    begin = DateTime(2023, 1, 1, tzinfo=UTC)
+    end = DateTime(2024, 1, 1, tzinfo=UTC)
     records = await Data.request(abrd, DataType.BAR_M, begin, end)
     assert len(records) == 12  # 12 mounth in year
 

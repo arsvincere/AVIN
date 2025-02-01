@@ -203,10 +203,11 @@ CREATE TABLE IF NOT EXISTS "AnalyticData" ( -- {{{
         REFERENCES "Analytic"(analytic_name)
         ON UPDATE CASCADE
         ON DELETE CASCADE,
+    analyse_name   text,
     figi            text
         REFERENCES "Asset"(figi),
     analyse_json    jsonb NOT NULL,
-    PRIMARY KEY     (analytic_name, figi)
+    PRIMARY KEY     (analytic_name, analyse_name, figi)
     );
 -- }}}
 

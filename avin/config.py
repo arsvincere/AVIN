@@ -77,11 +77,11 @@ class Auto:  # {{{
     CONVERT_MARKET_DATA: bool = True
 
     # Postgres backup
-    BACKUP_PATH = "/home/alex/postgres/"
+    BACKUP_PATH: str = "/home/alex/postgres/"
     BACKUP_MARKET_DATA: bool = True
     BACKUP_USER_DB: bool = True
-    BACKUP_DATA_HISTORY = 2  # files
-    BACKUP_PUBLIC_HISTORY = 10  # files
+    BACKUP_DATA_HISTORY: int = 2  # files
+    BACKUP_PUBLIC_HISTORY: int = 10  # files
 
 
 # }}}

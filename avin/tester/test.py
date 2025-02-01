@@ -59,6 +59,7 @@ class Test:  # {{{
         self.__description = ""
         self.__account = "_backtest"
         self.__trade_list = TradeList(f"{self}-trade_list")
+        self.__test_list = None
         self.__status = Test.Status.NEW
         self.__time_step = TimeFrame("1M")
 
@@ -187,6 +188,15 @@ class Test:  # {{{
         if trade_list is not None:
             trade_list.name = f"{self}-trade_list"
             trade_list.setOwner(self)
+
+    # }}}
+    @property  # test_list  # {{{
+    def test_list(self):
+        return self.__test_list
+
+    @test_list.setter
+    def test_list(self, test_list: TestList):
+        self.__test_list = test_list
 
     # }}}
     @property  # status  # {{{
@@ -380,7 +390,8 @@ class Test:  # {{{
         obj = Cmd.fromJson(string)
 
         test = Test(obj["name"])
-        logger.info(f":: Loading {test}")
+        logger.info(f"   - loading {test}")
+
         test.strategy = await Strategy.load(obj["strategy"], obj["version"])
         test.asset = await Asset.fromFigi(obj["figi"])
         test.enable_long = obj["enable_long"]
@@ -464,6 +475,7 @@ class TestList:  # {{{
         assert isinstance(test, Test)
 
         if test not in self:
+            test.test_list = self
             self.__tests.append(test)
             return
 
@@ -475,14 +487,16 @@ class TestList:  # {{{
 
         try:
             self.__tests.remove(test)
+            test.test_list = None
         except ValueError:
-            logger.warning(
-                f"Test.remove(test) failed: '{test}' not in list",
-            )
+            logger.warning(f"'{test}' not in list '{self.name}'")
 
     # }}}
     def clear(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.clear()")
+
+        for test in self.__tests:
+            test.test_list = None
 
         self.__tests.clear()
 
@@ -507,12 +521,15 @@ class TestList:  # {{{
 
         await Keeper.delete(test_list)
         await Keeper.add(test_list)
+        for test in test_list:
+            await Test.save(test)
 
     # }}}
     @classmethod  # load  # {{{
     async def load(cls, name: str) -> TestList | None:
         logger.debug(f"{cls.__name__}.load()")
 
+        logger.info(f":: Loading TestList {name}")
         test_list = await Keeper.get(cls, name=name)
         return test_list
 

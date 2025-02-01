@@ -153,6 +153,10 @@ class Keeper:
     def checkBackupData(cls):
         logger.debug(f"{cls.__name__}.checkBackupData()")
 
+        # check user backup settings
+        if not cls.__BACKUP_DATA:
+            return
+
         # ckeck file with last update datetime
         if not Cmd.isExist(cls.__LAST_BACKUP_DATA_DT):
             need_update = True
@@ -175,6 +179,10 @@ class Keeper:
     @classmethod  # checkBackupUser  # {{{
     def checkBackupUser(cls):
         logger.debug(f"{cls.__name__}.checkBackupUser()")
+
+        # check user backup settings
+        if not cls.__BACKUP_USER:
+            return
 
         # ckeck file with last update datetime
         if not Cmd.isExist(cls.__LAST_BACKUP_USER_DT):
@@ -260,7 +268,7 @@ class Keeper:
 
     # }}}
     @classmethod  # add  # {{{
-    async def add(cls, obj: Any) -> None:
+    async def add(cls, obj: Any, **kwargs) -> None:
         logger.debug(f"{cls.__name__}.add()")
 
         # Get class_name & choose method
@@ -289,12 +297,13 @@ class Keeper:
             "TakeProfit": cls.__addOrder,
             "Test": cls.__addTest,
             "TestList": cls.__addTestList,
+            "Analytic": cls.__addAnalytic,
             "AnalyticData": cls.__addAnalyticData,
         }
         add_method = methods[class_name]
 
         # Add object
-        await add_method(obj)
+        await add_method(obj, kwargs)
 
     # }}}
     @classmethod  # get  # {{{
@@ -360,6 +369,7 @@ class Keeper:
             "StopOrder": cls.__deleteOrder,
             "Test": cls.__deleteTest,
             "TestList": cls.__deleteTestList,
+            "Analytic": cls.__deleteAnalytic,
             "AnalyticData": cls.__deleteAnalyticData,
         }
         delete_method = methods[class_name]
@@ -412,7 +422,7 @@ class Keeper:
     #
     # # }}}
     @classmethod  # __addInstrument  # {{{
-    async def __addInstrument(cls, instrument) -> None:
+    async def __addInstrument(cls, instrument, kwargs) -> None:
         logger.debug(f"{cls.__name__}.__addInstrument()")
 
         request = f"""
@@ -444,7 +454,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __addBarsData  # {{{
-    async def __addBarsData(cls, data) -> None:
+    async def __addBarsData(cls, data, kwargs) -> None:
         logger.debug(f"{cls.__name__}.__addBarsData()")
 
         # Create table if not exist
@@ -498,7 +508,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __addAsset  # {{{
-    async def __addAsset(cls, asset) -> None:
+    async def __addAsset(cls, asset, kwargs) -> None:
         logger.debug(f"{cls.__name__}.__addAsset()")
 
         request = f"""
@@ -514,7 +524,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __addAssetList  # {{{
-    async def __addAssetList(cls, alist) -> None:
+    async def __addAssetList(cls, alist, kwargs) -> None:
         logger.debug(f"{cls.__name__}.__addAssetList()")
 
         # Add asset list
@@ -540,7 +550,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __addAccount  # {{{
-    async def __addAccount(cls, account) -> None:
+    async def __addAccount(cls, account, kwargs) -> None:
         logger.debug(f"{cls.__name__}.__addAccount()")
 
         request = f"""
@@ -564,7 +574,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __addStrategy  # {{{
-    async def __addStrategy(cls, strategy) -> None:
+    async def __addStrategy(cls, strategy, kwargs) -> None:
         logger.debug(f"{cls.__name__}.__addStrategy()")
 
         request = f"""
@@ -583,7 +593,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __addStrategySet  # {{{
-    async def __addStrategySet(cls, s_set) -> None:
+    async def __addStrategySet(cls, s_set, kwargs) -> None:
         logger.debug(f"{cls.__name__}.__addStrategySet()")
 
         # add StrategySet
@@ -617,7 +627,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __addTradeList  # {{{
-    async def __addTradeList(cls, trade_list) -> None:
+    async def __addTradeList(cls, trade_list, kwargs) -> None:
         logger.debug(f"{cls.__name__}.__addTradeList()")
 
         request = f"""
@@ -628,7 +638,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __addTrade  # {{{
-    async def __addTrade(cls, trade) -> None:
+    async def __addTrade(cls, trade, kwargs) -> None:
         logger.debug(f"{cls.__name__}.__addTrade()")
 
         # add trade
@@ -660,7 +670,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __addOrder  # {{{
-    async def __addOrder(cls, order) -> None:
+    async def __addOrder(cls, order, kwargs) -> None:
         logger.debug(f"{cls.__name__}.__addOrder()")
 
         # format prices
@@ -724,7 +734,7 @@ class Keeper:
 
     # }}}
     @classmethod  # __addOperation  # {{{
-    async def __addOperation(cls, operation) -> None:
+    async def __addOperation(cls, operation, kwargs) -> None:
         logger.debug(f"{cls.__name__}.__addOperation()")
 
         request = f"""
@@ -763,64 +773,80 @@ class Keeper:
 
     # }}}
     @classmethod  # __addTest  # {{{
-    async def __addTest(cls, test) -> None:
+    async def __addTest(cls, test, kwargs) -> None:
         logger.debug(f"{cls.__name__}.__addTest()")
+
+        test_list_name = test.test_list.name if test.test_list else "unsorted"
 
         # add test
         request = f"""
             INSERT INTO "Test/Trader" (
                 name,
-                type,
-                config
+                mode,
+                config,
+                list_name
                 )
             VALUES (
                 '{test.name}',
                 'TEST',
-                '{test.toJson(test)}'
+                '{test.toJson(test)}',
+                '{test_list_name}'
                 );
             """
         await cls.transaction(request)
 
     # }}}
     @classmethod  # __addTestList  # {{{
-    async def __addTestList(cls, test_list) -> None:
+    async def __addTestList(cls, test_list, kwargs) -> None:
         logger.debug(f"{cls.__name__}.__addTestList()")
 
         # Add test list
         request = f"""
-            INSERT INTO "TestList"(test_list_name)
+            INSERT INTO "TT-List"(list_name)
             VALUES ('{test_list.name}');
         """
         await cls.transaction(request)
 
-        # if test list is empty - return
-        if len(test_list) == 0:
-            return
+    # }}}
+    @classmethod  # __addAnalytic  # {{{
+    async def __addAnalytic(cls, Analytic, kwargs) -> None:
+        logger.debug(f"{cls.__name__}.__addAnalytic()")
 
-        # Add tests
-        pg_values = cls.__formatTestList(test_list)
+        name = kwargs["name"]
+        pg_name = f"'{name}'"
+
+        # Add user analytic
         request = f"""
-            INSERT INTO "TestList-Test" (test_list_name, test)
-            VALUES
-                {pg_values}
+            INSERT INTO "Analytic"(analytic_name)
+            VALUES ({pg_name})
             ;
             """
         await cls.transaction(request)
 
     # }}}
-
     @classmethod  # __addAnalyticData  # {{{
-    async def __addAnalyticData(cls, analytic_data) -> None:
+    async def __addAnalyticData(cls, analytic_data, kwargs) -> None:
         logger.debug(f"{cls.__name__}.__addAnalyticData()")
 
-        pg_name = f"'{analytic_data.name}'"
+        pg_analytic_name = f"'{analytic_data.analytic_name}'"
+        pg_analyse_name = f"'{analytic_data.analyse_name}'"
         pg_figi = f"'{analytic_data.asset.figi}'"
         pg_data = f"'{analytic_data.json_str}'"
 
         # Add analytic data
         request = f"""
-            INSERT INTO "AnalyticData" (analytic_name, figi, analyse_json)
-            VALUES ({pg_name}, {pg_figi}, {pg_data})
+            INSERT INTO "AnalyticData" (
+                analytic_name,
+                analyse_name,
+                figi,
+                analyse_json
+            )
+            VALUES (
+                {pg_analytic_name},
+                {pg_analyse_name},
+                {pg_figi},
+                {pg_data}
+            )
             ;
             """
         await cls.transaction(request)
@@ -1542,7 +1568,8 @@ class Keeper:
         request = f"""
             SELECT
                 "Test".name,
-                "Test".config
+                "Test".config,
+                "Test".list_name
             FROM "Test"
             WHERE "Test".name = '{name}'
             ;
@@ -1567,13 +1594,17 @@ class Keeper:
         # return list[str_names] if flag 'get_only_names'
         if get_only_names:
             request = """
-                SELECT test_list_name FROM "TestList";
+                SELECT list_name FROM "TT-List";
                 """
             records = await cls.transaction(request)
             all_names = list()
             for i in records:
-                name = i["test_list_name"]
+                name = i["list_name"]
+                if name == "trader":
+                    continue
+
                 all_names.append(name)
+
             return all_names
 
         # return None if not name in kwargs
@@ -1581,12 +1612,12 @@ class Keeper:
         if not name:
             return None
 
-        # check existing asset list with this name
+        # check existing test list with this name
         # return None if not exist
         request = f"""
-            SELECT test_list_name  FROM "TestList"
+            SELECT list_name  FROM "TT-List"
             WHERE
-                test_list_name = '{name}'
+                list_name = '{name}'
             ;
             """
         records = await cls.transaction(request)
@@ -1596,55 +1627,41 @@ class Keeper:
         # request tests of test list
         request = f"""
             SELECT
-                "TestList-Test".test_list_name,
                 "Test/Trader".name,
-                "Test/Trader".config
-            FROM "TestList-Test"
-            JOIN "Test/Trader"
-                ON "TestList-Test".test = "Test/Trader".name
+                "Test/Trader".mode,
+                "Test/Trader".config,
+                "Test/Trader".list_name
+            FROM "Test/Trader"
             WHERE
-                "TestList-Test".test_list_name = '{name}'
+                "Test/Trader".list_name = '{name}'
             ORDER BY name
             ;
             """
         records = await cls.transaction(request)
 
-        alist = await TestList.fromRecord(name, records)
-        return alist
+        test_list = await TestList.fromRecord(name, records)
+        return test_list
 
     # }}}
     @classmethod  # __getAnalyticData  # {{{
     async def __getAnalyticData(cls, AnalyticData, kwargs: dict) -> None:
         logger.debug(f"{cls.__name__}.__getAnalyticData()")
 
-        # if flag get only names
-        only_names = kwargs.get("get_only_names")
-        if only_names is not None:
-            request = """
-                SELECT
-                    "AnalyticData".analytic_name
-                FROM "AnalyticData"
-                ;
-                """
-            records = await cls.transaction(request)
-            all_names = list()
-            for i in records:
-                name = i["analytic_name"]
-                if name not in all_names:
-                    all_names.append(name)
-            return all_names
-
-        # else request analytic data
-        name = kwargs.get("name")
+        analytic_name = kwargs.get("analytic_name")
+        analyse_name = kwargs.get("analyse_name")
         figi = kwargs.get("figi")
+
+        # request analytic data
         request = f"""
             SELECT
                 "AnalyticData".analytic_name,
+                "AnalyticData".analyse_name,
                 "AnalyticData".figi,
                 "AnalyticData".analyse_json
             FROM "AnalyticData"
             WHERE
-                "AnalyticData".analytic_name = '{name}' AND
+                "AnalyticData".analytic_name = '{analytic_name}' AND
+                "AnalyticData".analyse_name = '{analyse_name}' AND
                 "AnalyticData".figi = '{figi}'
             ;
             """
@@ -1889,14 +1906,25 @@ class Keeper:
         logger.debug(f"{cls.__name__}.__deleteTestList()")
 
         request = f"""
-            DELETE FROM "TestList-Test"
-            WHERE test_list_name = '{test_list.name}';
+            DELETE FROM "TT-List"
+            WHERE list_name = '{test_list.name}';
             """
         await cls.transaction(request)
 
+    # }}}
+    @classmethod  # __deleteAnalytic  # {{{
+    async def __deleteAnalytic(cls, Analytic, kwargs: dict) -> None:
+        logger.debug(f"{cls.__name__}.__deleteAnalytic()")
+
+        name = kwargs["name"]
+        pg_name = f"'{name}'"
+
+        # Delete user analytic
         request = f"""
-            DELETE FROM "TestList"
-            WHERE test_list_name = '{test_list.name}';
+            DELETE FROM "Analytic"
+            WHERE
+                "Analytic".analytic_name = {pg_name}
+            ;
             """
         await cls.transaction(request)
 
@@ -1905,14 +1933,16 @@ class Keeper:
     async def __deleteAnalyticData(cls, analytic_data, kwargs: dict) -> None:
         logger.debug(f"{cls.__name__}.__deleteAnalyticData()")
 
-        pg_name = f"'{analytic_data.name}'"
+        pg_analytic_name = f"'{analytic_data.analytic_name}'"
+        pg_analyse_name = f"'{analytic_data.analyse_name}'"
         pg_figi = f"'{analytic_data.asset.figi}'"
 
-        # Add analytic data
+        # Delete analytic data
         request = f"""
             DELETE FROM "AnalyticData"
             WHERE
-                "AnalyticData".analytic_name = {pg_name} AND
+                "AnalyticData".analytic_name = {pg_analytic_name} AND
+                "AnalyticData".analyse_name = {pg_analyse_name} AND
                 "AnalyticData".figi = {pg_figi}
             ;
             """

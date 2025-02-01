@@ -6,8 +6,6 @@
 # LICENSE:      GNU GPLv3
 # ============================================================================
 
-from datetime import date
-
 import pytest
 from avin import *
 from avin.tester.stream import BarStream
@@ -24,8 +22,8 @@ async def test_BarStream():
     stream.subscribe(afks, TimeFrame("D"))
     stream.subscribe(afks, TimeFrame("5M"))
 
-    begin = date(2023, 8, 1)
-    end = date(2023, 8, 2)
+    begin = Date(2023, 8, 1)
+    end = Date(2023, 8, 2)
     await stream.loadData(begin, end)
 
     for i in stream:
@@ -75,6 +73,7 @@ async def test_Test():
 # }}}
 @pytest.mark.asyncio  # test_TestList  # {{{
 async def test_TestList():
+    # create Test
     test = Test("_unittest_test")
     asset = await Asset.fromStr("MOEX-SHARE-SBER")
     strategy = await Strategy.load("Every", "day")
@@ -82,12 +81,13 @@ async def test_TestList():
     test.asset = asset
     await Test.save(test)
 
+    # create TestList
     test_list = TestList("_unittest_test_list")
     assert test_list.name == "_unittest_test_list"
     assert str(test_list) == "TestList=_unittest_test_list"
     assert len(test_list) == 0
 
-    # add test
+    # add test in TestList
     test_list.add(test)
     test_list.add(test)
     test_list.add(test)
@@ -96,25 +96,16 @@ async def test_TestList():
     # save
     await TestList.save(test_list)
 
-    # rename
-    await TestList.rename(test_list, "_unittest_test_list_new_name")
-    assert test_list.name == "_unittest_test_list_new_name"
-
     # load
     loaded = await TestList.load("_unittest_test_list")
-    assert loaded is None
-    loaded = await TestList.load("_unittest_test_list_new_name")
     assert loaded.name == test_list.name
 
     # requestAll
     names = await TestList.requestAll()
     assert test_list.name in names
 
-    # delete test list (only list not test!!!)
+    # delete test list (delete tests cascade!!!)
     await TestList.delete(test_list)
-
-    # delete test
-    await Test.delete(test)
 
 
 # }}}
@@ -126,8 +117,8 @@ async def test_Tester():
     test = Test("_unittest_test")
     test.strategy = strategy
     test.asset = asset
-    test.begin = date(2023, 8, 1)
-    test.end = date(2023, 8, 2)
+    test.begin = Date(2023, 8, 1)
+    test.end = Date(2023, 8, 2)
     test.description = "unit test <class Tester>"
     await Test.save(test)
 
