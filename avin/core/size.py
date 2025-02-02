@@ -12,7 +12,6 @@ import enum
 
 
 class Size(enum.Enum):
-    UNDEFINE = None
     BLACKSWAN_SMALL = -7
     ANOMAL_SMALL = -6
     EXTRA_SMALL = -5
@@ -70,6 +69,57 @@ class Size(enum.Enum):
             "BLACKSWAN_BIG": Size.BLACKSWAN_BIG,
         }
         return sizes[string_size]
+
+    # }}}
+
+
+class SimpleSize(enum.Enum):
+    SMALLEST = -3
+    SMALL = -1
+    NORMAL = 0
+    BIG = 1
+    BIGGEST = 3
+
+    def __eq__(self, other):  # operator ==  # {{{
+        if isinstance(other, SimpleSize):
+            return self.value == other.value
+
+        assert isinstance(other, Size)
+        match self:
+            case SimpleSize.SMALLEST:
+                eq = (
+                    Size.BLACKSWAN_SMALL.value,
+                    Size.ANOMAL_SMALL.value,
+                    Size.EXTRA_SMALL.value,
+                    Size.VERY_SMALL.value,
+                    Size.SMALLEST.value,
+                )
+            case SimpleSize.SMALL:
+                eq = (
+                    Size.SMALLER.value,
+                    Size.SMALL.value,
+                )
+            case SimpleSize.NORMAL:
+                eq = (Size.NORMAL.value,)
+            case SimpleSize.BIG:
+                eq = (
+                    Size.BIG.value,
+                    Size.BIGGER.value,
+                )
+            case SimpleSize.BIGGEST:
+                eq = (
+                    Size.BIGGEST.value,
+                    Size.VERY_BIG.value,
+                    Size.EXTRA_BIG.value,
+                    Size.ANOMAL_BIG.value,
+                    Size.BLACKSWAN_BIG.value,
+                )
+
+        return other.value in eq
+
+    # }}}
+    def __hash__(self):  # {{{
+        return hash(self.value)
 
     # }}}
 
