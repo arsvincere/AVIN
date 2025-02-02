@@ -98,7 +98,7 @@ class Analytic(ABC):  # {{{
     # }}}
 
     @classmethod  # __checkUpdate  # {{{
-    def __checkUpdate(cls):
+    async def __checkUpdate(cls):
         logger.debug(f"{cls.__name__}.checkUpdate()")
 
         # check update flag
@@ -183,7 +183,9 @@ class AnalyticData:  # {{{
         asset = await Asset.fromFigi(record["figi"])
         json_str = record["analyse_json"]
 
-        analytic_data = AnalyticData(analytic_, analyse_name, asset, json_str)
+        analytic_data = AnalyticData(
+            analytic_name, analyse_name, asset, json_str
+        )
         return analytic_data
 
     # }}}

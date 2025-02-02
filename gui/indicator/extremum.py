@@ -197,11 +197,11 @@ class _GTrend(QtWidgets.QGraphicsItemGroup):  # {{{
                 color = self.COLOR_5M
 
         match self.trend.term:
-            case Term.SHORTTERM:
+            case Term.STERM:
                 width = self.SHORTTERM_WIDTH
-            case Term.MIDTERM:
+            case Term.MTERM:
                 width = self.MIDTERM_WIDTH
-            case Term.LONGTERM:
+            case Term.LTERM:
                 width = self.LONGTERM_WIDTH
 
         line = QtWidgets.QGraphicsLineItem(

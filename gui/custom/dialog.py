@@ -35,6 +35,7 @@ class Dialog:
 
         dial = _InfoDialog()
         dial.info(msg)
+        logger.info(msg)
 
     # }}}
     @classmethod  # error  # {{{
@@ -43,6 +44,7 @@ class Dialog:
 
         dial = _ErrorDialog()
         dial.error(msg)
+        logger.error(msg)
 
     # }}}
     @classmethod  # name  # {{{

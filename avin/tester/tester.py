@@ -32,16 +32,16 @@ class Tester:
 
         self.__loadBroker()
         self.__setAccount()
-        self.__setTradeList()
         self.__createEmptyCharts()
         self.__createBarStream()
 
         await self.__clearTest()
+        await self.__setTradeList()
         await self.__connectStrategy()
         await self.__startStrategy()
         await self.__runDataStream()
         await self.__finishStrategy()
-        await self.__updateTest()
+        await self.__updateTestStatus()
 
         logger.info(f":: {self.__test} complete!")
         self.__clearAll()
@@ -62,13 +62,6 @@ class Tester:
 
         account = self.__broker.getAccount(self.__test.account)
         self.__test.strategy.setAccount(account)
-
-    # }}}
-    def __setTradeList(self) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.__setTradeList()")
-
-        trade_list = self.__test.trade_list
-        self.__test.strategy.setTradeList(trade_list)
 
     # }}}
     def __createEmptyCharts(self) -> None:  # {{{
@@ -107,6 +100,13 @@ class Tester:
         await Test.update(self.__test)
 
     # }}}
+    async def __setTradeList(self) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.__setTradeList()")
+
+        trade_list = self.__test.trade_list
+        self.__test.strategy.setTradeList(trade_list)
+
+    # }}}
     async def __connectStrategy(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__connectStrategy()")
 
@@ -138,8 +138,8 @@ class Tester:
         await self.__test.strategy.finish()
 
     # }}}
-    async def __updateTest(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__updateTest()")
+    async def __updateTestStatus(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__updateTestStatus()")
 
         self.__test.status = Test.Status.COMPLETE
         await Test.update(self.__test)

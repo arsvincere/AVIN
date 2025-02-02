@@ -11,19 +11,19 @@ import sys
 from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtCore import Qt
 
-from avin import Test, TradeList
+from avin import Trade, TradeList
 from avin.utils import logger
 from gui.custom import Css, Dialog
 from gui.summary.thread import TLoadTrades
-from gui.summary.tree import TradeListTree
+from gui.trade.tree import TradeTree
 
 
-class SummaryDockWidget(QtWidgets.QDockWidget):  # {{{
+class TradeDockWidget(QtWidgets.QDockWidget):  # {{{
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
-        QtWidgets.QDockWidget.__init__(self, "Summary", parent)
+        QtWidgets.QDockWidget.__init__(self, "Trades", parent)
 
-        self.widget = SummaryWidget(self)
+        self.widget = TradeWidget(self)
         self.setWidget(self.widget)
         self.setStyleSheet(Css.DOCK_WIDGET)
 
@@ -42,17 +42,17 @@ class SummaryDockWidget(QtWidgets.QDockWidget):  # {{{
 
         # }}}
 
-    def setTest(self, test: Test) -> None:  # {{{
+    def setTradeList(self, trade_list: TradeList) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.setTest()")
 
-        self.widget.setTest(test)
+        self.widget.setTradeList(trade_list)
 
     # }}}
 
 
 # }}}
-class SummaryWidget(QtWidgets.QWidget):  # {{{
-    tradeListChanged = QtCore.pyqtSignal(TradeList)
+class TradeWidget(QtWidgets.QWidget):  # {{{
+    tradeChanged = QtCore.pyqtSignal(Trade)
 
     def __init__(self, parent=None):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
@@ -63,19 +63,15 @@ class SummaryWidget(QtWidgets.QWidget):  # {{{
         self.__createLayots()
         self.__connect()
 
-        self.__test = None
-        self.__thread = None
+        self.__trade_list = None
 
     # }}}
 
-    def setTest(self, test) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.setTest()")
+    def setTradeList(self, trade_list: TradeList) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.setTradeList()")
 
-        self.__test = test
-        if test.trade_list is not None:
-            self.__showSummary()
-        else:
-            self.__showButtonLoadTrades()
+        self.__trade_list = trade_list
+        self.__tree.setTradeList(trade_list)
 
     # }}}
 
@@ -90,8 +86,7 @@ class SummaryWidget(QtWidgets.QWidget):  # {{{
     def __createWidgets(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createWidgets()")
 
-        self.__tree = TradeListTree(self)
-        self.__load_btn = QtWidgets.QPushButton("Load trades")
+        self.__tree = TradeTree(self)
 
     # }}}
     def __createLayots(self):  # {{{
@@ -100,31 +95,13 @@ class SummaryWidget(QtWidgets.QWidget):  # {{{
         vbox = QtWidgets.QVBoxLayout()
         vbox.setContentsMargins(0, 0, 0, 0)
         vbox.addWidget(self.__tree)
-        vbox.addWidget(self.__load_btn)
         self.setLayout(vbox)
 
     # }}}
     def __connect(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__connect()")
 
-        self.__load_btn.clicked.connect(self.__loadTradeList)
         self.__tree.clicked.connect(self.__onTreeClicked)
-
-    # }}}
-    def __showSummary(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__showSummary()")
-
-        self.__load_btn.hide()
-        self.__tree.show()
-
-        self.__tree.setTradeList(self.__test.trade_list)
-
-    # }}}
-    def __showButtonLoadTrades(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.__showButtonLoadTrades()")
-
-        self.__load_btn.show()
-        self.__tree.hide()
 
     # }}}
     def __loadTradeList(self):  # {{{
@@ -164,8 +141,8 @@ class SummaryWidget(QtWidgets.QWidget):  # {{{
         logger.debug(f"{self.__class__.__name__}.__onTreeClicked()")
 
         item = self.__tree.currentItem()
-        trade_list = item.trade_list
-        self.tradeListChanged.emit(trade_list)
+        trade = item.trade
+        self.tradeChanged.emit(trade)
 
     # }}}
 
@@ -175,6 +152,6 @@ class SummaryWidget(QtWidgets.QWidget):  # {{{
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    w = SummaryWidget()
+    w = TradeWidget()
     w.show()
     sys.exit(app.exec())

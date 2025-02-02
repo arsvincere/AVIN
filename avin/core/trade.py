@@ -864,6 +864,11 @@ class TradeList:  # {{{
 
     # }}}
 
+    # TODO: думаю эти методы скорее относятся к
+    # классам Filter, FilterList
+    # лучше им передавать трейд лист и пусть они
+    # там работают. А метод _createChild тогда сделать
+    # публичным и они (Filter, FilterList) пусть его дергают
     async def selectFilter(self, f) -> TradeList:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectFilter()")
 
@@ -922,6 +927,7 @@ class TradeList:  # {{{
                 child = await current.anyOfFilterList(child_filter_list)
 
     # }}}
+
     def selectStatus(self, status: Trade.Status) -> TradeList:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectStatus()")
 

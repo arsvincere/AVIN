@@ -335,6 +335,7 @@ class Test:  # {{{
         trade_list_name = f"{test}-trade_list"
 
         test.__trade_list = await TradeList.load(trade_list_name)
+        test.__trade_list.setOwner(test)
 
     # }}}
     @classmethod  # deleteTrades  # {{{
@@ -342,10 +343,10 @@ class Test:  # {{{
         logger.debug(f"{cls.__name__}.deleteTrades()")
 
         # если тест был загружен из БД без трейд листа, то
-        # создаем трейд лист со стандартным именем новый, пустой,
+        # создаем трейд лист со стандартным именем новый и пустой,
         # иначе чистим в рантайме тот что уже загружен
         if test.__trade_list is None:
-            test.__trade_list = TradeList(f"{self}-trade_list")
+            test.__trade_list = TradeList(f"{test}-trade_list")
         else:
             test.__trade_list.clear()
 
@@ -422,6 +423,9 @@ class TestList:  # {{{
 
         self.__name = name
         self.__tests = tests if tests else list()
+
+        for test in self.__tests:
+            test.test_list = self
 
     # }}}
     def __str__(self):  # {{{

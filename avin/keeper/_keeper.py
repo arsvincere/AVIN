@@ -2252,8 +2252,9 @@ class Keeper:
 
     # }}}
 
-    checkBackupData()
-    checkBackupUser()
+
+Keeper.checkBackupData()
+Keeper.checkBackupUser()
 
 
 if __name__ == "__main__":

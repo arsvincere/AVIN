@@ -29,6 +29,7 @@ class Icon:
     STRATEGY = QtGui.QIcon(Cmd.path(Res.ICON, "left", "strategy.svg"))
     SUMMARY = QtGui.QIcon(Cmd.path(Res.ICON, "left", "summary.svg"))
     TESTER = QtGui.QIcon(Cmd.path(Res.ICON, "left", "tester.svg"))
+    TRADE = QtGui.QIcon(Cmd.path(Res.ICON, "left", "trade.svg"))
 
     # Right panel
     BROKER = QtGui.QIcon(Cmd.path(Res.ICON, "right", "broker.svg"))
