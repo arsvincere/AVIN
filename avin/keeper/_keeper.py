@@ -1666,10 +1666,13 @@ class Keeper:
             ;
             """
         records = await cls.transaction(request)
+        if not records:
+            return None
+
         assert len(records) == 1
         record = records[0]
-
         analytic_data = await AnalyticData.fromRecord(record)
+
         return analytic_data
 
     # }}}
