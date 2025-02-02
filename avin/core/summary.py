@@ -29,12 +29,14 @@ class Summary:
 
     @property  # data_frame   # {{{
     def data_frame(self) -> pd.DataFrame:
-        df = pd.DataFrame([self.__summary])
-        for tl in self.__trade_list.childs:
-            df_child = Summary.calculate(tl)
-            df = pd.concat([df, df_child], ignore_index=True)
+        full_df = pd.DataFrame([self.__summary])
 
-        return df
+        for tl in self.__trade_list.childs:
+            child_summary = self.__calculate(tl)
+            child_df = pd.DataFrame([child_summary])
+            full_df = pd.concat([full_df, child_df], ignore_index=True)
+
+        return full_df
 
     # }}}
     @property  # name   # {{{
