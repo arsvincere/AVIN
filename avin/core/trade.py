@@ -848,6 +848,23 @@ class TradeList:  # {{{
 
     # }}}
 
+    def createChild(self, trades: list[Trade], subname: str):  # {{{
+        logger.debug(f"{self.__class__.__name__}.createChild()")
+
+        child = TradeList(
+            name=self.name,
+            trades=trades,
+            parent=self,
+            subname=subname,
+        )
+
+        child.__asset = self.__asset
+        child.__owner = self.__owner
+        self.__childs.append(child)
+
+        return child
+
+    # }}}
     def removeChild(self, child: TradeList) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.removeChild()")
 
@@ -864,11 +881,6 @@ class TradeList:  # {{{
 
     # }}}
 
-    # TODO: думаю эти методы скорее относятся к
-    # классам Filter, FilterList
-    # лучше им передавать трейд лист и пусть они
-    # там работают. А метод _createChild тогда сделать
-    # публичным и они (Filter, FilterList) пусть его дергают
     async def selectFilter(self, f) -> TradeList:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectFilter()")
 
@@ -878,14 +890,14 @@ class TradeList:  # {{{
             if result:
                 selected.append(trade)
 
-        child = self._createChild(selected, f.full_name)
+        child = self.createChild(selected, f.full_name)
         return child
 
     # }}}
     async def selectFilterList(self, filter_list) -> TradeList:  # {{{
         logger.debug(f"{self.__class__.__name__}.selectFilterList()")
 
-        child = self._createChild(self.__trades, filter_list.full_name)
+        child = self.createChild(self.__trades, filter_list.full_name)
 
         for f in filter_list:
             await child.selectFilter(f)
@@ -904,7 +916,7 @@ class TradeList:  # {{{
                     selected.append(trade)
                     break
 
-        child = self._createChild(selected, f"{filter_list.full_name}")
+        child = self.createChild(selected, f"{filter_list.full_name}")
         return child
 
     # }}}
@@ -936,7 +948,7 @@ class TradeList:  # {{{
             if trade.status == status:
                 selected.append(trade)
 
-        child = self._createChild(selected, status.name)
+        child = self.createChild(selected, status.name)
         return child
 
     # }}}
@@ -948,7 +960,7 @@ class TradeList:  # {{{
             if trade.strategy == name and trade.version == version:
                 selected.append(trade)
 
-        child = self._createChild(selected, f"{name}-{version}")
+        child = self.createChild(selected, f"{name}-{version}")
         return child
 
     # }}}
@@ -987,7 +999,7 @@ class TradeList:  # {{{
             if trade.isLong():
                 selected.append(trade)
 
-        child = self._createChild(selected, "long")
+        child = self.createChild(selected, "long")
         return child
 
     # }}}
@@ -999,7 +1011,7 @@ class TradeList:  # {{{
             if trade.isShort():
                 selected.append(trade)
 
-        child = self._createChild(selected, "short")
+        child = self.createChild(selected, "short")
         return child
 
     # }}}
@@ -1013,7 +1025,7 @@ class TradeList:  # {{{
             if trade.isWin():
                 selected.append(trade)
 
-        child = self._createChild(selected, "win")
+        child = self.createChild(selected, "win")
         return child
 
     # }}}
@@ -1027,7 +1039,7 @@ class TradeList:  # {{{
             if trade.isLoss():
                 selected.append(trade)
 
-        child = self._createChild(selected, "loss")
+        child = self.createChild(selected, "loss")
         return child
 
     # }}}
@@ -1039,7 +1051,7 @@ class TradeList:  # {{{
             if trade.instrument.figi == asset.figi:
                 selected.append(trade)
 
-        child = self._createChild(selected, asset.ticker)
+        child = self.createChild(selected, asset.ticker)
         child.__asset = asset
         return child
 
@@ -1070,7 +1082,7 @@ class TradeList:  # {{{
             if trade.dt.year == year:
                 selected.append(trade)
 
-        child = self._createChild(selected, str(year))
+        child = self.createChild(selected, str(year))
         return child
 
     # }}}
@@ -1121,23 +1133,6 @@ class TradeList:  # {{{
     async def __deepFilterList(trade_list, filter_list):  # {{{
         for child_filter_list in filter_list:
             await self.__deepFilterList(child_filter_list)
-
-    # }}}
-    def _createChild(self, trades, subname):  # {{{
-        logger.debug(f"{self.__class__.__name__}._createChild()")
-
-        child = TradeList(
-            name=self.name,
-            trades=trades,
-            parent=self,
-            subname=subname,
-        )
-
-        child.__asset = self.__asset
-        child.__owner = self.__owner
-        self.__childs.append(child)
-
-        return child
 
     # }}}
 
