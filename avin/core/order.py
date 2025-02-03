@@ -179,6 +179,20 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     broker_id:      {self.broker_id}
     transacts:      {self.transactions}
 """
+
+        # for limit order appen limit price
+        T = Order.Type
+        if self.type == T.LIMIT:
+            text += f"""--
+    price:           {self.price}
+"""
+
+        # for stop order appen stop/exec price
+        if self.type in (T.STOP, T.STOP_LOSS, T.TAKE_PROFIT):
+            text += f"""--
+    stop_price:           {self.stop_price}
+    exec_price:           {self.exec_price}
+"""
         return text
 
     # }}}
