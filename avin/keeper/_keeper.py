@@ -2056,15 +2056,39 @@ class Keeper:
     async def __updateOrder(cls, order, kwargs: dict) -> None:
         logger.debug(f"{cls.__name__}.__updateOrder()")
 
+        # format prices
+        if order.type.name == "MARKET":
+            price, s_price, e_price = "NULL", "NULL", "NULL"
+        elif order.type.name == "LIMIT":
+            price, s_price, e_price = order.price, "NULL", "NULL"
+        elif order.type.name in ("STOP", "STOP_LOSS", "TAKE_PROFIT"):
+            price, s_price, e_price = (
+                "NULL",
+                order.stop_price,
+                order.exec_price,
+            )
+            e_price = e_price if e_price else "NULL"
+        else:
+            assert False, f"WTF??? Order type='{order.type}'"
+
         request = f"""
             UPDATE "Order"
             SET
-                trade_id = {order.trade_id},
+                trade_id = '{order.trade_id}',
+                account = '{order.account_name}',
+                figi = '{order.instrument.figi}',
                 status = '{order.status.name}',
+                lots = {order.lots},
+                quantity = {order.quantity},
+
+                price = {price},
+                stop_price = {s_price},
+                exec_price = {e_price},
+
                 exec_lots = {order.exec_lots},
                 exec_quantity = {order.exec_quantity},
-                meta = $${order.meta}$$,
-                broker_id = '{order.broker_id}'
+                broker_id = '{order.broker_id}',
+                meta = $${order.meta}$$
             WHERE
                 order_id = '{order.order_id}';
             """
