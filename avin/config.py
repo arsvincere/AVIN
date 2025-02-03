@@ -20,6 +20,7 @@ class Usr:  # {{{
     DATA = os.path.join(Dir.USR, "data")
     FILTER = os.path.join(Dir.USR, "filter")
     MARK = os.path.join(Dir.USR, "mark")
+    RESEARCH = os.path.join(Dir.USR, "research")
     STRATEGY = os.path.join(Dir.USR, "strategy")
 
     # User notes
