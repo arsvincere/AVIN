@@ -13,6 +13,7 @@ import enum
 
 class Size(enum.Enum):
     BLACKSWAN_SMALL = -7
+    # GREATEST_SMALL = -6
     ANOMAL_SMALL = -6
     EXTRA_SMALL = -5
     VERY_SMALL = -4
@@ -26,6 +27,7 @@ class Size(enum.Enum):
     VERY_BIG = 4
     EXTRA_BIG = 5
     ANOMAL_BIG = 6
+    # GREATEST_BIG = -6
     BLACKSWAN_BIG = 7
 
     def __lt__(self, other):  # operator <  # {{{
@@ -46,6 +48,13 @@ class Size(enum.Enum):
     def __ge__(self, other):  # operator >=  # {{{
         assert isinstance(other, Size)
         return self.value >= other.value
+
+    # }}}
+
+    def toSimpleSize(self) -> SimpleSize:  # {{{
+        for ssize in SimpleSize:
+            if self == ssize:
+                return ssize
 
     # }}}
 
@@ -74,11 +83,11 @@ class Size(enum.Enum):
 
 
 class SimpleSize(enum.Enum):
-    SMALLEST = -3
-    SMALL = -1
-    NORMAL = 0
-    BIG = 1
-    BIGGEST = 3
+    XS = -3
+    S = -1
+    M = 0
+    L = 1
+    XL = 3
 
     def __eq__(self, other):  # operator ==  # {{{
         if isinstance(other, SimpleSize):
@@ -86,7 +95,7 @@ class SimpleSize(enum.Enum):
 
         assert isinstance(other, Size)
         match self:
-            case SimpleSize.SMALLEST:
+            case SimpleSize.XS:
                 eq = (
                     Size.BLACKSWAN_SMALL.value,
                     Size.ANOMAL_SMALL.value,
@@ -94,19 +103,19 @@ class SimpleSize(enum.Enum):
                     Size.VERY_SMALL.value,
                     Size.SMALLEST.value,
                 )
-            case SimpleSize.SMALL:
+            case SimpleSize.S:
                 eq = (
                     Size.SMALLER.value,
                     Size.SMALL.value,
                 )
-            case SimpleSize.NORMAL:
+            case SimpleSize.M:
                 eq = (Size.NORMAL.value,)
-            case SimpleSize.BIG:
+            case SimpleSize.L:
                 eq = (
                     Size.BIG.value,
                     Size.BIGGER.value,
                 )
-            case SimpleSize.BIGGEST:
+            case SimpleSize.XL:
                 eq = (
                     Size.BIGGEST.value,
                     Size.VERY_BIG.value,
