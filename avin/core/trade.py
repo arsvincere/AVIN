@@ -138,7 +138,7 @@ class Trade:  # {{{
         string = (
             f"Trade="
             f"{dt} [{self.status.name}] {self.strategy}-{self.version} "
-            f"{self.instrument.ticker} {self.type.name.lower()}"
+            f"{self.instrument.ticker}"
         )
         return string
 
@@ -166,6 +166,9 @@ instrument: {self.instrument}
 status:     {self.status.name}
 trade_list: {self.trade_list_name}
 blocked:    {self.__blocked}
+"""
+        if self.status == Trade.Status.CLOSED:
+            trade_text += f"""
 ------------------------------------------------------------------------------
 buy:        {self.buyAverage()} * {self.buyQuantity()} = {self.buyAmount()}
 sell:       {self.sellAverage()} * {self.sellQuantity()} = {self.sellAmount()}
@@ -181,7 +184,8 @@ days:       {self.holdingDays()}
 percent:    {self.percent()}
 ppd:        {self.percentPerDay()}
 info:       {Cmd.toJson(self.info, indent=4)}
-
+"""
+        trade_text += f"""
 == Orders ====================================================================
 {orders_text}
 == Operations ================================================================
