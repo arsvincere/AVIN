@@ -100,7 +100,7 @@ class Strategy(ABC):  # {{{
     # }}}
     @abstractmethod  # onTradeClosed  # {{{
     async def onTradeClosed(self, trade: Trade):
-        logger.info(f"   {trade} result: {trade.result()}")
+        logger.info(f"== Result={trade.result()} - {trade}")
 
         await self.__cancelActiveOrders(trade)
         self.__active_trades.remove(trade)
