@@ -312,74 +312,100 @@ class VirtualBroker(Broker):
     async def __checkOrders(cls, bar: Bar) -> None:
         logger.debug(f"{cls.__name__}.__checkOrders()")
 
-        # check market orders
+        await cls.__checkOrdersMarket(bar)
+        await cls.__checkOrdersLimit(bar)
+        await cls.__checkOrdersStop(bar)
+
+    # }}}
+    @classmethod  # __checkOrdersMarket  # {{{
+    async def __checkOrdersMarket(cls, bar: Bar):
+        logger.debug(f"{cls.__name__}.__checkOrdersMarket()")
+
         i = 0
         while i < len(cls.__market_orders):
             m_order = cls.__market_orders[i]
             await cls.__executeOrder(m_order, bar.dt, bar.open)
 
-        # FIX: Ахтунг!!!!!!!!!!!
-        # надо же проверять выполнение лимитных и стоп ордеров не
-        # только при попадании цены в бар, но и больше меньше цены
-        # сработки, наступал уже на эти грабли в старом тестере
-        # ..................................
+    # }}}
+    @classmethod  # __checkOrdersLimit  # {{{
+    async def __checkOrdersLimit(cls, bar: Bar):
+        logger.debug(f"{cls.__name__}.__checkOrdersLimit()")
 
-        # check limit orders
         i = 0
         while i < len(cls.__limit_orders):
-            l_order = cls.__limit_orders[i]
-            price = l_order.price
-            if price in bar:
-                await cls.__executeOrder(l_order, bar.dt, price)
+            order = cls.__limit_orders[i]
+            if order.price in bar:
+                await cls.__executeOrder(order, bar.dt, order.price)
                 continue
 
+            # если бар открылся под лимиткой на покупку -
+            # выполняем лимитку по цене открытия бара
+            if order.direction == Direction.BUY:
+                if bar.open < order.price:
+                    await cls.__executeOrder(order, bar.dt, bar.open)
+                    continue
+
+            # если бар открылся над лимиткой на продажу -
+            # выполняем лимитку по цене открытия бара
+            if order.direction == Direction.BUY:
+                if bar.open > order.price:
+                    await cls.__executeOrder(order, bar.dt, bar.open)
+                    continue
             i += 1
 
-        # check stop orders
+    # }}}
+    @classmethod  # __checkOrdersStop  # {{{
+    async def __checkOrdersStop(cls, bar: Bar):
+        logger.debug(f"{cls.__name__}.__checkOrdersStop()")
+
         i = 0
         while i < len(cls.__stop_orders):
-            s_order = cls.__stop_orders[i]
+            order = cls.__stop_orders[i]
 
-            # TODO: пока не парюсь с exec_price, считаю что
-            # stop_price всегда равен exec_price
-            # потом переделать нормально
-            price = s_order.stop_price
+            # TODO: пока не парюсь с exec_price
+            # если exec_price=None - значит выполнение по рынку у stop loss
+            # иначе exec_price=stop_price, не делаю тейки с разной ценой
+            # активации и исполнения, понадобится - сделаю и логику их
+            # выполнения, а пока чем проще тем лучше.
+            if order.exec_price is not None:
+                assert order.exec_price == order.stop_price
+            price = order.stop_price
             if price in bar:
-                await cls.__executeOrder(s_order, bar.dt, price)
+                await cls.__executeOrder(order, bar.dt, price)
                 continue
 
-            if s_order.type == Order.Type.STOP_LOSS:
+            if order.type == Order.Type.STOP_LOSS:
                 # Трейд в лонг.
                 # Если цена открылась ниже стоп прайса, то стоп лосс
                 # срабатывает по цене открытия бара
-                if s_order.direction == Direction.SELL:
-                    if bar.open < s_order.stop_price:
-                        await cls.__executeOrder(s_order, bar.dt, bar.open)
+                if order.direction == Direction.SELL:
+                    if bar.open < order.stop_price:
+                        await cls.__executeOrder(order, bar.dt, bar.open)
                         continue
 
                 # Трейд в шорт.
                 # Если цена открылась выше стоп прайса, то стоп лосс
                 # срабатывает по цене открытия бара
-                if s_order.direction == Direction.BUY:
-                    if bar.open > s_order.stop_price:
-                        await cls.__executeOrder(s_order, bar.dt, bar.open)
+                if order.direction == Direction.BUY:
+                    if bar.open > order.stop_price:
+                        await cls.__executeOrder(order, bar.dt, bar.open)
                         continue
 
-            if s_order.type == Order.Type.TAKE_PROFIT:
+            if order.type == Order.Type.TAKE_PROFIT:
                 # Трейд в лонг.
                 # Если цена открылась выше стоп прайса, то тейк профит
                 # срабатывает по цене открытия бара
-                if s_order.direction == Direction.SELL:
-                    if bar.open > s_order.stop_price:
-                        await cls.__executeOrder(s_order, bar.dt, bar.open)
+                if order.direction == Direction.SELL:
+                    if bar.open > order.stop_price:
+                        await cls.__executeOrder(order, bar.dt, bar.open)
                         continue
 
                 # Трейд в шорт.
                 # Если цена открылась ниже стоп прайса, то тейк профит
                 # срабатывает по цене открытия бара
-                if s_order.direction == Direction.BUY:
-                    if bar.open < s_order.stop_price:
-                        await cls.__executeOrder(s_order, bar.dt, bar.open)
+                if order.direction == Direction.BUY:
+                    if bar.open < order.stop_price:
+                        await cls.__executeOrder(order, bar.dt, bar.open)
                         continue
 
             i += 1
