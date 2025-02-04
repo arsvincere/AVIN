@@ -97,5 +97,5 @@ def _deleteOldLogfiles(log_dir: str, max_files: int) -> None:  # {{{
 
 # }}}
 
-# if __name__ == "avin.utils.logger":
-#     configureLogger(_DEBUG, _INFO)
+if __name__ == "avin.utils.logger":
+    configureLogger(_DEBUG, _INFO)
