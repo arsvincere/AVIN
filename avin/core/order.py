@@ -110,6 +110,7 @@ class Order(metaclass=abc.ABCMeta):  # {{{
     ):
         logger.debug("Order.__init__()")
         assert lots > 0
+        assert quantity > 0
 
         self.type = order_type
         self.account_name = account_name
