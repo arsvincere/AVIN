@@ -21,7 +21,7 @@ from avin.utils import Signal, binary_search, find_left, logger
 
 
 class Chart:
-    DEFAULT_BARS_COUNT = 10000
+    DEFAULT_BARS_COUNT = 5000
 
     def __init__(  # {{{
         self,
@@ -293,6 +293,12 @@ class Chart:
 
     # }}}
 
+    def lastPrice(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.todayOpen()")
+
+        return self.__now.close
+
+    # }}}
     def todayOpen(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.todayOpen()")
 
