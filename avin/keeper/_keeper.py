@@ -162,7 +162,7 @@ class Keeper:
             need_update = True
         else:
             # read file, check last update > month ago
-            dt_str = Cmd.read(cls.__LAST_BACKUP_DATA_DT)
+            dt_str = Cmd.read(cls.__LAST_BACKUP_DATA_DT).strip()
             last_update = datetime.fromisoformat(dt_str)
             need_update = (now() - last_update) > ONE_MONTH
 
@@ -189,7 +189,7 @@ class Keeper:
             need_update = True
         else:
             # read file, check last update > day ago
-            dt_str = Cmd.read(cls.__LAST_BACKUP_USER_DT)
+            dt_str = Cmd.read(cls.__LAST_BACKUP_USER_DT).strip()
             last_update = datetime.fromisoformat(dt_str)
             need_update = (now() - last_update) > ONE_DAY
 
@@ -504,7 +504,7 @@ class Keeper:
         await cls.transaction(request)
 
         # Update table "Asset" add new instrument if not exist
-        await cls.__addAsset(data.instrument)
+        await cls.__addAsset(data.instrument, kwargs={})
 
     # }}}
     @classmethod  # __addAsset  # {{{
