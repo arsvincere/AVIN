@@ -29,7 +29,6 @@ class Range:
     """
 
     class Type(enum.Enum):  # {{{
-        UNDEFINE = 0
         FULL = 1
         BODY = 2
         UPPER = 3
@@ -38,7 +37,7 @@ class Range:
     # }}}
 
     def __init__(  # {{{
-        self, min_: float, max_: float, type_=Type.UNDEFINE, bar=None
+        self, min_: float, max_: float, type_=None, bar=None
     ):
         if min_ < max_:
             self.__min = min_
