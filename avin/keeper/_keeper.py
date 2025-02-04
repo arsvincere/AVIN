@@ -37,8 +37,8 @@ class Keeper:
     DATABASE = Usr.PG_DATABASE
     HOST = Usr.PG_HOST
 
-    __LAST_BACKUP_DATA_DT = Cmd.path(Usr.DATA, "backup_db_data")
-    __LAST_BACKUP_USER_DT = Cmd.path(Usr.DATA, "backup_db_user")
+    __LAST_BACKUP_DATA_DT = Cmd.path(Usr.DATA, "data_bak_date")
+    __LAST_BACKUP_USER_DT = Cmd.path(Usr.DATA, "public_bak_date")
     __BACKUP_DATA = Auto.BACKUP_MARKET_DATA
     __BACKUP_USER = Auto.BACKUP_USER_DB
 
@@ -81,7 +81,7 @@ class Keeper:
         logger.debug(f"{cls.__name__}.backupUserData()")
 
         Cmd.makeDirs(Auto.BACKUP_PATH)
-        file_name = f"public_{Date.today()}"
+        file_name = f"public_{Date.today()}.bak"
         public_path = Cmd.path(Auto.BACKUP_PATH, file_name)
         os.system(f"pg_dump {cls.DATABASE} -Fc -f {public_path} -n public")
 
@@ -95,7 +95,7 @@ class Keeper:
         logger.debug(f"{cls.__name__}.backupMarketData()")
 
         Cmd.makeDirs(Auto.BACKUP_PATH)
-        file_name = f"data_{Date.today()}"
+        file_name = f"data_{Date.today()}.bak"
         data_path = Cmd.path(Auto.BACKUP_PATH, file_name)
         os.system(f"pg_dump {cls.DATABASE} -Fc -f {data_path} -n data")
 
@@ -2280,6 +2280,12 @@ class Keeper:
     # }}}
 
 
+# TODO: все такие вещи нужно собрать в какое то одно место
+# и определить единый интерфейс. Чтобы маркет дата, кэш и
+# база данных бэкапились и обновлялись из одного места.
+# раелизация обновления - на стороне самих этих классов.
+# А дергает метод пусть какой то отдельный класс типо
+# Updater
 Keeper.checkBackupData()
 Keeper.checkBackupUser()
 
