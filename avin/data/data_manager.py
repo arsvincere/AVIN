@@ -314,8 +314,8 @@ class _DataManager:
         bars = cls.__fillVoid(bars, in_type)
         period = out_type.toTimeDelta()
 
-        i = 0
         converted = list()
+        i = 0
         while i < len(bars):
             first = i
             last = i
@@ -325,9 +325,11 @@ class _DataManager:
                     last += 1
                 else:
                     break
+
             new_bar = cls.__join(bars[first:last])
             if new_bar is not None:
                 converted.append(new_bar)
+
             i = last
 
         return converted
