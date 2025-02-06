@@ -24,7 +24,7 @@ def test_Range():  # {{{
 
     assert r.min == 5
     assert r.max == 10
-    assert r.type == Range.Type.UNDEFINE
+    assert r.type is None
     assert r.bar is None
 
     assert r.percent() == 50.0
@@ -70,6 +70,33 @@ def test_Size():  # {{{
     assert b > s
     assert b >= n
     assert n == Size.NORMAL
+
+
+# }}}
+def test_SimpleSize():  # {{{
+    assert Size.BLACKSWAN_SMALL == SimpleSize.XXS
+
+    assert Size.GREATEST_SMALL == SimpleSize.XS
+    assert Size.ANOMAL_SMALL == SimpleSize.XS
+    assert Size.EXTRA_SMALL == SimpleSize.XS
+    assert Size.VERY_SMALL == SimpleSize.XS
+
+    assert Size.SMALLEST == SimpleSize.S
+    assert Size.SMALLER == SimpleSize.S
+
+    assert Size.SMALL == SimpleSize.M
+    assert Size.NORMAL == SimpleSize.M
+    assert Size.BIG == SimpleSize.M
+
+    assert Size.BIGGER == SimpleSize.L
+    assert Size.BIGGEST == SimpleSize.L
+
+    assert Size.VERY_BIG == SimpleSize.XL
+    assert Size.EXTRA_BIG == SimpleSize.XL
+    assert Size.ANOMAL_BIG == SimpleSize.XL
+    assert Size.GREATEST_BIG == SimpleSize.XL
+
+    assert Size.BLACKSWAN_BIG == SimpleSize.XXL
 
 
 # }}}
