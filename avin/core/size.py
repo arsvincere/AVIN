@@ -12,23 +12,6 @@ import enum
 
 
 class Size(enum.Enum):
-    # BLACKSWAN_SMALL = -8
-    # GREATEST_SMALL = -7
-    # ANOMAL_SMALL = -6
-    # EXTRA_SMALL = -5
-    # VERY_SMALL = -4
-    # SMALLEST = -3
-    # SMALLER = -2
-    # SMALL = -1
-    # NORMAL = 0
-    # BIG = 1
-    # BIGGER = 2
-    # BIGGEST = 3
-    # VERY_BIG = 4
-    # EXTRA_BIG = 5
-    # ANOMAL_BIG = 6
-    # GREATEST_BIG = 7
-    # BLACKSWAN_BIG = 8
     BLACKSWAN_SMALL = 0
     GREATEST_SMALL = 1
     ANOMAL_SMALL = 3
@@ -124,23 +107,25 @@ class SimpleSize(enum.Enum):
                     Size.ANOMAL_SMALL.value,
                     Size.EXTRA_SMALL.value,
                     Size.VERY_SMALL.value,
-                    Size.SMALLEST.value,
                 )
             case SimpleSize.S:
                 eq = (
+                    Size.SMALLEST.value,
                     Size.SMALLER.value,
-                    Size.SMALL.value,
                 )
             case SimpleSize.M:
-                eq = (Size.NORMAL.value,)
+                eq = (
+                    Size.SMALL.value,
+                    Size.NORMAL.value,
+                    Size.BIG.value,
+                )
             case SimpleSize.L:
                 eq = (
-                    Size.BIG.value,
                     Size.BIGGER.value,
+                    Size.BIGGEST.value,
                 )
             case SimpleSize.XL:
                 eq = (
-                    Size.BIGGEST.value,
                     Size.VERY_BIG.value,
                     Size.EXTRA_BIG.value,
                     Size.ANOMAL_BIG.value,
