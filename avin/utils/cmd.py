@@ -61,7 +61,7 @@ class Cmd:
     @staticmethod  # dirPath# {{{
     def dirPath(file_path):
         logger.debug(f"Cmd.dirPath({file_path}")
-        assert Cmd.isFile(file_path)
+        # assert Cmd.isFile(file_path)
         dir_path = os.path.dirname(file_path)
         return dir_path
 
@@ -147,7 +147,7 @@ class Cmd:
             if dir_name in dirs:
                 return os.path.join(root, dir_name)
         raise FileNotFoundError(
-            f"Папка '{dir_name}' не найдена " "в директории '{root_dir}'"
+            f"Папка '{dir_name}' не найдена в директории '{root_dir}'"
         )
 
     # }}}

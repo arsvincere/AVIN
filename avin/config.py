@@ -14,6 +14,7 @@ from avin.const import Dir
 
 class Usr:  # {{{
     # User subdirectories
+    ANALYSE = os.path.join(Dir.USR, "analyse")
     ANALYTIC = os.path.join(Dir.USR, "analytic")
     CACHE = os.path.join(Dir.USR, "cache")
     CONNECT = os.path.join(Dir.USR, "connect")
