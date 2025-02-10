@@ -7,7 +7,6 @@
 # ============================================================================
 
 from avin.core.account import Account
-from avin.core.analytic import Analytic, AnalyticData
 from avin.core.asset import Asset, AssetList, Index, Share
 from avin.core.bar import Bar
 from avin.core.broker import Broker
@@ -32,7 +31,6 @@ from avin.core.order import (
 )
 from avin.core.range import Range
 from avin.core.risk import Risk
-from avin.core.size import SimpleSize, Size
 from avin.core.strategy import (
     Strategy,
     StrategyList,
@@ -81,8 +79,4 @@ __all__ = (
     "Filter",
     "FilterList",
     "Risk",
-    "Size",
-    "SimpleSize",
-    "Analytic",
-    "AnalyticData",
 )
