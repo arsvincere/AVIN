@@ -2,10 +2,10 @@ __pycache__/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
+.venv/
 build/
 dev/
 doc/.obsidian
-env/
 lang/
 log/
 tmp/
@@ -23,10 +23,6 @@ usr/
 Session.vim*
 
 avin/keeper/analytic_scheme.sql
-
-res/cache
-res/data
-res/download
 res/sound
 res/voice
 

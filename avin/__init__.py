@@ -14,4 +14,3 @@ from avin.keeper import *
 from avin.tester import *
 from avin.trader import *
 from avin.utils import *
-from usr.analytic import *
