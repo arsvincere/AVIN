@@ -9,7 +9,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from datetime import datetime
 from typing import Optional, Union
 
 import pandas as pd
@@ -20,7 +19,7 @@ from avin.core.timeframe import TimeFrame
 from avin.data import Data, DataType, Exchange, Instrument
 from avin.exceptions import AssetError
 from avin.keeper import Keeper
-from avin.utils import AsyncSignal, logger, now
+from avin.utils import AsyncSignal, DateTime, logger, now
 
 
 class Asset(Instrument, ABC):  # {{{
@@ -74,8 +73,8 @@ class Asset(Instrument, ABC):  # {{{
     async def cacheChart(  # {{{
         self,
         timeframe: Union[TimeFrame, str],
-        begin: Optional[datetime] = None,
-        end: Optional[datetime] = None,
+        begin: Optional[DateTime] = None,
+        end: Optional[DateTime] = None,
     ) -> None:
         logger.debug(f"{self.__class__.__name__}.cacheChart()")
 
@@ -90,8 +89,8 @@ class Asset(Instrument, ABC):  # {{{
     async def loadChart(  # {{{
         self,
         timeframe: Union[TimeFrame, str],
-        begin: Optional[datetime] = None,
-        end: Optional[datetime] = None,
+        begin: Optional[DateTime] = None,
+        end: Optional[DateTime] = None,
     ) -> Chart:
         logger.debug(f"{self.__class__.__name__}.loadChart()")
 
@@ -106,8 +105,8 @@ class Asset(Instrument, ABC):  # {{{
     async def loadData(  # {{{
         self,
         timeframe: Union[TimeFrame, str],
-        begin: datetime,
-        end: datetime,
+        begin: DateTime,
+        end: DateTime,
     ) -> pd.DataFrame:
         logger.debug(f"{self.__class__.__name__}.loadData()")
 
@@ -159,8 +158,8 @@ class Asset(Instrument, ABC):  # {{{
     async def fromStr(cls, string: str) -> Asset:
         logger.debug(f"{cls.__name__}.fromStr()")
 
-        # string is like "MOEX-SHARE-SBER"
-        exchange, itype, ticker = string.split("-")
+        # string is like "MOEX SHARE SBER"
+        exchange, itype, ticker = string.upper().split()
 
         # convert types
         exchange = Exchange.fromStr(exchange)
@@ -251,7 +250,7 @@ class Asset(Instrument, ABC):  # {{{
     @classmethod  # __formatArgs# {{{
     def __formatArgs(
         cls, timeframe, begin, end
-    ) -> tuple[TimeFrame, datetime, datetime]:
+    ) -> tuple[TimeFrame, DateTime, DateTime]:
         logger.debug(f"{cls.__name__}.__formatArgs()")
 
         # check timeframe
@@ -273,9 +272,9 @@ class Asset(Instrument, ABC):  # {{{
             end = now()
 
         # 'begin', 'end' must be datetime
-        if not isinstance(begin, datetime):
+        if not isinstance(begin, DateTime):
             raise TypeError(f"Invalid begin='{begin}'")
-        if not isinstance(end, datetime):
+        if not isinstance(end, DateTime):
             raise TypeError(f"Invalid end='{end}'")
 
         return timeframe, begin, end
@@ -398,7 +397,7 @@ class AssetList:  # {{{
             self.__assets.remove(asset)
         except ValueError:
             logger.exception(
-                f"AssetList.remove(asset) failed: " f"'{asset}' not in list",
+                f"AssetList.remove(asset) failed: '{asset}' not in list",
             )
 
     # }}}
