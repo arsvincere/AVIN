@@ -73,7 +73,7 @@ class Instrument:
 
     # }}}
     def __str__(self):  # {{{
-        s = f"{self.exchange.name}-{self.type.name}-{self.ticker}"
+        s = f"{self.exchange.name} {self.type.name} {self.ticker}"
         return s
 
     # }}}
