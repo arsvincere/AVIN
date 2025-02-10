@@ -16,7 +16,7 @@ from gui.chart.gchart import GBar, GChart, Thread
 from gui.custom import Css, Icon, Label, Theme, ToolButton
 from gui.indicator.item import IndicatorItem
 from gui.marker import GShape
-from usr.analytic import Extremum, ExtremumList, Term, Trend
+from usr.analytic import Extremum, ExtremumList, Move, Term, Trend
 
 
 class ExtremumIndicator:  # {{{
@@ -161,13 +161,19 @@ class _GTrend(QtWidgets.QGraphicsItemGroup):  # {{{
 
         string = (
             f"{str(t.timeframe):<2} "
-            f"{t.term.name[0]:<2} "
+            f"{t.term.name[0:2]:<2} "
+            f"{t.type.name} "
             f"p={t.period():<3} "
             f"d={t.deltaPercent():<6} "
             f"s={t.speedPercent():<6} "
-            f"v={vol_str}"
+            f"v={vol_str} "
+            f"{t.strength.name[0:1]} "
         )
         return string
+
+    # }}}
+    def setPen(self, pen: QtGui.QPen):  # {{{
+        self.line.setPen(pen)
 
     # }}}
 
@@ -204,16 +210,61 @@ class _GTrend(QtWidgets.QGraphicsItemGroup):  # {{{
             case Term.LTERM:
                 width = self.LONGTERM_WIDTH
 
-        line = QtWidgets.QGraphicsLineItem(
+        self.line = QtWidgets.QGraphicsLineItem(
             self.begin_pos.x(),
             self.begin_pos.y(),
             self.end_pos.x(),
             self.end_pos.y(),
         )
         pen = QtGui.QPen(color, width)
-        line.setPen(pen)
+        self.line.setPen(pen)
 
-        self.addToGroup(line)
+        self.addToGroup(self.line)
+
+    # }}}
+
+
+# }}}
+class _GMove(QtWidgets.QGraphicsItemGroup):  # {{{
+    SHORTTERM_WIDTH = 1
+    MIDTERM_WIDTH = 2
+    LONGTERM_WIDTH = 3
+
+    COLOR_BEAR = Theme.Chart.VAWE_BEAR
+    COLOR_BULL = Theme.Chart.VAWE_BULL
+
+    def __init__(  # {{{
+        self, gchart: GChart, move: Move, parent=None
+    ):
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+        QtWidgets.QGraphicsItemGroup.__init__(self, parent)
+
+        self.gchart = gchart
+        self.move = move
+
+        self.__createLines()
+
+    # }}}
+
+    def __createLines(self):  # {{{
+        match str(self.move.type.name):
+            case "BEAR":
+                color = self.COLOR_BEAR
+            case "BULL":
+                color = self.COLOR_BULL
+
+        match self.move.term:
+            case Term.STERM:
+                width = self.SHORTTERM_WIDTH
+            case Term.MTERM:
+                width = self.MIDTERM_WIDTH
+            case Term.LTERM:
+                width = self.LONGTERM_WIDTH
+
+        for trend in self.move.getTrends():
+            gtrend = _GTrend(self.gchart, trend)
+            gtrend.setPen(QtGui.QPen(color, width))
+            self.addToGroup(gtrend)
 
     # }}}
 
@@ -229,79 +280,37 @@ class _GExtremumList(QtWidgets.QGraphicsItemGroup):  # {{{
         self.gchart = gchart
         self.elist = elist
 
-        self.__createPoints()
-        self.__createLines()
         self.__createInside()
         self.__createOutside()
+        self.__createGExtrs()
+        self.__createGTrends()
+        self.__createGMoves()
 
     # }}}
 
-    def getInfo(self, x):
+    def getInfo(self, x):  # {{{
         string = ""
 
         # TODO: binary search
 
-        for line in self.s_lines.childItems():
+        for line in self.gs_trends.childItems():
             if self.__xInLine(x, line):
                 string += line.getTextInfo()
 
-        for line in self.m_lines.childItems():
+        for line in self.gm_trends.childItems():
             if self.__xInLine(x, line):
                 string += "\n"
                 string += line.getTextInfo()
 
-        for line in self.l_lines.childItems():
+        for line in self.gl_trends.childItems():
             if self.__xInLine(x, line):
                 string += "\n"
                 string += line.getTextInfo()
 
         return string
 
-    def __createPoints(self):  # {{{
-        self.s_points = QtWidgets.QGraphicsItemGroup()
-        for extr in self.elist.sterm:
-            gextr = _GExtremum(self.gchart, extr)
-            self.s_points.addToGroup(gextr)
-
-        self.m_points = QtWidgets.QGraphicsItemGroup()
-        for extr in self.elist.mterm:
-            gextr = _GExtremum(self.gchart, extr)
-            self.m_points.addToGroup(gextr)
-
-        self.l_points = QtWidgets.QGraphicsItemGroup()
-        for extr in self.elist.lterm:
-            gextr = _GExtremum(self.gchart, extr)
-            self.l_points.addToGroup(gextr)
-
-        self.addToGroup(self.s_points)
-        self.addToGroup(self.m_points)
-        self.addToGroup(self.l_points)
-
     # }}}
-    def __createLines(self):  # {{{
-        self.s_lines = QtWidgets.QGraphicsItemGroup()
-        self.s_trends = self.elist.getAllSTrends()
-        for trend in self.s_trends:
-            gtrend = _GTrend(self.gchart, trend)
-            self.s_lines.addToGroup(gtrend)
 
-        self.m_lines = QtWidgets.QGraphicsItemGroup()
-        self.m_trends = self.elist.getAllMTrends()
-        for trend in self.m_trends:
-            gtrend = _GTrend(self.gchart, trend)
-            self.m_lines.addToGroup(gtrend)
-
-        self.l_lines = QtWidgets.QGraphicsItemGroup()
-        self.l_trends = self.elist.getAllLTrends()
-        for trend in self.l_trends:
-            gtrend = _GTrend(self.gchart, trend)
-            self.l_lines.addToGroup(gtrend)
-
-        self.addToGroup(self.s_lines)
-        self.addToGroup(self.m_lines)
-        self.addToGroup(self.l_lines)
-
-    # }}}
     def __createInside(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__createInside()")
 
@@ -362,6 +371,75 @@ class _GExtremumList(QtWidgets.QGraphicsItemGroup):  # {{{
         return rect
 
     # }}}
+    def __createGExtrs(self):  # {{{
+        self.gs_extrs = QtWidgets.QGraphicsItemGroup()
+        for extr in self.elist.sterm:
+            gextr = _GExtremum(self.gchart, extr)
+            self.gs_extrs.addToGroup(gextr)
+
+        self.gm_extrs = QtWidgets.QGraphicsItemGroup()
+        for extr in self.elist.mterm:
+            gextr = _GExtremum(self.gchart, extr)
+            self.gm_extrs.addToGroup(gextr)
+
+        self.gl_extrs = QtWidgets.QGraphicsItemGroup()
+        for extr in self.elist.lterm:
+            gextr = _GExtremum(self.gchart, extr)
+            self.gl_extrs.addToGroup(gextr)
+
+        self.addToGroup(self.gs_extrs)
+        self.addToGroup(self.gm_extrs)
+        self.addToGroup(self.gl_extrs)
+
+    # }}}
+    def __createGTrends(self):  # {{{
+        self.gs_trends = QtWidgets.QGraphicsItemGroup()
+        self.s_trends = self.elist.getAllTrends(Term.STERM)
+        for trend in self.s_trends:
+            gtrend = _GTrend(self.gchart, trend)
+            self.gs_trends.addToGroup(gtrend)
+
+        self.gm_trends = QtWidgets.QGraphicsItemGroup()
+        self.m_trends = self.elist.getAllTrends(Term.MTERM)
+        for trend in self.m_trends:
+            gtrend = _GTrend(self.gchart, trend)
+            self.gm_trends.addToGroup(gtrend)
+
+        self.gl_trends = QtWidgets.QGraphicsItemGroup()
+        self.l_trends = self.elist.getAllTrends(Term.LTERM)
+        for trend in self.l_trends:
+            gtrend = _GTrend(self.gchart, trend)
+            self.gl_trends.addToGroup(gtrend)
+
+        self.addToGroup(self.gs_trends)
+        self.addToGroup(self.gm_trends)
+        self.addToGroup(self.gl_trends)
+
+    # }}}
+    def __createGMoves(self):  # {{{
+        self.gs_moves = QtWidgets.QGraphicsItemGroup()
+        self.s_moves = self.elist.getAllMoves(Term.STERM)
+        for move in self.s_moves:
+            gmove = _GMove(self.gchart, move)
+            self.gs_moves.addToGroup(gmove)
+
+        self.gm_moves = QtWidgets.QGraphicsItemGroup()
+        self.m_moves = self.elist.getAllMoves(Term.MTERM)
+        for move in self.m_moves:
+            gmove = _GMove(self.gchart, move)
+            self.gm_moves.addToGroup(gmove)
+
+        self.gl_moves = QtWidgets.QGraphicsItemGroup()
+        self.l_moves = self.elist.getAllMoves(Term.LTERM)
+        for move in self.l_moves:
+            gmove = _GMove(self.gchart, move)
+            self.gl_moves.addToGroup(gmove)
+
+        self.addToGroup(self.gs_moves)
+        self.addToGroup(self.gm_moves)
+        self.addToGroup(self.gl_moves)
+
+    # }}}
     def __xInLine(self, x, line: _GTrend):  # {{{
         logger.debug(f"{self.__class__.__name__}.__xInTrend()")
 
@@ -405,63 +483,63 @@ class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
         if self.gelist_5m is None:
             return
 
-        self.gelist_5m.s_points.setVisible(value)
-
-    # }}}
-    def showMidShapes5M(self, value: bool):  # {{{
-        if self.gelist_5m is None:
-            return
-
-        self.gelist_5m.m_points.setVisible(value)
-
-    # }}}
-    def showLongShapes5M(self, value: bool):  # {{{
-        if self.gelist_5m is None:
-            return
-
-        self.gelist_5m.l_points.setVisible(value)
+        self.gelist_5m.gs_extrs.setVisible(value)
 
     # }}}
     def showShortShapes1H(self, value: bool):  # {{{
         if self.gelist_1h is None:
             return
 
-        self.gelist_1h.s_points.setVisible(value)
-
-    # }}}
-    def showMidShapes1H(self, value: bool):  # {{{
-        if self.gelist_1h is None:
-            return
-
-        self.gelist_1h.m_points.setVisible(value)
-
-    # }}}
-    def showLongShapes1H(self, value: bool):  # {{{
-        if self.gelist_5m is None:
-            return
-
-        self.gelist_1h.l_points.setVisible(value)
+        self.gelist_1h.gs_extrs.setVisible(value)
 
     # }}}
     def showShortShapesD(self, value: bool):  # {{{
         if self.gelist_d is None:
             return
 
-        self.gelist_d.s_points.setVisible(value)
+        self.gelist_d.gs_extrs.setVisible(value)
+
+    # }}}
+    def showMidShapes5M(self, value: bool):  # {{{
+        if self.gelist_5m is None:
+            return
+
+        self.gelist_5m.gm_extrs.setVisible(value)
+
+    # }}}
+    def showMidShapes1H(self, value: bool):  # {{{
+        if self.gelist_1h is None:
+            return
+
+        self.gelist_1h.gm_extrs.setVisible(value)
 
     # }}}
     def showMidShapesD(self, value: bool):  # {{{
         if self.gelist_d is None:
             return
 
-        self.gelist_d.m_points.setVisible(value)
+        self.gelist_d.gm_extrs.setVisible(value)
+
+    # }}}
+    def showLongShapes5M(self, value: bool):  # {{{
+        if self.gelist_5m is None:
+            return
+
+        self.gelist_5m.gl_extrs.setVisible(value)
+
+    # }}}
+    def showLongShapes1H(self, value: bool):  # {{{
+        if self.gelist_1h is None:
+            return
+
+        self.gelist_1h.gl_extrs.setVisible(value)
 
     # }}}
     def showLongShapesD(self, value: bool):  # {{{
         if self.gelist_d is None:
             return
 
-        self.gelist_d.l_points.setVisible(value)
+        self.gelist_d.gl_extrs.setVisible(value)
 
     # }}}
 
@@ -469,63 +547,127 @@ class _ExtremumGraphics(QtWidgets.QGraphicsItemGroup):  # {{{
         if self.gelist_5m is None:
             return
 
-        self.gelist_5m.s_lines.setVisible(value)
-
-    # }}}
-    def showMidLines5M(self, value: bool):  # {{{
-        if self.gelist_5m is None:
-            return
-
-        self.gelist_5m.m_lines.setVisible(value)
-
-    # }}}
-    def showLongLines5M(self, value: bool):  # {{{
-        if self.gelist_5m is None:
-            return
-
-        self.gelist_5m.l_lines.setVisible(value)
+        self.gelist_5m.gs_trends.setVisible(value)
 
     # }}}
     def showShortLines1H(self, value: bool):  # {{{
         if self.gelist_1h is None:
             return
 
-        self.gelist_1h.s_lines.setVisible(value)
-
-    # }}}
-    def showMidLines1H(self, value: bool):  # {{{
-        if self.gelist_1h is None:
-            return
-
-        self.gelist_1h.m_lines.setVisible(value)
-
-    # }}}
-    def showLongLines1H(self, value: bool):  # {{{
-        if self.gelist_1h is None:
-            return
-
-        self.gelist_1h.l_lines.setVisible(value)
+        self.gelist_1h.gs_trends.setVisible(value)
 
     # }}}
     def showShortLinesD(self, value: bool):  # {{{
         if self.gelist_d is None:
             return
 
-        self.gelist_d.s_lines.setVisible(value)
+        self.gelist_d.gs_trends.setVisible(value)
+
+    # }}}
+    def showMidLines5M(self, value: bool):  # {{{
+        if self.gelist_5m is None:
+            return
+
+        self.gelist_5m.gm_trends.setVisible(value)
+
+    # }}}
+    def showMidLines1H(self, value: bool):  # {{{
+        if self.gelist_1h is None:
+            return
+
+        self.gelist_1h.gm_trends.setVisible(value)
 
     # }}}
     def showMidLinesD(self, value: bool):  # {{{
         if self.gelist_d is None:
             return
 
-        self.gelist_d.m_lines.setVisible(value)
+        self.gelist_d.gm_trends.setVisible(value)
+
+    # }}}
+    def showLongLines5M(self, value: bool):  # {{{
+        if self.gelist_5m is None:
+            return
+
+        self.gelist_5m.gl_trends.setVisible(value)
+
+    # }}}
+    def showLongLines1H(self, value: bool):  # {{{
+        if self.gelist_1h is None:
+            return
+
+        self.gelist_1h.gl_trends.setVisible(value)
 
     # }}}
     def showLongLinesD(self, value: bool):  # {{{
         if self.gelist_d is None:
             return
 
-        self.gelist_d.l_lines.setVisible(value)
+        self.gelist_d.gl_trends.setVisible(value)
+
+    # }}}
+
+    def showShortMoves5M(self, value: bool):  # {{{
+        if self.gelist_5m is None:
+            return
+
+        self.gelist_5m.gs_moves.setVisible(value)
+
+    # }}}
+    def showShortMoves1H(self, value: bool):  # {{{
+        if self.gelist_1h is None:
+            return
+
+        self.gelist_1h.gs_moves.setVisible(value)
+
+    # }}}
+    def showShortMovesD(self, value: bool):  # {{{
+        if self.gelist_d is None:
+            return
+
+        self.gelist_d.gs_moves.setVisible(value)
+
+    # }}}
+    def showMidMoves5M(self, value: bool):  # {{{
+        if self.gelist_5m is None:
+            return
+
+        self.gelist_5m.gm_moves.setVisible(value)
+
+    # }}}
+    def showMidMoves1H(self, value: bool):  # {{{
+        if self.gelist_1h is None:
+            return
+
+        self.gelist_1h.gm_moves.setVisible(value)
+
+    # }}}
+    def showMidMovesD(self, value: bool):  # {{{
+        if self.gelist_d is None:
+            return
+
+        self.gelist_d.gm_moves.setVisible(value)
+
+    # }}}
+    def showLongMoves5M(self, value: bool):  # {{{
+        if self.gelist_5m is None:
+            return
+
+        self.gelist_5m.gl_moves.setVisible(value)
+
+    # }}}
+    def showLongMoves1H(self, value: bool):  # {{{
+        if self.gelist_1h is None:
+            return
+
+        self.gelist_1h.gl_moves.setVisible(value)
+
+    # }}}
+    def showLongMovesD(self, value: bool):  # {{{
+        if self.gelist_d is None:
+            return
+
+        self.gelist_d.gl_moves.setVisible(value)
 
     # }}}
 
@@ -695,28 +837,34 @@ class _ExtremumSettings(QtWidgets.QDialog):  # {{{
         # gextr.showOutside(self.outside_checkbox.isChecked())
 
         gextr.showShortShapes5M(self.spoint_5m_checkbox.isChecked())
-        gextr.showMidShapes5M(self.mpoint_5m_checkbox.isChecked())
-        gextr.showLongShapes5M(self.lpoint_5m_checkbox.isChecked())
-
         gextr.showShortShapes1H(self.spoint_1h_checkbox.isChecked())
-        gextr.showMidShapes1H(self.mpoint_1h_checkbox.isChecked())
-        gextr.showLongShapes1H(self.lpoint_1h_checkbox.isChecked())
-
         gextr.showShortShapesD(self.spoint_d_checkbox.isChecked())
+        gextr.showMidShapes5M(self.mpoint_5m_checkbox.isChecked())
+        gextr.showMidShapes1H(self.mpoint_1h_checkbox.isChecked())
         gextr.showMidShapesD(self.mpoint_d_checkbox.isChecked())
+        gextr.showLongShapes5M(self.lpoint_5m_checkbox.isChecked())
+        gextr.showLongShapes1H(self.lpoint_1h_checkbox.isChecked())
         gextr.showLongShapesD(self.lpoint_d_checkbox.isChecked())
 
         gextr.showShortLines5M(self.sline_5m_checkbox.isChecked())
-        gextr.showMidLines5M(self.mline_5m_checkbox.isChecked())
-        gextr.showLongLines5M(self.lline_5m_checkbox.isChecked())
-
         gextr.showShortLines1H(self.sline_1h_checkbox.isChecked())
-        gextr.showMidLines1H(self.mline_1h_checkbox.isChecked())
-        gextr.showLongLines1H(self.lline_1h_checkbox.isChecked())
-
         gextr.showShortLinesD(self.sline_d_checkbox.isChecked())
+        gextr.showMidLines5M(self.mline_5m_checkbox.isChecked())
+        gextr.showMidLines1H(self.mline_1h_checkbox.isChecked())
         gextr.showMidLinesD(self.mline_d_checkbox.isChecked())
+        gextr.showLongLines5M(self.lline_5m_checkbox.isChecked())
+        gextr.showLongLines1H(self.lline_1h_checkbox.isChecked())
         gextr.showLongLinesD(self.lline_d_checkbox.isChecked())
+
+        gextr.showShortMoves5M(self.smove_5m_checkbox.isChecked())
+        gextr.showShortMoves1H(self.smove_1h_checkbox.isChecked())
+        gextr.showShortMovesD(self.smove_d_checkbox.isChecked())
+        gextr.showMidMoves5M(self.mmove_5m_checkbox.isChecked())
+        gextr.showMidMoves1H(self.mmove_1h_checkbox.isChecked())
+        gextr.showMidMovesD(self.mmove_d_checkbox.isChecked())
+        gextr.showLongMoves5M(self.lmove_5m_checkbox.isChecked())
+        gextr.showLongMoves1H(self.lmove_1h_checkbox.isChecked())
+        gextr.showLongMovesD(self.lmove_d_checkbox.isChecked())
 
     # }}}
     def configure(self, gextr):  # {{{
@@ -750,25 +898,35 @@ class _ExtremumSettings(QtWidgets.QDialog):  # {{{
         self.inside_checkbox = QtWidgets.QCheckBox("Inside")
         self.outside_checkbox = QtWidgets.QCheckBox("Outside")
 
-        self.spoint_5m_checkbox = QtWidgets.QCheckBox("S")
-        self.mpoint_5m_checkbox = QtWidgets.QCheckBox("M")
-        self.lpoint_5m_checkbox = QtWidgets.QCheckBox("L")
-        self.spoint_1h_checkbox = QtWidgets.QCheckBox("S")
-        self.mpoint_1h_checkbox = QtWidgets.QCheckBox("M")
-        self.lpoint_1h_checkbox = QtWidgets.QCheckBox("L")
-        self.spoint_d_checkbox = QtWidgets.QCheckBox("S")
-        self.mpoint_d_checkbox = QtWidgets.QCheckBox("M")
-        self.lpoint_d_checkbox = QtWidgets.QCheckBox("L")
+        self.spoint_5m_checkbox = QtWidgets.QCheckBox("5M")
+        self.mpoint_5m_checkbox = QtWidgets.QCheckBox("5M")
+        self.lpoint_5m_checkbox = QtWidgets.QCheckBox("5M")
+        self.spoint_1h_checkbox = QtWidgets.QCheckBox("1H")
+        self.mpoint_1h_checkbox = QtWidgets.QCheckBox("1H")
+        self.lpoint_1h_checkbox = QtWidgets.QCheckBox("1H")
+        self.spoint_d_checkbox = QtWidgets.QCheckBox("D")
+        self.mpoint_d_checkbox = QtWidgets.QCheckBox("D")
+        self.lpoint_d_checkbox = QtWidgets.QCheckBox("D")
 
-        self.sline_5m_checkbox = QtWidgets.QCheckBox("S")
-        self.mline_5m_checkbox = QtWidgets.QCheckBox("M")
-        self.lline_5m_checkbox = QtWidgets.QCheckBox("L")
-        self.sline_1h_checkbox = QtWidgets.QCheckBox("S")
-        self.mline_1h_checkbox = QtWidgets.QCheckBox("M")
-        self.lline_1h_checkbox = QtWidgets.QCheckBox("L")
-        self.sline_d_checkbox = QtWidgets.QCheckBox("S")
-        self.mline_d_checkbox = QtWidgets.QCheckBox("M")
-        self.lline_d_checkbox = QtWidgets.QCheckBox("L")
+        self.sline_5m_checkbox = QtWidgets.QCheckBox("5M")
+        self.mline_5m_checkbox = QtWidgets.QCheckBox("5M")
+        self.lline_5m_checkbox = QtWidgets.QCheckBox("5M")
+        self.sline_1h_checkbox = QtWidgets.QCheckBox("1H")
+        self.mline_1h_checkbox = QtWidgets.QCheckBox("1H")
+        self.lline_1h_checkbox = QtWidgets.QCheckBox("1H")
+        self.sline_d_checkbox = QtWidgets.QCheckBox("D")
+        self.mline_d_checkbox = QtWidgets.QCheckBox("D")
+        self.lline_d_checkbox = QtWidgets.QCheckBox("D")
+
+        self.smove_5m_checkbox = QtWidgets.QCheckBox("5M")
+        self.mmove_5m_checkbox = QtWidgets.QCheckBox("5M")
+        self.lmove_5m_checkbox = QtWidgets.QCheckBox("5M")
+        self.smove_1h_checkbox = QtWidgets.QCheckBox("1H")
+        self.mmove_1h_checkbox = QtWidgets.QCheckBox("1H")
+        self.lmove_1h_checkbox = QtWidgets.QCheckBox("1H")
+        self.smove_d_checkbox = QtWidgets.QCheckBox("D")
+        self.mmove_d_checkbox = QtWidgets.QCheckBox("D")
+        self.lmove_d_checkbox = QtWidgets.QCheckBox("D")
 
         self.ok_btn = ToolButton(Icon.OK)
         self.cancel_btn = ToolButton(Icon.CANCEL)
@@ -788,49 +946,69 @@ class _ExtremumSettings(QtWidgets.QDialog):  # {{{
         hbox_days.addWidget(self.inside_checkbox)
         hbox_days.addWidget(self.outside_checkbox)
 
-        hbox_points_5m = QtWidgets.QHBoxLayout()
-        hbox_points_5m.addWidget(Label("Points 5M: "))
-        hbox_points_5m.addWidget(self.spoint_5m_checkbox)
-        hbox_points_5m.addWidget(self.mpoint_5m_checkbox)
-        hbox_points_5m.addWidget(self.lpoint_5m_checkbox)
-        hbox_points_1h = QtWidgets.QHBoxLayout()
-        hbox_points_1h.addWidget(Label("Points 1H: "))
-        hbox_points_1h.addWidget(self.spoint_1h_checkbox)
-        hbox_points_1h.addWidget(self.mpoint_1h_checkbox)
-        hbox_points_1h.addWidget(self.lpoint_1h_checkbox)
-        hbox_points_d = QtWidgets.QHBoxLayout()
-        hbox_points_d.addWidget(Label("Points D: "))
-        hbox_points_d.addWidget(self.spoint_d_checkbox)
-        hbox_points_d.addWidget(self.mpoint_d_checkbox)
-        hbox_points_d.addWidget(self.lpoint_d_checkbox)
+        hbox_points_s = QtWidgets.QHBoxLayout()
+        hbox_points_s.addWidget(Label("Points S: "))
+        hbox_points_s.addWidget(self.spoint_5m_checkbox)
+        hbox_points_s.addWidget(self.spoint_1h_checkbox)
+        hbox_points_s.addWidget(self.spoint_d_checkbox)
+        hbox_points_m = QtWidgets.QHBoxLayout()
+        hbox_points_m.addWidget(Label("Points M: "))
+        hbox_points_m.addWidget(self.mpoint_5m_checkbox)
+        hbox_points_m.addWidget(self.mpoint_1h_checkbox)
+        hbox_points_m.addWidget(self.mpoint_d_checkbox)
+        hbox_points_l = QtWidgets.QHBoxLayout()
+        hbox_points_l.addWidget(Label("Points L: "))
+        hbox_points_l.addWidget(self.lpoint_5m_checkbox)
+        hbox_points_l.addWidget(self.lpoint_1h_checkbox)
+        hbox_points_l.addWidget(self.lpoint_d_checkbox)
 
-        hbox_lines_5m = QtWidgets.QHBoxLayout()
-        hbox_lines_5m.addWidget(Label("Lines 5M: "))
-        hbox_lines_5m.addWidget(self.sline_5m_checkbox)
-        hbox_lines_5m.addWidget(self.mline_5m_checkbox)
-        hbox_lines_5m.addWidget(self.lline_5m_checkbox)
-        hbox_lines_1h = QtWidgets.QHBoxLayout()
-        hbox_lines_1h.addWidget(Label("Lines 1H: "))
-        hbox_lines_1h.addWidget(self.sline_1h_checkbox)
-        hbox_lines_1h.addWidget(self.mline_1h_checkbox)
-        hbox_lines_1h.addWidget(self.lline_1h_checkbox)
-        hbox_lines_d = QtWidgets.QHBoxLayout()
-        hbox_lines_d.addWidget(Label("Lines D: "))
-        hbox_lines_d.addWidget(self.sline_d_checkbox)
-        hbox_lines_d.addWidget(self.mline_d_checkbox)
-        hbox_lines_d.addWidget(self.lline_d_checkbox)
+        hbox_lines_s = QtWidgets.QHBoxLayout()
+        hbox_lines_s.addWidget(Label("Lines S: "))
+        hbox_lines_s.addWidget(self.sline_5m_checkbox)
+        hbox_lines_s.addWidget(self.sline_1h_checkbox)
+        hbox_lines_s.addWidget(self.sline_d_checkbox)
+        hbox_lines_m = QtWidgets.QHBoxLayout()
+        hbox_lines_m.addWidget(Label("Lines M: "))
+        hbox_lines_m.addWidget(self.mline_5m_checkbox)
+        hbox_lines_m.addWidget(self.mline_1h_checkbox)
+        hbox_lines_m.addWidget(self.mline_d_checkbox)
+        hbox_lines_l = QtWidgets.QHBoxLayout()
+        hbox_lines_l.addWidget(Label("Lines L: "))
+        hbox_lines_l.addWidget(self.lline_5m_checkbox)
+        hbox_lines_l.addWidget(self.lline_1h_checkbox)
+        hbox_lines_l.addWidget(self.lline_d_checkbox)
+
+        hbox_moves_s = QtWidgets.QHBoxLayout()
+        hbox_moves_s.addWidget(Label("Moves S: "))
+        hbox_moves_s.addWidget(self.smove_5m_checkbox)
+        hbox_moves_s.addWidget(self.smove_1h_checkbox)
+        hbox_moves_s.addWidget(self.smove_d_checkbox)
+        hbox_moves_m = QtWidgets.QHBoxLayout()
+        hbox_moves_m.addWidget(Label("Moves M: "))
+        hbox_moves_m.addWidget(self.mmove_5m_checkbox)
+        hbox_moves_m.addWidget(self.mmove_1h_checkbox)
+        hbox_moves_m.addWidget(self.mmove_d_checkbox)
+        hbox_moves_l = QtWidgets.QHBoxLayout()
+        hbox_moves_l.addWidget(Label("Moves L: "))
+        hbox_moves_l.addWidget(self.lmove_5m_checkbox)
+        hbox_moves_l.addWidget(self.lmove_1h_checkbox)
+        hbox_moves_l.addWidget(self.lmove_d_checkbox)
 
         vbox = QtWidgets.QVBoxLayout(self)
         vbox.addLayout(hbox_btn)
         vbox.addLayout(hbox_days)
         vbox.addSpacing(20)
-        vbox.addLayout(hbox_points_5m)
-        vbox.addLayout(hbox_points_1h)
-        vbox.addLayout(hbox_points_d)
+        vbox.addLayout(hbox_points_s)
+        vbox.addLayout(hbox_points_m)
+        vbox.addLayout(hbox_points_l)
         vbox.addSpacing(20)
-        vbox.addLayout(hbox_lines_5m)
-        vbox.addLayout(hbox_lines_1h)
-        vbox.addLayout(hbox_lines_d)
+        vbox.addLayout(hbox_lines_s)
+        vbox.addLayout(hbox_lines_m)
+        vbox.addLayout(hbox_lines_l)
+        vbox.addSpacing(20)
+        vbox.addLayout(hbox_moves_s)
+        vbox.addLayout(hbox_moves_m)
+        vbox.addLayout(hbox_moves_l)
 
     # }}}
     def __connect(self):  # {{{
