@@ -549,7 +549,7 @@ class _AssetListTree(QtWidgets.QTreeWidget):  # {{{
         self.header().setStyleSheet(Css.TREE_HEADER)
         self.setContentsMargins(0, 0, 0, 0)
 
-        self.setColumnWidth(0, 70)
+        self.setColumnWidth(0, 80)
         self.setColumnWidth(1, 250)
         self.setMinimumWidth(400)
 

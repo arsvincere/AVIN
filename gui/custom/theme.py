@@ -36,19 +36,15 @@ class Theme:
     hl_cliked = Color.gray4  # #848388
     hl_active = Color.dragonBlue  # #658594
 
-    # # bars
-    # bull = Color.springGreen  # #98BB6C
-    # bear = Color.peachRed  # #FF5D62
-
     class Chart:  # {{{
         BG = QtGui.QColor(Color.dragonBlack0)  # #0d0c0c
 
-        BULL = QtGui.QColor("#98BB6C")  # kanagawa 4.2
         BEAR = QtGui.QColor("#FF5D62")  # kanagawa 5.3
+        BULL = QtGui.QColor("#98BB6C")  # kanagawa 4.2
         UNDEFINE = QtGui.QColor("#FFFFFF")
 
-        VOL_BULL = QtGui.QColor("#3398BB6C")  # kanagawa 4.2
         VOL_BEAR = QtGui.QColor("#33FF5D62")  # kanagawa 5.3
+        VOL_BULL = QtGui.QColor("#3398BB6C")  # kanagawa 4.2
         VOL_UNDEFINE = QtGui.QColor("#33FFFFFF")
         VOL_FRAME = QtGui.QColor(Color.dragonBlack1)
 
@@ -71,6 +67,8 @@ class Theme:
         TREND_1H = QtGui.QColor("#44A3D4D5")
         TREND_D = QtGui.QColor("#88658594")
         TREND_W = QtGui.QColor("#FF957FB8")
+        VAWE_BEAR = QtGui.QColor("#AA0000")
+        VAWE_BULL = QtGui.QColor("#00AA00")
 
         # TODO: delete it
         # common color

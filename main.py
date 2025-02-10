@@ -12,7 +12,7 @@ import sys
 
 import PyQt6
 
-from avin.utils import configureLogger, logger
+from avin.utils import logger
 from gui import MainWindow, Splash
 
 
@@ -38,5 +38,4 @@ def main():
 
 
 if __name__ == "__main__":
-    configureLogger(debug=True, info=True)
     main()

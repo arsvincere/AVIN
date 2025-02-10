@@ -6,3 +6,6 @@ pandas
 pyqt6
 asyncpg
 cython
+pyarrow
+sqlalchemy
+psycopg2
