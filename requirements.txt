@@ -3,6 +3,7 @@ pytest-asyncio
 moexalgo
 tinkoff-investments
 pandas
+plotly
 pyqt6
 asyncpg
 cython
