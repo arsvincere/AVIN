@@ -13,11 +13,11 @@ from datetime import datetime
 
 from PyQt6 import QtCore
 
-from avin import VolumeAnalytic
 from avin.core import Chart, TimeFrame
 from avin.data import Instrument
 from avin.utils import logger
 from gui.custom import awaitQThread
+from usr.lib import VolumeAnalytic
 
 
 class Thread:  # {{{

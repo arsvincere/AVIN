@@ -22,6 +22,7 @@ from avin.utils import Signal, binary_search, find_left, logger
 
 class Chart:
     DEFAULT_BARS_COUNT = 5000
+    MAX_BARS_COUNT = None  # used in tester
 
     def __init__(  # {{{
         self,
@@ -136,6 +137,14 @@ class Chart:
 
         new_bar.setChart(self)
         self.__bars.append(new_bar)
+
+        if (
+            Chart.MAX_BARS_COUNT is not None
+            and len(self.__bars) > Chart.MAX_BARS_COUNT
+        ):
+            mid = Chart.MAX_BARS_COUNT // 2
+            self.__bars = self.__bars[mid:]
+
         self.__head = len(self.__bars)
         self.new_bar.emit(self, new_bar)
 

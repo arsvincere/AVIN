@@ -236,7 +236,7 @@ info:       {Cmd.toJson(self.info, indent=4)}
         logger.debug(f"{self.__class__.__name__}.attachOrder()")
 
         await order.setParentTrade(self)
-        await self.__connectOrderSignals(order)
+        self.__connectOrderSignals(order)
         self.orders.append(order)
 
     # }}}
@@ -703,7 +703,7 @@ info:       {Cmd.toJson(self.info, indent=4)}
 
     # }}}
 
-    async def __connectOrderSignals(self, order: Order):  # {{{
+    def __connectOrderSignals(self, order: Order):  # {{{
         logger.debug(
             f"{self.__class__.__name__}.__connectOrderSignals('{order}')"
         )

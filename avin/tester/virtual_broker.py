@@ -54,6 +54,7 @@ class VirtualBroker(Broker):
     def setTest(cls, test: Test):
         logger.debug(f"{cls.__name__}.setTest()")
         cls.__test = test
+        cls.__current_asset = test.asset
 
     # }}}
     @classmethod  # reset  # {{{
@@ -86,6 +87,7 @@ class VirtualBroker(Broker):
         # как сделать работу с несколькими аккаунтами
         assert account_name == "_backtest"
         cls.__account = Account(account_name, broker=cls, meta=None)
+
         return cls.__account
 
     # }}}
@@ -257,18 +259,14 @@ class VirtualBroker(Broker):
     # }}}
 
     @classmethod  # createBarStream  # {{{
-    def createBarStream(cls, asset: Asset, timeframe: TimeFrame) -> None:
+    def createBarStream(cls, timeframe: TimeFrame) -> None:
         logger.debug(f"{cls.__name__}.createBarStream({asset}, {timeframe})")
 
         if not cls.__data_stream:
             cls.__data_stream = BarStream()
+            cls.__data_stream.setAsset(self.__current_asset)
 
-        cls.__data_stream.subscribe(asset, timeframe)
-
-        # WARN: костыль
-        # пока режим работы по одному ассету прогоняет тестер
-        # так проще, потом подумаю как лучше это сделать
-        cls.__current_asset = asset
+        cls.__data_stream.subscribe(timeframe)
 
     # }}}
     @classmethod  # runDataStream  # {{{
@@ -276,6 +274,7 @@ class VirtualBroker(Broker):
         logger.debug(f"{cls.__name__}.runDataStream()")
 
         await cls.__data_stream.loadData(cls.__test.begin, cls.__test.end)
+
         for event in cls.__data_stream:
             if event.type == Event.Type.NEW_HISTORICAL_BAR:
                 await cls.new_bar.aemit(event)

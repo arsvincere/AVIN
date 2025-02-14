@@ -16,7 +16,7 @@ from gui.chart.gchart import GBar, GChart, Thread
 from gui.custom import Css, Icon, Label, Theme, ToolButton
 from gui.indicator.item import IndicatorItem
 from gui.marker import GShape
-from usr.analytic import Extremum, ExtremumList, Move, Term, Trend
+from usr.lib import Extremum, ExtremumList, Move, Term, Trend
 
 
 class ExtremumIndicator:  # {{{

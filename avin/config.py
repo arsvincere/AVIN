@@ -22,7 +22,9 @@ class Usr:  # {{{
     FILTER = os.path.join(Dir.USR, "filter")
     MARK = os.path.join(Dir.USR, "mark")
     RESEARCH = os.path.join(Dir.USR, "research")
+    SCAN = os.path.join(Dir.USR, "scan")
     STRATEGY = os.path.join(Dir.USR, "strategy")
+    UTILS = os.path.join(Dir.USR, "utils")
 
     # User notes
     NOTE = os.path.join(Dir.USR, "note.un")

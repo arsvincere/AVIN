@@ -67,8 +67,10 @@ class Tester:
     def __createEmptyCharts(self) -> None:  # {{{
         logger.debug(f"{self.__class__.__name__}.__createEmptyCharts()")
 
+        Chart.MAX_BARS_COUNT = 2000
         for timeframe in self.__test.strategy.timeframes():
-            chart = Chart(self.__test.asset, timeframe, [])
+            bars = list()
+            chart = Chart(self.__test.asset, timeframe, bars)
             self.__test.asset.setChart(chart)
 
     # }}}
@@ -76,10 +78,8 @@ class Tester:
         logger.debug(f"{self.__class__.__name__}.__createBarStream()")
 
         timeframe_list = self.__test.strategy.timeframes()
-        asset = self.__test.asset
-
         for timeframe in timeframe_list:
-            self.__broker.createBarStream(asset, timeframe)
+            self.__broker.createBarStream(timeframe)
 
     # }}}
     def __clearAll(self) -> None:  # {{{

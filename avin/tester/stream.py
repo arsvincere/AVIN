@@ -9,17 +9,19 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 
 from avin.const import DAY_BEGIN, ONE_MINUTE
 from avin.core import (
+    Asset,
     Bar,
     BarChangedEvent,
     NewHistoricalBarEvent,
+    TimeFrame,
     TimeFrameList,
 )
 from avin.keeper import Keeper
-from avin.utils import logger
+from avin.utils import Date, logger
 
 # TODO: подумать как бы всетаки отправлять еще progress
 # никто кроме стрима сейчас не может знать его
@@ -124,6 +126,7 @@ D-2023-08-02 00:00:00+00:00 BAR_CHANGED
 class BarStream:
     def __init__(self):  # {{{
         logger.debug(f"{self.__class__.__name__}.__init__()")
+
         self.__subscriptions: defaultdict[Asset, TimeFrameList] = defaultdict(
             TimeFrameList
         )
@@ -134,8 +137,6 @@ class BarStream:
 
     # }}}
     def __iter__(self):  # {{{
-        logger.debug(f"{self.__class__.__name__}.getNextBar()")
-
         timeframes = sorted(self.__bars.keys())
 
         time = self.__begin
@@ -164,8 +165,6 @@ class BarStream:
 
     # }}}
     def subscribe(self, asset, timeframe) -> None:  # {{{
-        logger.debug(f"{self.__class__.__name__}.subscribe()")
-
         self.__subscriptions[asset].add(timeframe)
 
         if self.__asset is None:
@@ -179,14 +178,15 @@ class BarStream:
             assert self.__asset == asset
 
     # }}}
-    async def loadData(self, begin: date, end: date):  # {{{
+    async def loadData(self, begin: Date, end: Date):  # {{{
         logger.debug(f"{self.__class__.__name__}.loadData()")
-        assert isinstance(begin, date)
-        assert isinstance(end, date)
+        assert isinstance(begin, Date)
+        assert isinstance(end, Date)
 
         self.__bars.clear()
         self.__begin = datetime.combine(begin, DAY_BEGIN, UTC)
         self.__end = datetime.combine(end, DAY_BEGIN, UTC)
+
         for asset, tflist in self.__subscriptions.items():
             for timeframe in tflist:
                 bars = await Keeper.get(
@@ -200,6 +200,144 @@ class BarStream:
 
     # }}}
 
+
+class BarStream2:
+    def __init__(self):  # {{{
+        logger.debug(f"{self.__class__.__name__}.__init__()")
+
+        self.__asset = None
+        self.__timeframe_list = TimeFrameList()
+        self.__begin = None
+        self.__end = None
+        self.__bars = list()  # 1m bars
+        self.__time = None
+
+    # }}}
+    def __iter__(self):  # {{{
+        timeframes = sorted(self.__bars.keys())
+
+        self.__time = self.__begin
+        self.__sendInitialBars()
+
+        while self.__time < self.__end:
+            time += ONE_MINUTE
+
+            if not self.__bars:
+                continue
+            if self.__time < self.__bars[0].dt + ONE_MINUTE:
+                continue
+
+            # send 1m historical bar
+            last_bar = self.__bars.pop(0)
+            figi = self.__asset.figi
+            historical = NewHistoricalBarEvent(figi, timeframe, last_bar)
+            yield historical
+
+            # send 1m now bar
+            if not bars:
+                continue
+            now_bar = bars[0]
+            now_changed = BarChangedEvent(figi, timeframe, now_bar)
+            yield now_changed
+
+            # send other timeframes
+            if self.__bar_5M is not None:
+                self.__sendBar5M(now_bar)
+            if self.__bar_1H is not None:
+                self.__sendBar1H(now_bar)
+            if self.__bar_D is not None:
+                self.__sendBarD(now_bar)
+
+    # }}}
+    def setAsset(self, asset: Asset) -> None:  # {{{
+        logger.debug(f"{self.__class__.__name__}.setAsset()")
+        assert isinstance(asset, Asset)
+
+        self.__asset = asset
+
+    # }}}
+    def subscribe(self, timeframe) -> None:  # {{{
+        assert str(timeframe) in ("1H", "5M", "1H", "D")
+
+        self.__timeframe_list.add(timeframe)
+
+    # }}}
+    async def loadData(self, begin: Date, end: Date):  # {{{
+        logger.debug(f"{self.__class__.__name__}.loadData()")
+        assert isinstance(begin, Date)
+        assert isinstance(end, Date)
+
+        self.__bars = await Keeper.get(
+            Bar,
+            instrument=self.__asset,
+            timeframe=TimeFrame("1M"),
+            begin=begin,
+            end=end,
+        )
+        self.__begin = datetime.combine(begin, DAY_BEGIN, UTC)
+        self.__end = datetime.combine(end, DAY_BEGIN, UTC)
+
+    # }}}
+
+    def __sendInitialBars(self):  # {{{
+        # send first 1m historical bar
+        first_bar = self.__bars.pop(0)
+        figi = self.__asset.figi
+        event = NewHistoricalBarEvent(figi, TimeFrame("1M"), first_bar)
+        yield event
+
+        # send first 1m real-time bar
+        now_bar = self.__bars.pop(0)
+
+        # send other timeframes real-time bars
+        if TimeFrame("5M") in self.__timeframe_list:
+            self.__bar_5m = first_bar
+            self.__time_5m = self.__getNextTime(TimeFrame("5M"), first_bar)
+            event = BarChangedEvent(figi, TimeFrame("1H"), first_bar)
+            yield event
+        if TimeFrame("1H") in self.__timeframe_list:
+            self.__bar_1h = first_bar
+            self.__time_1h = self.__getNextTime(TimeFrame("1H"), first_bar)
+            event = BarChangedEvent(figi, TimeFrame("1H"), first_bar)
+            yield event
+        if TimeFrame("D") in self.__timeframe_list:
+            self.__bar_d = first_bar
+            self.__time_d = self.__getNextTime(TimeFrame("D"), first_bar)
+            event = BarChangedEvent(figi, TimeFrame("D"), first_bar)
+            yield event
+
+    # }}}
+    def __sendBar1H(self, bar_1m: Bar):  # {{{
+        if self.__time < self.__time_1h:
+            self.__bar_1H = self.__joinBar(self.__bar_1H, bar_1m)
+            event = BarChangedEvent(figi, TimeFrame("1H"), self.__bar_1H)
+            return event
+
+        while time < self.__end:
+            for timeframe in timeframes:
+                bars = self.__bars[timeframe]
+                if not bars:
+                    continue
+                if time < bars[0].dt + timeframe:
+                    continue
+
+                # send new historical bar
+                last_bar = bars.pop(0)
+                figi = self.__asset.figi
+                historical = NewHistoricalBarEvent(figi, timeframe, last_bar)
+                yield historical
+
+                # send now bar
+                if not bars:
+                    continue
+                now_bar = bars[0]
+                now_changed = BarChangedEvent(figi, timeframe, now_bar)
+                yield now_changed
+
+            time += ONE_MINUTE
+
+
+# }}}
 
 if __name__ == "__main__":
     ...
